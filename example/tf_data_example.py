@@ -50,7 +50,8 @@ def normalize_img(image, label):
 
 # TFDS provide the images as tensorflow.uint8, while the model expect tensorflow.float32, so normalize images
 ds_train = ds_train.map(
-    normalize_img, num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
+    normalize_img,
+    num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
 
 # As the dataset fit in memory, cache before shuffling for better performance.
 ds_train = ds_train.cache()
@@ -68,7 +69,8 @@ ds_train = ds_train.prefetch(tensorflow.data.experimental.AUTOTUNE)
 
 # Build evaluation pipeline --------------------------------------------
 ds_test = ds_test.map(
-    normalize_img, num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
+    normalize_img,
+    num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
 ds_test = ds_test.batch(128)
 ds_test = ds_test.cache()
 ds_test = ds_test.prefetch(tensorflow.data.experimental.AUTOTUNE)
@@ -80,6 +82,7 @@ model = tensorflow.keras.models.Sequential([
   tensorflow.keras.layers.Dense(128,activation='relu'),
   tensorflow.keras.layers.Dense(10, activation='softmax')
 ])
+
 model.compile(
     loss='sparse_categorical_crossentropy',
     optimizer=tensorflow.keras.optimizers.Adam(0.001),
