@@ -1,237 +1,222 @@
 """
-Tensorflow Datasets Homepage: https://www.tensorflow.org/datasets
-Catalog: https://www.tensorflow.org/datasets/catalog/mnist
-Source: https://github.com/tensorflow/datasets
 
-Name, Data Type, Task, Feature Types, # Observations, # Features
-
-
-
-Example from: https://www.tensorflow.org/datasets/keras_example
 """
+import gc
+import json
+import os
+import sys
 from pprint import pprint
 
 import numpy
+import pandas
 import tensorflow
 import tensorflow_datasets
 from matplotlib import pyplot
-from tensorflow import keras
+from pathos import multiprocessing
+from tensorflow.keras import (
+    callbacks,
+    losses,
+    Sequential,
+    metrics,
+    optimizers,
+    )
+from tensorflow.python.keras.models import Model
 
-depths = range(1, 5)
-width = 64
-histories = []
-for depth in depths:
-    # load dataset --------------------------------------------
-    # (trainingDataset, validationDataset), ds_info = tensorflow_datasets.load(
-    #     # 'mnist',
-    #     'wine_quality',
-    #     split=['train', 'test'],
-    #     as_supervised=True,
-    #     shuffle_files=True,
-    #     with_info=True)
-    
-    dataset, ds_info = tensorflow_datasets.load(
-        # 'mnist',
-        'wine_quality',
-        split='train',
-        as_supervised=True,
-        shuffle_files=True,
-        with_info=True)
-    size = ds_info.splits['train'].num_examples
-    
-    
-    trainingSize = int(0.8 * size)
-    validationSize = int(0.2 * size)
-    # test_size = int(0.1 * size)
+from command_line_tools import (
+    command_line_config,
+    run_tools,
+    )
+from command_line_tools.run_tools import setup_run
+from data.pmlb import PMLBLoader
 
-    print('size: {}, train size: {}, validation size: {}'.format(size, trainingSize, validationSize))
+
+def countTrainableParameters(model: Model) -> int:
+    count = 0
+    for var in model.trainable_variables:
+        acc = 1
+        for dim in var.get_shape():
+            acc *= int(dim)
+        count += acc
+    return count
+
+
+class NpEncoder(json.JSONEncoder):
     
-    dataset = dataset.shuffle(size)
-    trainingDataset = dataset.take(trainingSize)
-    validationDataset = dataset.skip(trainingSize)
-    
-    numFeatures = 0
-    numOutputs = 0
-    for element in dataset:
-        print(element)
-        numFeatures = len(element[0])
-        outputs = element[1]
-        if isinstance(outputs, tensorflow.Tensor):
-            numOutputs = 1
+    def default(self, obj):
+        if isinstance(obj, numpy.integer):
+            return int(obj)
+        elif isinstance(obj, numpy.floating):
+            return float(obj)
+        elif isinstance(obj, numpy.ndarray):
+            return obj.tolist()
         else:
-            numOutputs = len(outputs)
-        break
-        
-    print('num features: {}, num outputs: {}', numFeatures, numOutputs)
-    
-    # Build training pipeline --------------------------------------------
-    
-    # def normalize_img(image, label):
-    #     """Normalizes images: `uint8` -> `float32`."""
-    #     return tensorflow.cast(image, tensorflow.float32) / 255., label
-    
-    # # TFDS provide the images as tensorflow.uint8, while the model expect tensorflow.float32, so normalize images
-    # trainingDataset = trainingDataset.map(
-    #     normalize_img,
-    #     num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
-    
-    # trainingDataset = trainingDataset.map(
-    #         normalize_img,
-    #         num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
-    
-    # As the dataset fit in memory, cache before shuffling for better performance.
-    trainingDataset = trainingDataset.cache()
-    
-    # Batch after shuffling to get unique batches at each epoch.
-    trainingDataset = trainingDataset.batch(128)
-    
-    # Good practice to end the pipeline by prefetching for performances.
-    trainingDataset = trainingDataset.prefetch(tensorflow.data.experimental.AUTOTUNE)
-    
-    # Build evaluation pipeline --------------------------------------------
-    # validationDataset = validationDataset.map(
-    #     normalize_img,
-    #     num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
-    validationDataset = validationDataset.batch(128)
-    validationDataset = validationDataset.cache()
-    validationDataset = validationDataset.prefetch(tensorflow.data.experimental.AUTOTUNE)
-    
-    # Create and train the model --------------------------------------------
-    
-    inputs = [keras.Input(shape=(1,)) for i in range(numFeatures)]
-    concatenatedInputs = keras.layers.Concatenate()(inputs)
-    # layers = []
-    # layers.append(tensorflow.keras.layers.Flatten(input_shape=(numFeatures,)))
-    # layers.append(tensorflow.keras.layers.Flatten(input_shape=(28, 28, 1)))
-    # layers.append(tensorflow.keras.layers.Concatenate())
-    # layers.append(keras.layers.Dense(width, activation='relu', input_dim=numFeatures))
-    x = concatenatedInputs
-    for i in range(depth - 1):
-        x = keras.layers.Dense(width, activation='relu')(x)
-    # layers.append(tensorflow.keras.layers.Dense(10, activation='softmax'))
-    # outputs = tensorflow.keras.layers.Dense(numOutputs, activation='softmax')
-    output = keras.layers.Dense(1, activation='relu')(x)
-    output = keras.layers.experimental.preprocessing.Rescaling(scale=10.0, offset=5)(output)
-    #
-    # outputs = keras.models.Sequential(layers)
-    model = keras.Model(inputs=inputs, outputs=output)
-    # model.compile(
-    #     loss='sparse_categorical_crossentropy',
-    #     optimizer=keras.optimizers.Adam(0.001),
-    #     metrics=['accuracy'],
-    #     )
-
-    # keras.utils.plot_model(model, show_shapes=True)
-    
-    model.compile(
-        loss='mse',
-        optimizer=keras.optimizers.Adam(0.001),
-        metrics=['accuracy'],
-        )
-    
-    training_history = model.fit(
-        trainingDataset,
-        epochs=20,
-        validation_data=validationDataset,
-        )
-    
-    histories.append(training_history)
-
-for history in histories:
-    print(history.history)
+            return super(NpEncoder, self).default(obj)
 
 
-# # val_loss, loss, accuracy, val_accuracy
-def extractVariableFromHistories(name: str, histories: [tensorflow.keras.callbacks.History]) -> numpy.ndarray:
-    return numpy.stack([history.history[name] for history in histories])
+pandas.set_option("display.max_rows", None, "display.max_columns", None)
+datasets = PMLBLoader.loadDatasetIndex()
+
+# core_config = tensorflow.Conf()
+# core_config.gpu_options.allow_growth = True
+# session = tensorflow.Session(config=core_config)
+# tensorflow.keras.backend.set_session(session)
 
 
-validationAccuracies = extractVariableFromHistories('val_accuracy', histories)
-
-# validationAccuracies = numpy.array([[0.9023, 0.91289997, 0.91670001, 0.92089999, 0.92290002,
-#                                      0.92320001, 0.92519999, 0.92439997, 0.92729998, 0.9267,
-#                                      0.92680001, 0.9271, 0.9271, 0.92900002, 0.92769998,
-#                                      0.92799997, 0.9267, 0.92729998, 0.92799997, 0.92750001,
-#                                      0.92629999, 0.9278, 0.92659998, 0.92900002, 0.92720002],
-#                                     [0.94590002, 0.96100003, 0.96820003, 0.97320002, 0.97350001,
-#                                      0.9774, 0.97680002, 0.9774, 0.977, 0.9774,
-#                                      0.97750002, 0.9781, 0.97960001, 0.97680002, 0.97729999,
-#                                      0.97930002, 0.97920001, 0.97899997, 0.97820002, 0.97890002,
-#                                      0.97839999, 0.97680002, 0.97839999, 0.98019999, 0.97909999],
-#                                     [0.95539999, 0.96619999, 0.96939999, 0.97640002, 0.9774,
-#                                      0.97539997, 0.97549999, 0.9788, 0.97920001, 0.97759998,
-#                                      0.97469997, 0.97549999, 0.97979999, 0.97640002, 0.97930002,
-#                                      0.9799, 0.97939998, 0.97680002, 0.9799, 0.9795,
-#                                      0.9799, 0.97369999, 0.97899997, 0.97920001, 0.97780001],
-#                                     [0.9587, 0.96630001, 0.96829998, 0.972, 0.97479999,
-#                                      0.97710001, 0.977, 0.97719997, 0.97600001, 0.97320002,
-#                                      0.97229999, 0.97460002, 0.97600001, 0.97619998, 0.97970003,
-#                                      0.97869998, 0.97780001, 0.97710001, 0.97920001, 0.97659999,
-#                                      0.97909999, 0.977, 0.97659999, 0.98000002, 0.97710001],
-#                                     [0.96060002, 0.97000003, 0.96160001, 0.97359997, 0.97780001,
-#                                      0.97799999, 0.9716, 0.9781, 0.97589999, 0.97689998,
-#                                      0.97909999, 0.97850001, 0.977, 0.97390002, 0.98100001,
-#                                      0.97589999, 0.97850001, 0.97670001, 0.97909999, 0.97930002,
-#                                      0.98079997, 0.97820002, 0.977, 0.98199999, 0.97619998],
-#                                     [0.95279998, 0.96969998, 0.97149998, 0.97140002, 0.97460002,
-#                                      0.97570002, 0.97549999, 0.97390002, 0.97790003, 0.97909999,
-#                                      0.97729999, 0.97539997, 0.97289997, 0.97759998, 0.97659999,
-#                                      0.97970003, 0.97729999, 0.97490001, 0.97979999, 0.97689998,
-#                                      0.97610003, 0.97750002, 0.97890002, 0.97850001, 0.9788],
-#                                     [0.95340002, 0.96649998, 0.97219998, 0.97369999, 0.97229999,
-#                                      0.9716, 0.97600001, 0.97180003, 0.97250003, 0.97610003,
-#                                      0.9763, 0.9763, 0.97890002, 0.9774, 0.97689998,
-#                                      0.9795, 0.97799999, 0.97850001, 0.9777, 0.97670001,
-#                                      0.97909999, 0.977, 0.97579998, 0.97839999, 0.97799999],
-#                                     [0.9515, 0.96810001, 0.96569997, 0.9745, 0.97299999,
-#                                      0.9756, 0.97589999, 0.97600001, 0.97839999, 0.97350001,
-#                                      0.97640002, 0.97359997, 0.97600001, 0.98049998, 0.97310001,
-#                                      0.9777, 0.97570002, 0.97780001, 0.97820002, 0.97930002,
-#                                      0.9774, 0.9795, 0.97960001, 0.97799999, 0.97829998],
-#                                     [0.94840002, 0.963, 0.9698, 0.97289997, 0.97189999,
-#                                      0.9763, 0.97729999, 0.9666, 0.9745, 0.97420001,
-#                                      0.97790003, 0.97670001, 0.98000002, 0.97750002, 0.97850001,
-#                                      0.97729999, 0.97680002, 0.97780001, 0.98009998, 0.97500002,
-#                                      0.97829998, 0.98199999, 0.98199999, 0.97909999, 0.97579998],
-#                                     [0.94819999, 0.96469998, 0.96640003, 0.97289997, 0.97460002,
-#                                      0.97390002, 0.972, 0.97579998, 0.97899997, 0.9745,
-#                                      0.97689998, 0.977, 0.97750002, 0.977, 0.97299999,
-#                                      0.96820003, 0.9777, 0.97539997, 0.97829998, 0.97829998,
-#                                      0.97640002, 0.97680002, 0.97799999, 0.97729999, 0.9774]])
-
-pprint(validationAccuracies)
-
-minimumValidationAccuracyIndices = numpy.argmax(validationAccuracies, axis=1)
-pprint(minimumValidationAccuracyIndices)
-minimumValidationAccuracies = numpy.max(validationAccuracies, axis=1)
-pprint(minimumValidationAccuracies)
-validationErrors = 1 - minimumValidationAccuracies
-
-# minValidationLossIndices = [numpy.argmin(history.history['val_loss']) for history in histories]
-# minValidationLoss = [history.history['val_loss'][i] for i, history in enumerate(histories)]
-#
-# minValidationLossIndices = [numpy.argmin(history.history['val_loss']) for history in histories]
-#
-# for history in histories:
-#     # print(history)
-#     # validation_loss_index = numpy.argmin(history.history['loss'])
-#     minValidationLossIndex = numpy.argmin(history.history['val_loss'])
-#     minValidationLossIndicies.append(minValidationLossIndex)
-#     minValidationLoss = history.history['val_loss'][minValidationLossIndex]
-#     minValidationLossIndicies.append(minValidationLoss)
-#     #['val_acc']  ['acc']
-#
-#
-pyplot.style.use('seaborn-whitegrid')
-
-figure, ax = pyplot.subplots()
-ax.plot(depths, minimumValidationAccuracyIndices)
-ax.set_xlabel('depth')
-ax.set_ylabel('epoch of minimum validation error')
-pyplot.show()
-
-figure, ax = pyplot.subplots()
-ax.plot(depths, validationErrors)
-ax.set_xlabel('depth')
-ax.set_ylabel('minimum validation error')
-pyplot.show()
+# datasets = datasets[datasets['Dataset'] == 'mnist']
+for index, dataset in datasets.iterrows():
+    print(index)
+    
+    default_config = {
+        'logPath':       '/home/ctripp/log',
+        'dataset':       dataset['Dataset'],
+        'datasetRow':    list(dataset),
+        'earlyStopping': {
+            'patience':             10,
+            'monitor':              'val_loss',
+            'min_delta':            0,
+            'verbose':              0,
+            'mode':                 'min',
+            'baseline':             None,
+            'restore_best_weights': False,
+            },
+        'runConfig':     {
+            'validation_split': .2,
+            'shuffle':          True,
+            'epochs':           10000,
+            'batch_size':       256,
+            },
+        'activation':    'relu',
+        }
+    
+    config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
+    inputs, outputs = PMLBLoader.loadData(dataset)
+    gc.collect()
+    numObservations = inputs.shape[0]
+    numInputs = inputs.shape[1]
+    numOutputs = outputs.shape[1]
+    
+    for width in range(1, 128):
+        for depth in range(1, 32):
+            
+            name = '{}_{}_{}_w_{}_d_{}'.format(
+                dataset['Task'],
+                dataset['Endpoint'],
+                dataset['Dataset'],
+                width,
+                depth)
+            
+            config['name'] = name
+            config['depth'] = depth
+            config['width'] = width
+            
+            # pprint(config)
+            runName = run_tools.get_run_name(config)
+            config['runName'] = runName
+            depth = config['depth']
+            width = config['width']
+            
+            logData = {'config': config}
+            runConfig = config['runConfig']
+            
+            runLoss = losses.mean_squared_error
+            runOptimizer = optimizers.Adam()
+            runMetrics = [
+                metrics.Accuracy(),
+                metrics.CosineSimilarity(),
+                metrics.Hinge(),
+                metrics.KLDivergence(),
+                metrics.MeanAbsoluteError(),
+                metrics.MeanSquaredError(),
+                metrics.MeanSquaredLogarithmicError(),
+                metrics.RootMeanSquaredError(),
+                metrics.SquaredHinge(),
+                ]
+            
+            runTask = dataset['Task']
+            if runTask == 'regression':
+                runLoss = losses.mean_squared_error
+            elif runTask == 'classification':
+                if numOutputs == 1:
+                    runLoss = losses.binary_crossentropy
+                else:
+                    runLoss = losses.categorical_crossentropy
+            else:
+                raise Exception('Unknown task "{}"'.format(runTask))
+            
+            layers = []
+            for d in range(depth):
+                
+                if d == depth - 1:
+                    # output layer
+                    layerWidth = numOutputs
+                    activation = tensorflow.nn.sigmoid
+                else:
+                    layerWidth = width
+                    activation = tensorflow.nn.relu
+                
+                layer = None
+                if d == 0:
+                    layer = tensorflow.keras.layers.Dense(
+                        layerWidth,
+                        activation=activation,
+                        input_shape=(numInputs,))
+                else:
+                    layer = tensorflow.keras.layers.Dense(
+                        layerWidth,
+                        activation=activation,
+                        )
+                layers.append(layer)
+            
+            model = Sequential(layers)
+            model.compile(
+                # loss='binary_crossentropy', # binary classification
+                # loss='categorical_crossentropy', # categorical classification (one hot)
+                loss=runLoss,  # regression
+                optimizer=runOptimizer,
+                # optimizer='rmsprop',
+                # metrics=['accuracy'],
+                metrics=runMetrics,
+                )
+            
+            runCallbacks = [
+                callbacks.EarlyStopping(**config['earlyStopping']),
+                ]
+            
+            gc.collect()
+            
+            historyCallback = model.fit(
+                x=inputs,
+                y=outputs,
+                callbacks=runCallbacks,
+                **runConfig,
+                )
+            
+            history = historyCallback.history
+            logData['history'] = history
+            
+            validationLosses = numpy.array(history['val_loss'])
+            bestIndex = numpy.argmin(validationLosses)
+            
+            logData['iterations'] = bestIndex + 1
+            logData['val_loss'] = validationLosses[bestIndex]
+            logData['loss'] = history['loss'][bestIndex]
+            logData['numWeights'] = countTrainableParameters(model)
+            logData['numInputs'] = numInputs
+            logData['numFeatures'] = dataset['n_features']
+            logData['numClasses'] = dataset['n_classes']
+            logData['numOutputs'] = numOutputs
+            logData['numObservations'] = numObservations
+            logData['task'] = dataset['Task']
+            logData['endpoint'] = dataset['Endpoint']
+            
+            logPath = config['logPath']
+            run_tools.makedir_if_not_exists(logPath)
+            logFile = os.path.join(logPath, '{}.json'.format(runName))
+            print('log file: {}'.format(logFile))
+            
+            with open(logFile, 'w', encoding='utf-8') as f:
+                json.dump(logData, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
+            
+            # pprint(logData)
+            print('done.')
+            gc.collect()

@@ -1,5 +1,6 @@
 import math
 import numbers
+import os
 from pprint import pprint
 from statistics import (
     mean,
@@ -18,6 +19,7 @@ from sklearn.preprocessing import (
     StandardScaler,
     )
 
+from data.pmlb import PMLBLoader
 from preprocessing.CategoricalIndexer import CategoricalIndexer
 from preprocessing.Standardizer import Standardizer
 
@@ -44,48 +46,10 @@ Python Reference: https://epistasislab.github.io/pmlb/python-ref.html
 
 '''
 
-
-def prepareValue(value):
-    value = numpy.reshape(value, (-1, 1))
-    pprint(value.shape)
-    
-    # TODO: Normalizer and PCA decorrelation can also help, etc
-    # see http://yann.lecun.com/exdb/publis/pdf/lecun-98b.pdf
-    # use one-hot when there are fewer distinct values than 10%
-    # of the number of observations
-    preprocessor = OneHotEncoder(handle_unknown='ignore', sparse=False)
-    preprocessor.fit(value)
-    numDistinctValues = len(preprocessor.categories_[0])
-    
-    preparedValue = None
-    if numDistinctValues <= 2:
-        # if there are only two values, set them as 0 and 1
-        preprocessed = (value == preprocessor.categories_[0][0])
-    elif numDistinctValues / value.shape[0] > .1 and isinstance(value[0][0], numbers.Number):
-        # use standardization otherwise
-        # pprint(value)
-        # m = numpy.mean(value)
-        # s = numpy.std(value)
-        # preprocessor = StandardScaler(with_mean=True, with_std=True)
-        preprocessor = MinMaxScaler()
-        preprocessor.fit(value)
-        preprocessed = preprocessor.transform(value)
-    else:
-        preprocessed = preprocessor.transform(value)
-    
-    return preprocessed
-
-
-def prepareMatrix(values):
-    transformedList = []
-    for i in range(values.shape[1]):
-        value = values[:, i]
-        transformedValue = prepareValue(value)
-        transformedList.append(transformedValue)
-    return numpy.hstack(transformedList)
-
-
-# TODO: we are using dense numpy arrays, which could be very wasteful with sparse data
+pandas.set_option("display.max_rows", None, "display.max_columns", None)
+datasets = PMLBLoader.loadDatasetIndex()
+dataset = datasets.loc['537_houses']
+inputs, outputs = PMLBLoader.loadData(dataset)
 
 
 # inputs, outputs = pmlb.fetch_data('mushroom', return_X_y=True)
@@ -98,7 +62,8 @@ def prepareMatrix(values):
 # inputs, outputs = pmlb.fetch_data('542_pollution', return_X_y=True)
 # inputs, outputs = pmlb.fetch_data('503_wind', return_X_y=True)
 # inputs, outputs = pmlb.fetch_data('527_analcatdata_election2000', return_X_y=True)
-inputs, outputs = pmlb.fetch_data('560_bodyfat', return_X_y=True)
+# inputs, outputs = pmlb.fetch_data('560_bodyfat', return_X_y=True)
+# inputs, outputs = pmlb.fetch_data('spambase', return_X_y=True)
 # how many iterations to reach crossover point -> normalize to number of nodes or number of weights?
 # lowest validation error / validation error at crossover point
 # vs
@@ -114,22 +79,23 @@ pprint(inputs.shape)
 pprint(outputs)
 print(outputs.shape)
 
-preparedInputs = prepareMatrix(inputs)
-pprint(preparedInputs.shape)
+# preparedInputs = prepareMatrix(inputs)
+# pprint(preparedInputs.shape)
+#
+# preparedOutputs = prepareValue(outputs)
+# pprint(preparedOutputs.shape)
 
-preparedOutputs = prepareValue(outputs)
-pprint(preparedOutputs.shape)
-
-numObservations = preparedInputs.shape[0]
-numInputs = preparedInputs.shape[1]
-numOutputs = preparedOutputs.shape[1]
+numObservations = inputs.shape[0]
+numInputs = inputs.shape[1]
+numOutputs = outputs.shape[1]
 
 print('numObservations {} numInputs {} numOutputs {}'.format(numObservations, numInputs, numOutputs))
 
 model = tensorflow.keras.Sequential([
-    tensorflow.keras.layers.Dense(16, activation=tensorflow.nn.relu, input_shape=(numInputs,)),  # input shape required
-    tensorflow.keras.layers.Dense(16, activation=tensorflow.nn.relu),
-    tensorflow.keras.layers.Dense(16, activation=tensorflow.nn.relu),
+    tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu, input_shape=(numInputs,)),  # input shape required
+    tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu),
+    tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu),
+    tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu),
     tensorflow.keras.layers.Dense(numOutputs, activation=tensorflow.nn.sigmoid)
     ])
 
@@ -143,8 +109,8 @@ model.compile(
     )
 
 model.fit(
-    x=preparedInputs,
-    y=preparedOutputs,
+    x=inputs,
+    y=outputs,
     shuffle=True,
     validation_split=.2,
     # epochs=12,
