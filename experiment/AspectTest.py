@@ -63,19 +63,22 @@ def testNetwork(
         dataset,
         inputs: numpy.ndarray,
         outputs: numpy.ndarray,
+        prefix,
         width: int,
         depth: int,
         ) -> None:
     config = deepcopy(config)
-    name = '{}_{}_{}_w_{}_d_{}'.format(
+    name = '{}_{}_{}_b_{}_w_{}_d_{}'.format(
         dataset['Task'],
         dataset['Endpoint'],
         dataset['Dataset'],
+        prefix,
         width,
         depth)
     
     config['name'] = name
     config['depth'] = depth
+    config['numHidden'] = max(0, depth - 2)
     config['width'] = width
     
     # pprint(config)
@@ -214,8 +217,11 @@ def testAspectRatio(config, dataset, inputs, outputs, budget, depths):
     # for width in range(1, 128):
     #     for depth in range(1, 32):
     for depth in depths:
-        width = round(budget / (depth - 1))
-        testNetwork(config, dataset, inputs, outputs, width, depth)
+        i = inputs.shape[1]
+        h = (depth - 2)
+        o = outputs.shape[1]
+        width = round((budget - h - o) / (i + h + o + 1))
+        testNetwork(config, dataset, inputs, outputs, '{}'.format(budget), width, depth)
     
     # pprint(logData)
     print('done.')
@@ -257,7 +263,9 @@ default_config = {
 config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
 
 dataset, inputs, outputs = loadDataset(datasets, 'mnist')
-for budget in range(50, 250, 50):
+# 3450 to 159010
+for i in range(1, 20):
+    budget = i * 10000
     testAspectRatio(config, dataset, inputs, outputs, budget, [i for i in range(2, 16)])
 # testAspectRatio(config, dataset, inputs, outputs, 128, [i for i in range(2, 16)])
 
