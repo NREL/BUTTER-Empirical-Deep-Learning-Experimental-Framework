@@ -3,6 +3,7 @@
 """
 import gc
 import json
+import math
 import os
 import sys
 from copy import deepcopy
@@ -107,8 +108,8 @@ def testNetwork(
         ]
     
     print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
-    print(inputs[0, :])
-    print(outputs[0, :])
+    # print(inputs[0, :])
+    # print(outputs[0, :])
     runLoss = losses.mean_squared_error
     outputActivation = tensorflow.nn.relu
     runTask = dataset['Task']
@@ -220,7 +221,20 @@ def testAspectRatio(config, dataset, inputs, outputs, budget, depths):
         i = inputs.shape[1]
         h = (depth - 2)
         o = outputs.shape[1]
-        width = round((budget - h - o) / (i + h + o + 1))
+        
+        a = h
+        b = i + h + o + 1
+        c = o - budget
+        
+        rawWidth = 1
+        if h == 0:
+            rawWidth = -(o - budget) / (i + o + 1)
+        else:
+            rawWidth = (-b + math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
+        width = round(rawWidth)
+        print('budget {} depth {}, i {} h {} o {}, a {} b {} c {}, rawWidth {}, width {}'.format(budget, depth, i, h, o,
+                                                                                                 a, b, c, rawWidth,
+                                                                                                 width))
         testNetwork(config, dataset, inputs, outputs, '{}'.format(budget), width, depth)
     
     # pprint(logData)
