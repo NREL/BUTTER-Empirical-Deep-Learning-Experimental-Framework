@@ -1,11 +1,11 @@
 import numpy
 
-from dmp.network_types import DNetFullyConnectedLayer
+from dmp.network_types.dnet.dnet_fully_connected_layer import DNetFullyConnectedLayer
 
 
 class DNetFullyConnectedNetwork:
     
-    def __init__(self, layer_configs: [(int, int)], transferFunction):
+    def __init__(self, layer_configs: [(int, int)], transfer_function):
         self.layers: [DNetFullyConnectedLayer] = []
         num_layers = len(layer_configs) - 1
         if num_layers < 1:
@@ -17,7 +17,7 @@ class DNetFullyConnectedNetwork:
             num_points = layer_configs[i][1]
             num_outputs = layer_configs[i + 1][0]
             print('make layer {}: {}*{} -> {} '.format(i, num_inputs, num_points, num_outputs))
-            layer = DNetFullyConnectedLayer(num_inputs, num_points, num_outputs, transferFunction)
+            layer = DNetFullyConnectedLayer(num_inputs, num_points, num_outputs, transfer_function)
             self.layers.append(layer)
     
     def initialize(self):
@@ -32,16 +32,16 @@ class DNetFullyConnectedNetwork:
         return value
     
     @property
-    def numParameters(self):
-        return sum((layer.numParameters for layer in self.layers))
+    def num_parameters(self):
+        return sum((layer.num_parameters for layer in self.layers))
     
-    def setFlatParameters(self, parameters):
-        self.pageThroughLayers(lambda layer, offset: layer.setFlatParameters(parameters[offset:]))
+    def set_flat_parameters(self, parameters):
+        self.page_through_layers(lambda layer, offset: layer.set_flat_parameters(parameters[offset:]))
     
-    def getFlatParameters(self, parameters):
-        self.pageThroughLayers(lambda layer, offset: layer.getFlatParameters(parameters[offset:]))
+    def get_flat_parameters(self, parameters):
+        self.page_through_layers(lambda layer, offset: layer.get_flat_parameters(parameters[offset:]))
     
-    def pageThroughLayers(self, function):
+    def page_through_layers(self, function):
         offset = 0
         for layer in self.layers:
             offset += function(layer, offset)

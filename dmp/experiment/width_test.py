@@ -3,7 +3,6 @@
 """
 import gc
 import json
-import math
 import os
 import sys
 from copy import deepcopy
@@ -24,11 +23,11 @@ from command_line_tools import (
     command_line_config,
     run_tools,
     )
-from dmp.data.pmlb import PMLBLoader
-from dmp.data.pmlb.PMLBLoader import loadDataset
+from dmp.data.pmlb import pmlb_loader
+from dmp.data.pmlb.pmlb_loader import load_dataset
 
 
-def countTrainableParameters(model: Model) -> int:
+def count_trainable_parameters(model: Model) -> int:
     count = 0
     for var in model.trainable_variables:
         print('ctp {}'.format(var.get_shape()))
@@ -54,39 +53,36 @@ class NpEncoder(json.JSONEncoder):
             return super(NpEncoder, self).default(obj)
 
 
-def testNetwork(
+def test_network(
         config: {},
         dataset,
         inputs: numpy.ndarray,
         outputs: numpy.ndarray,
-        prefix,
         width: int,
         depth: int,
         ) -> None:
     config = deepcopy(config)
-    name = '{}_{}_{}_b_{}_w_{}_d_{}'.format(
+    name = '{}_{}_{}_w_{}_d_{}'.format(
         dataset['Task'],
         dataset['Endpoint'],
         dataset['Dataset'],
-        prefix,
         width,
         depth)
     
     config['name'] = name
     config['depth'] = depth
-    config['numHidden'] = max(0, depth - 2)
     config['width'] = width
     
     # pprint(config)
-    runName = run_tools.get_run_name(config)
-    config['runName'] = runName
+    run_name = run_tools.get_run_name(config)
+    config['run_name'] = run_name
     
-    numObservations = inputs.shape[0]
-    numInputs = inputs.shape[1]
-    numOutputs = outputs.shape[1]
+    num_observations = inputs.shape[0]
+    num_inputs = inputs.shape[1]
+    num_outputs = outputs.shape[1]
     
-    logData = {'config': config}
-    runConfig = config['runConfig']
+    log_data = {'config': config}
+    run_config = config['run_config']
     
     runOptimizer = optimizers.Adam(0.001)
     runMetrics = [
@@ -103,50 +99,50 @@ def testNetwork(
         ]
     
     print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
-    # print(inputs[0, :])
-    # print(outputs[0, :])
+    print(inputs[0, :])
+    print(outputs[0, :])
     runLoss = losses.mean_squared_error
-    outputActivation = tensorflow.nn.relu
-    runTask = dataset['Task']
-    if runTask == 'regression':
+    output_activation = tensorflow.nn.relu
+    run_task = dataset['Task']
+    if run_task == 'regression':
         runLoss = losses.mean_squared_error
-        outputActivation = tensorflow.nn.sigmoid
+        output_activation = tensorflow.nn.sigmoid
         print('mean_squared_error')
-    elif runTask == 'classification':
-        outputActivation = tensorflow.nn.softmax
-        if numOutputs == 1:
+    elif run_task == 'classification':
+        output_activation = tensorflow.nn.softmax
+        if num_outputs == 1:
             runLoss = losses.binary_crossentropy
             print('binary_crossentropy')
         else:
             runLoss = losses.categorical_crossentropy
             print('categorical_crossentropy')
     else:
-        raise Exception('Unknown task "{}"'.format(runTask))
+        raise Exception('Unknown task "{}"'.format(run_task))
     
     layers = []
     for d in range(depth):
         
         if d == depth - 1:
             # output layer
-            layerWidth = numOutputs
-            activation = outputActivation
+            layer_width = num_outputs
+            activation = output_activation
         else:
-            layerWidth = width
+            layer_width = width
             activation = tensorflow.nn.relu
         
         layer = None
         if d == 0:
             # input layer
             layer = tensorflow.keras.layers.Dense(
-                layerWidth,
+                layer_width,
                 activation=activation,
-                input_shape=(numInputs,))
+                input_shape=(num_inputs,))
         else:
             layer = tensorflow.keras.layers.Dense(
-                layerWidth,
+                layer_width,
                 activation=activation,
                 )
-        print('d {} w {} in {}'.format(d, layerWidth, numInputs))
+        print('d {} w {} in {}'.format(d, layer_width, num_inputs))
         layers.append(layer)
     
     model = Sequential(layers)
@@ -160,48 +156,48 @@ def testNetwork(
         metrics=runMetrics,
         )
     
-    logData['numWeights'] = countTrainableParameters(model)
-    logData['numInputs'] = numInputs
-    logData['numFeatures'] = dataset['n_features']
-    logData['numClasses'] = dataset['n_classes']
-    logData['numOutputs'] = numOutputs
-    logData['numObservations'] = numObservations
-    logData['task'] = dataset['Task']
-    logData['endpoint'] = dataset['Endpoint']
+    log_data['num_weights'] = count_trainable_parameters(model)
+    log_data['num_inputs'] = num_inputs
+    log_data['num_features'] = dataset['n_features']
+    log_data['num_classes'] = dataset['n_classes']
+    log_data['num_outputs'] = num_outputs
+    log_data['num_observations'] = num_observations
+    log_data['task'] = dataset['Task']
+    log_data['endpoint'] = dataset['Endpoint']
     
-    runCallbacks = [
-        callbacks.EarlyStopping(**config['earlyStopping']),
+    run_callbacks = [
+        callbacks.early_stopping(**config['early_stopping']),
         ]
     
     gc.collect()
     
-    historyCallback = model.fit(
+    history_callback = model.fit(
         x=inputs,
         y=outputs,
-        callbacks=runCallbacks,
-        **runConfig,
+        callbacks=run_callbacks,
+        **run_config,
         )
     
-    history = historyCallback.history
-    logData['history'] = history
+    history = history_callback.history
+    log_data['history'] = history
     
-    validationLosses = numpy.array(history['val_loss'])
-    bestIndex = numpy.argmin(validationLosses)
+    validation_losses = numpy.array(history['val_loss'])
+    best_index = numpy.argmin(validation_losses)
     
-    logData['iterations'] = bestIndex + 1
-    logData['val_loss'] = validationLosses[bestIndex]
-    logData['loss'] = history['loss'][bestIndex]
+    log_data['iterations'] = best_index + 1
+    log_data['val_loss'] = validation_losses[best_index]
+    log_data['loss'] = history['loss'][best_index]
     
-    logPath = config['logPath']
-    run_tools.makedir_if_not_exists(logPath)
-    logFile = os.path.join(logPath, '{}.json'.format(runName))
-    print('log file: {}'.format(logFile))
+    log_path = config['log_path']
+    run_tools.makedir_if_not_exists(log_path)
+    log_file = os.path.join(log_path, '{}.json'.format(run_name))
+    print('log file: {}'.format(log_file))
     
-    with open(logFile, 'w', encoding='utf-8') as f:
-        json.dump(logData, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
+    with open(log_file, 'w', encoding='utf-8') as f:
+        json.dump(log_data, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
 
 
-def testAspectRatio(config, dataset, inputs, outputs, budget, depths):
+def test_aspect_ratio(config, dataset, inputs, outputs, budget, depths):
     config = deepcopy(config)
     config['dataset'] = dataset['Dataset'],
     config['datasetRow'] = list(dataset),
@@ -213,24 +209,8 @@ def testAspectRatio(config, dataset, inputs, outputs, budget, depths):
     # for width in range(1, 128):
     #     for depth in range(1, 32):
     for depth in depths:
-        i = inputs.shape[1]
-        h = (depth - 2)
-        o = outputs.shape[1]
-        
-        a = h
-        b = i + h + o + 1
-        c = o - budget
-        
-        rawWidth = 1
-        if h == 0:
-            rawWidth = -(o - budget) / (i + o + 1)
-        else:
-            rawWidth = (-b + math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
-        width = round(rawWidth)
-        print('budget {} depth {}, i {} h {} o {}, a {} b {} c {}, rawWidth {}, width {}'.format(budget, depth, i, h, o,
-                                                                                                 a, b, c, rawWidth,
-                                                                                                 width))
-        testNetwork(config, dataset, inputs, outputs, '{}'.format(budget), width, depth)
+        width = round(budget / (depth - 1))
+        test_network(config, dataset, inputs, outputs, width, depth)
     
     # pprint(logData)
     print('done.')
@@ -238,7 +218,7 @@ def testAspectRatio(config, dataset, inputs, outputs, budget, depths):
 
 
 pandas.set_option("display.max_rows", None, "display.max_columns", None)
-datasets = PMLBLoader.loadDatasetIndex()
+datasets = pmlb_loader.load_dataset_index()
 
 # core_config = tensorflow.Conf()
 # core_config.gpu_options.allow_growth = True
@@ -251,7 +231,7 @@ datasets = PMLBLoader.loadDatasetIndex()
 
 default_config = {
     'logPath':       '/home/ctripp/log',
-    'earlyStopping': {
+    'early_stopping': {
         'patience':             10,
         'monitor':              'val_loss',
         'min_delta':            0,
@@ -271,18 +251,9 @@ default_config = {
 
 config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
 
-# dataset, inputs, outputs = loadDataset(datasets, 'mnist')
-# dataset, inputs, outputs = loadDataset(datasets, '537_houses')
-# for i in [.125, .25, .5, 1, 2, 4, 8, 16, 32]:
-#     budget = int(round(i * 1000))
-#     for _ in range(50):
-#         testAspectRatio(config, dataset, inputs, outputs, budget, [i for i in range(2, 20)])
-  
-dataset, inputs, outputs = loadDataset(datasets, 'mnist')
-for _ in range(20):
-    for i in [16, 32, 64, 128, 256]:
-        budget = int(round(i * 1000))
-        testAspectRatio(config, dataset, inputs, outputs, budget, [i for i in range(2, 20)])
+dataset, inputs, outputs = load_dataset(datasets, 'mnist')
+for budget in range(50, 250, 50):
+    test_aspect_ratio(config, dataset, inputs, outputs, budget, [i for i in range(2, 16)])
 # testAspectRatio(config, dataset, inputs, outputs, 128, [i for i in range(2, 16)])
 
 # pprint(logData)

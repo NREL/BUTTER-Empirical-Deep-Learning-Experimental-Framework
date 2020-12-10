@@ -17,18 +17,18 @@ from pprint import pprint
 import numpy
 from matplotlib import pyplot
 
-numInputs = 20
-innerSize = 20
-numOutputs = 20
-numSamples = 1000000
-bins = math.ceil(numSamples / 1000)
+num_inputs = 20
+inner_size = 20
+num_outputs = 20
+num_samples = 1000000
+bins = math.ceil(num_samples / 1000)
 
 inputs = []
 outputs = []
-for i in range(numSamples):
+for i in range(num_samples):
     # input = numpy.random.randn(numInputs)
-    input = numpy.random.randn(numInputs)
-    weights = numpy.random.randn(numInputs)
+    input = numpy.random.randn(num_inputs)
+    weights = numpy.random.randn(num_inputs)
     weights /= numpy.linalg.norm(weights)
     projection = numpy.dot(input, weights)
     
@@ -52,44 +52,44 @@ for i in range(numSamples):
     outputs.append(output)
 
 
-inputsArray = numpy.stack(inputs)
-inputMagnitudes = numpy.sqrt(numpy.sum(inputsArray ** 2, axis=1))
+inputs_array = numpy.stack(inputs)
+input_magnitudes = numpy.sqrt(numpy.sum(inputs_array ** 2, axis=1))
 
-print('input range:', numpy.min(inputMagnitudes), numpy.max(inputMagnitudes))
+print('input range:', numpy.min(input_magnitudes), numpy.max(input_magnitudes))
 
-outputsArray = numpy.stack(outputs)
-outputMagnitudes = numpy.sqrt(numpy.sum(outputsArray ** 2, axis=1))
+outputs_array = numpy.stack(outputs)
+output_magnitudes = numpy.sqrt(numpy.sum(outputs_array ** 2, axis=1))
 
-print('output range:', numpy.min(outputMagnitudes), numpy.max(outputMagnitudes))
+print('output range:', numpy.min(output_magnitudes), numpy.max(output_magnitudes))
 
 print('outputsArray')
-pprint(outputsArray.flatten().shape)
+pprint(outputs_array.flatten().shape)
 print('outputsArray')
 
 pyplot.clf()
 
-pyplot.hist(inputMagnitudes, bins)
+pyplot.hist(input_magnitudes, bins)
 pyplot.title('inputMagnitudes')
 pyplot.show()
-pyplot.hist(outputMagnitudes, bins)
+pyplot.hist(output_magnitudes, bins)
 pyplot.title('outputMagnitudes')
 pyplot.show()
 
-pyplot.hist(inputsArray.flatten(), bins)
-pyplot.title('inputs {} {}'.format(numpy.mean(inputsArray.flatten()), numpy.var(inputsArray.flatten())))
+pyplot.hist(inputs_array.flatten(), bins)
+pyplot.title('inputs {} {}'.format(numpy.mean(inputs_array.flatten()), numpy.var(inputs_array.flatten())))
 pyplot.show()
 
-pyplot.hist(outputsArray.flatten(), bins)
+pyplot.hist(outputs_array.flatten(), bins)
 
 
-pyplot.title('outputs {} {}'.format(numpy.mean(outputsArray.flatten()), numpy.var(outputsArray.flatten())))
+pyplot.title('outputs {} {}'.format(numpy.mean(outputs_array.flatten()), numpy.var(outputs_array.flatten())))
 pyplot.show()
 
-pyplot.plot(inputMagnitudes, outputMagnitudes, 'o', color='black')
+pyplot.plot(input_magnitudes, output_magnitudes, 'o', color='black')
 pyplot.title('magnitude transfer')
 pyplot.show()
 
-pyplot.plot(inputsArray[:, 0], outputsArray[:, 0], 'o', color='black')
+pyplot.plot(inputs_array[:, 0], outputs_array[:, 0], 'o', color='black')
 pyplot.title('variable transfer')
 pyplot.show()
 pyplot.show()

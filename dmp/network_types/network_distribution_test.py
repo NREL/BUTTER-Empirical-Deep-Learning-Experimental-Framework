@@ -16,24 +16,24 @@ import numpy
 from matplotlib import pyplot
 
 from dmp.network_types import DNetFullyConnectedNetwork
-from dmp.network_types.dnet.DNetNode import DNetNode
+from dmp.network_types.dnet.dnet_node import DNetNode
 
-numInputs = 20
-innerSize = 20
-numOutputs = 20
-numSamples = 5000
+num_inputs = 20
+inner_size = 20
+num_outputs = 20
+num_samples = 5000
 
-numPoints = 1
+num_points = 1
 # transferFunction = DNetNode.idw
 # transferFunction = DNetNode.inverseSquaredDistance
 # transferFunction = DNetNode.nearestNeighbour
-transferFunction = DNetNode.scratch
+transfer_function = DNetNode.scratch
 # transferFunction = DNetNode.unnormalizedInverseSquaredDistance
 # transferFunction = DNetNode.inverseQuadraticDistanceWeighting
 # transferFunction = lambda node, input: DNetNode.rbfInverseQuadratic(node, input)
 network = DNetFullyConnectedNetwork(
     [
-        (numInputs, numPoints),
+        (num_inputs, num_points),
         # (innerSize, numPoints),
         # (innerSize, numPoints),
         # (innerSize, numPoints),
@@ -45,20 +45,20 @@ network = DNetFullyConnectedNetwork(
         # (innerSize, numPoints),
         # (innerSize, numPoints),
         # (innerSize, numPoints),
-        (numOutputs, 0)
+        (num_outputs, 0)
         ],
-    transferFunction)
+    transfer_function)
 
 # initialize
 # network.setFlatParameters(numpy.random.randn(network.numParameters))
-network.setFlatParameters(numpy.random.rand(network.numParameters))
+network.set_flat_parameters(numpy.random.rand(network.num_parameters))
 # network.setFlatParameters(numpy.ones(network.numParameters))
 
 inputs = []
 outputs = []
-for i in range(numSamples):
+for i in range(num_samples):
     # input = numpy.random.randn(numInputs)
-    input = numpy.random.rand(numInputs)
+    input = numpy.random.rand(num_inputs)
     # input /= numpy.sum(input**2)
     output = network.compute(input)
     # print('input')
@@ -68,37 +68,37 @@ for i in range(numSamples):
     inputs.append(input)
     outputs.append(output)
 
-inputsArray = numpy.stack(inputs)
-inputMagnitudes = numpy.sqrt(numpy.sum(inputsArray ** 2, axis=1))
+inputs_array = numpy.stack(inputs)
+input_magnitudes = numpy.sqrt(numpy.sum(inputs_array ** 2, axis=1))
 
-print('input range:', numpy.min(inputMagnitudes), numpy.max(inputMagnitudes))
+print('input range:', numpy.min(input_magnitudes), numpy.max(input_magnitudes))
 
-outputsArray = numpy.stack(outputs)
-outputMagnitudes = numpy.sqrt(numpy.sum(outputsArray ** 2, axis=1))
+outputs_array = numpy.stack(outputs)
+output_magnitudes = numpy.sqrt(numpy.sum(outputs_array ** 2, axis=1))
 
-print('output range:', numpy.min(outputMagnitudes), numpy.max(outputMagnitudes))
+print('output range:', numpy.min(output_magnitudes), numpy.max(output_magnitudes))
 pyplot.clf()
 
-pyplot.hist(inputMagnitudes)
+pyplot.hist(input_magnitudes)
 pyplot.title('inputMagnitudes')
 pyplot.show()
-pyplot.hist(outputMagnitudes)
+pyplot.hist(output_magnitudes)
 pyplot.title('outputMagnitudes')
 pyplot.show()
 
-pyplot.hist(inputsArray)
-pyplot.title('inputs {} {}'.format(numpy.mean(inputsArray.flatten()), numpy.var(inputsArray.flatten())))
+pyplot.hist(inputs_array)
+pyplot.title('inputs {} {}'.format(numpy.mean(inputs_array.flatten()), numpy.var(inputs_array.flatten())))
 pyplot.show()
 
-pyplot.hist(outputsArray)
-pyplot.title('outputs {} {}'.format(numpy.mean(outputsArray.flatten()), numpy.var(outputsArray.flatten())))
+pyplot.hist(outputs_array)
+pyplot.title('outputs {} {}'.format(numpy.mean(outputs_array.flatten()), numpy.var(outputs_array.flatten())))
 pyplot.show()
 
-pyplot.plot(inputMagnitudes, outputMagnitudes, 'o', color='black')
+pyplot.plot(input_magnitudes, output_magnitudes, 'o', color='black')
 pyplot.title('magnitude transfer')
 pyplot.show()
 
-pyplot.plot(inputsArray[:, 0], outputsArray[:, 0], 'o', color='black')
+pyplot.plot(inputs_array[:, 0], outputs_array[:, 0], 'o', color='black')
 pyplot.title('variable transfer')
 pyplot.show()
 pyplot.show()

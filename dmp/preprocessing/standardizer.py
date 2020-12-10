@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from dmp.preprocessing.Preprocessor import Preprocessor
+from dmp.preprocessing.preprocessor import Preprocessor
 
 
 class Standardizer(Preprocessor):

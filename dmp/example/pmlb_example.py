@@ -4,7 +4,7 @@ import pandas
 import tensorflow
 from matplotlib import pyplot
 
-from dmp.data.pmlb import PMLBLoader
+from dmp.data.pmlb import pmlb_loader
 
 '''
 PMLB Homepage: https://github.com/EpistasisLab/pmlb
@@ -30,8 +30,8 @@ Python Reference: https://epistasislab.github.io/pmlb/python-ref.html
 '''
 
 pandas.set_option("display.max_rows", None, "display.max_columns", None)
-datasets = PMLBLoader.loadDatasetIndex()
-dataset, inputs, outputs = PMLBLoader.loadDataset(datasets, '537_houses')
+datasets = pmlb_loader.load_dataset_index()
+dataset, inputs, outputs = pmlb_loader.load_dataset(datasets, '537_houses')
 
 
 # inputs, outputs = pmlb.fetch_data('mushroom', return_X_y=True)
@@ -67,18 +67,18 @@ print(outputs.shape)
 # preparedOutputs = prepareValue(outputs)
 # pprint(preparedOutputs.shape)
 
-numObservations = inputs.shape[0]
-numInputs = inputs.shape[1]
-numOutputs = outputs.shape[1]
+num_observations = inputs.shape[0]
+num_inputs = inputs.shape[1]
+num_outputs = outputs.shape[1]
 
-print('numObservations {} numInputs {} numOutputs {}'.format(numObservations, numInputs, numOutputs))
+print('num_observations {} num_inputs {} num_outputs {}'.format(num_observations, num_inputs, num_outputs))
 
 model = tensorflow.keras.Sequential([
-    tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu, input_shape=(numInputs,)),  # input shape required
+    tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu, input_shape=(num_inputs,)),  # input shape required
     tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu),
     tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu),
     tensorflow.keras.layers.Dense(128, activation=tensorflow.nn.relu),
-    tensorflow.keras.layers.Dense(numOutputs, activation=tensorflow.nn.sigmoid)
+    tensorflow.keras.layers.Dense(num_outputs, activation=tensorflow.nn.sigmoid)
     ])
 
 model.compile(

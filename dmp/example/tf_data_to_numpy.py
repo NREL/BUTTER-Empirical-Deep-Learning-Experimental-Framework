@@ -30,13 +30,13 @@ data = list(tensorflow_datasets.as_numpy(ds_train))
 # list of tuples of arrays?
 # pprint(data[0])
 
-inputList = []
-outputList = []
+input_list = []
+output_list = []
 for input, output in data:
-    inputList.append(input)
-    outputList.append(output)
+    input_list.append(input)
+    output_list.append(output)
 
-outputs = numpy.stack(outputList)
-inputs = numpy.array(inputList)
+outputs = numpy.stack(output_list)
+inputs = numpy.array(input_list)
 print(inputs.shape)
 print(outputs.shape)

@@ -77,24 +77,24 @@ class DNetNode:
         # return value
     
     @property
-    def numParameters(self):
+    def num_parameters(self):
         return self.positions.size + self.values.size
     
-    def getFlatParameters(self, parameters):
-        numPos = self.positions.size
-        parameters[0:numPos] = self.positions.flatten()
-        numParameters = numPos + self.values.size
-        parameters[numPos:numParameters] = self.values.flatten()
-        return numParameters
+    def get_flat_parameters(self, parameters):
+        num_pos = self.positions.size
+        parameters[0:num_pos] = self.positions.flatten()
+        num_parameters = num_pos + self.values.size
+        parameters[num_pos:num_parameters] = self.values.flatten()
+        return num_parameters
     
-    def setFlatParameters(self, parameters):
+    def set_flat_parameters(self, parameters):
         numPos = self.positions.size
         self.positions = parameters[0:numPos].reshape(self.positions.shape)
-        numParameters = numPos + self.values.size
-        self.values = parameters[numPos:numParameters].reshape(self.values.shape)
+        num_parameters = numPos + self.values.size
+        self.values = parameters[numPos:num_parameters].reshape(self.values.shape)
         
         print('setFlatParameters', self.positions, self.values)
-        return numParameters
+        return num_parameters
     
     @staticmethod
     def scratch(node: 'DNetNode', input: numpy.ndarray):
@@ -120,26 +120,26 @@ class DNetNode:
         return value
     
     @staticmethod
-    def inverseSquaredDistance(node: 'DNetNode', input: numpy.ndarray):
+    def inverse_squared_distance(node: 'DNetNode', input: numpy.ndarray):
         # positions has each position as a row vector
         deltas = node.positions - input  # broadcast input
-        squaredDistances = numpy.sum(deltas * deltas, axis=1)  # row vector of distances
-        weights = 1 / (squaredDistances + 1e-100)
+        squared_distances = numpy.sum(deltas * deltas, axis=1)  # row vector of distances
+        weights = 1 / (squared_distances + 1e-100)
         weights /= numpy.sum(weights)
         value = numpy.sum(weights * node.values)
         # value = numpy.sum(weights)
         return value
     
     @staticmethod
-    def rbfTrianglularL1(node: 'DNetNode', input: numpy.ndarray):
+    def rbf_trianglular_l1(node: 'DNetNode', input: numpy.ndarray):
         # positions has each position as a row vector
         deltas = node.positions - input  # broadcast input
         
-        numPositions = node.positions.shape[0]
-        numDimensions = node.positions.shape[1]
+        num_positions = node.positions.shape[0]
+        num_dimensions = node.positions.shape[1]
         
-        avgDistance = (0.5) * numDimensions
-        bandwidth = 1.0 / (numPositions * avgDistance)
+        avg_distance = (0.5) * num_dimensions
+        bandwidth = 1.0 / (num_positions * avg_distance)
         
         distances = numpy.sum(numpy.abs(deltas), axis=1)  # row vector of distances
         
@@ -154,8 +154,8 @@ class DNetNode:
         
         print('distances')
         pprint(distances)
-        print('bandwidth {}, numPositions {}, numDimensions {}'.format(bandwidth, numPositions, numDimensions))
-        print('avg distance {}, avgDistance {}'.format(numpy.average(distances), avgDistance))
+        print('bandwidth {}, num_positions {}, num_dimensions {}'.format(bandwidth, num_positions, num_dimensions))
+        print('avg distance {}, avg_distance {}'.format(numpy.average(distances), avg_distance))
         
         weights = numpy.maximum(1.0 - distances * bandwidth, 0.0)
         
@@ -166,15 +166,15 @@ class DNetNode:
         return value
     
     @staticmethod
-    def normalizedRbfTrianglularL1(node: 'DNetNode', input: numpy.ndarray):
+    def normalized_rbf_trianglular_l1(node: 'DNetNode', input: numpy.ndarray):
         # positions has each position as a row vector
         deltas = node.positions - input  # broadcast input
         
-        numPositions = node.positions.shape[0]
-        numDimensions = node.positions.shape[1]
+        num_positions = node.positions.shape[0]
+        num_dimensions = node.positions.shape[1]
         
-        avgDistance = (0.5) * numDimensions
-        bandwidth = 1.0 / (numPositions * avgDistance)
+        avg_distance = (0.5) * num_dimensions
+        bandwidth = 1.0 / (num_positions * avg_distance)
         
         distances = numpy.sum(numpy.abs(deltas), axis=1)  # row vector of distances
         
@@ -189,8 +189,8 @@ class DNetNode:
         
         # print('distances')
         # pprint(distances)
-        # print('bandwidth {}, numPositions {}, numDimensions {}'.format(bandwidth, numPositions, numDimensions))
-        # print('avg distance {}, avgDistance {}'.format(numpy.average(distances), avgDistance))
+        # print('bandwidth {}, num_positions {}, num_dimensions {}'.format(bandwidth, num_positions, num_dimensions))
+        # print('avg distance {}, avg_distance {}'.format(numpy.average(distances), avg_distance))
         
         weights = numpy.maximum(1.0 - distances * bandwidth, 0.0)
         
@@ -236,7 +236,7 @@ class DNetNode:
         return value
     
     @staticmethod
-    def inverseL1(node: 'DNetNode', input: numpy.ndarray):
+    def inverse_l1(node: 'DNetNode', input: numpy.ndarray):
         # positions has each position as a row vector
         deltas = node.positions - input  # broadcast input
         distances = numpy.sum(numpy.abs(deltas), axis=1)  # row vector of distances
@@ -246,40 +246,40 @@ class DNetNode:
         return value
     
     @staticmethod
-    def inverseSquaredDistanceBinary(node: 'DNetNode', input: numpy.ndarray):
+    def inverse_squared_distance_binary(node: 'DNetNode', input: numpy.ndarray):
         # positions has each position as a row vector
         deltas = node.positions - input  # broadcast input
-        squaredDistances = numpy.sum(deltas * deltas, axis=1)  # row vector of distances
-        weights = 1 / (squaredDistances + 1e-100)
+        squared_distances = numpy.sum(deltas * deltas, axis=1)  # row vector of distances
+        weights = 1 / (squared_distances + 1e-100)
         weights /= numpy.sum(weights)
         values = node.values > .5
         value = numpy.sum(weights * values)
         return value
     
     @staticmethod
-    def nearestNeighbour(node: 'DNetNode', input: numpy.ndarray):
+    def nearest_neighbour(node: 'DNetNode', input: numpy.ndarray):
         deltas = node.positions - input  # broadcast input
-        squaredDistances = numpy.sum(deltas * deltas, axis=1)  # row vector of distances
-        min_index = numpy.argmin(squaredDistances)
+        squared_distances = numpy.sum(deltas * deltas, axis=1)  # row vector of distances
+        min_index = numpy.argmin(squared_distances)
         value = node.values[:, min_index]
         return value
     
     @staticmethod
-    def unnormalizedInverseSquaredDistance(node: 'DNetNode', input: numpy.ndarray):
+    def unnormalized_inverse_squared_distance(node: 'DNetNode', input: numpy.ndarray):
         # positions has each position as a row vector
         deltas = node.positions - input  # broadcast input
-        squaredDistances = numpy.sum(deltas * deltas, axis=1)  # row vector of distances
-        weights = 1 / (squaredDistances + 1e-100)
+        squared_distances = numpy.sum(deltas * deltas, axis=1)  # row vector of distances
+        weights = 1 / (squared_distances + 1e-100)
         # weights /= numpy.sum(weights)
         value = numpy.sum(weights * node.values)
         return value
     
     @staticmethod
-    def inverseQuadraticDistanceWeighting(node: 'DNetNode', input: numpy.ndarray, epsilon=1.0):
+    def inverse_quadratic_distance_weighting(node: 'DNetNode', input: numpy.ndarray, epsilon=1.0):
         # positions has each position as a row vector
         deltas = node.positions - input  # broadcast input
-        squaredDistances = numpy.sum(deltas ** 2, axis=1)  # row vector of distances
-        weights = 1 / (1 + epsilon * squaredDistances)
+        squared_distances = numpy.sum(deltas ** 2, axis=1)  # row vector of distances
+        weights = 1 / (1 + epsilon * squared_distances)
         weights /= numpy.sum(weights)
         value = numpy.sum(weights * node.values)
         return value

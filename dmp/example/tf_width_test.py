@@ -40,29 +40,29 @@ for depth in depths:
     size = ds_info.splits['train'].num_examples
     
     
-    trainingSize = int(0.8 * size)
-    validationSize = int(0.2 * size)
+    training_size = int(0.8 * size)
+    validation_size = int(0.2 * size)
     # test_size = int(0.1 * size)
 
-    print('size: {}, train size: {}, validation size: {}'.format(size, trainingSize, validationSize))
+    print('size: {}, train size: {}, validation size: {}'.format(size, training_size, validation_size))
     
     dataset = dataset.shuffle(size)
-    trainingDataset = dataset.take(trainingSize)
-    validationDataset = dataset.skip(trainingSize)
+    training_dataset = dataset.take(training_size)
+    validation_dataset = dataset.skip(training_size)
     
-    numFeatures = 0
-    numOutputs = 0
+    num_features = 0
+    num_outputs = 0
     for element in dataset:
         print(element)
-        numFeatures = len(element[0])
+        num_features = len(element[0])
         outputs = element[1]
         if isinstance(outputs, tensorflow.Tensor):
-            numOutputs = 1
+            num_outputs = 1
         else:
-            numOutputs = len(outputs)
+            num_outputs = len(outputs)
         break
         
-    print('num features: {}, num outputs: {}', numFeatures, numOutputs)
+    print('num features: {}, num outputs: {}', num_features, num_outputs)
     
     # Build training pipeline --------------------------------------------
     
@@ -80,32 +80,32 @@ for depth in depths:
     #         num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
     
     # As the dataset fit in memory, cache before shuffling for better performance.
-    trainingDataset = trainingDataset.cache()
+    training_dataset = training_dataset.cache()
     
     # Batch after shuffling to get unique batches at each epoch.
-    trainingDataset = trainingDataset.batch(128)
+    training_dataset = training_dataset.batch(128)
     
     # Good practice to end the pipeline by prefetching for performances.
-    trainingDataset = trainingDataset.prefetch(tensorflow.data.experimental.AUTOTUNE)
+    training_dataset = training_dataset.prefetch(tensorflow.data.experimental.AUTOTUNE)
     
     # Build evaluation pipeline --------------------------------------------
     # validationDataset = validationDataset.map(
     #     normalize_img,
     #     num_parallel_calls=tensorflow.data.experimental.AUTOTUNE)
-    validationDataset = validationDataset.batch(128)
-    validationDataset = validationDataset.cache()
-    validationDataset = validationDataset.prefetch(tensorflow.data.experimental.AUTOTUNE)
+    validation_dataset = validation_dataset.batch(128)
+    validation_dataset = validation_dataset.cache()
+    validation_dataset = validation_dataset.prefetch(tensorflow.data.experimental.AUTOTUNE)
     
     # Create and train the model --------------------------------------------
     
-    inputs = [keras.Input(shape=(1,)) for i in range(numFeatures)]
-    concatenatedInputs = keras.layers.Concatenate()(inputs)
+    inputs = [keras.Input(shape=(1,)) for i in range(num_features)]
+    concatenated_inputs = keras.layers.Concatenate()(inputs)
     # layers = []
     # layers.append(tensorflow.keras.layers.Flatten(input_shape=(numFeatures,)))
     # layers.append(tensorflow.keras.layers.Flatten(input_shape=(28, 28, 1)))
     # layers.append(tensorflow.keras.layers.Concatenate())
     # layers.append(keras.layers.Dense(width, activation='relu', input_dim=numFeatures))
-    x = concatenatedInputs
+    x = concatenated_inputs
     for i in range(depth - 1):
         x = keras.layers.Dense(width, activation='relu')(x)
     # layers.append(tensorflow.keras.layers.Dense(10, activation='softmax'))
@@ -129,24 +129,24 @@ for depth in depths:
         metrics=['accuracy'],
         )
     
-    trainingHistory = model.fit(
-        trainingDataset,
+    training_history = model.fit(
+        training_dataset,
         epochs=20,
-        validation_data=validationDataset,
+        validation_data=validation_dataset,
         )
     
-    histories.append(trainingHistory)
+    histories.append(training_history)
 
 for history in histories:
     print(history.history)
 
 
 # # val_loss, loss, accuracy, val_accuracy
-def extractVariableFromHistories(name: str, histories: [tensorflow.keras.callbacks.History]) -> numpy.ndarray:
+def extract_variable_from_histories(name: str, histories: [tensorflow.keras.callbacks.History]) -> numpy.ndarray:
     return numpy.stack([history.history[name] for history in histories])
 
 
-validationAccuracies = extractVariableFromHistories('val_accuracy', histories)
+validation_accuracies = extract_variable_from_histories('val_accuracy', histories)
 
 # validationAccuracies = numpy.array([[0.9023, 0.91289997, 0.91670001, 0.92089999, 0.92290002,
 #                                      0.92320001, 0.92519999, 0.92439997, 0.92729998, 0.9267,
@@ -199,13 +199,13 @@ validationAccuracies = extractVariableFromHistories('val_accuracy', histories)
 #                                      0.96820003, 0.9777, 0.97539997, 0.97829998, 0.97829998,
 #                                      0.97640002, 0.97680002, 0.97799999, 0.97729999, 0.9774]])
 
-pprint(validationAccuracies)
+pprint(validation_accuracies)
 
-minimumValidationAccuracyIndices = numpy.argmax(validationAccuracies, axis=1)
-pprint(minimumValidationAccuracyIndices)
-minimumValidationAccuracies = numpy.max(validationAccuracies, axis=1)
-pprint(minimumValidationAccuracies)
-validationErrors = 1 - minimumValidationAccuracies
+minimum_validation_accuracy_indices = numpy.argmax(validation_accuracies, axis=1)
+pprint(minimum_validation_accuracy_indices)
+minimum_validation_accuracies = numpy.max(validation_accuracies, axis=1)
+pprint(minimum_validation_accuracies)
+validationErrors = 1 - minimum_validation_accuracies
 
 # minValidationLossIndices = [numpy.argmin(history.history['val_loss']) for history in histories]
 # minValidationLoss = [history.history['val_loss'][i] for i, history in enumerate(histories)]
@@ -225,7 +225,7 @@ validationErrors = 1 - minimumValidationAccuracies
 pyplot.style.use('seaborn-whitegrid')
 
 figure, ax = pyplot.subplots()
-ax.plot(depths, minimumValidationAccuracyIndices)
+ax.plot(depths, minimum_validation_accuracy_indices)
 ax.set_xlabel('depth')
 ax.set_ylabel('epoch of minimum validation error')
 pyplot.show()
