@@ -7,14 +7,10 @@ import math
 import os
 import sys
 from copy import deepcopy
-from pprint import pprint
 
 import numpy
 import pandas
 import tensorflow
-import tensorflow_datasets
-from matplotlib import pyplot
-from pathos import multiprocessing
 from tensorflow.keras import (
     callbacks,
     losses,
@@ -28,9 +24,8 @@ from command_line_tools import (
     command_line_config,
     run_tools,
     )
-from command_line_tools.run_tools import setup_run
-from data.pmlb import PMLBLoader
-from data.pmlb.PMLBLoader import loadDataset
+from dmp.data.pmlb import PMLBLoader
+from dmp.data.pmlb.PMLBLoader import loadDataset
 
 
 def countTrainableParameters(model: Model) -> int:
@@ -276,11 +271,18 @@ default_config = {
 
 config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
 
+# dataset, inputs, outputs = loadDataset(datasets, 'mnist')
+# dataset, inputs, outputs = loadDataset(datasets, '537_houses')
+# for i in [.125, .25, .5, 1, 2, 4, 8, 16, 32]:
+#     budget = int(round(i * 1000))
+#     for _ in range(50):
+#         testAspectRatio(config, dataset, inputs, outputs, budget, [i for i in range(2, 20)])
+  
 dataset, inputs, outputs = loadDataset(datasets, 'mnist')
-# 3450 to 159010
-for i in range(1, 20):
-    budget = i * 10000
-    testAspectRatio(config, dataset, inputs, outputs, budget, [i for i in range(2, 16)])
+for _ in range(20):
+    for i in [16, 32, 64, 128, 256]:
+        budget = int(round(i * 1000))
+        testAspectRatio(config, dataset, inputs, outputs, budget, [i for i in range(2, 20)])
 # testAspectRatio(config, dataset, inputs, outputs, 128, [i for i in range(2, 16)])
 
 # pprint(logData)

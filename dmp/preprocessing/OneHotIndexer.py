@@ -2,8 +2,7 @@ from typing import Iterable
 
 import numpy
 
-from preprocessing.CategoricalIndexer import CategoricalIndexer
-from preprocessing.Preprocessor import Preprocessor
+from dmp.preprocessing.CategoricalIndexer import CategoricalIndexer
 
 
 class OneHotIndexer(CategoricalIndexer):

@@ -11,13 +11,12 @@
 
 
 '''
-import math
 
 import numpy
 from matplotlib import pyplot
 
-from network_types.dnet.DNetFullyConnectedNetwork import DNetFullyConnectedNetwork
-from network_types.dnet.DNetNode import DNetNode
+from dmp.network_types import DNetFullyConnectedNetwork
+from dmp.network_types.dnet.DNetNode import DNetNode
 
 numInputs = 20
 innerSize = 20

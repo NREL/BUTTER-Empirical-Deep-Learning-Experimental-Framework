@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from preprocessing.Preprocessor import Preprocessor
+from dmp.preprocessing.Preprocessor import Preprocessor
 
 
 class CategoricalIndexer(Preprocessor):

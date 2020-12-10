@@ -1,6 +1,6 @@
 import numpy
 
-from network_types.dnet.DNetFullyConnectedLayer import DNetFullyConnectedLayer
+from dmp.network_types import DNetFullyConnectedLayer
 
 
 class DNetFullyConnectedNetwork:

@@ -2,7 +2,7 @@ from typing import Iterable
 
 import numpy
 
-from preprocessing.Preprocessor import Preprocessor
+from dmp.preprocessing.Preprocessor import Preprocessor
 
 
 class Normalizer(Preprocessor):

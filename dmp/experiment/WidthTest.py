@@ -6,14 +6,10 @@ import json
 import os
 import sys
 from copy import deepcopy
-from pprint import pprint
 
 import numpy
 import pandas
 import tensorflow
-import tensorflow_datasets
-from matplotlib import pyplot
-from pathos import multiprocessing
 from tensorflow.keras import (
     callbacks,
     losses,
@@ -27,9 +23,8 @@ from command_line_tools import (
     command_line_config,
     run_tools,
     )
-from command_line_tools.run_tools import setup_run
-from data.pmlb import PMLBLoader
-from data.pmlb.PMLBLoader import loadDataset
+from dmp.data.pmlb import PMLBLoader
+from dmp.data.pmlb.PMLBLoader import loadDataset
 
 
 def countTrainableParameters(model: Model) -> int:

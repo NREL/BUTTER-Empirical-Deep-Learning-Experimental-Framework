@@ -80,10 +80,10 @@ def _dynamicValueTransform(value: ndarray) -> Optional[ndarray]:
         return None
     elif numDistinctValues <= 2:
         preprocessed = _binary(value)
-    elif numDistinctValues > 20 and isinstance(value[0][0], numbers.Number):  # numDistinctValues > .01 * value.shape[0]
-        preprocessed = _minMax(value)
-    else:
+    elif numDistinctValues <= 20 or not isinstance(value[0][0], numbers.Number):  # numDistinctValues > .01 * value.shape[0]
         preprocessed = _oneHot(value)
+    else:
+        preprocessed = _minMax(value)
     
     return preprocessed
 

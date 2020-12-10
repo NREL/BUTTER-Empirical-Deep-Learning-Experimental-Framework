@@ -1,27 +1,10 @@
-import math
-import numbers
-import os
 from pprint import pprint
-from statistics import (
-    mean,
-    variance,
-    )
 
-import numpy
 import pandas
-import pmlb
-import scipy
 import tensorflow
 from matplotlib import pyplot
-from sklearn.preprocessing import (
-    MinMaxScaler,
-    OneHotEncoder,
-    StandardScaler,
-    )
 
-from data.pmlb import PMLBLoader
-from preprocessing.CategoricalIndexer import CategoricalIndexer
-from preprocessing.Standardizer import Standardizer
+from dmp.data.pmlb import PMLBLoader
 
 '''
 PMLB Homepage: https://github.com/EpistasisLab/pmlb
@@ -48,8 +31,7 @@ Python Reference: https://epistasislab.github.io/pmlb/python-ref.html
 
 pandas.set_option("display.max_rows", None, "display.max_columns", None)
 datasets = PMLBLoader.loadDatasetIndex()
-dataset = datasets.loc['537_houses']
-inputs, outputs = PMLBLoader.loadData(dataset)
+dataset, inputs, outputs = PMLBLoader.loadDataset(datasets, '537_houses')
 
 
 # inputs, outputs = pmlb.fetch_data('mushroom', return_X_y=True)
