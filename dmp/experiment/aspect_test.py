@@ -170,7 +170,7 @@ def test_network(
     log_data['endpoint'] = dataset['Endpoint']
     
     run_callbacks = [
-        callbacks.early_stopping(**config['early_stopping']),
+        callbacks.EarlyStopping(**config['early_stopping']),
         ]
     
     gc.collect()
