@@ -250,7 +250,7 @@ datasets = pmlb_loader.load_dataset_index()
 #     print(index)
 
 default_config = {
-    'logPath':       '/home/ctripp/log',
+    'log_path':       '/home/ctripp/log',
     'early_stopping': {
         'patience':             10,
         'monitor':              'val_loss',
@@ -260,7 +260,7 @@ default_config = {
         'baseline':             None,
         'restore_best_weights': False,
         },
-    'runConfig':     {
+    'run_config':     {
         'validation_split': .2,
         'shuffle':          True,
         'epochs':           10000,
@@ -279,8 +279,9 @@ config = command_line_config.parse_config_from_args(sys.argv[1:], default_config
 #         testAspectRatio(config, dataset, inputs, outputs, budget, [i for i in range(2, 20)])
   
 dataset, inputs, outputs = load_dataset(datasets, 'mnist')
-for _ in range(20):
-    for i in [16, 32, 64, 128, 256]:
+for _ in range(30):
+    # for i in [16, 32, 64, 128, 256]:
+    for i in [128, 256, 512, 1024, 2048]:
         budget = int(round(i * 1000))
         test_aspect_ratio(config, dataset, inputs, outputs, budget, [i for i in range(2, 20)])
 # testAspectRatio(config, dataset, inputs, outputs, 128, [i for i in range(2, 16)])
