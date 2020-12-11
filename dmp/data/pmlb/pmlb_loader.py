@@ -21,19 +21,40 @@ dataset_path = os.path.join(os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__))), 'pmlb.csv')
 
 
+
 def load_dataset_index(filePath: str = dataset_path) -> pandas.DataFrame:
     datasets = pandas.read_csv(filePath)
     datasets.set_index('Dataset', inplace=True, drop=False)
     return datasets
 
+def _save_raw_pmlb(cache_directory, raw_inputs, raw_outputs):
+    with open(os.path.join(cache_directory, 'data.npy'), 'wb') as f:
+        numpy.save(f, raw_inputs)
+        numpy.save(f, raw_outputs)
+
+def _read_raw_pmlb(cache_directory, dataset_name):
+    """ See if the file has been cached and try to read that, download otherwise"""
+    try:
+        with open(os.path.join(cache_directory, 'data.npy'), 'rb') as f:
+            raw_inputs = numpy.load(f)
+            raw_outputs = numpy.load(f)
+    except FileNotFoundError:
+        raw_inputs, raw_outputs = pmlb.fetch_data(dataset_name, return_X_y=True)
+        _save_raw_pmlb(cache_directory, raw_inputs, raw_outputs)
+
+    return raw_inputs, raw_outputs
 
 def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> (pandas.Series, ndarray, ndarray):
     matching_datasets = datasets[datasets['Dataset'] == dataset_name]
     if len(matching_datasets) <= 0:
         raise Exception('No matching dataset "{}".'.format(dataset_name))
     dataset = matching_datasets.iloc[0]
-    raw_inputs, raw_outputs = pmlb.fetch_data(dataset_name, return_X_y=True)
     
+    # check cache first for raw inputs and outputs in the working directory
+    cache_directory = os.path.join(os.getcwd(), ".pmlb_cache", dataset_name)
+    os.makedirs(cache_directory, exist_ok=True)
+    raw_inputs, raw_outputs = _read_raw_pmlb(cache_directory, dataset_name)
+
     loader = _default_loader
     if dataset_name in _custom_loaders:
         loader = _custom_loaders[dataset_name]

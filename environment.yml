@@ -1,0 +1,18 @@
+name: dmp
+dependencies:
+- python=3.8
+- pandas
+- jupyter
+- matplotlib
+- scikit-learn
+- statsmodels
+- seaborn
+- pip
+- pip:
+  - pytest
+  - tensorflow
+  - tensorflow_datasets
+  - pmlb
+  - keras
+
+  
