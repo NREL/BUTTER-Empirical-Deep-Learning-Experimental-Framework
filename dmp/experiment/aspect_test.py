@@ -61,22 +61,21 @@ def test_network(
         inputs: numpy.ndarray,
         outputs: numpy.ndarray,
         prefix,
-        width: int,
-        depth: int,
+        widths: [int],
 ) -> None:
     config = deepcopy(config)
-    name = '{}_{}_{}_b_{}_w_{}_d_{}'.format(
+    depth = len(widths)
+    name = '{}_{}_{}_b_{}_d_{}'.format(
         dataset['Task'],
         dataset['Endpoint'],
         dataset['Dataset'],
         prefix,
-        width,
         depth)
 
     config['name'] = name
     config['depth'] = depth
     config['num_hidden'] = max(0, depth - 2)
-    config['width'] = width
+    config['widths'] = widths
 
     # pprint(config)
     run_name = run_tools.get_run_name(config)
@@ -106,55 +105,54 @@ def test_network(
     print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
     # print(inputs[0, :])
     # print(outputs[0, :])
-    runLoss = losses.mean_squared_error
-    outputActivation = tensorflow.nn.relu
-    runTask = dataset['Task']
-    if runTask == 'regression':
-        runLoss = losses.mean_squared_error
-        outputActivation = tensorflow.nn.sigmoid
+    run_loss = losses.mean_squared_error
+    output_activation = tensorflow.nn.relu
+    run_task = dataset['Task']
+    if run_task == 'regression':
+        run_loss = losses.mean_squared_error
+        output_activation = tensorflow.nn.sigmoid
         print('mean_squared_error')
-    elif runTask == 'classification':
-        outputActivation = tensorflow.nn.softmax
+    elif run_task == 'classification':
+        output_activation = tensorflow.nn.softmax
         if num_outputs == 1:
-            runLoss = losses.binary_crossentropy
+            run_loss = losses.binary_crossentropy
             print('binary_crossentropy')
         else:
-            runLoss = losses.categorical_crossentropy
+            run_loss = losses.categorical_crossentropy
             print('categorical_crossentropy')
     else:
-        raise Exception('Unknown task "{}"'.format(runTask))
+        raise Exception('Unknown task "{}"'.format(run_task))
 
     layers = []
     for d in range(depth):
+        layer_width = widths[d]
 
         if d == depth - 1:
             # output layer
-            layerWidth = num_outputs
-            activation = outputActivation
+            activation = output_activation
         else:
-            layerWidth = width
             activation = tensorflow.nn.relu
 
         layer = None
         if d == 0:
             # input layer
             layer = tensorflow.keras.layers.Dense(
-                layerWidth,
+                layer_width,
                 activation=activation,
                 input_shape=(num_inputs,))
         else:
             layer = tensorflow.keras.layers.Dense(
-                layerWidth,
+                layer_width,
                 activation=activation,
             )
-        print('d {} w {} in {}'.format(d, layerWidth, num_inputs))
+        print('d {} w {} in {}'.format(d, layer_width, num_inputs))
         layers.append(layer)
 
     model = Sequential(layers)
     model.compile(
         # loss='binary_crossentropy', # binary classification
         # loss='categorical_crossentropy', # categorical classification (one hot)
-        loss=runLoss,  # regression
+        loss=run_loss,  # regression
         optimizer=run_optimizer,
         # optimizer='rmsprop',
         # metrics=['accuracy'],
@@ -200,40 +198,6 @@ def test_network(
 
     with open(log_file, 'w', encoding='utf-8') as f:
         json.dump(log_data, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
-
-
-def test_aspect_ratio(config: {}, topology: str, depths: [int], dataset: str, inputs, outputs, budget):
-    config = deepcopy(config)
-    config['datasetName'] = dataset['Dataset'],
-    config['datasetRow'] = list(dataset),
-
-    config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
-    gc.collect()
-
-    for depth in depths:
-        i = inputs.shape[1]
-        h = (depth - 2)
-        o = outputs.shape[1]
-
-        a = h
-        b = i + h + o + 1
-        c = o - budget
-
-        raw_width = 1
-        if h == 0:
-            raw_width = -(o - budget) / (i + o + 1)
-        else:
-            raw_width = (-b + math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
-        width = round(raw_width)
-        print(
-            'budget {} depth {}, i {} h {} o {}, a {} b {} c {}, raw_width {}, width {}'.format(budget, depth, i, h, o,
-                                                                                                a, b, c, raw_width,
-                                                                                                width))
-        test_network(config, dataset, inputs, outputs, '{}'.format(budget), width, depth)
-
-    # pprint(logData)
-    print('done.')
-    gc.collect()
 
 
 # def get_rectangular_layout(inputs, outputs, budget, depth) -> [int]:
@@ -401,7 +365,7 @@ datasets = pmlb_loader.load_dataset_index()
 # tensorflow.keras.backend.set_session(session)
 
 default_config = {
-    'log': '/home/ctripp/log',
+    'log': './log',
     'dataset': '529_pollen',
     'activation': 'relu',
     'topologies': ['rectangle'],
@@ -428,6 +392,7 @@ default_config = {
 config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
 
 dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
+gc.collect()
 
 num_observations = inputs.shape[0]
 num_inputs = inputs.shape[1]
@@ -457,8 +422,13 @@ for topology in config['topologies']:
 
             print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
 
-            # for _ in reps:
-            #     test_aspect_ratio(config, widths, dataset, inputs, outputs, budget)
+            for _ in range(reps):
+                this_config = deepcopy(config)
+                this_config['datasetName'] = dataset['Dataset']
+                this_config['datasetRow'] = list(dataset)
+
+                test_network(config, dataset, inputs, outputs, '{}'.format(budget), widths)
+                gc.collect()
 
 print('done.')
 gc.collect()
