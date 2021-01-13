@@ -13,7 +13,9 @@
 source ~/admp
 unset LD_PRELOAD
 
-echo "executing command... python -u -m "$@"
+echo "executing command... python -u -m $@"
 
 python -u -m "$@"
+
+echo "done!"
 
