@@ -60,22 +60,24 @@ def test_network(
         dataset,
         inputs: numpy.ndarray,
         outputs: numpy.ndarray,
-        prefix,
         widths: [int],
 ) -> None:
     config = deepcopy(config)
     depth = len(widths)
-    name = '{}_{}_{}_b_{}_d_{}'.format(
-        dataset['Task'],
-        dataset['Endpoint'],
-        dataset['Dataset'],
-        prefix,
-        depth)
 
-    config['name'] = name
     config['depth'] = depth
     config['num_hidden'] = max(0, depth - 2)
     config['widths'] = widths
+
+    #wine_quality_white__wide_first__4194304__4__16106579275625
+    name = '{}__{}__{}__{}'.format(
+        dataset['Dataset'],
+        config['topology'],
+        config['budget'],
+        config['depth'],
+    )
+
+    config['name'] = name
 
     # pprint(config)
     run_name = run_tools.get_run_name(config)
@@ -427,7 +429,7 @@ for topology in config['topologies']:
                 this_config['datasetName'] = dataset['Dataset']
                 this_config['datasetRow'] = list(dataset)
 
-                test_network(config, dataset, inputs, outputs, '{}'.format(budget), widths)
+                test_network(config, dataset, inputs, outputs, widths)
                 gc.collect()
 
 print('done.')

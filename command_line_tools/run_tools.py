@@ -82,5 +82,5 @@ def get_run_name(
     :return: run log file prefix
     '''
     start_time = int(time.time() * 10000)
-    subrun_name = '' if subrun_name is None else '_' + subrun_name
-    return config['name'] + subrun_name + '_' + str(start_time) + '_'
+    subrun_name = '' if subrun_name is None else '__' + subrun_name
+    return config['name'] + subrun_name + '__' + str(start_time)

@@ -31,12 +31,12 @@ def parse_config_from_args(
     
     # replace bare or single quoted strings with quoted ones
     arg = re.sub(
-        r'(?<=[\t :{},])["\']?(((?<=")((?!(?<!\\)").)*(?="))|(?<=\')((?!\').)*(?=\')|(?!(true|false|null).)(['
-        r'a-zA-Z_][a-zA-Z_0-9]*))["\']?(?=[\t :{},])',
+        r'(?<=[\t :{}\[\],])["\']?(((?<=")((?!(?<!\\)").)*(?="))|(?<=\')((?!\').)*(?=\')|(?!(true|false|null).)(['
+        r'a-zA-Z_][a-zA-Z_0-9]*))["\']?(?=[\t :{}\[\],])',
         r'"\1"',
         arg)
     
-    # print('c5: ', arg)
+    print('c5: ', arg)
     
     overrides = json.loads(arg, strict=False)
     config = merge_configs(config, overrides)
