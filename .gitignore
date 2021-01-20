@@ -2,3 +2,7 @@
 /.envrc
 /download/
 __pycache__
+/.pmlb_cache/
+/.idea/
+/dmp/experiment/.ipynb_checkpoints/
+/dmp/experiment/.pmlb_cache/
