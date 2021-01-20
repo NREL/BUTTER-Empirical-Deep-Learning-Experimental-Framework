@@ -8,6 +8,8 @@ dependencies:
 - statsmodels
 - seaborn
 - pip
+- scipy=1.4.1
+- numpy<1.19.0
 - pip:
   - pytest
   - tensorflow
