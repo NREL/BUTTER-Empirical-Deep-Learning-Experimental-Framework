@@ -396,6 +396,10 @@ default_config = {
 # sbatch -n1 -t18:00:00 --gres=gpu:1 ./srundmp.sh dmp.experiment.aspect_test.py "{'dataset': 'mnist','budgets':[1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072], 'topologies' : [ 'rectangle' ]}
 # results on eagle : /projects/dmpapps/ctripp/data/log
 
+# example command line use on laptop:
+# conda activate dmp
+# python -u -m dmp.experiment.aspect_test "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
+
 config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
 
 dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
