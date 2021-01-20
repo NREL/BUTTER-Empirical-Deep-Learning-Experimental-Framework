@@ -368,10 +368,10 @@ datasets = pmlb_loader.load_dataset_index()
 
 default_config = {
     'log': './log',
-    'dataset': '529_pollen',
+    'dataset': 'mnst',
     'activation': 'relu',
     'topologies': ['rectangle'],
-    'budgets': [int(2 ** i) for i in range(6, 24)],
+    'budgets': [1024],
     'depths': [2, 3, 4, 5, 7, 8, 9, 10, 12, 14, 16, 18, 20],
     'reps': 30,
     'early_stopping': {
@@ -390,6 +390,11 @@ default_config = {
         'batch_size': 256,
     },
 }
+
+# example command line use with slurm:
+# sbatch -n1 -t8:00:00 --gres=gpu:1 ./srundmp.sh dmp.experiment.aspect_test.py "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
+# sbatch -n1 -t18:00:00 --gres=gpu:1 ./srundmp.sh dmp.experiment.aspect_test.py "{'dataset': 'mnist','budgets':[1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072], 'topologies' : [ 'rectangle' ]}
+# results on eagle : /projects/dmpapps/ctripp/data/log
 
 config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
 

@@ -58,8 +58,9 @@ def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> (pandas.Serie
     loader = _default_loader
     if dataset_name in _custom_loaders:
         loader = _custom_loaders[dataset_name]
-    
-    return dataset, *loader(raw_inputs, raw_outputs)
+
+    inputs, outputs = loader(raw_inputs, raw_outputs)
+    return dataset, inputs, outputs
 
 
 def _default_loader(raw_inputs: ndarray, raw_outputs: ndarray) -> (ndarray, ndarray):
