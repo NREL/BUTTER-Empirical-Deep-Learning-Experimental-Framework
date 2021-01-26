@@ -37,7 +37,7 @@ An example script that sets up the right modules and environment variables to us
     
     export TEST_TMPDIR=/scratch/ctripp/tmp
     export TMPDIR=/scratch/ctripp/tmp
-    export PYTHONPATH=/scratch/ctripp/src/dmp
+    export PYTHONPATH=/projects/dmpapps/ctripp/src
     
     cd /projects/dmpapps/ctripp/src
     conda activate /projects/dmpapps/ctripp/env/dmp
