@@ -14,12 +14,11 @@ import pandas
 import tensorflow
 from tensorflow.keras import (
     callbacks,
+    losses,
+    Sequential,
     metrics,
     optimizers,
 )
-from tensorflow.python import Add
-from tensorflow.python.keras import losses, Input
-from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
 
 from command_line_tools import (
@@ -28,23 +27,19 @@ from command_line_tools import (
 )
 from dmp.data.pmlb import pmlb_loader
 from dmp.data.pmlb.pmlb_loader import load_dataset
-from dmp.experiment.structure.module_type import ModuleType
-from dmp.experiment.structure.network_module import NetworkModule
 
 
-def num_trainable_parameters(module: NetworkModule) -> int:
-    type = module.type
-    if type == ModuleType.FULLY_CONNECTED:
-        return (module.inputs + 1) * module.size
-    if type == ModuleType.INPUT:
-        return 0
-    if type == ModuleType.ADD:
-        return 0
-    raise Exception("Unsupported layer type '{}'.".format(type))
-
-
-def count_trainable_parameters(module: NetworkModule) -> int:
-    return num_trainable_parameters(module) + sum((count_trainable_parameters(i) for i in module.inputs))
+def count_trainable_parameters(model: Model) -> int:
+    count = 0
+    for var in model.trainable_variables:
+        print('ctp {}'.format(var.get_shape()))
+        acc = 1
+        for dim in var.get_shape():
+            acc *= int(dim)
+        print('ctp acc {}'.format(acc))
+        count += acc
+    print('ctp total {}'.format(count))
+    return count
 
 
 class NpEncoder(json.JSONEncoder):
@@ -60,61 +55,40 @@ class NpEncoder(json.JSONEncoder):
             return super(NpEncoder, self).default(obj)
 
 
-def make_network(
-        inputs: numpy.ndarray,
-        widths: [int],
-        residual_mode: str,
-) -> NetworkModule:
-    # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
-
-    input_layer = NetworkModule(ModuleType.INPUT, (), inputs.shape)
-    previous = input_layer
-    # layers = []
-    for d in range(depth):
-        layer_width = widths[d]
-        layer = NetworkModule(ModuleType.FULLY_CONNECTED, (previous,), (layer_width,))
-
-        if residual_mode == 'none':
-            pass
-        elif residual_mode == 'full':
-            layer = NetworkModule(ModuleType.ADD, (previous, layer), (layer_width,))
-        else:
-            raise Exception('Unknown residual mode "{}".'.format(residual_mode))
-
-        # print('d {} w {} in {}'.format(d, layer_width, num_inputs))
-        # layers.append(layer)
-        previous = layer
-    return previous
-
-
-def make_model_from_network(
-        module: NetworkModule,
-) -> Model:
-    inputs = [make_model_from_network(i) for i in module.inputs]
-
-    type = module.type
-    if type == ModuleType.FULLY_CONNECTED:
-        module = Dense(
-            module.shape[0],
-            activation=module.activation,
-        )(*inputs)
-        return (module.inputs + 1) * module.size
-    if type == ModuleType.INPUT:
-        return Input(shape=module.shape)
-    if type == ModuleType.ADD:
-        return tensorflow.keras.layers.add(*inputs)
-    raise Exception("Unsupported layer type '{}'.".format(type))
-
-
-def make_model_from_network_old(
+def test_network(
+        config: {},
         dataset,
         inputs: numpy.ndarray,
         outputs: numpy.ndarray,
-        network: NetworkModule,
-        residual_mode: str,
-) -> Model:
+        widths: [int],
+) -> None:
+    config = deepcopy(config)
+    depth = len(widths)
+
+    config['depth'] = depth
+    config['num_hidden'] = max(0, depth - 2)
+    config['widths'] = widths
+
+    #wine_quality_white__wide_first__4194304__4__16106579275625
+    name = '{}__{}__{}__{}'.format(
+        dataset['Dataset'],
+        config['topology'],
+        config['budget'],
+        config['depth'],
+    )
+
+    config['name'] = name
+
+    # pprint(config)
+    run_name = run_tools.get_run_name(config)
+    config['run_name'] = run_name
+
+    num_observations = inputs.shape[0]
     num_inputs = inputs.shape[1]
     num_outputs = outputs.shape[1]
+
+    log_data = {'config': config}
+    run_config = config['run_config']
 
     run_optimizer = optimizers.Adam(0.001)
     run_metrics = [
@@ -133,7 +107,6 @@ def make_model_from_network_old(
     print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
     # print(inputs[0, :])
     # print(outputs[0, :])
-
     run_loss = losses.mean_squared_error
     output_activation = tensorflow.nn.relu
     run_task = dataset['Task']
@@ -152,8 +125,6 @@ def make_model_from_network_old(
     else:
         raise Exception('Unknown task "{}"'.format(run_task))
 
-    input_layer = Input(shape=(num_inputs,))
-    previous = input_layer
     layers = []
     for d in range(depth):
         layer_width = widths[d]
@@ -170,76 +141,25 @@ def make_model_from_network_old(
             layer = tensorflow.keras.layers.Dense(
                 layer_width,
                 activation=activation,
-                # input_shape=(num_inputs,)
-            )(previous)
-
+                input_shape=(num_inputs,))
         else:
-            if residual_mode == 'none':
-                layer = tensorflow.keras.layers.Dense(
-                    layer_width,
-                    activation=activation,
-                )()
-            elif residual_mode == 'full':
-                layer = tensorflow.keras.layers.Dense(
-                    layer_width,
-                    activation=activation,
-                )(previous)
-                layer = Add()(previous, layer)
-            else:
-                raise Exception('Unknown residual mode "{}".'.format(residual_mode))
-
+            layer = tensorflow.keras.layers.Dense(
+                layer_width,
+                activation=activation,
+            )
         print('d {} w {} in {}'.format(d, layer_width, num_inputs))
         layers.append(layer)
-        previous = layer
 
-    # model = Sequential(layers)
-    model = Model(inputs=input_layer, outputs=layers[-1])
-    # model.compile(
-    #     # loss='binary_crossentropy', # binary classification
-    #     # loss='categorical_crossentropy', # categorical classification (one hot)
-    #     loss=run_loss,  # regression
-    #     optimizer=run_optimizer,
-    #     # optimizer='rmsprop',
-    #     # metrics=['accuracy'],
-    #     metrics=run_metrics,
-    # )
-
-    # count_trainable_parameters(model)
-    return model
-
-
-def test_network(
-        config: {},
-        dataset,
-        inputs: numpy.ndarray,
-        outputs: numpy.ndarray,
-        model: Model,
-) -> None:
-    config = deepcopy(config)
-
-    log_data = {'config': config}
-    run_config = config['run_config']
-
-    run_name = run_tools.get_run_name(config)
-    config['run_name'] = run_name
-
-    depth = len(widths)
-    config['depth'] = depth
-    config['num_hidden'] = max(0, depth - 2)
-    config['widths'] = widths
-
-    # wine_quality_white__wide_first__4194304__4__16106579275625
-    name = '{}__{}__{}__{}'.format(
-        dataset['Dataset'],
-        config['topology'],
-        config['budget'],
-        config['depth'],
+    model = Sequential(layers)
+    model.compile(
+        # loss='binary_crossentropy', # binary classification
+        # loss='categorical_crossentropy', # categorical classification (one hot)
+        loss=run_loss,  # regression
+        optimizer=run_optimizer,
+        # optimizer='rmsprop',
+        # metrics=['accuracy'],
+        metrics=run_metrics,
     )
-
-    config['name'] = name
-
-    log_data = {'config': config}
-    run_config = config['run_config']
 
     log_data['num_weights'] = count_trainable_parameters(model)
     log_data['num_inputs'] = num_inputs
@@ -254,16 +174,6 @@ def test_network(
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
 
-    # model.compile(
-    #     # loss='binary_crossentropy', # binary classification
-    #     # loss='categorical_crossentropy', # categorical classification (one hot)
-    #     loss=run_loss,  # regression
-    #     optimizer=run_optimizer,
-    #     # optimizer='rmsprop',
-    #     # metrics=['accuracy'],
-    #     metrics=run_metrics,
-    # )
-    #
     gc.collect()
 
     history_callback = model.fit(
@@ -290,6 +200,65 @@ def test_network(
 
     with open(log_file, 'w', encoding='utf-8') as f:
         json.dump(log_data, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
+
+
+# def get_rectangular_layout(inputs, outputs, budget, depth) -> [int]:
+#     i = inputs.shape[1]
+#     h = (depth - 2)
+#     o = outputs.shape[1]
+#     a = h
+#     b = i + h + o + 1
+#     c = o - budget
+#     raw_width = 1
+#     if h == 0:
+#         raw_width = -(o - budget) / (i + o + 1)
+#     else:
+#         raw_width = (-b + math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
+#     width = round(raw_width)
+#     print(
+#         'budget {} depth {}, i {} h {} o {}, a {} b {} c {}, raw_width {}, width {}'.format(
+#             budget, depth, i, h, o, a, b, c, raw_width, width))
+#
+#     widths = []
+#     for d in range(depth):
+#         if d == depth - 1:  # output layer
+#             layerWidth = num_outputs
+#         else:
+#             layerWidth = width
+#         widths.append(layerWidth)
+#     return widths
+
+
+# def binary_search_float(objective: Callable[[float], any],
+#                         minimum: float,
+#                         maximum: float,
+#                         max_iters: int = 32,
+#                         threshold: float = 1e-3,
+#                         ) -> (float, bool):
+#     """
+#     :param objective: function for which to find fixed point
+#     :param minimum: min value of search
+#     :param maximum: max value of search
+#     :param max_iters: max iterations
+#     :param threshold: distance between max and min search points upon which to exit early
+#     :return: solution
+#     """
+#     if minimum > maximum:
+#         raise ValueError("binary search minimum must be less than maximum")
+#     candidate = 0.0
+#     for i in range(max_iters):
+#         candidate = (maximum + minimum) / 2
+#         evaluation = objective(candidate)
+#
+#         if fabs(maximum - minimum) < threshold:
+#             return candidate, True
+#
+#         if evaluation < 0:  # candidate < target
+#             minimum = candidate
+#         elif evaluation > 0:  # candidate > target
+#             maximum = candidate
+#
+#     return candidate, False
 
 
 def binary_search_int(objective: Callable[[int], Union[int, float]],
@@ -328,19 +297,21 @@ def count_fully_connected_parameters(widths: [int]) -> int:
 
 
 def find_best_layout_for_budget_and_depth(
-        dataset, inputs, outputs, residual_mode, budget,
+        num_inputs,
+        num_outputs,
+        budget,
+        depth,
         make_layout: Callable[[int], List[int]],
 ) -> [int]:
     def search_objective(w0):
-        network = make_network(inputs, make_layout(w0), residual_mode)
-        return count_trainable_parameters(network) - budget
-        # return count_fully_connected_parameters(make_layout(w0)) - budget
+        return count_fully_connected_parameters(make_layout(w0)) - budget
 
     w0, found = binary_search_int(search_objective, 1, int(2 ** 30))
-    return make_layout(w0)
+    widths = make_layout(w0)
+    return widths
 
 
-def get_rectangular_layout(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_rectangular_layout(num_inputs, num_outputs, budget, depth) -> [int]:
     def make_layout(w0):
         layout = []
         if depth > 1:
@@ -348,28 +319,32 @@ def get_rectangular_layout(num_outputs, depth) -> Callable[[float], List[int]]:
         layout.append(num_outputs)
         return layout
 
-    return make_layout
+    return find_best_layout_for_budget_and_depth(num_inputs, num_outputs, budget, depth, make_layout)
 
 
-def get_trapezoidal_layout(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_trapezoidal_layout(num_inputs, num_outputs, budget, depth) -> [int]:
     def make_layout(w0):
         beta = (w0 - num_outputs) / (depth - 1)
         return [round(w0 - beta * k) for k in range(0, depth)]
 
-    return make_layout
+    return find_best_layout_for_budget_and_depth(num_inputs, num_outputs, budget, depth, make_layout)
 
 
-def get_exponential_layout(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_exponential_layout(num_inputs, num_outputs, budget, depth) -> [int]:
     def make_layout(w0):
         beta = math.exp(math.log(num_outputs / w0) / (depth - 1))
         return [round(w0 * (beta ** k)) for k in range(0, depth)]
 
-    return make_layout
+    return find_best_layout_for_budget_and_depth(num_inputs, num_outputs, budget, depth, make_layout)
 
 
 def get_wide_first_layer_rectangular_other_layers_layout(
-        num_outputs, depth, first_layer_width_multiplier=10,
-) -> Callable[[float], List[int]]:
+        num_inputs,
+        num_outputs,
+        budget,
+        depth,
+        first_layer_width_multiplier=10,
+) -> [int]:
     def make_layout(w0):
         layout = []
         if depth > 1:
@@ -380,7 +355,7 @@ def get_wide_first_layer_rectangular_other_layers_layout(
         layout.append(num_outputs)
         return layout
 
-    return make_layout
+    return find_best_layout_for_budget_and_depth(num_inputs, num_outputs, budget, depth, make_layout)
 
 
 pandas.set_option("display.max_rows", None, "display.max_columns", None)
@@ -396,8 +371,7 @@ default_config = {
     'dataset': 'wine_quality_white',
     'activation': 'relu',
     'topologies': ['wide_first'],
-    'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
-                8388608],
+    'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608],
     'depths': [2, 3, 4, 5, 7, 8, 9, 10, 12, 14, 16, 18, 20],
     'residual_modes': ['none', 'full'],
     'reps': 30,
@@ -445,35 +419,30 @@ for topology in config['topologies']:
             for depth in config['depths']:
                 config['depth'] = depth
 
-                layout_factory = None
+                widths = []
                 if topology == 'rectangle':
-                    layout_factory = get_rectangular_layout
+                    widths = get_rectangular_layout(num_inputs, num_outputs, budget, depth)
                 elif topology == 'trapezoid':
-                    layout_factory = get_trapezoidal_layout
+                    widths = get_trapezoidal_layout(num_inputs, num_outputs, budget, depth)
                 elif topology == 'exponential':
-                    layout_factory = get_exponential_layout
+                    widths = get_exponential_layout(num_inputs, num_outputs, budget, depth)
                 elif topology == 'wide_first':
-                    layout_factory = get_wide_first_layer_rectangular_other_layers_layout
+                    widths = get_wide_first_layer_rectangular_other_layers_layout(num_inputs, num_outputs, budget, depth)
                 else:
                     assert False, 'Topology "{}" not recognized.'.format(topology)
-
-                network = find_best_layout_for_budget_and_depth(dataset, inputs, outputs, residual_mode, budget,
-                                                                layout_factory(num_outputs, depth))
                 config['widths'] = widths
 
                 reps = config['reps']
 
                 print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
-                # for rep in range(reps):
-                #     print('begin rep {}...'.format(rep))
-                #     this_config = deepcopy(config)
-                #     this_config['datasetName'] = dataset['Dataset']
-                #     this_config['datasetRow'] = list(dataset)
-                #
-                #     model = make_network_model(dataset, inputs, outputs, widths, residual_mode)
-                #
-                #     test_network(config, dataset, inputs, outputs, model)
-                #     gc.collect()
+
+                for _ in range(reps):
+                    this_config = deepcopy(config)
+                    this_config['datasetName'] = dataset['Dataset']
+                    this_config['datasetRow'] = list(dataset)
+
+                    test_network(config, dataset, inputs, outputs, widths)
+                    gc.collect()
 
 print('done.')
 gc.collect()
