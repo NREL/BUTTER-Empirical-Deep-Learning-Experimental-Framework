@@ -1,13 +1,12 @@
-from dmp.experiment.structure.module_type import ModuleType
 
 
 class NetworkModule:
-    def __init__(self, type: ModuleType, inputs: ('NetworkModule', ...), shape: (int, ...),
-                 activation: any = None) -> None:
-        self.type = type
+    def __init__(self,
+                 inputs: ('NetworkModule', ...),
+                 shape: (int, ...),
+                 ) -> None:
         self.inputs: (NetworkModule, ...) = inputs
         self.shape: (int, ...) = shape
-        self.activation = activation
 
     @property
     def size(self) -> int:

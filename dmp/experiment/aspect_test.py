@@ -7,6 +7,7 @@ import math
 import os
 import sys
 from copy import deepcopy
+from functools import singledispatchmethod
 from typing import Callable, Union, List
 
 import numpy
@@ -17,7 +18,6 @@ from tensorflow.keras import (
     metrics,
     optimizers,
 )
-from tensorflow.python import Add
 from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
@@ -28,23 +28,10 @@ from command_line_tools import (
 )
 from dmp.data.pmlb import pmlb_loader
 from dmp.data.pmlb.pmlb_loader import load_dataset
-from dmp.experiment.structure.module_type import ModuleType
+from dmp.experiment.structure.n_add import NAdd
+from dmp.experiment.structure.n_fully_connected_layer import NFullyConnectedLayer
+from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
-
-
-def num_trainable_parameters(module: NetworkModule) -> int:
-    type = module.type
-    if type == ModuleType.FULLY_CONNECTED:
-        return (module.inputs + 1) * module.size
-    if type == ModuleType.INPUT:
-        return 0
-    if type == ModuleType.ADD:
-        return 0
-    raise Exception("Unsupported layer type '{}'.".format(type))
-
-
-def count_trainable_parameters(module: NetworkModule) -> int:
-    return num_trainable_parameters(module) + sum((count_trainable_parameters(i) for i in module.inputs))
 
 
 class NpEncoder(json.JSONEncoder):
@@ -60,81 +47,130 @@ class NpEncoder(json.JSONEncoder):
             return super(NpEncoder, self).default(obj)
 
 
+def count_trainable_parameters_in_keras_model(model: Model) -> int:
+    count = 0
+    for var in model.trainable_variables:
+        print('ctp {}'.format(var.get_shape()))
+        acc = 1
+        for dim in var.get_shape():
+            acc *= int(dim)
+        print('ctp acc {}'.format(acc))
+        count += acc
+    print('ctp total {}'.format(count))
+    return count
+
+
+class GetNumFreeParameters:
+    """
+    Visitor that counts the number of free (trainable) parameters in a NetworkModule
+    """
+
+    @singledispatchmethod
+    def visit(self, target) -> any:
+        raise Exception('Unsupported module of type "{}".'.format(type(target)))
+
+    @visit.register
+    def _(self, target: NInput) -> int:
+        return 0
+
+    @visit.register
+    def _(self, target: NFullyConnectedLayer) -> int:
+        return (sum((i.size for i in target.inputs)) + 1) * target.size
+
+    @visit.register
+    def _(self, target: NAdd) -> int:
+        return 0
+
+
+def count_num_free_parameters(target: NetworkModule) -> int:
+    return GetNumFreeParameters().visit(target) + sum((count_num_free_parameters(i) for i in target.inputs))
+
 def make_network(
         inputs: numpy.ndarray,
         widths: [int],
-        residual_mode: str,
+        residual_mode: any,
+        input_activation,
+        internal_activation,
+        output_activation,
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NetworkModule(ModuleType.INPUT, (), inputs.shape)
-    previous = input_layer
+    input_layer = NInput((), inputs.shape)
+    current = input_layer
     # layers = []
     for d in range(depth):
         layer_width = widths[d]
-        layer = NetworkModule(ModuleType.FULLY_CONNECTED, (previous,), (layer_width,))
+
+        activation = internal_activation
+        if d == 0:
+            activation = input_activation
+        elif d == depth - 1:
+            activation = output_activation
+
+        layer = NFullyConnectedLayer((current,), (layer_width,), activation)
 
         if residual_mode == 'none':
             pass
         elif residual_mode == 'full':
-            layer = NetworkModule(ModuleType.ADD, (previous, layer), (layer_width,))
+            # if d > 0:
+            #     layer = NAdd((layer, current))
+            raise Exception('Not yet implemented')
         else:
             raise Exception('Unknown residual mode "{}".'.format(residual_mode))
 
         # print('d {} w {} in {}'.format(d, layer_width, num_inputs))
         # layers.append(layer)
-        previous = layer
-    return previous
+        current = layer
+
+    return current
 
 
-def make_model_from_network(
-        module: NetworkModule,
-) -> Model:
-    inputs = [make_model_from_network(i) for i in module.inputs]
+class MakeModelFromNetwork:
+    """
+    Visitor that makes a keras module for a given network module and input keras modules
+    """
 
-    type = module.type
-    if type == ModuleType.FULLY_CONNECTED:
-        module = Dense(
-            module.shape[0],
-            activation=module.activation,
-        )(*inputs)
-        return (module.inputs + 1) * module.size
-    if type == ModuleType.INPUT:
-        return Input(shape=module.shape)
-    if type == ModuleType.ADD:
-        return tensorflow.keras.layers.add(*inputs)
-    raise Exception("Unsupported layer type '{}'.".format(type))
+    @singledispatchmethod
+    def visit(self, target, inputs: []) -> any:
+        raise Exception('Unsupported module of type "{}".'.format(type(target)))
+
+    @visit.register
+    def _(self, target: NInput, inputs: []) -> any:
+        return Input(shape=target.shape), True
+
+    @visit.register
+    def _(self, target: NFullyConnectedLayer, inputs: []) -> any:
+        return Dense(
+            target.shape[0],
+            activation=target.activation,
+        )(*inputs), False
+
+    @visit.register
+    def _(self, target: NAdd, inputs: []) -> any:
+        return tensorflow.keras.layers.add(*inputs), False
 
 
-def make_model_from_network_old(
-        dataset,
-        inputs: numpy.ndarray,
-        outputs: numpy.ndarray,
-        network: NetworkModule,
-        residual_mode: str,
-) -> Model:
-    num_inputs = inputs.shape[1]
-    num_outputs = outputs.shape[1]
+def make_model_from_network(target: NetworkModule) -> ([any], any):
+    """
+    Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
+    :param target: starting point module
+    :return: a list of input keras modules to the network and the output keras module
+    """
+    network_inputs = []
+    keras_inputs = []
+    for i in target.inputs:
+        i_network_inputs, i_keras_module = make_model_from_network(i)
+        network_inputs.extend(i_network_inputs)
+        keras_inputs.append(i_keras_module)
 
-    run_optimizer = optimizers.Adam(0.001)
-    run_metrics = [
-        # metrics.CategoricalAccuracy(),
-        'accuracy',
-        metrics.CosineSimilarity(),
-        metrics.Hinge(),
-        metrics.KLDivergence(),
-        metrics.MeanAbsoluteError(),
-        metrics.MeanSquaredError(),
-        metrics.MeanSquaredLogarithmicError(),
-        metrics.RootMeanSquaredError(),
-        metrics.SquaredHinge(),
-    ]
+    keras_module, is_input = MakeModelFromNetwork().visit(target, keras_inputs)
 
-    print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
-    # print(inputs[0, :])
-    # print(outputs[0, :])
+    if is_input:
+        network_inputs.append(keras_module)
+    return network_inputs, keras_module
 
-    run_loss = losses.mean_squared_error
+
+def compute_network_configuration(dataset) -> (any, any):
     output_activation = tensorflow.nn.relu
     run_task = dataset['Task']
     if run_task == 'regression':
@@ -152,60 +188,109 @@ def make_model_from_network_old(
     else:
         raise Exception('Unknown task "{}"'.format(run_task))
 
-    input_layer = Input(shape=(num_inputs,))
-    previous = input_layer
-    layers = []
-    for d in range(depth):
-        layer_width = widths[d]
+    return output_activation, run_loss
 
-        if d == depth - 1:
-            # output layer
-            activation = output_activation
-        else:
-            activation = tensorflow.nn.relu
 
-        layer = None
-        if d == 0:
-            # input layer
-            layer = tensorflow.keras.layers.Dense(
-                layer_width,
-                activation=activation,
-                # input_shape=(num_inputs,)
-            )(previous)
-
-        else:
-            if residual_mode == 'none':
-                layer = tensorflow.keras.layers.Dense(
-                    layer_width,
-                    activation=activation,
-                )()
-            elif residual_mode == 'full':
-                layer = tensorflow.keras.layers.Dense(
-                    layer_width,
-                    activation=activation,
-                )(previous)
-                layer = Add()(previous, layer)
-            else:
-                raise Exception('Unknown residual mode "{}".'.format(residual_mode))
-
-        print('d {} w {} in {}'.format(d, layer_width, num_inputs))
-        layers.append(layer)
-        previous = layer
-
-    # model = Sequential(layers)
-    model = Model(inputs=input_layer, outputs=layers[-1])
-    # model.compile(
-    #     # loss='binary_crossentropy', # binary classification
-    #     # loss='categorical_crossentropy', # categorical classification (one hot)
-    #     loss=run_loss,  # regression
-    #     optimizer=run_optimizer,
-    #     # optimizer='rmsprop',
-    #     # metrics=['accuracy'],
-    #     metrics=run_metrics,
-    # )
-
-    # count_trainable_parameters(model)
-    return model
+# def make_model_from_network_old(
+#         dataset,
+#         inputs: numpy.ndarray,
+#         outputs: numpy.ndarray,
+#         network: NetworkModule,
+#         residual_mode: str,
+# ) -> Model:
+#     num_inputs = inputs.shape[1]
+#     num_outputs = outputs.shape[1]
+#
+#     run_optimizer = optimizers.Adam(0.001)
+#     run_metrics = [
+#         # metrics.CategoricalAccuracy(),
+#         'accuracy',
+#         metrics.CosineSimilarity(),
+#         metrics.Hinge(),
+#         metrics.KLDivergence(),
+#         metrics.MeanAbsoluteError(),
+#         metrics.MeanSquaredError(),
+#         metrics.MeanSquaredLogarithmicError(),
+#         metrics.RootMeanSquaredError(),
+#         metrics.SquaredHinge(),
+#     ]
+#
+#     print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
+#     # print(inputs[0, :])
+#     # print(outputs[0, :])
+#
+#     run_loss = losses.mean_squared_error
+#     output_activation = tensorflow.nn.relu
+#     run_task = dataset['Task']
+#     if run_task == 'regression':
+#         run_loss = losses.mean_squared_error
+#         output_activation = tensorflow.nn.sigmoid
+#         print('mean_squared_error')
+#     elif run_task == 'classification':
+#         output_activation = tensorflow.nn.softmax
+#         if num_outputs == 1:
+#             run_loss = losses.binary_crossentropy
+#             print('binary_crossentropy')
+#         else:
+#             run_loss = losses.categorical_crossentropy
+#             print('categorical_crossentropy')
+#     else:
+#         raise Exception('Unknown task "{}"'.format(run_task))
+#
+#     input_layer = Input(shape=(num_inputs,))
+#     previous = input_layer
+#     layers = []
+#     for d in range(depth):
+#         layer_width = widths[d]
+#
+#         if d == depth - 1:
+#             # output layer
+#             activation = output_activation
+#         else:
+#             activation = tensorflow.nn.relu
+#
+#         layer = None
+#         if d == 0:
+#             # input layer
+#             layer = tensorflow.keras.layers.Dense(
+#                 layer_width,
+#                 activation=activation,
+#                 # input_shape=(num_inputs,)
+#             )(previous)
+#
+#         else:
+#             if residual_mode == 'none':
+#                 layer = tensorflow.keras.layers.Dense(
+#                     layer_width,
+#                     activation=activation,
+#                 )()
+#             elif residual_mode == 'full':
+#                 layer = tensorflow.keras.layers.Dense(
+#                     layer_width,
+#                     activation=activation,
+#                 )(previous)
+#                 layer = Add()(previous, layer)
+#             else:
+#                 raise Exception('Unknown residual mode "{}".'.format(residual_mode))
+#
+#         print('d {} w {} in {}'.format(d, layer_width, num_inputs))
+#         layers.append(layer)
+#         previous = layer
+#
+#     # model = Sequential(layers)
+#     model = Model(inputs=input_layer, outputs=layers[-1])
+#     # model.compile(
+#     #     # loss='binary_crossentropy', # binary classification
+#     #     # loss='categorical_crossentropy', # categorical classification (one hot)
+#     #     loss=run_loss,  # regression
+#     #     optimizer=run_optimizer,
+#     #     # optimizer='rmsprop',
+#     #     # metrics=['accuracy'],
+#     #     metrics=run_metrics,
+#     # )
+#
+#     # count_trainable_parameters(model)
+#     return model
 
 
 def test_network(
@@ -213,9 +298,21 @@ def test_network(
         dataset,
         inputs: numpy.ndarray,
         outputs: numpy.ndarray,
-        model: Model,
+        keras_input,
+        keras_output,
 ) -> None:
     config = deepcopy(config)
+
+    # wine_quality_white__wide_first__4194304__4__16106579275625
+    name = '{}__{}__{}__{}'.format(
+        dataset['Dataset'],
+        config['topology'],
+        config['budget'],
+        config['depth'],
+    )
+
+    config['name'] = name
+
 
     log_data = {'config': config}
     run_config = config['run_config']
@@ -228,20 +325,37 @@ def test_network(
     config['num_hidden'] = max(0, depth - 2)
     config['widths'] = widths
 
-    # wine_quality_white__wide_first__4194304__4__16106579275625
-    name = '{}__{}__{}__{}'.format(
-        dataset['Dataset'],
-        config['topology'],
-        config['budget'],
-        config['depth'],
-    )
-
-    config['name'] = name
 
     log_data = {'config': config}
     run_config = config['run_config']
 
-    log_data['num_weights'] = count_trainable_parameters(model)
+    run_optimizer = optimizers.Adam(0.001)
+    run_metrics = [
+        # metrics.CategoricalAccuracy(),
+        'accuracy',
+        metrics.CosineSimilarity(),
+        metrics.Hinge(),
+        metrics.KLDivergence(),
+        metrics.MeanAbsoluteError(),
+        metrics.MeanSquaredError(),
+        metrics.MeanSquaredLogarithmicError(),
+        metrics.RootMeanSquaredError(),
+        metrics.SquaredHinge(),
+    ]
+    model = Model(inputs=keras_input, outputs=keras_output)
+    model.compile(
+        # loss='binary_crossentropy', # binary classification
+        # loss='categorical_crossentropy', # categorical classification (one hot)
+        loss=run_loss,  # regression
+        optimizer=run_optimizer,
+        # optimizer='rmsprop',
+        # metrics=['accuracy'],
+        metrics=run_metrics,
+    )
+
+    gc.collect()
+
+    log_data['num_weights'] = count_trainable_parameters_in_keras_model(model)
     log_data['num_inputs'] = num_inputs
     log_data['num_features'] = dataset['n_features']
     log_data['num_classes'] = dataset['n_classes']
@@ -253,18 +367,6 @@ def test_network(
     run_callbacks = [
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
-
-    # model.compile(
-    #     # loss='binary_crossentropy', # binary classification
-    #     # loss='categorical_crossentropy', # categorical classification (one hot)
-    #     loss=run_loss,  # regression
-    #     optimizer=run_optimizer,
-    #     # optimizer='rmsprop',
-    #     # metrics=['accuracy'],
-    #     metrics=run_metrics,
-    # )
-    #
-    gc.collect()
 
     history_callback = model.fit(
         x=inputs,
@@ -328,19 +430,38 @@ def count_fully_connected_parameters(widths: [int]) -> int:
 
 
 def find_best_layout_for_budget_and_depth(
-        dataset, inputs, outputs, residual_mode, budget,
-        make_layout: Callable[[int], List[int]],
-) -> [int]:
+        inputs,
+        residual_mode,
+        input_activation,
+        internal_activation,
+        output_activation,
+        budget,
+        make_widths: Callable[[int], List[int]],
+) -> (int, [int], NetworkModule):
+    best = (math.inf, None, None)
+
     def search_objective(w0):
-        network = make_network(inputs, make_layout(w0), residual_mode)
-        return count_trainable_parameters(network) - budget
-        # return count_fully_connected_parameters(make_layout(w0)) - budget
+        nonlocal best
+        widths = make_widths(w0)
+        network = make_network(inputs,
+                               widths,
+                               residual_mode,
+                               input_activation,
+                               internal_activation,
+                               output_activation,
+                               )
+        delta = count_num_free_parameters(network) - budget
 
-    w0, found = binary_search_int(search_objective, 1, int(2 ** 30))
-    return make_layout(w0)
+        if abs(delta) < abs(best[0]):
+            best = (delta, widths, network)
+
+        return delta
+
+    binary_search_int(search_objective, 1, int(2 ** 30))
+    return best
 
 
-def get_rectangular_layout(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_rectangular_widths(num_outputs, depth) -> Callable[[float], List[int]]:
     def make_layout(w0):
         layout = []
         if depth > 1:
@@ -351,7 +472,7 @@ def get_rectangular_layout(num_outputs, depth) -> Callable[[float], List[int]]:
     return make_layout
 
 
-def get_trapezoidal_layout(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_trapezoidal_widths(num_outputs, depth) -> Callable[[float], List[int]]:
     def make_layout(w0):
         beta = (w0 - num_outputs) / (depth - 1)
         return [round(w0 - beta * k) for k in range(0, depth)]
@@ -359,7 +480,7 @@ def get_trapezoidal_layout(num_outputs, depth) -> Callable[[float], List[int]]:
     return make_layout
 
 
-def get_exponential_layout(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_exponential_widths(num_outputs, depth) -> Callable[[float], List[int]]:
     def make_layout(w0):
         beta = math.exp(math.log(num_outputs / w0) / (depth - 1))
         return [round(w0 * (beta ** k)) for k in range(0, depth)]
@@ -367,7 +488,7 @@ def get_exponential_layout(num_outputs, depth) -> Callable[[float], List[int]]:
     return make_layout
 
 
-def get_wide_first_layer_rectangular_other_layers_layout(
+def get_wide_first_layer_rectangular_other_layers_widths(
         num_outputs, depth, first_layer_width_multiplier=10,
 ) -> Callable[[float], List[int]]:
     def make_layout(w0):
@@ -395,11 +516,11 @@ default_config = {
     'log': './log',
     'dataset': 'wine_quality_white',
     'activation': 'relu',
-    'topologies': ['wide_first'],
+    'topologies': ['exponential'],
     'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
-                8388608],
+                8388608, 16777216, 33554432],
     'depths': [2, 3, 4, 5, 7, 8, 9, 10, 12, 14, 16, 18, 20],
-    'residual_modes': ['none', 'full'],
+    'residual_modes': ['none', ],
     'reps': 30,
     'early_stopping': {
         'patience': 10,
@@ -445,25 +566,40 @@ for topology in config['topologies']:
             for depth in config['depths']:
                 config['depth'] = depth
 
-                layout_factory = None
+                widths_factory = None
                 if topology == 'rectangle':
-                    layout_factory = get_rectangular_layout
+                    widths_factory = get_rectangular_widths
                 elif topology == 'trapezoid':
-                    layout_factory = get_trapezoidal_layout
+                    widths_factory = get_trapezoidal_widths
                 elif topology == 'exponential':
-                    layout_factory = get_exponential_layout
+                    widths_factory = get_exponential_widths
                 elif topology == 'wide_first':
-                    layout_factory = get_wide_first_layer_rectangular_other_layers_layout
+                    widths_factory = get_wide_first_layer_rectangular_other_layers_widths
                 else:
                     assert False, 'Topology "{}" not recognized.'.format(topology)
 
-                network = find_best_layout_for_budget_and_depth(dataset, inputs, outputs, residual_mode, budget,
-                                                                layout_factory(num_outputs, depth))
+                output_activation, run_loss = compute_network_configuration(dataset)
+                delta, widths, network = find_best_layout_for_budget_and_depth(
+                    inputs,
+                    residual_mode,
+                    tensorflow.nn.relu,
+                    tensorflow.nn.relu,
+                    output_activation,
+                    budget,
+                    widths_factory(num_outputs, depth))
                 config['widths'] = widths
-
                 reps = config['reps']
 
                 print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
+
+                keras_inputs, keras_output = make_model_from_network(network)
+                assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
+                keras_input = keras_inputs[0]
+
+                test_network(config, dataset, inputs, outputs, keras_input, keras_output)
+
+                gc.collect()
+
                 # for rep in range(reps):
                 #     print('begin rep {}...'.format(rep))
                 #     this_config = deepcopy(config)
@@ -476,4 +612,3 @@ for topology in config['topologies']:
                 #     gc.collect()
 
 print('done.')
-gc.collect()
