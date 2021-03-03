@@ -44,5 +44,5 @@ def write(name, doc):
     if session is None:
         _connect()
     newlog = _log(name=name, doc=doc)
-    session.add(newlog)  
+    session.add(newlog) 
     session.commit()
