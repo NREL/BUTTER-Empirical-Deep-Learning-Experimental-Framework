@@ -10,6 +10,8 @@ dependencies:
 - pip
 - scipy=1.4.1
 - numpy<1.19.0
+- sqlalchemy
+- psycopg2
 - pip:
   - pytest
   - tensorflow
