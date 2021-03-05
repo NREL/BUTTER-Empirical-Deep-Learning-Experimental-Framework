@@ -32,6 +32,7 @@ from dmp.experiment.structure.n_add import NAdd
 from dmp.experiment.structure.n_fully_connected_layer import NFullyConnectedLayer
 from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
+from dmp.data.logging import write_log
 
 
 class NpEncoder(json.JSONEncoder):
@@ -97,7 +98,8 @@ def make_network(
 
     input_layer = NInput((), inputs.shape)
     current = input_layer
-    # layers = []
+    #layers = []
+    # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d in range(depth):
         layer_width = widths[d]
 
@@ -112,14 +114,13 @@ def make_network(
         if residual_mode == 'none':
             pass
         elif residual_mode == 'full':
-            # if d > 0:
-            #     layer = NAdd((layer, current))
-            raise Exception('Not yet implemented')
+            if d > 0:
+                layer = NAdd((layer, current))
         else:
             raise Exception('Unknown residual mode "{}".'.format(residual_mode))
 
-        # print('d {} w {} in {}'.format(d, layer_width, num_inputs))
-        # layers.append(layer)
+        print('d {} w {} in {}'.format(d, layer_width, num_inputs))
+        #layers.append(layer)
         current = layer
 
     return current
@@ -136,7 +137,8 @@ class MakeModelFromNetwork:
 
     @visit.register
     def _(self, target: NInput, inputs: []) -> any:
-        return Input(shape=target.shape), True
+        return Input(shape=target.shape[1]), True 
+        ## TODO JP: I changed this from target.shape to target.shape[1] to make it work, but I am not sure what I did.
 
     @visit.register
     def _(self, target: NFullyConnectedLayer, inputs: []) -> any:
@@ -301,6 +303,12 @@ def test_network(
         keras_input,
         keras_output,
 ) -> None:
+    """
+    test_network
+
+    Given a fully constructed Keras network, train and test it on a given dataset using hyperparameters in config
+    This function also creates log events during and after training.
+    """
     config = deepcopy(config)
 
     # wine_quality_white__wide_first__4194304__4__16106579275625
@@ -329,7 +337,7 @@ def test_network(
     log_data = {'config': config}
     run_config = config['run_config']
 
-    run_optimizer = optimizers.Adam(0.001)
+    run_optimizer = optimizers.Adam(0.001) ## Why isn't this tuned?
     run_metrics = [
         # metrics.CategoricalAccuracy(),
         'accuracy',
@@ -368,6 +376,9 @@ def test_network(
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
 
+    print(keras_input)
+    print(inputs.shape)
+
     history_callback = model.fit(
         x=inputs,
         y=outputs,
@@ -385,13 +396,10 @@ def test_network(
     log_data['val_loss'] = validation_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
 
-    log_path = config['log']
-    run_tools.makedir_if_not_exists(log_path)
-    log_file = os.path.join(log_path, '{}.json'.format(run_name))
-    print('log file: {}'.format(log_file))
-
-    with open(log_file, 'w', encoding='utf-8') as f:
-        json.dump(log_data, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
+    log_data['run_name'] = run_name
+    
+    write_log(log_data, config['log'])
+    
 
 
 def binary_search_int(objective: Callable[[int], Union[int, float]],
