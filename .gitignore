@@ -8,3 +8,6 @@ __pycache__
 /dmp/experiment/.pmlb_cache/
 .vscode
 *.DS_Store
+log
+*.pyc
+*.ipynb_checkpoints

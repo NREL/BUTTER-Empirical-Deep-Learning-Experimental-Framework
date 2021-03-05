@@ -10,29 +10,12 @@ write_log(log_data, config):
     config: Dictionary or String - config["log"] object from aspect_test type config
 
 Configurations:
+- for JSON file logging, set "log":"./path/to/logdir"
+- for Postgres logging, set "log":"postgres"
 
-For JSON File based logging, you have two options
+Note, we detect this by checking the prefix of the "log" string. So if you want to save JSON files into a folder called postgres for some reason, please use "./postgres"
 
-{
-    "log": "./path
 }
-
-{
-    "log": {
-        "backend":"file",
-        "path":"./path"
-    }
-}
-
-
-For Postgres logging
-
-{
-    "log": {
-        "backend":"postgres"
-    }
-}
-
 
 
 TODO:
