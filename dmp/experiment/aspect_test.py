@@ -35,18 +35,6 @@ from dmp.experiment.structure.network_module import NetworkModule
 from dmp.data.logging import write_log
 
 
-class NpEncoder(json.JSONEncoder):
-
-    def default(self, obj):
-        if isinstance(obj, numpy.integer):
-            return int(obj)
-        elif isinstance(obj, numpy.floating):
-            return float(obj)
-        elif isinstance(obj, numpy.ndarray):
-            return obj.tolist()
-        else:
-            return super(NpEncoder, self).default(obj)
-
 
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
     count = 0
@@ -82,7 +70,7 @@ class GetNumFreeParameters:
     def _(self, target: NAdd) -> int:
         return 0
 
-
+# TODO JP: Won't this function overcount free parameters in the case where a layer has two descencents? Why not use keras.model.count_params()
 def count_num_free_parameters(target: NetworkModule) -> int:
     return GetNumFreeParameters().visit(target) + sum((count_num_free_parameters(i) for i in target.inputs))
 
@@ -115,7 +103,7 @@ def make_network(
             pass
         elif residual_mode == 'full':
             if d > 0:
-                layer = NAdd((layer, current))
+                layer = NAdd((layer, current)) ## TODO JP: Only works for rectangle
         else:
             raise Exception('Unknown residual mode "{}".'.format(residual_mode))
 
@@ -149,27 +137,36 @@ class MakeModelFromNetwork:
 
     @visit.register
     def _(self, target: NAdd, inputs: []) -> any:
-        return tensorflow.keras.layers.add(*inputs), False
+        return tensorflow.keras.layers.add(inputs), False
 
-
+## TODO JP: I think this recursion is being done from the wrong direction. Instead of bottom up, we could try top-down
+## starting from the unique inputs.
+## Additionally, there may be a clener way to implement the whole NetworkModule concept. We should discuss this.
+##
+model_cache = {} ## JP: Add memoization so that objects already created by the traversal are re-used instead of re-created
 def make_model_from_network(target: NetworkModule) -> ([any], any):
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
     :return: a list of input keras modules to the network and the output keras module
     """
-    network_inputs = []
+    network_inputs = {}  ## JP: Implemented network_inputs as a hash table, since we can accumulate multiple copies of a single input if the tree has objects with multiple inputs
     keras_inputs = []
+
     for i in target.inputs:
-        i_network_inputs, i_keras_module = make_model_from_network(i)
-        network_inputs.extend(i_network_inputs)
+        if i not in model_cache.keys():
+            model_cache[i] = make_model_from_network(i)
+        i_network_inputs, i_keras_module = model_cache[i]
+        for new_input in i_network_inputs:
+            network_inputs[new_input.ref()] = new_input
         keras_inputs.append(i_keras_module)
 
     keras_module, is_input = MakeModelFromNetwork().visit(target, keras_inputs)
 
     if is_input:
-        network_inputs.append(keras_module)
-    return network_inputs, keras_module
+        network_inputs[keras_module.ref()] = keras_module
+    
+    return list(network_inputs.values()), keras_module
 
 
 def compute_network_configuration(dataset) -> (any, any):
@@ -397,7 +394,7 @@ def test_network(
     log_data['loss'] = history['loss'][best_index]
 
     log_data['run_name'] = run_name
-    
+
     write_log(log_data, config['log'])
     
 
@@ -601,6 +598,8 @@ for topology in config['topologies']:
                 print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
 
                 keras_inputs, keras_output = make_model_from_network(network)
+
+                print(keras_inputs)
                 assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
                 keras_input = keras_inputs[0]
 
