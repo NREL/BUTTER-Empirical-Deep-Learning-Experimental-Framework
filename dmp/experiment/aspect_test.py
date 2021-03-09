@@ -119,6 +119,33 @@ class MakeModelFromNetwork:
     Visitor that makes a keras module for a given network module and input keras modules
     """
 
+    def __init__(self):
+        self.model_cache = {}
+
+    def make_model_from_network(self, target: NetworkModule) -> ([any], any):
+        """
+        Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
+        :param target: starting point module
+        :return: a list of input keras modules to the network and the output keras module
+        """
+        network_inputs = {}  ## JP: Implemented network_inputs as a hash table, since we can accumulate multiple copies of a single input if the tree has objects with multiple inputs
+        keras_inputs = [] # inputs to this particular layer, not whole network
+
+        for i in target.inputs:
+            if i not in self.model_cache.keys():
+                self.model_cache[i] = self.make_model_from_network(i)
+            i_network_inputs, i_keras_module = self.model_cache[i]
+            for new_input in i_network_inputs:
+                network_inputs[new_input.ref()] = new_input
+            keras_inputs.append(i_keras_module)
+
+        keras_module, is_input = self.visit(target, keras_inputs)
+
+        if is_input:
+            network_inputs[keras_module.ref()] = keras_module
+        
+        return list(network_inputs.values()), keras_module
+
     @singledispatchmethod
     def visit(self, target, inputs: []) -> any:
         raise Exception('Unsupported module of type "{}".'.format(type(target)))
@@ -137,35 +164,6 @@ class MakeModelFromNetwork:
     @visit.register
     def _(self, target: NAdd, inputs: []) -> any:
         return tensorflow.keras.layers.add(inputs), False
-
-## TODO JP: I think this recursion is being done from the wrong direction. Instead of bottom up, we could try top-down
-## starting from the unique inputs.
-## Additionally, there may be a clener way to implement the whole NetworkModule concept. We should discuss this.
-##
-model_cache = {} ## JP: Add memoization so that objects already created by the traversal are re-used instead of re-created
-def make_model_from_network(target: NetworkModule) -> ([any], any):
-    """
-    Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
-    :param target: starting point module
-    :return: a list of input keras modules to the network and the output keras module
-    """
-    network_inputs = {}  ## JP: Implemented network_inputs as a hash table, since we can accumulate multiple copies of a single input if the tree has objects with multiple inputs
-    keras_inputs = [] # inputs to this particular layer, not whole network
-
-    for i in target.inputs:
-        if i not in model_cache.keys():
-            model_cache[i] = make_model_from_network(i)
-        i_network_inputs, i_keras_module = model_cache[i]
-        for new_input in i_network_inputs:
-            network_inputs[new_input.ref()] = new_input
-        keras_inputs.append(i_keras_module)
-
-    keras_module, is_input = MakeModelFromNetwork().visit(target, keras_inputs)
-
-    if is_input:
-        network_inputs[keras_module.ref()] = keras_module
-    
-    return list(network_inputs.values()), keras_module
 
 
 def compute_network_configuration(dataset) -> (any, any):
@@ -596,7 +594,7 @@ for topology in config['topologies']:
 
                 print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
 
-                keras_inputs, keras_output = make_model_from_network(network)
+                keras_inputs, keras_output = MakeModelFromNetwork().make_model_from_network(network)
 
                 print(keras_inputs)
                 assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
