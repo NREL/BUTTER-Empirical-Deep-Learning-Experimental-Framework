@@ -45,8 +45,6 @@ class NpEncoder(json.JSONEncoder):
         else:
             return super(NpEncoder, self).default(obj)
 
-### Section: postgres logger
-
 from sqlalchemy.ext.declarative import declarative_base  
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import FetchedValue
@@ -55,8 +53,6 @@ from sqlalchemy import Column, Integer, Text, TIMESTAMP, String
 from sqlalchemy.dialects.postgresql import UUID, JSON, JSONB
 import sqlalchemy
 
-engine = None
-session = None
 
 Base = declarative_base()
 class _log(Base):
@@ -67,36 +63,29 @@ class _log(Base):
     doc = Column(JSON)
 
 def _connect():
-    global engine
-    global session
     connection_string = 'postgresql://jperrsau:@localhost:5432/dmp'
     db = sqlalchemy.create_engine(connection_string)  
     engine = db.connect()
     Base.metadata.create_all(engine)  
     session = sessionmaker(engine)()
+    return engine, session
 
-def _close():
-    global engine
-    global session
+def _close(engine, session):
     session.close()
     engine.close()
-    session = None
-    engine = None
 
+
+### Postgres logger
 def write_postgres(run_name, log_data, config):
-    if session is None:
-        print('log postgres: connecting to server...')
-        _connect()
+    engine, session = _connect()
     log_data = json.loads(NpEncoder().encode(log_data))
     newlog = _log(name=run_name, doc=log_data)
     print('log postgres: committing {}'.format(run_name))
     session.add(newlog) 
     session.commit()
+    _close(engine, session)
 
-
-
-### Section: file logger
-
+### File logger
 def write_file(run_name, log_data, log_path="./log"):
     run_tools.makedir_if_not_exists(log_path)
     log_file = os.path.join(log_path, '{}.json'.format(run_name))
@@ -104,9 +93,7 @@ def write_file(run_name, log_data, log_path="./log"):
     with open(log_file, 'w', encoding='utf-8') as f:
         json.dump(log_data, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
 
-
-
-### Generic logging function
+### Generic logger
 def write_log(log_data, config):
     if config[:8] == 'postgres':
         write_postgres(log_data['run_name'], log_data, config)
