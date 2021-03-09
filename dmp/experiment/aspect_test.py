@@ -84,7 +84,7 @@ def make_network(
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput((), inputs.shape)
+    input_layer = NInput((), inputs.shape[1:])
     current = input_layer
     #layers = []
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
@@ -102,7 +102,7 @@ def make_network(
         if residual_mode == 'none':
             pass
         elif residual_mode == 'full':
-            if d > 0:
+            if d > 0 and d < depth-1: # output layer could be of different dimension
                 layer = NAdd((layer, current)) ## TODO JP: Only works for rectangle
         else:
             raise Exception('Unknown residual mode "{}".'.format(residual_mode))
@@ -125,8 +125,7 @@ class MakeModelFromNetwork:
 
     @visit.register
     def _(self, target: NInput, inputs: []) -> any:
-        return Input(shape=target.shape[1]), True 
-        ## TODO JP: I changed this from target.shape to target.shape[1] to make it work, but I am not sure what I did.
+        return Input(shape=target.shape), True 
 
     @visit.register
     def _(self, target: NFullyConnectedLayer, inputs: []) -> any:
@@ -151,7 +150,7 @@ def make_model_from_network(target: NetworkModule) -> ([any], any):
     :return: a list of input keras modules to the network and the output keras module
     """
     network_inputs = {}  ## JP: Implemented network_inputs as a hash table, since we can accumulate multiple copies of a single input if the tree has objects with multiple inputs
-    keras_inputs = []
+    keras_inputs = [] # inputs to this particular layer, not whole network
 
     for i in target.inputs:
         if i not in model_cache.keys():
