@@ -515,6 +515,14 @@ datasets = pmlb_loader.load_dataset_index()
 # session = tensorflow.Session(config=core_config)
 # tensorflow.keras.backend.set_session(session)
 
+# targets:
+# datasets: ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white',]
+# 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'],
+# 'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
+#                 8388608, 16777216, 33554432],
+# 'depths': [2, 3, 4, 5, 7, 8, 9, 10, 12, 14, 16, 18, 20],
+
+
 default_config = {
     'log': './log',
     'dataset': 'wine_quality_white',
