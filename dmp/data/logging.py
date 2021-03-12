@@ -93,6 +93,10 @@ def write_file(run_name, log_data, log_path="./log"):
     with open(log_file, 'w', encoding='utf-8') as f:
         json.dump(log_data, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
 
+def read_file(log_file):
+    with open(log_file, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
 ### Generic logger
 def write_log(log_data, config):
     if config[:8] == 'postgres':
