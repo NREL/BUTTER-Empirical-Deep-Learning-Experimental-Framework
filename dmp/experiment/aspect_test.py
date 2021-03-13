@@ -297,7 +297,7 @@ def test_network(
         outputs: numpy.ndarray,
         keras_input,
         keras_output,
-) -> None:
+) -> dict:
     """
     test_network
 
@@ -393,7 +393,7 @@ def test_network(
 
     log_data['run_name'] = run_name
 
-    write_log(log_data, config['log'])
+    return log_data
     
 
 
@@ -559,69 +559,96 @@ default_config = {
 # conda activate dmp
 # python -u -m dmp.experiment.aspect_test "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
 
-config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
+def initialize_global_state(config):
+    global dataset, inputs, outputs
+    dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
+    gc.collect()
+    global num_observations, num_inputs, num_outputs
+    num_observations = inputs.shape[0]
+    num_inputs = inputs.shape[1]
+    num_outputs = outputs.shape[1]
 
-dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
-gc.collect()
+def aspect_test(config:dict) -> dict:
+    """
+    Programmatic interface to the main functionality of this module. Run an aspect test for a single configuration and return the result as a dictionary.
+    """
+    if "dataset" not in globals():
+        initialize_global_state(config)
 
-num_observations = inputs.shape[0]
-num_inputs = inputs.shape[1]
-num_outputs = outputs.shape[1]
+    global topology, residual_mode, budget, depth
+    global output_activation, run_loss, delta, widths, network
 
-for topology in config['topologies']:
-    config['topology'] = topology
-    for residual_mode in config['residual_modes']:
-        config['residual_mode'] = residual_mode
-        for budget in config['budgets']:
-            config['budget'] = budget
-            for depth in config['depths']:
-                config['depth'] = depth
+    topology = config['topology']
+    residual_mode = config['residual_mode']
+    budget = config['budget']
+    depth = config['depth']
 
-                widths_factory = None
-                if topology == 'rectangle':
-                    widths_factory = get_rectangular_widths
-                elif topology == 'trapezoid':
-                    widths_factory = get_trapezoidal_widths
-                elif topology == 'exponential':
-                    widths_factory = get_exponential_widths
-                elif topology == 'wide_first':
-                    widths_factory = get_wide_first_layer_rectangular_other_layers_widths
-                else:
-                    assert False, 'Topology "{}" not recognized.'.format(topology)
+    widths_factory = None
+    if topology == 'rectangle':
+        widths_factory = get_rectangular_widths
+    elif topology == 'trapezoid':
+        widths_factory = get_trapezoidal_widths
+    elif topology == 'exponential':
+        widths_factory = get_exponential_widths
+    elif topology == 'wide_first':
+        widths_factory = get_wide_first_layer_rectangular_other_layers_widths
+    else:
+        assert False, 'Topology "{}" not recognized.'.format(topology)
 
-                output_activation, run_loss = compute_network_configuration(dataset)
-                delta, widths, network = find_best_layout_for_budget_and_depth(
-                    inputs,
-                    residual_mode,
-                    tensorflow.nn.relu,
-                    tensorflow.nn.relu,
-                    output_activation,
-                    budget,
-                    widths_factory(num_outputs, depth))
-                config['widths'] = widths
-                reps = config['reps']
+    output_activation, run_loss = compute_network_configuration(dataset)
+    delta, widths, network = find_best_layout_for_budget_and_depth(
+        inputs,
+        residual_mode,
+        tensorflow.nn.relu,
+        tensorflow.nn.relu,
+        output_activation,
+        budget,
+        widths_factory(num_outputs, depth))
+    config['widths'] = widths
+    reps = config['reps']
 
-                print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
+    print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
 
-                keras_inputs, keras_output = make_model_from_network(network)
+    keras_inputs, keras_output = make_model_from_network(network)
 
-                print(keras_inputs)
-                assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
-                keras_input = keras_inputs[0]
+    print(keras_inputs)
+    assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
+    keras_input = keras_inputs[0]
 
-                test_network(config, dataset, inputs, outputs, keras_input, keras_output)
+    return test_network(config, dataset, inputs, outputs, keras_input, keras_output)
 
-                gc.collect()
+def run_multiple_aspect_tests_from_config(config):
+    """
+    Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run. 
+    """
+    initialize_global_state(config)
 
-                # for rep in range(reps):
-                #     print('begin rep {}...'.format(rep))
-                #     this_config = deepcopy(config)
-                #     this_config['datasetName'] = dataset['Dataset']
-                #     this_config['datasetRow'] = list(dataset)
-                #
-                #     model = make_network_model(dataset, inputs, outputs, widths, residual_mode)
-                #
-                #     test_network(config, dataset, inputs, outputs, model)
-                #     gc.collect()
+    for topology in config['topologies']:
+        config['topology'] = topology
+        for residual_mode in config['residual_modes']:
+            config['residual_mode'] = residual_mode
+            for budget in config['budgets']:
+                config['budget'] = budget
+                for depth in config['depths']:
+                    config['depth'] = depth
+                    
+                    log_data = aspect_test(config)
+                    write_log(log_data, config['log'])
+                    gc.collect()
 
-print('done.')
+                    # for rep in range(reps):
+                    #     print('begin rep {}...'.format(rep))
+                    #     this_config = deepcopy(config)
+                    #     this_config['datasetName'] = dataset['Dataset']
+                    #     this_config['datasetRow'] = list(dataset)
+                    #
+                    #     model = make_network_model(dataset, inputs, outputs, widths, residual_mode)
+                    #
+                    #     test_network(config, dataset, inputs, outputs, model)
+                    #     gc.collect()
+    print('done.')
+
+## Support the python -m runpy interface
+if __name__ == "__main__":
+    config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
+    run_multiple_aspect_tests_from_config(config)
