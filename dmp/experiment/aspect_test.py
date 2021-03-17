@@ -32,19 +32,8 @@ from dmp.experiment.structure.n_add import NAdd
 from dmp.experiment.structure.n_fully_connected_layer import NFullyConnectedLayer
 from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
+from dmp.data.logging import write_log
 
-
-class NpEncoder(json.JSONEncoder):
-
-    def default(self, obj):
-        if isinstance(obj, numpy.integer):
-            return int(obj)
-        elif isinstance(obj, numpy.floating):
-            return float(obj)
-        elif isinstance(obj, numpy.ndarray):
-            return obj.tolist()
-        else:
-            return super(NpEncoder, self).default(obj)
 
 
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
@@ -81,7 +70,7 @@ class GetNumFreeParameters:
     def _(self, target: NAdd) -> int:
         return 0
 
-
+# TODO JP: Won't this function overcount free parameters in the case where a layer has two descencents? Why not use keras.model.count_params()
 def count_num_free_parameters(target: NetworkModule) -> int:
     return GetNumFreeParameters().visit(target) + sum((count_num_free_parameters(i) for i in target.inputs))
 
@@ -95,9 +84,10 @@ def make_network(
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput((), inputs.shape)
+    input_layer = NInput((), inputs.shape[1:])
     current = input_layer
-    # layers = []
+    #layers = []
+    # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d in range(depth):
         layer_width = widths[d]
 
@@ -112,62 +102,69 @@ def make_network(
         if residual_mode == 'none':
             pass
         elif residual_mode == 'full':
-            # if d > 0:
-            #     layer = NAdd((layer, current))
-            raise Exception('Not yet implemented')
+            if d > 0 and d < depth-1: # output layer could be of different dimension
+                layer = NAdd((layer, current)) ## TODO JP: Only works for rectangle
         else:
             raise Exception('Unknown residual mode "{}".'.format(residual_mode))
 
-        # print('d {} w {} in {}'.format(d, layer_width, num_inputs))
-        # layers.append(layer)
+        print('d {} w {} in {}'.format(d, layer_width, num_inputs))
+        #layers.append(layer)
         current = layer
 
     return current
 
 
-class MakeModelFromNetwork:
-    """
-    Visitor that makes a keras module for a given network module and input keras modules
-    """
-
-    @singledispatchmethod
-    def visit(self, target, inputs: []) -> any:
-        raise Exception('Unsupported module of type "{}".'.format(type(target)))
-
-    @visit.register
-    def _(self, target: NInput, inputs: []) -> any:
-        return Input(shape=target.shape), True
-
-    @visit.register
-    def _(self, target: NFullyConnectedLayer, inputs: []) -> any:
-        return Dense(
-            target.shape[0],
-            activation=target.activation,
-        )(*inputs), False
-
-    @visit.register
-    def _(self, target: NAdd, inputs: []) -> any:
-        return tensorflow.keras.layers.add(*inputs), False
-
-
-def make_model_from_network(target: NetworkModule) -> ([any], any):
+def make_model_from_network(target: NetworkModule, model_cache:dict = {}) -> ([any], any):
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
+    :param model_cache: optional, used internally to preserve information through recursive calls
     :return: a list of input keras modules to the network and the output keras module
     """
-    network_inputs = []
+
+    class MakeModelFromNetwork:
+        """
+        Visitor that makes a keras module for a given network module and input keras modules
+        """
+
+        @singledispatchmethod
+        def visit(self, target, inputs: []) -> any:
+            raise Exception('Unsupported module of type "{}".'.format(type(target)))
+
+        @visit.register
+        def _(self, target: NInput, inputs: []) -> any:
+            return Input(shape=target.shape), True 
+
+        @visit.register
+        def _(self, target: NFullyConnectedLayer, inputs: []) -> any:
+            return Dense(
+                target.shape[0],
+                activation=target.activation,
+            )(*inputs), False
+
+        @visit.register
+        def _(self, target: NAdd, inputs: []) -> any:
+            return tensorflow.keras.layers.add(inputs), False
+
+    network_inputs = {}
     keras_inputs = []
+
     for i in target.inputs:
-        i_network_inputs, i_keras_module = make_model_from_network(i)
-        network_inputs.extend(i_network_inputs)
+        if i not in model_cache.keys():
+            model_cache[i] = make_model_from_network(i, model_cache)
+        i_network_inputs, i_keras_module = model_cache[i]
+        for new_input in i_network_inputs:
+            network_inputs[new_input.ref()] = new_input
         keras_inputs.append(i_keras_module)
 
     keras_module, is_input = MakeModelFromNetwork().visit(target, keras_inputs)
 
     if is_input:
-        network_inputs.append(keras_module)
-    return network_inputs, keras_module
+        network_inputs[keras_module.ref()] = keras_module
+    
+    return list(network_inputs.values()), keras_module
+
+
 
 
 def compute_network_configuration(dataset) -> (any, any):
@@ -300,7 +297,13 @@ def test_network(
         outputs: numpy.ndarray,
         keras_input,
         keras_output,
-) -> None:
+) -> dict:
+    """
+    test_network
+
+    Given a fully constructed Keras network, train and test it on a given dataset using hyperparameters in config
+    This function also creates log events during and after training.
+    """
     config = deepcopy(config)
 
     # wine_quality_white__wide_first__4194304__4__16106579275625
@@ -329,7 +332,7 @@ def test_network(
     log_data = {'config': config}
     run_config = config['run_config']
 
-    run_optimizer = optimizers.Adam(0.001)
+    run_optimizer = optimizers.Adam(0.001) ## Why isn't this tuned?
     run_metrics = [
         # metrics.CategoricalAccuracy(),
         'accuracy',
@@ -368,6 +371,9 @@ def test_network(
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
 
+    print(keras_input)
+    print(inputs.shape)
+
     history_callback = model.fit(
         x=inputs,
         y=outputs,
@@ -385,13 +391,10 @@ def test_network(
     log_data['val_loss'] = validation_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
 
-    log_path = config['log']
-    run_tools.makedir_if_not_exists(log_path)
-    log_file = os.path.join(log_path, '{}.json'.format(run_name))
-    print('log file: {}'.format(log_file))
+    log_data['run_name'] = run_name
 
-    with open(log_file, 'w', encoding='utf-8') as f:
-        json.dump(log_data, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
+    return log_data
+    
 
 
 def binary_search_int(objective: Callable[[int], Union[int, float]],
@@ -512,6 +515,14 @@ datasets = pmlb_loader.load_dataset_index()
 # session = tensorflow.Session(config=core_config)
 # tensorflow.keras.backend.set_session(session)
 
+# targets:
+# datasets: ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white',]
+# 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'],
+# 'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
+#                 8388608, 16777216, 33554432],
+# 'depths': [2, 3, 4, 5, 7, 8, 9, 10, 12, 14, 16, 18, 20],
+
+
 default_config = {
     'log': './log',
     'dataset': 'wine_quality_white',
@@ -548,67 +559,96 @@ default_config = {
 # conda activate dmp
 # python -u -m dmp.experiment.aspect_test "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
 
-config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
+def initialize_global_state(config):
+    global dataset, inputs, outputs
+    dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
+    gc.collect()
+    global num_observations, num_inputs, num_outputs
+    num_observations = inputs.shape[0]
+    num_inputs = inputs.shape[1]
+    num_outputs = outputs.shape[1]
 
-dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
-gc.collect()
+def aspect_test(config:dict) -> dict:
+    """
+    Programmatic interface to the main functionality of this module. Run an aspect test for a single configuration and return the result as a dictionary.
+    """
+    if "dataset" not in globals():
+        initialize_global_state(config)
 
-num_observations = inputs.shape[0]
-num_inputs = inputs.shape[1]
-num_outputs = outputs.shape[1]
+    global topology, residual_mode, budget, depth
+    global output_activation, run_loss, delta, widths, network
 
-for topology in config['topologies']:
-    config['topology'] = topology
-    for residual_mode in config['residual_modes']:
-        config['residual_mode'] = residual_mode
-        for budget in config['budgets']:
-            config['budget'] = budget
-            for depth in config['depths']:
-                config['depth'] = depth
+    topology = config['topology']
+    residual_mode = config['residual_mode']
+    budget = config['budget']
+    depth = config['depth']
 
-                widths_factory = None
-                if topology == 'rectangle':
-                    widths_factory = get_rectangular_widths
-                elif topology == 'trapezoid':
-                    widths_factory = get_trapezoidal_widths
-                elif topology == 'exponential':
-                    widths_factory = get_exponential_widths
-                elif topology == 'wide_first':
-                    widths_factory = get_wide_first_layer_rectangular_other_layers_widths
-                else:
-                    assert False, 'Topology "{}" not recognized.'.format(topology)
+    widths_factory = None
+    if topology == 'rectangle':
+        widths_factory = get_rectangular_widths
+    elif topology == 'trapezoid':
+        widths_factory = get_trapezoidal_widths
+    elif topology == 'exponential':
+        widths_factory = get_exponential_widths
+    elif topology == 'wide_first':
+        widths_factory = get_wide_first_layer_rectangular_other_layers_widths
+    else:
+        assert False, 'Topology "{}" not recognized.'.format(topology)
 
-                output_activation, run_loss = compute_network_configuration(dataset)
-                delta, widths, network = find_best_layout_for_budget_and_depth(
-                    inputs,
-                    residual_mode,
-                    tensorflow.nn.relu,
-                    tensorflow.nn.relu,
-                    output_activation,
-                    budget,
-                    widths_factory(num_outputs, depth))
-                config['widths'] = widths
-                reps = config['reps']
+    output_activation, run_loss = compute_network_configuration(dataset)
+    delta, widths, network = find_best_layout_for_budget_and_depth(
+        inputs,
+        residual_mode,
+        tensorflow.nn.relu,
+        tensorflow.nn.relu,
+        output_activation,
+        budget,
+        widths_factory(num_outputs, depth))
+    config['widths'] = widths
+    reps = config['reps']
 
-                print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
+    print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
 
-                keras_inputs, keras_output = make_model_from_network(network)
-                assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
-                keras_input = keras_inputs[0]
+    keras_inputs, keras_output = make_model_from_network(network)
 
-                test_network(config, dataset, inputs, outputs, keras_input, keras_output)
+    print(keras_inputs)
+    assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
+    keras_input = keras_inputs[0]
 
-                gc.collect()
+    return test_network(config, dataset, inputs, outputs, keras_input, keras_output)
 
-                # for rep in range(reps):
-                #     print('begin rep {}...'.format(rep))
-                #     this_config = deepcopy(config)
-                #     this_config['datasetName'] = dataset['Dataset']
-                #     this_config['datasetRow'] = list(dataset)
-                #
-                #     model = make_network_model(dataset, inputs, outputs, widths, residual_mode)
-                #
-                #     test_network(config, dataset, inputs, outputs, model)
-                #     gc.collect()
+def run_multiple_aspect_tests_from_config(config):
+    """
+    Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run. 
+    """
+    initialize_global_state(config)
 
-print('done.')
+    for topology in config['topologies']:
+        config['topology'] = topology
+        for residual_mode in config['residual_modes']:
+            config['residual_mode'] = residual_mode
+            for budget in config['budgets']:
+                config['budget'] = budget
+                for depth in config['depths']:
+                    config['depth'] = depth
+                    
+                    log_data = aspect_test(config)
+                    write_log(log_data, config['log'])
+                    gc.collect()
+
+                    # for rep in range(reps):
+                    #     print('begin rep {}...'.format(rep))
+                    #     this_config = deepcopy(config)
+                    #     this_config['datasetName'] = dataset['Dataset']
+                    #     this_config['datasetRow'] = list(dataset)
+                    #
+                    #     model = make_network_model(dataset, inputs, outputs, widths, residual_mode)
+                    #
+                    #     test_network(config, dataset, inputs, outputs, model)
+                    #     gc.collect()
+    print('done.')
+
+## Support the python -m runpy interface
+if __name__ == "__main__":
+    config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
+    run_multiple_aspect_tests_from_config(config)

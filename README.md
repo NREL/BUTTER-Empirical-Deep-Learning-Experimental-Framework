@@ -5,9 +5,17 @@ Direct Model Programming
 
 This sets up the environment:
 
-        conda env create
-        conda activate dmp
-        conda develop .
+    conda env create
+    conda activate dmp
+    conda develop .
+
+## Test
+
+    pytest -s -v tests
+
+## Running experiments locally
+
+    python -u -m dmp.experiment.aspect_test "{'dataset': 'nursery','budgets':[262144, 524288, 1048576, 2097152, 4194304, 8388608], 'topologies' : [ 'wide_first' ] }"
 
 ## Extra Eagle Setup Steps
 
@@ -42,8 +50,8 @@ An example script that sets up the right modules and environment variables to us
     cd /projects/dmpapps/ctripp/src
     conda activate /projects/dmpapps/ctripp/env/dmp
 
-## Test
 
-        pytest -s -v tests
+## Running experiments on Eagle with Sbatch
 
-        
+    Create ~/admp file that contains env setup script like above.
+    sbatch -n1 -t18:00:00 --gres=gpu:1 ./srundmp.sh dmp.experiment.aspect_test.py "{'dataset': 'nursery','budgets':[262144, 524288, 1048576, 2097152, 4194304, 8388608], 'topologies' : [ 'wide_first' ] }"

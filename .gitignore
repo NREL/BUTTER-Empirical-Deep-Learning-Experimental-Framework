@@ -6,3 +6,8 @@ __pycache__
 /.idea/
 /dmp/experiment/.ipynb_checkpoints/
 /dmp/experiment/.pmlb_cache/
+.vscode
+*.DS_Store
+log
+*.pyc
+*.ipynb_checkpoints
