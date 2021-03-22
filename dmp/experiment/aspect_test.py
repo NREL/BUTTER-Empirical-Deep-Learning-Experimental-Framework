@@ -580,6 +580,10 @@ def aspect_test(config:dict) -> dict:
     """
     Programmatic interface to the main functionality of this module. Run an aspect test for a single configuration and return the result as a dictionary.
     """
+
+    numpy.random.seed(config["seed"])
+    tensorflow.random.set_seed(config["seed"])
+
     if "dataset" not in globals():
         initialize_global_state(config)
 

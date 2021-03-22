@@ -36,7 +36,8 @@ def test_aspect_test_historical():
     """
     data = read_file("tests/data/wine_quality_white__rectangle__1024__4__16105622897956.json")
     data["config"]["residual_mode"] = "none"
-    tf.random.set_seed(42)
+    data["config"]["seed"] = 42
+
     result = aspect_test(data["config"])
     npt.assert_almost_equal(data["loss"], result["loss"], decimal=2)
     npt.assert_almost_equal(data["val_loss"], result["val_loss"], decimal=1)
@@ -49,8 +50,6 @@ def test_fixed_regression():
     Run the test against a matrix of data for which we know the random seed. Therefore, results can be exact.
     """
     pass
-
-
 
 if __name__=="__main__":
     test_aspect_test()
