@@ -35,8 +35,6 @@ from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
 from dmp.data.logging import write_log
 
-
-
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
     count = 0
     for var in model.trainable_variables:
@@ -381,15 +379,17 @@ def test_network(
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
 
-    print(keras_input)
-    print(inputs.shape)
+    #print(keras_input)
+    #print(inputs.shape)
 
-    #### TRAIN THE MODEL
     if config["test_split"] > 0:
+        ## train/test/val split
         inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
     else:
+        ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
 
+    # TRAINING
     history_callback = model.fit(
         x=inputs_train,
         y=outputs_train,
@@ -407,11 +407,9 @@ def test_network(
     log_data['val_loss'] = validation_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
 
-    #### TEST THE MODEL TODO JP: Implement evaluation
     if config["test_split"] > 0:
-        #evaluate = model.evaluate(x=inputs_test, y=outputs_test)
-        #log_data["test_loss"]...
-        pass
+        ## train/test/val split, perform eval of held-out test data
+        log_data["evaluate_test_set"] = model.evaluate(x=inputs_test, y=outputs_test, return_dict=True)
 
     log_data['run_name'] = run_name
 
