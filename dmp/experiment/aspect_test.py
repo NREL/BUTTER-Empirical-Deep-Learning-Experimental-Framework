@@ -48,31 +48,35 @@ def count_trainable_parameters_in_keras_model(model: Model) -> int:
     print('ctp total {}'.format(count))
     return count
 
-
-class GetNumFreeParameters:
-    """
-    Visitor that counts the number of free (trainable) parameters in a NetworkModule
-    """
-
-    @singledispatchmethod
-    def visit(self, target) -> any:
-        raise Exception('Unsupported module of type "{}".'.format(type(target)))
-
-    @visit.register
-    def _(self, target: NInput) -> int:
-        return 0
-
-    @visit.register
-    def _(self, target: NFullyConnectedLayer) -> int:
-        return (sum((i.size for i in target.inputs)) + 1) * target.size
-
-    @visit.register
-    def _(self, target: NAdd) -> int:
-        return 0
-
-# TODO JP: Won't this function overcount free parameters in the case where a layer has two descencents? Why not use keras.model.count_params()
 def count_num_free_parameters(target: NetworkModule) -> int:
-    return GetNumFreeParameters().visit(target) + sum((count_num_free_parameters(i) for i in target.inputs))
+
+    def build_set_of_modules(target: NetworkModule) -> set:
+        cache = {target}
+        cache.update(*map(build_set_of_modules, target.inputs))
+        return cache
+
+    class GetNumFreeParameters:
+        """
+        Visitor that counts the number of free (trainable) parameters in a NetworkModule
+        """
+
+        @singledispatchmethod
+        def visit(self, target) -> any:
+            raise Exception('Unsupported module of type "{}".'.format(type(target)))
+
+        @visit.register
+        def _(self, target: NInput) -> int:
+            return 0
+
+        @visit.register
+        def _(self, target: NFullyConnectedLayer) -> int:
+            return (sum((i.size for i in target.inputs)) + 1) * target.size
+
+        @visit.register
+        def _(self, target: NAdd) -> int:
+            return 0
+    
+    return sum((GetNumFreeParameters().visit(i) for i in build_set_of_modules(target)))
 
 def make_network(
         inputs: numpy.ndarray,
@@ -297,6 +301,7 @@ def test_network(
         outputs: numpy.ndarray,
         keras_input,
         keras_output,
+        network:NetworkModule,
 ) -> dict:
     """
     test_network
@@ -357,6 +362,8 @@ def test_network(
     )
 
     gc.collect()
+
+    assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(model), "Wrong number of trainable parameters"
 
     log_data['num_weights'] = count_trainable_parameters_in_keras_model(model)
     log_data['num_inputs'] = num_inputs
@@ -524,6 +531,7 @@ datasets = pmlb_loader.load_dataset_index()
 
 
 default_config = {
+    'seed': 42,
     'log': './log',
     'dataset': 'wine_quality_white',
     'activation': 'relu',
@@ -609,13 +617,13 @@ def aspect_test(config:dict) -> dict:
 
     print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
 
+    
     keras_inputs, keras_output = make_model_from_network(network)
 
-    print(keras_inputs)
     assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
     keras_input = keras_inputs[0]
 
-    return test_network(config, dataset, inputs, outputs, keras_input, keras_output)
+    return test_network(config, dataset, inputs, outputs, keras_input, keras_output, network)
 
 def run_multiple_aspect_tests_from_config(config):
     """
