@@ -338,7 +338,7 @@ def test_network(
     log_data = {'config': config}
     run_config = config['run_config']
 
-    run_optimizer = tensorflow.keras.optimizers.get(config['optimizer'])
+    run_optimizer = optimizers.get(config['optimizer'])
     run_metrics = [
         # metrics.CategoricalAccuracy(),
         'accuracy',
