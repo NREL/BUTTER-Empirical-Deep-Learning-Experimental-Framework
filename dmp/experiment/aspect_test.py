@@ -21,6 +21,7 @@ from tensorflow.keras import (
 from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
+from sklearn.model_selection import train_test_split
 
 from command_line_tools import (
     command_line_config,
@@ -351,6 +352,8 @@ def test_network(
         metrics.SquaredHinge(),
     ]
     model = Model(inputs=keras_input, outputs=keras_output)
+
+    ## TODO: Would holding off on this step obviate the need for NetworkModule?
     model.compile(
         # loss='binary_crossentropy', # binary classification
         # loss='categorical_crossentropy', # categorical classification (one hot)
@@ -381,9 +384,15 @@ def test_network(
     print(keras_input)
     print(inputs.shape)
 
+    #### TRAIN THE MODEL
+    if config["test_split"] > 0:
+        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
+    else:
+        inputs_train, outputs_train = inputs, outputs
+
     history_callback = model.fit(
-        x=inputs,
-        y=outputs,
+        x=inputs_train,
+        y=outputs_train,
         callbacks=run_callbacks,
         **run_config,
     )
@@ -397,6 +406,12 @@ def test_network(
     log_data['iterations'] = best_index + 1
     log_data['val_loss'] = validation_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
+
+    #### TEST THE MODEL TODO JP: Implement evaluation
+    if config["test_split"] > 0:
+        #evaluate = model.evaluate(x=inputs_test, y=outputs_test)
+        #log_data["test_loss"]...
+        pass
 
     log_data['run_name'] = run_name
 
@@ -534,6 +549,7 @@ default_config = {
     'seed': 42,
     'log': './log',
     'dataset': 'wine_quality_white',
+    'test_split': 0,
     'activation': 'relu',
     'topologies': ['exponential'],
     'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
@@ -551,7 +567,7 @@ default_config = {
         'restore_best_weights': False,
     },
     'run_config': {
-        'validation_split': .2,
+        'validation_split': .2, # This is relative to the training set size.
         'shuffle': True,
         'epochs': 10000,
         'batch_size': 256,
