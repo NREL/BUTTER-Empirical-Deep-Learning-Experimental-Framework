@@ -38,6 +38,10 @@ def test_aspect_test_historical():
     data["config"]["residual_mode"] = "none"
     data["config"]["seed"] = 42
     data["config"]["test_split"] = 0
+    data["config"]["optimizer"] =  {
+        "class_name": "adam",
+        "config": {"learning_rate": 0.001},
+    }
 
     result = aspect_test(data["config"])
     npt.assert_almost_equal(data["loss"], result["loss"], decimal=2)

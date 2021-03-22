@@ -338,7 +338,7 @@ def test_network(
     log_data = {'config': config}
     run_config = config['run_config']
 
-    run_optimizer = optimizers.Adam(0.001) ## Why isn't this tuned?
+    run_optimizer = tensorflow.keras.optimizers.get(config['optimizer'])
     run_metrics = [
         # metrics.CategoricalAccuracy(),
         'accuracy',
@@ -551,6 +551,10 @@ default_config = {
     'dataset': 'wine_quality_white',
     'test_split': 0,
     'activation': 'relu',
+    'optimizer': {
+        "class_name": "adam",
+        "config": {"learning_rate": 0.001},
+    },
     'topologies': ['exponential'],
     'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                 8388608, 16777216, 33554432],
