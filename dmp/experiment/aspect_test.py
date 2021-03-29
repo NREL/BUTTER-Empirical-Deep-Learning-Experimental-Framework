@@ -541,14 +541,13 @@ def aspect_test(config:dict) -> dict:
 
     ## Run Keras model on dataset
     run_log = test_network(config, dataset, inputs, outputs, keras_input, keras_output, network, run_loss, widths)
-    
+
     return run_log
 
 def run_multiple_aspect_tests_from_config(config):
     """
     Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run. 
     """
-    initialize_global_state(config)
 
     for topology in config['topologies']:
         config['topology'] = topology
