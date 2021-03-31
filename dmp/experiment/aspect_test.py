@@ -221,7 +221,6 @@ def test_network(
 
 
     log_data = {'config': config}
-    run_config = config['run_config']
 
     run_name = run_tools.get_run_name(config)
     config['run_name'] = run_name
@@ -233,7 +232,6 @@ def test_network(
 
 
     log_data = {'config': config}
-    run_config = config['run_config']
 
     run_optimizer = optimizers.get(config['optimizer'])
     run_metrics = [
@@ -278,13 +276,13 @@ def test_network(
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
 
-    #print(keras_input)
-    #print(inputs.shape)
+    run_config = config['run_config'].copy()
 
     if config["test_split"] > 0:
         ## train/test/val split
         inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
-        ## TODO JP: change the validation_split parameter
+        run_config["validation_split"] = run_config["validation_split"]/(1-config["test_split"])
+        #print(inputs.shape[0], inputs_train.shape[0], inputs_test.shape[0], run_config["validation_split"])
     else:
         ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
