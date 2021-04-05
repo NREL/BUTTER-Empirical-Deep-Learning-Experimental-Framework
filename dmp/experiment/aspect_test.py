@@ -322,10 +322,12 @@ def test_network(
         log_data['history'].update(test_history_callback.history)
 
     validation_losses = numpy.array(history['val_loss'])
+    test_losses = numpy.array(history['test_loss'])
     best_index = numpy.argmin(validation_losses)
 
     log_data['iterations'] = best_index + 1
     log_data['val_loss'] = validation_losses[best_index]
+    log_data['test_loss'] = test_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
 
     log_data['run_name'] = run_name
