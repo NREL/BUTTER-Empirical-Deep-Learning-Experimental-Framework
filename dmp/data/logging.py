@@ -98,8 +98,28 @@ def read_file(log_file):
         return json.load(f)
 
 ### Generic logger
-def write_log(log_data, config):
+def write_log(log_data, config, log_environment=True):
+    _log_data = log_data.copy()
+    if log_environment:
+        _log_data["environment"] = get_environment()
     if config[:8] == 'postgres':
-        write_postgres(log_data['run_name'], log_data, config)
+        write_postgres(_log_data['run_name'], _log_data, config)
     else:
-        write_file(log_data['run_name'], log_data, config)
+        write_file(_log_data['run_name'], _log_data, config)
+
+import subprocess, os, socket, datetime
+
+
+def get_environment():
+    env = {}
+    # git version
+    try:
+        file_dir = os.path.dirname(__file__)
+        env["git_hash"] = subprocess.check_output(["git", "describe", "--always"], cwd=file_dir).strip().decode()
+    except Exception as e:
+        print("Caught exception while retrieving git hash: "+str(e))
+    env["timestamp"] = datetime.datetime.now().isoformat()
+    env["hostname"] = socket.gethostname()
+    return env
+
+
