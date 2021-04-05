@@ -19,6 +19,7 @@ from tensorflow.keras import (
     optimizers,
 )
 from tensorflow.python.keras import losses, Input
+from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
 from sklearn.model_selection import train_test_split
@@ -189,7 +190,6 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
 
     return output_activation, run_loss
 
-
 def test_network(
         config: {},
         dataset,
@@ -282,7 +282,26 @@ def test_network(
         ## train/test/val split
         inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
         run_config["validation_split"] = run_config["validation_split"]/(1-config["test_split"])
-        #print(inputs.shape[0], inputs_train.shape[0], inputs_test.shape[0], run_config["validation_split"])
+        
+        ## Set up a custom callback to record test loss at each epoch
+        ## This could potentially cause performance issues with large datasets on GPU
+        class TestHistory(Callback):
+            def __init__(self,x_test,y_test):
+                self.x_test = x_test
+                self.y_test = y_test
+
+            def on_train_begin(self, logs={}):
+                self.history = {}
+
+            def on_epoch_end(self, epoch, logs=None):
+                eval_log = self.model.evaluate(x=self.x_test, y=self.y_test, return_dict=True)
+                for k, v in eval_log.items():
+                    k = "test_"+k
+                    self.history.setdefault(k, []).append(v)
+
+        test_history_callback = TestHistory(inputs_test, outputs_test)
+        run_callbacks.append(test_history_callback)
+
     else:
         ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
@@ -298,16 +317,16 @@ def test_network(
     history = history_callback.history
     log_data['history'] = history
 
+    if config["test_split"] > 0:
+        ## Record the history of test evals from the callback
+        log_data['history'].update(test_history_callback.history)
+
     validation_losses = numpy.array(history['val_loss'])
     best_index = numpy.argmin(validation_losses)
 
     log_data['iterations'] = best_index + 1
     log_data['val_loss'] = validation_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
-
-    if config["test_split"] > 0:
-        ## train/test/val split, perform eval of held-out test data
-        log_data["evaluate_test_set"] = model.evaluate(x=inputs_test, y=outputs_test, return_dict=True)
 
     log_data['run_name'] = run_name
 
