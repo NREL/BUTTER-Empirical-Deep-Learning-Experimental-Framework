@@ -101,10 +101,7 @@ def read_file(log_file):
 def write_log(log_data, config, log_environment=True):
     _log_data = log_data.copy()
     if log_environment:
-        if "environment" in _log_data.keys():
-            _log_data["environment"].update(get_environment())
-        else:
-            _log_data["environment"] = get_environment()
+        _log_data.setdefault("environment", {}).update(get_environment())
     if config[:8] == 'postgres':
         write_postgres(_log_data['run_name'], _log_data, config)
     else:
