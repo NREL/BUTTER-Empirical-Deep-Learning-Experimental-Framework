@@ -85,7 +85,8 @@ def make_network(
         input_activation,
         internal_activation,
         output_activation,
-        depth
+        depth,
+        topology
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
@@ -96,23 +97,29 @@ def make_network(
     for d in range(depth):
         layer_width = widths[d]
 
+        # Activation functions may be different for input, output, and hidden layers
         activation = internal_activation
         if d == 0:
             activation = input_activation
         elif d == depth - 1:
             activation = output_activation
 
+        # Fully connected layer
         layer = NFullyConnectedLayer((current,), (layer_width,), activation)
 
-        if residual_mode == 'none':
-            pass
-        elif residual_mode == 'full':
-            if d > 0 and d < depth-1: # output layer could be of different dimension
-                layer = NAdd((layer, current)) ## TODO JP: Only works for rectangle
-        else:
-            raise Exception('Unknown residual mode "{}".'.format(residual_mode))
+        # Skip connections for residual modes
+        assert residual_mode in ['full', 'none'], f"Invalid residual mode {residual_mode}"
+        if residual_mode == 'full':
+            assert topology in ['rectangular', 'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
 
-        print('d {} w {} in {}'.format(d, layer_width, inputs.shape[1]))
+            # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
+            first_residual_layer = 1 if topology == "wide_first" else 0
+            # Output layer is assumed to be of a different dimension, and will therefore not directly receive skip connections
+            last_residual_layer = depth-1
+            if d > first_residual_layer and d < last_residual_layer:
+                layer = NAdd((layer, current))
+
+        #print('d {} w {} in {}'.format(d, layer_width, inputs.shape[1]))
         #layers.append(layer)
         current = layer
 
@@ -317,18 +324,18 @@ def test_network(
     history = history_callback.history
     log_data['history'] = history
 
-    if config["test_split"] > 0:
-        ## Record the history of test evals from the callback
-        log_data['history'].update(test_history_callback.history)
-
     validation_losses = numpy.array(history['val_loss'])
-    test_losses = numpy.array(history['test_loss'])
     best_index = numpy.argmin(validation_losses)
 
     log_data['iterations'] = best_index + 1
     log_data['val_loss'] = validation_losses[best_index]
-    log_data['test_loss'] = test_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
+
+    if config["test_split"] > 0:
+        ## Record the history of test evals from the callback
+        log_data['history'].update(test_history_callback.history)
+        test_losses = numpy.array(history['test_loss'])
+        log_data['test_loss'] = test_losses[best_index]
 
     log_data['run_name'] = run_name
 
@@ -384,6 +391,7 @@ def find_best_layout_for_budget_and_depth(
         budget,
         make_widths: Callable[[int], List[int]],
         depth,
+        topology
 ) -> (int, [int], NetworkModule):
     best = (math.inf, None, None)
 
@@ -396,7 +404,8 @@ def find_best_layout_for_budget_and_depth(
                                input_activation,
                                internal_activation,
                                output_activation,
-                               depth
+                               depth,
+                               topology
                                )
         delta = count_num_free_parameters(network) - budget
 
@@ -549,7 +558,8 @@ def aspect_test(config:dict) -> dict:
         output_activation,
         budget,
         widths_factory(topology)(num_outputs, depth),
-        depth
+        depth,
+        config['topology']
     )
 
     config['widths'] = widths
