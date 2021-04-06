@@ -36,7 +36,7 @@ def parse_config_from_args(
         r'"\1"',
         arg)
     
-    print('c5: ', arg)
+    # print('c5: ', arg)
     
     overrides = json.loads(arg, strict=False)
     config = merge_configs(config, overrides)

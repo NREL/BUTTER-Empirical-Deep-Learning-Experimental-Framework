@@ -1,12 +1,17 @@
+from dataclasses import dataclass, field
 
 
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NetworkModule:
-    def __init__(self,
-                 inputs: ('NetworkModule', ...),
-                 shape: (int, ...),
-                 ) -> None:
-        self.inputs: (NetworkModule, ...) = inputs
-        self.shape: (int, ...) = shape
+    label: int = 0
+    inputs: ['NetworkModule'] = field(default_factory=list)
+    shape: [int] = field(default_factory=list)
+
+    def __hash__(self) -> int:
+        return hash(id(self))
+
+    def __eq__(self, other) -> bool:
+        return id(self) == id(other)
 
     @property
     def size(self) -> int:
