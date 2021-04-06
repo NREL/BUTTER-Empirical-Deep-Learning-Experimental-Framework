@@ -332,6 +332,10 @@ def test_network(
 
     log_data['run_name'] = run_name
 
+    log_data['environment'] = {
+        "tensorflow_version": tensorflow.__version__,
+    }
+
     return log_data
     
 

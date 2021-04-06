@@ -101,13 +101,16 @@ def read_file(log_file):
 def write_log(log_data, config, log_environment=True):
     _log_data = log_data.copy()
     if log_environment:
-        _log_data["environment"] = get_environment()
+        if "environment" in _log_data.keys():
+            _log_data["environment"].update(get_environment())
+        else:
+            _log_data["environment"] = get_environment()
     if config[:8] == 'postgres':
         write_postgres(_log_data['run_name'], _log_data, config)
     else:
         write_file(_log_data['run_name'], _log_data, config)
 
-import subprocess, os, socket, datetime
+import subprocess, os, platform, datetime
 
 
 def get_environment():
@@ -119,7 +122,9 @@ def get_environment():
     except Exception as e:
         print("Caught exception while retrieving git hash: "+str(e))
     env["timestamp"] = datetime.datetime.now().isoformat()
-    env["hostname"] = socket.gethostname()
+    env["hostname"] = platform.node()
+    env["platform"] = platform.platform()
+    env["python_version"] = platform.python_version()
     return env
 
 
