@@ -19,6 +19,7 @@ from tensorflow.keras import (
     optimizers,
 )
 from tensorflow.python.keras import losses, Input
+from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
 
@@ -86,7 +87,8 @@ def make_network(
         input_activation,
         internal_activation,
         output_activation,
-        depth
+        depth,
+        topology
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
@@ -98,28 +100,33 @@ def make_network(
     for d in range(depth):
         layer_width = widths[d]
 
+        # Activation functions may be different for input, output, and hidden layers
         activation = internal_activation
         if d == 0:
             activation = input_activation
         elif d == depth - 1:
             activation = output_activation
 
+        # Fully connected layer
         layer = NDense(label = 0,
                        inputs = [current, ],
                        shape = [layer_width, ],
                        activation = activation)
 
-        if residual_mode == 'none':
-            pass
-        elif residual_mode == 'full':
-            if d > 0 and d < depth - 1:  # output layer could be of different dimension
+        # Skip connections for residual modes
+        assert residual_mode in ['full', 'none'], f"Invalid residual mode {residual_mode}"
+        if residual_mode == 'full':
+            assert topology in ['rectangular', 'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
+
+            # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
+            first_residual_layer = 1 if topology == "wide_first" else 0
+            # Output layer is assumed to be of a different dimension, and will therefore not directly receive skip connections
+            last_residual_layer = depth-1
+            if d > first_residual_layer and d < last_residual_layer:
                 layer = NAdd(label = 0,
                              inputs = [layer, current],
                              shape = layer.shape.copy())  ## TODO JP: Only works for rectangle
-        else:
-            raise Exception('Unknown residual mode "{}".'.format(residual_mode))
 
-        # print('d {} w {} in {}'.format(d, layer_width, inputs.shape[1]))
         current = layer
 
     return current
@@ -196,7 +203,6 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
 
     return output_activation, run_loss
 
-
 def test_network(
         config: {},
         dataset,
@@ -227,7 +233,6 @@ def test_network(
     config['name'] = name
 
     log_data = {'config': config}
-    run_config = config['run_config']
 
     run_name = run_tools.get_run_name(config)
     config['run_name'] = run_name
@@ -238,7 +243,6 @@ def test_network(
     config['widths'] = widths
 
     log_data = {'config': config}
-    run_config = config['run_config']
 
     run_optimizer = optimizers.get(config['optimizer'])
     run_metrics = [
@@ -284,14 +288,31 @@ def test_network(
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
 
-    # print(keras_input)
-    # print(inputs.shape)
+    run_config = config['run_config'].copy()
 
     if config["test_split"] > 0:
         ## train/test/val split
-        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs,
-                                                                                  test_size=config["test_split"])
-        ## TODO JP: change the validation_split parameter
+        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
+        run_config["validation_split"] = run_config["validation_split"]/(1-config["test_split"])
+        
+        ## Set up a custom callback to record test loss at each epoch
+        ## This could potentially cause performance issues with large datasets on GPU
+        class TestHistory(Callback):
+            def __init__(self,x_test,y_test):
+                self.x_test = x_test
+                self.y_test = y_test
+
+            def on_train_begin(self, logs={}):
+                self.history = {}
+
+            def on_epoch_end(self, epoch, logs=None):
+                eval_log = self.model.evaluate(x=self.x_test, y=self.y_test, return_dict=True)
+                for k, v in eval_log.items():
+                    k = "test_"+k
+                    self.history.setdefault(k, []).append(v)
+
+        test_history_callback = TestHistory(inputs_test, outputs_test)
+        run_callbacks.append(test_history_callback)
     else:
         ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
@@ -315,10 +336,16 @@ def test_network(
     log_data['loss'] = history['loss'][best_index]
 
     if config["test_split"] > 0:
-        ## train/test/val split, perform eval of held-out test data
-        log_data["evaluate_test_set"] = model.evaluate(x=inputs_test, y=outputs_test, return_dict=True)
+        ## Record the history of test evals from the callback
+        log_data['history'].update(test_history_callback.history)
+        test_losses = numpy.array(history['test_loss'])
+        log_data['test_loss'] = test_losses[best_index]
 
     log_data['run_name'] = run_name
+
+    log_data['environment'] = {
+        "tensorflow_version": tensorflow.__version__,
+    }
 
     return log_data
 
@@ -367,6 +394,7 @@ def find_best_layout_for_budget_and_depth(
         budget,
         make_widths: Callable[[int], List[int]],
         depth,
+        topology
 ) -> (int, [int], NetworkModule):
     best = (math.inf, None, None)
 
@@ -379,7 +407,8 @@ def find_best_layout_for_budget_and_depth(
                                input_activation,
                                internal_activation,
                                output_activation,
-                               depth
+                               depth,
+                               topology
                                )
         delta = count_num_free_parameters(network) - budget
 
@@ -536,7 +565,8 @@ def aspect_test(config: dict) -> dict:
         output_activation,
         budget,
         widths_factory(topology)(num_outputs, depth),
-        depth
+        depth,
+        config['topology']
     )
 
     config['widths'] = widths
