@@ -90,7 +90,9 @@ def make_network(
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput(0, [], list(inputs.shape[1:]))
+    input_layer = NInput(label = 0,
+                         inputs = [],
+                         shape = list(inputs.shape[1:]))
     current = input_layer
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d in range(depth):
@@ -102,13 +104,18 @@ def make_network(
         elif d == depth - 1:
             activation = output_activation
 
-        layer = NDense(0, [current, ], [layer_width, ], activation)
+        layer = NDense(label = 0,
+                       inputs = [current, ],
+                       shape = [layer_width, ],
+                       activation = activation)
 
         if residual_mode == 'none':
             pass
         elif residual_mode == 'full':
             if d > 0 and d < depth - 1:  # output layer could be of different dimension
-                layer = NAdd(0, [layer, current], layer.shape.copy())  ## TODO JP: Only works for rectangle
+                layer = NAdd(label = 0,
+                             inputs = [layer, current],
+                             shape = layer.shape.copy())  ## TODO JP: Only works for rectangle
         else:
             raise Exception('Unknown residual mode "{}".'.format(residual_mode))
 
