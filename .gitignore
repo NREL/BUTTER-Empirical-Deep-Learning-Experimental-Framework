@@ -1,9 +1,9 @@
 /dataset_folder/
 /.envrc
 /download/
+/src
 __pycache__
 /.pmlb_cache/
-/.pmlb_cache
 /.pytest_cache
 /.idea/
 /.idea
@@ -14,3 +14,4 @@ __pycache__
 log
 *.pyc
 *.ipynb_checkpoints
+*.pmlb_cache

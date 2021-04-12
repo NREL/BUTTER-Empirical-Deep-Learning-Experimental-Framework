@@ -38,6 +38,7 @@ def test_aspect_test_historical():
     data["config"]["residual_mode"] = "none"
     data["config"]["seed"] = 42
     data["config"]["test_split"] = 0
+    data["config"]["rep"] = 1
     data["config"]["optimizer"] =  {
         "class_name": "adam",
         "config": {"learning_rate": 0.001},
