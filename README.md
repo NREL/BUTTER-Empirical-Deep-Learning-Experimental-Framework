@@ -15,7 +15,7 @@ This sets up the environment:
 
 ## Running experiments locally
 
-    python -u -m dmp.experiment.aspect_test "{'dataset': 'nursery','budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 2}, 'test_split': 0.1 }"
+    python -u -m dmp.experiment.aspect_test "{'dataset': 'nursery','budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 2}, 'test_split': 0.1, 'reps': 1 }"
 
 ## Extra Eagle Setup Steps
 
