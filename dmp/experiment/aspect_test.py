@@ -2,17 +2,17 @@
 
 """
 import gc
-import json
 import math
-import os
+import random
 import sys
 from copy import deepcopy
 from functools import singledispatchmethod
-from typing import Callable, Union, List
+from typing import Callable, Union, List, Generator
 
 import numpy
 import pandas
 import tensorflow
+from sklearn.model_selection import train_test_split
 from tensorflow.keras import (
     callbacks,
     metrics,
@@ -21,34 +21,35 @@ from tensorflow.keras import (
 from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
-from sklearn.model_selection import train_test_split
 
 from command_line_tools import (
     command_line_config,
     run_tools,
 )
+from dmp.data.logging import write_log
 from dmp.data.pmlb import pmlb_loader
 from dmp.data.pmlb.pmlb_loader import load_dataset
+from dmp.experiment.structure.algorithm.network_json_serializer import NetworkJSONSerializer
 from dmp.experiment.structure.n_add import NAdd
-from dmp.experiment.structure.n_fully_connected_layer import NFullyConnectedLayer
+from dmp.experiment.structure.n_dense import NDense
 from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
-from dmp.data.logging import write_log
+
 
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
     count = 0
     for var in model.trainable_variables:
-        print('ctp {}'.format(var.get_shape()))
+        # print('ctp {}'.format(var.get_shape()))
         acc = 1
         for dim in var.get_shape():
             acc *= int(dim)
-        print('ctp acc {}'.format(acc))
+        # print('ctp acc {}'.format(acc))
         count += acc
-    print('ctp total {}'.format(count))
+    # print('ctp total {}'.format(count))
     return count
 
-def count_num_free_parameters(target: NetworkModule) -> int:
 
+def count_num_free_parameters(target: NetworkModule) -> int:
     def build_set_of_modules(target: NetworkModule) -> set:
         cache = {target}
         cache.update(*map(build_set_of_modules, target.inputs))
@@ -68,14 +69,15 @@ def count_num_free_parameters(target: NetworkModule) -> int:
             return 0
 
         @visit.register
-        def _(self, target: NFullyConnectedLayer) -> int:
+        def _(self, target: NDense) -> int:
             return (sum((i.size for i in target.inputs)) + 1) * target.size
 
         @visit.register
         def _(self, target: NAdd) -> int:
             return 0
-    
+
     return sum((GetNumFreeParameters().visit(i) for i in build_set_of_modules(target)))
+
 
 def make_network(
         inputs: numpy.ndarray,
@@ -88,9 +90,10 @@ def make_network(
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput((), inputs.shape[1:])
+    input_layer = NInput(label = 0,
+                         inputs = [],
+                         shape = list(inputs.shape[1:]))
     current = input_layer
-    #layers = []
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d in range(depth):
         layer_width = widths[d]
@@ -101,24 +104,28 @@ def make_network(
         elif d == depth - 1:
             activation = output_activation
 
-        layer = NFullyConnectedLayer((current,), (layer_width,), activation)
+        layer = NDense(label = 0,
+                       inputs = [current, ],
+                       shape = [layer_width, ],
+                       activation = activation)
 
         if residual_mode == 'none':
             pass
         elif residual_mode == 'full':
-            if d > 0 and d < depth-1: # output layer could be of different dimension
-                layer = NAdd((layer, current)) ## TODO JP: Only works for rectangle
+            if d > 0 and d < depth - 1:  # output layer could be of different dimension
+                layer = NAdd(label = 0,
+                             inputs = [layer, current],
+                             shape = layer.shape.copy())  ## TODO JP: Only works for rectangle
         else:
             raise Exception('Unknown residual mode "{}".'.format(residual_mode))
 
-        print('d {} w {} in {}'.format(d, layer_width, inputs.shape[1]))
-        #layers.append(layer)
+        # print('d {} w {} in {}'.format(d, layer_width, inputs.shape[1]))
         current = layer
 
     return current
 
 
-def make_model_from_network(target: NetworkModule, model_cache:dict = {}) -> ([any], any):
+def make_model_from_network(target: NetworkModule, model_cache: dict = {}) -> ([any], any):
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
@@ -137,10 +144,10 @@ def make_model_from_network(target: NetworkModule, model_cache:dict = {}) -> ([a
 
         @visit.register
         def _(self, target: NInput, inputs: []) -> any:
-            return Input(shape=target.shape), True 
+            return Input(shape=target.shape), True
 
         @visit.register
-        def _(self, target: NFullyConnectedLayer, inputs: []) -> any:
+        def _(self, target: NDense, inputs: []) -> any:
             return Dense(
                 target.shape[0],
                 activation=target.activation,
@@ -165,25 +172,25 @@ def make_model_from_network(target: NetworkModule, model_cache:dict = {}) -> ([a
 
     if is_input:
         network_inputs[keras_module.ref()] = keras_module
-    
+
     return list(network_inputs.values()), keras_module
 
 
 def compute_network_configuration(num_outputs, dataset) -> (any, any):
-    output_activation = tensorflow.nn.relu
+    output_activation = 'relu'
     run_task = dataset['Task']
     if run_task == 'regression':
         run_loss = losses.mean_squared_error
-        output_activation = tensorflow.nn.sigmoid
-        print('mean_squared_error')
+        output_activation = 'sigmoid'
+        # print('mean_squared_error')
     elif run_task == 'classification':
-        output_activation = tensorflow.nn.softmax
+        output_activation = 'softmax'
         if num_outputs == 1:
             run_loss = losses.binary_crossentropy
-            print('binary_crossentropy')
+            # print('binary_crossentropy')
         else:
             run_loss = losses.categorical_crossentropy
-            print('categorical_crossentropy')
+            # print('categorical_crossentropy')
     else:
         raise Exception('Unknown task "{}"'.format(run_task))
 
@@ -197,7 +204,7 @@ def test_network(
         outputs: numpy.ndarray,
         keras_input,
         keras_output,
-        network:NetworkModule,
+        network: NetworkModule,
         run_loss,
         widths
 ) -> dict:
@@ -219,7 +226,6 @@ def test_network(
 
     config['name'] = name
 
-
     log_data = {'config': config}
     run_config = config['run_config']
 
@@ -230,7 +236,6 @@ def test_network(
     config['depth'] = depth
     config['num_hidden'] = max(0, depth - 2)
     config['widths'] = widths
-
 
     log_data = {'config': config}
     run_config = config['run_config']
@@ -263,7 +268,8 @@ def test_network(
 
     gc.collect()
 
-    assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(model), "Wrong number of trainable parameters"
+    assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(
+        model), "Wrong number of trainable parameters"
 
     log_data['num_weights'] = count_trainable_parameters_in_keras_model(model)
     log_data['num_inputs'] = inputs.shape[1]
@@ -278,12 +284,13 @@ def test_network(
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
 
-    #print(keras_input)
-    #print(inputs.shape)
+    # print(keras_input)
+    # print(inputs.shape)
 
     if config["test_split"] > 0:
         ## train/test/val split
-        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
+        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs,
+                                                                                  test_size=config["test_split"])
         ## TODO JP: change the validation_split parameter
     else:
         ## Just train/val split
@@ -314,7 +321,6 @@ def test_network(
     log_data['run_name'] = run_name
 
     return log_data
-    
 
 
 def binary_search_int(objective: Callable[[int], Union[int, float]],
@@ -428,6 +434,7 @@ def get_wide_first_layer_rectangular_other_layers_widths(
 
     return make_layout
 
+
 def widths_factory(topology):
     if topology == 'rectangle':
         return get_rectangular_widths
@@ -439,6 +446,7 @@ def widths_factory(topology):
         return get_wide_first_layer_rectangular_other_layers_widths
     else:
         assert False, 'Topology "{}" not recognized.'.format(topology)
+
 
 pandas.set_option("display.max_rows", None, "display.max_columns", None)
 datasets = pmlb_loader.load_dataset_index()
@@ -457,7 +465,8 @@ datasets = pmlb_loader.load_dataset_index()
 
 
 default_config = {
-    'seed': 42,
+    'mode': 'direct',  # 'list', 'enqueue', ?
+    'seed': None,
     'log': './log',
     'dataset': 'wine_quality_white',
     'test_split': 0,
@@ -482,12 +491,13 @@ default_config = {
         'restore_best_weights': False,
     },
     'run_config': {
-        'validation_split': .2, # This is relative to the training set size.
+        'validation_split': .2,  # This is relative to the training set size.
         'shuffle': True,
         'epochs': 10000,
         'batch_size': 256,
     },
 }
+
 
 # example command line use with slurm:
 # sbatch -n1 -t8:00:00 --gres=gpu:1 ./srundmp.sh dmp.experiment.aspect_test.py "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
@@ -498,7 +508,7 @@ default_config = {
 # conda activate dmp
 # python -u -m dmp.experiment.aspect_test "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
 
-def aspect_test(config:dict) -> dict:
+def aspect_test(config: dict) -> dict:
     """
     Programmatic interface to the main functionality of this module. Run an aspect test for a single configuration and return the result as a dictionary.
     """
@@ -521,8 +531,8 @@ def aspect_test(config:dict) -> dict:
     delta, widths, network = find_best_layout_for_budget_and_depth(
         inputs,
         config['residual_mode'],
-        tensorflow.nn.relu,
-        tensorflow.nn.relu,
+        'relu',
+        'relu',
         output_activation,
         budget,
         widths_factory(topology)(num_outputs, depth),
@@ -530,8 +540,7 @@ def aspect_test(config:dict) -> dict:
     )
 
     config['widths'] = widths
-    reps = config['reps']
-    print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
+    print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(budget, depth, widths, config['rep']))
 
     ## Create Keras model from NetworkModule
     keras_inputs, keras_output = make_model_from_network(network)
@@ -541,14 +550,14 @@ def aspect_test(config:dict) -> dict:
 
     ## Run Keras model on dataset
     run_log = test_network(config, dataset, inputs, outputs, keras_input, keras_output, network, run_loss, widths)
-    
+
     return run_log
 
-def run_multiple_aspect_tests_from_config(config):
+
+def generate_all_tests_from_config(config: {}):
     """
-    Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run. 
+    Generator yielding all test configs specified by a seed config
     """
-    initialize_global_state(config)
 
     for topology in config['topologies']:
         config['topology'] = topology
@@ -558,24 +567,39 @@ def run_multiple_aspect_tests_from_config(config):
                 config['budget'] = budget
                 for depth in config['depths']:
                     config['depth'] = depth
-                    
-                    log_data = aspect_test(config)
-                    write_log(log_data, config['log'])
-                    gc.collect()
+                    for rep in range(config['reps']):
+                        this_config = deepcopy(config)
+                        this_config['rep'] = rep
+                        this_config['mode'] = 'direct'
+                        if this_config['seed'] is None:
+                            this_config['seed'] = random.getrandbits(31)
+                        yield this_config
 
-                    # for rep in range(reps):
-                    #     print('begin rep {}...'.format(rep))
-                    #     this_config = deepcopy(config)
-                    #     this_config['datasetName'] = dataset['Dataset']
-                    #     this_config['datasetRow'] = list(dataset)
-                    #
-                    #     model = make_network_model(dataset, inputs, outputs, widths, residual_mode)
-                    #
-                    #     test_network(config, dataset, inputs, outputs, model)
-                    #     gc.collect()
+
+def run_multiple_aspect_tests_from_config(seed_config: {}):
+    """
+    Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run. 
+    """
+
+    for config in generate_all_tests_from_config(seed_config):
+        log_data = aspect_test(config)
+        write_log(log_data, config['log'])
+        gc.collect()
     print('done.')
+
+
+# Generate full tests:
+# { mode:list, datasets: ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'], 'budgets': [1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20] }
 
 ## Support the python -m runpy interface
 if __name__ == "__main__":
+
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
-    run_multiple_aspect_tests_from_config(config)
+    mode = config['mode']
+    if mode == 'direct':
+        run_multiple_aspect_tests_from_config(config)
+    elif mode == 'list':
+        for this_config in generate_all_tests_from_config(config):
+            print(this_config)
+    else:
+        assert (False)
