@@ -76,5 +76,5 @@ Note, this allows you to first save the output of aspect_test to a local file fo
 Start a jq_runner.py process pointing at the correct queue, and also 
 
 ```
-python -u -m dmp.jq_runner dmp test_tag dmp.experiment.aspect_test
+python -u -m dmp.jq_runner dmp test_tag
 ```
