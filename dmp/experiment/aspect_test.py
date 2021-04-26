@@ -5,6 +5,7 @@ import gc
 import math
 import random
 import sys
+import json
 from copy import deepcopy
 from functools import singledispatchmethod
 from typing import Callable, Union, List, Generator
@@ -584,6 +585,8 @@ def aspect_test(config: dict) -> dict:
     return run_log
 
 
+
+
 def generate_all_tests_from_config(config: {}):
     """
     Generator yielding all test configs specified by a seed config
@@ -600,36 +603,45 @@ def generate_all_tests_from_config(config: {}):
                     for rep in range(config['reps']):
                         this_config = deepcopy(config)
                         this_config['rep'] = rep
-                        this_config['mode'] = 'direct'
+                        this_config['mode'] = 'single'
                         if this_config['seed'] is None:
                             this_config['seed'] = random.getrandbits(31)
                         yield this_config
 
 
-def run_multiple_aspect_tests_from_config(seed_config: {}):
+def run_aspect_test_from_config(seed_config: {}):
     """
     Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run. 
     """
-
-    for config in generate_all_tests_from_config(seed_config):
-        log_data = aspect_test(config)
-        write_log(log_data, config['log'])
-        gc.collect()
+    log_data = aspect_test(config)
+    write_log(log_data, config['log'])
+    gc.collect()
     print('done.')
 
 
 # Generate full tests:
 # { mode:list, datasets: ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'], 'budgets': [1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20] }
 
+# Modes:
+# direct: run multiple aspect tests by iterating through the config and running the test on this machine
+# list: create single configs from an aspect-test config. Meant to be piped into a jobqueue enqueue script
+# single: run a single test from a config that has already been "unpacked", such as the output of "list". Meant to be used from a jobqueue queue runner.
+
 ## Support the python -m runpy interface
 if __name__ == "__main__":
 
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
-    if mode == 'direct':
-        run_multiple_aspect_tests_from_config(config)
+
+    if mode == 'single':
+        run_aspect_test_from_config(config)
+    elif mode == 'direct':
+        for this_config in generate_all_tests_from_config(config):
+            run_aspect_test_from_config(config)
     elif mode == 'list':
         for this_config in generate_all_tests_from_config(config):
-            print(this_config)
+            this_config["jq_module"] = "dmp.experiment.aspect_test" # Full path to this module. Used by the job queue runner
+            json.dump(this_config, sys.stdout)
+            print("") ## newline
     else:
-        assert (False)
+        assert (False), f"Invalid mode {mode}"

@@ -53,6 +53,8 @@ from sqlalchemy import Column, Integer, Text, TIMESTAMP, String
 from sqlalchemy.dialects.postgresql import UUID, JSON, JSONB
 import sqlalchemy
 
+_credentials = None
+_database = "dmp"
 
 Base = declarative_base()
 class _log(Base):
@@ -63,7 +65,16 @@ class _log(Base):
     doc = Column(JSON)
 
 def _connect():
-    connection_string = 'postgresql://jperrsau:@localhost:5432/dmp'
+    global _credentials
+    if _credentials is None:
+        try:
+            filename = os.path.join(os.environ['HOME'], ".jobqueue.json")
+            _data = json.loads(open(filename).read())
+            _credentials = _data[_database]
+            user = _credentials["user"]
+        except KeyError as e:
+            raise Exception("No credetials for {} found in {}".format(_database, filename))
+    connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
     db = sqlalchemy.create_engine(connection_string)  
     engine = db.connect()
     Base.metadata.create_all(engine)  
