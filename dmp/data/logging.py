@@ -60,6 +60,7 @@ Base = declarative_base()
 class _log(Base):
     __tablename__ = 'log'
     id = Column(Integer, primary_key=True)
+    job = Column(String)
     name = Column(String)
     timestamp = Column(TIMESTAMP, server_default=func.now())
     doc = Column(JSON)
@@ -87,10 +88,10 @@ def _close(engine, session):
 
 
 ### Postgres logger
-def write_postgres(run_name, log_data, config):
+def write_postgres(run_name, log_data, job=None):
     engine, session = _connect()
     log_data = json.loads(NpEncoder().encode(log_data))
-    newlog = _log(name=run_name, doc=log_data)
+    newlog = _log(name=run_name, doc=log_data, job=job)
     print('log postgres: committing {}'.format(run_name))
     session.add(newlog) 
     session.commit()
@@ -109,14 +110,14 @@ def read_file(log_file):
         return json.load(f)
 
 ### Generic logger
-def write_log(log_data, config, log_environment=True):
+def write_log(log_data, path="./log", log_environment=True, name=None, job=None):
     _log_data = log_data.copy()
     if log_environment:
         _log_data.setdefault("environment", {}).update(get_environment())
-    if config[:8] == 'postgres':
-        write_postgres(_log_data['run_name'], _log_data, config)
+    if path[:8] == 'postgres':
+        write_postgres(name, _log_data, job=job)
     else:
-        write_file(_log_data['run_name'], _log_data, config)
+        write_file(name, _log_data, path)
 
 import subprocess, os, platform, datetime
 

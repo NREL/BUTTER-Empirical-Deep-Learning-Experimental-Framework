@@ -12,13 +12,15 @@ from typing import Callable, Union, List, Generator
 
 import numpy
 import pandas
-import tensorflow
 from sklearn.model_selection import train_test_split
+
+import tensorflow
 from tensorflow.keras import (
     callbacks,
     metrics,
     optimizers,
 )
+
 from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
@@ -525,6 +527,7 @@ default_config = {
         'shuffle': True,
         'epochs': 10000,
         'batch_size': 256,
+        'verbose': 0,
     },
 }
 
@@ -609,7 +612,7 @@ def generate_all_tests_from_config(config: {}):
                         yield this_config
 
 
-def run_aspect_test_from_config(seed_config: {}):
+def run_aspect_test_from_config(config: {}):
     """
     Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run. 
     """
@@ -637,7 +640,8 @@ if __name__ == "__main__":
         run_aspect_test_from_config(config)
     elif mode == 'direct':
         for this_config in generate_all_tests_from_config(config):
-            run_aspect_test_from_config(config)
+            print(this_config)
+            run_aspect_test_from_config(this_config)
     elif mode == 'list':
         for this_config in generate_all_tests_from_config(config):
             this_config["jq_module"] = "dmp.experiment.aspect_test" # Full path to this module. Used by the job queue runner
