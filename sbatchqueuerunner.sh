@@ -29,4 +29,4 @@ unset LD_PRELOAD
 #cd /projects/dmpapps/ctripp/src
 
 # Launch the dmp queue runner
-srun python -u -m dmp.jq_runner dmp ${1}
+srun python -u -m dmp.jq_runner ${1} ${2}

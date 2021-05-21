@@ -109,7 +109,13 @@ cat log/jordan_eagle_1.jobs | python -u -m dmp.jq_enqueue dmp jordan_eagle_1
 
 Queue runner in sbatch
 ```
- sbatch sbatchqueuerunner.sh jordan_eagle_1
+ sbatch sbatchqueuerunner.sh dmp jordan_eagle_1
+```
+
+Slurm nanny with Python (use Login node as nanny)
+```
+ screen
+ python jq_slurm.py dmp jordan_eagle_1
 ```
 
 Monitor job progress using the database
@@ -117,4 +123,8 @@ Monitor job progress using the database
 SELECT * FROM jobqueue WHERE groupname='jordan_eagle_1' AND START_TIME IS NOT NULL;
 ```
 
- 
+Monitor SLURM jobs
+```
+squeue -u username
+scancel jobid
+```

@@ -24,17 +24,16 @@ if __name__ == "__main__":
 
     while True:
 
+        jq.reset_incomplete_jobs()
+        
         messages = jq.messages
-        print("Jobs remaining: {}".format(messgaes))
+        print("Jobs remaining: {}".format(messages))
         if messages == 0:
             break
 
         print("Starting new SLURM Job.")
-        result = subprocess.call(["sbatch", "--wait", "squeuebatchrunner.sh", args.project, args.tag])
-        
+        result = subprocess.call(["sbatch", "--wait", "sbatchqueuerunner.sh", args.project, args.tag])
         # blocks until slurm job is done
-
-        jq.reset_incomplete_jobs()
 
     print("Done.")
 
