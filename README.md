@@ -115,7 +115,8 @@ Queue runner in sbatch
 Slurm nanny with Python (use Login node as nanny)
 ```
  screen
- python jq_slurm.py dmp jordan_eagle_1
+ conda activate dmp
+ python dmp/jq_slurm.py dmp jordan_eagle_1
 ```
 
 Monitor job progress using the database

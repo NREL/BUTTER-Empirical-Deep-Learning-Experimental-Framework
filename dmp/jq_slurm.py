@@ -24,8 +24,10 @@ if __name__ == "__main__":
 
     while True:
 
-        jq.reset_incomplete_jobs()
-        
+        # if arg.re_enqueue_failed_jobs:
+        # jq.reset_incomplete_jobs() # We could remove this. If it's left in, jobs that take longer than the slurm max time will never finish.
+                                   # jobs that fail many times
+                                   # jobs that hang
         messages = jq.messages
         print("Jobs remaining: {}".format(messages))
         if messages == 0:
