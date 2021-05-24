@@ -15,3 +15,7 @@ log
 *.pyc
 *.ipynb_checkpoints
 *.pmlb_cache
+
+admp
+
+slurm-*

@@ -10,16 +10,7 @@
 #SBATCH --cpu-freq=high-high:Performance
 
 # Eagle Modules
-module purge
-module use /nopt/nrel/apps/modules/centos74/modulefiles/
-module load gcc/7.4.0
-module load cuda/10.0.130
-module load cudnn/7.4.2/cuda-10.0
-module load conda
-
-# Conda
-source ~/.bashrc
-conda activate dmp
+source ./admp
 unset LD_PRELOAD
 
 # Extra Stuff
