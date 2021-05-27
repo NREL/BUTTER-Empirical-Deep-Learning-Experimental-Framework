@@ -1,10 +1,13 @@
 """
 
 """
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import gc
 import json
 import math
-import os
+
 import sys
 from copy import deepcopy
 from functools import singledispatchmethod
@@ -39,13 +42,13 @@ from dmp.data.logging import write_log
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
     count = 0
     for var in model.trainable_variables:
-        print('ctp {}'.format(var.get_shape()))
+        # print('ctp {}'.format(var.get_shape()))
         acc = 1
         for dim in var.get_shape():
             acc *= int(dim)
-        print('ctp acc {}'.format(acc))
+        # print('ctp acc {}'.format(acc))
         count += acc
-    print('ctp total {}'.format(count))
+    # print('ctp total {}'.format(count))
     return count
 
 
@@ -107,7 +110,7 @@ def make_network(
         else:
             raise Exception('Unknown residual mode "{}".'.format(residual_mode))
 
-        print('d {} w {} in {}'.format(d, layer_width, num_inputs))
+        # print('d {} w {} in {}'.format(d, layer_width, num_inputs))
         #layers.append(layer)
         current = layer
 
@@ -172,15 +175,15 @@ def compute_network_configuration(dataset) -> (any, any):
     if run_task == 'regression':
         run_loss = losses.mean_squared_error
         output_activation = tensorflow.nn.sigmoid
-        print('mean_squared_error')
+        # print('mean_squared_error')
     elif run_task == 'classification':
         output_activation = tensorflow.nn.softmax
         if num_outputs == 1:
             run_loss = losses.binary_crossentropy
-            print('binary_crossentropy')
+            # print('binary_crossentropy')
         else:
             run_loss = losses.categorical_crossentropy
-            print('categorical_crossentropy')
+            # print('categorical_crossentropy')
     else:
         raise Exception('Unknown task "{}"'.format(run_task))
 
@@ -376,6 +379,7 @@ def test_network(
     history_callback = model.fit(
         x=inputs,
         y=outputs,
+        verbose = 0,
         callbacks=run_callbacks,
         **run_config,
     )
