@@ -53,17 +53,29 @@ from sqlalchemy import Column, Integer, Text, TIMESTAMP, String
 from sqlalchemy.dialects.postgresql import UUID, JSON, JSONB
 import sqlalchemy
 
+_credentials = None
+_database = "dmp"
 
 Base = declarative_base()
 class _log(Base):
     __tablename__ = 'log'
     id = Column(Integer, primary_key=True)
+    job = Column(String)
     name = Column(String)
     timestamp = Column(TIMESTAMP, server_default=func.now())
     doc = Column(JSON)
 
 def _connect():
-    connection_string = 'postgresql://jperrsau:@localhost:5432/dmp'
+    global _credentials
+    if _credentials is None:
+        try:
+            filename = os.path.join(os.environ['HOME'], ".jobqueue.json")
+            _data = json.loads(open(filename).read())
+            _credentials = _data[_database]
+            user = _credentials["user"]
+        except KeyError as e:
+            raise Exception("No credetials for {} found in {}".format(_database, filename))
+    connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
     db = sqlalchemy.create_engine(connection_string)  
     engine = db.connect()
     Base.metadata.create_all(engine)  
@@ -76,10 +88,10 @@ def _close(engine, session):
 
 
 ### Postgres logger
-def write_postgres(run_name, log_data, config):
+def write_postgres(run_name, log_data, job=None):
     engine, session = _connect()
     log_data = json.loads(NpEncoder().encode(log_data))
-    newlog = _log(name=run_name, doc=log_data)
+    newlog = _log(name=run_name, doc=log_data, job=job)
     print('log postgres: committing {}'.format(run_name))
     session.add(newlog) 
     session.commit()
@@ -93,9 +105,35 @@ def write_file(run_name, log_data, log_path="./log"):
     with open(log_file, 'w', encoding='utf-8') as f:
         json.dump(log_data, f, ensure_ascii=False, indent=2, sort_keys=True, cls=NpEncoder)
 
+def read_file(log_file):
+    with open(log_file, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
 ### Generic logger
-def write_log(log_data, config):
-    if config[:8] == 'postgres':
-        write_postgres(log_data['run_name'], log_data, config)
+def write_log(log_data, path="./log", log_environment=True, name=None, job=None):
+    _log_data = log_data.copy()
+    if log_environment:
+        _log_data.setdefault("environment", {}).update(get_environment())
+    if path[:8] == 'postgres':
+        write_postgres(name, _log_data, job=job)
     else:
-        write_file(log_data['run_name'], log_data, config)
+        write_file(name, _log_data, path)
+
+import subprocess, os, platform, datetime
+
+
+def get_environment():
+    env = {}
+    # git version
+    try:
+        file_dir = os.path.dirname(__file__)
+        env["git_hash"] = subprocess.check_output(["git", "describe", "--always"], cwd=file_dir).strip().decode()
+    except Exception as e:
+        print("Caught exception while retrieving git hash: "+str(e))
+    env["timestamp"] = datetime.datetime.now().isoformat()
+    env["hostname"] = platform.node()
+    env["platform"] = platform.platform()
+    env["python_version"] = platform.python_version()
+    return env
+
+
