@@ -2,6 +2,7 @@
 
 """
 import gc
+import json
 import math
 import random
 import sys
@@ -297,7 +298,7 @@ def test_network(
         ## train/test/val split
         inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
         run_config["validation_split"] = run_config["validation_split"]/(1-config["test_split"])
-        
+
         ## Set up a custom callback to record test loss at each epoch
         ## This could potentially cause performance issues with large datasets on GPU
         class TestHistory(Callback):
@@ -325,6 +326,7 @@ def test_network(
         x=inputs_train,
         y=outputs_train,
         callbacks=run_callbacks,
+        verbose=0,
         **run_config,
     )
 
@@ -614,7 +616,7 @@ def generate_all_tests_from_config(config: {}):
 
 def run_aspect_test_from_config(config: {}):
     """
-    Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run. 
+    Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run.
     """
     log_data = aspect_test(config)
     write_log(log_data, config['log'])
