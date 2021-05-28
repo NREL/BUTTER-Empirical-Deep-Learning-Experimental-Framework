@@ -4,21 +4,26 @@
 import gc
 import json
 import math
-import os
+import random
 import sys
+import json
 from copy import deepcopy
 from functools import singledispatchmethod
-from typing import Callable, Union, List
+from typing import Callable, Union, List, Generator
 
 import numpy
 import pandas
+from sklearn.model_selection import train_test_split
+
 import tensorflow
 from tensorflow.keras import (
     callbacks,
     metrics,
     optimizers,
 )
+
 from tensorflow.python.keras import losses, Input
+from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
 
@@ -26,53 +31,58 @@ from command_line_tools import (
     command_line_config,
     run_tools,
 )
+from dmp.data.logging import write_log
 from dmp.data.pmlb import pmlb_loader
 from dmp.data.pmlb.pmlb_loader import load_dataset
+from dmp.experiment.structure.algorithm.network_json_serializer import NetworkJSONSerializer
 from dmp.experiment.structure.n_add import NAdd
-from dmp.experiment.structure.n_fully_connected_layer import NFullyConnectedLayer
+from dmp.experiment.structure.n_dense import NDense
 from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
-from dmp.data.logging import write_log
-
 
 
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
     count = 0
     for var in model.trainable_variables:
-        print('ctp {}'.format(var.get_shape()))
+        # print('ctp {}'.format(var.get_shape()))
         acc = 1
         for dim in var.get_shape():
             acc *= int(dim)
-        print('ctp acc {}'.format(acc))
+        # print('ctp acc {}'.format(acc))
         count += acc
-    print('ctp total {}'.format(count))
+    # print('ctp total {}'.format(count))
     return count
 
 
-class GetNumFreeParameters:
-    """
-    Visitor that counts the number of free (trainable) parameters in a NetworkModule
-    """
-
-    @singledispatchmethod
-    def visit(self, target) -> any:
-        raise Exception('Unsupported module of type "{}".'.format(type(target)))
-
-    @visit.register
-    def _(self, target: NInput) -> int:
-        return 0
-
-    @visit.register
-    def _(self, target: NFullyConnectedLayer) -> int:
-        return (sum((i.size for i in target.inputs)) + 1) * target.size
-
-    @visit.register
-    def _(self, target: NAdd) -> int:
-        return 0
-
-# TODO JP: Won't this function overcount free parameters in the case where a layer has two descencents? Why not use keras.model.count_params()
 def count_num_free_parameters(target: NetworkModule) -> int:
-    return GetNumFreeParameters().visit(target) + sum((count_num_free_parameters(i) for i in target.inputs))
+    def build_set_of_modules(target: NetworkModule) -> set:
+        cache = {target}
+        cache.update(*map(build_set_of_modules, target.inputs))
+        return cache
+
+    class GetNumFreeParameters:
+        """
+        Visitor that counts the number of free (trainable) parameters in a NetworkModule
+        """
+
+        @singledispatchmethod
+        def visit(self, target) -> any:
+            raise Exception('Unsupported module of type "{}".'.format(type(target)))
+
+        @visit.register
+        def _(self, target: NInput) -> int:
+            return 0
+
+        @visit.register
+        def _(self, target: NDense) -> int:
+            return (sum((i.size for i in target.inputs)) + 1) * target.size
+
+        @visit.register
+        def _(self, target: NAdd) -> int:
+            return 0
+
+    return sum((GetNumFreeParameters().visit(i) for i in build_set_of_modules(target)))
+
 
 def make_network(
         inputs: numpy.ndarray,
@@ -81,213 +91,121 @@ def make_network(
         input_activation,
         internal_activation,
         output_activation,
+        depth,
+        topology
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput((), inputs.shape[1:])
+    input_layer = NInput(label = 0,
+                         inputs = [],
+                         shape = list(inputs.shape[1:]))
     current = input_layer
-    #layers = []
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d in range(depth):
         layer_width = widths[d]
 
+        # Activation functions may be different for input, output, and hidden layers
         activation = internal_activation
         if d == 0:
             activation = input_activation
         elif d == depth - 1:
             activation = output_activation
 
-        layer = NFullyConnectedLayer((current,), (layer_width,), activation)
+        # Fully connected layer
+        layer = NDense(label = 0,
+                       inputs = [current, ],
+                       shape = [layer_width, ],
+                       activation = activation)
 
-        if residual_mode == 'none':
-            pass
-        elif residual_mode == 'full':
-            if d > 0 and d < depth-1: # output layer could be of different dimension
-                layer = NAdd((layer, current)) ## TODO JP: Only works for rectangle
-        else:
-            raise Exception('Unknown residual mode "{}".'.format(residual_mode))
+        # Skip connections for residual modes
+        assert residual_mode in ['full', 'none'], f"Invalid residual mode {residual_mode}"
+        if residual_mode == 'full':
+            assert topology in ['rectangular', 'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
 
-        print('d {} w {} in {}'.format(d, layer_width, num_inputs))
-        #layers.append(layer)
+            # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
+            first_residual_layer = 1 if topology == "wide_first" else 0
+            # Output layer is assumed to be of a different dimension, and will therefore not directly receive skip connections
+            last_residual_layer = depth-1
+            if d > first_residual_layer and d < last_residual_layer:
+                layer = NAdd(label = 0,
+                             inputs = [layer, current],
+                             shape = layer.shape.copy())  ## TODO JP: Only works for rectangle
+
         current = layer
 
     return current
 
 
-class MakeModelFromNetwork:
+def make_model_from_network(target: NetworkModule, model_cache: dict = {}) -> ([any], any):
     """
-    Visitor that makes a keras module for a given network module and input keras modules
+    Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
+    :param target: starting point module
+    :param model_cache: optional, used internally to preserve information through recursive calls
+    :return: a list of input keras modules to the network and the output keras module
     """
 
-    def __init__(self):
-        self.model_cache = {}
-
-    def make_model_from_network(self, target: NetworkModule) -> ([any], any):
+    class MakeModelFromNetwork:
         """
-        Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
-        :param target: starting point module
-        :return: a list of input keras modules to the network and the output keras module
+        Visitor that makes a keras module for a given network module and input keras modules
         """
-        network_inputs = {}  ## JP: Implemented network_inputs as a hash table, since we can accumulate multiple copies of a single input if the tree has objects with multiple inputs
-        keras_inputs = [] # inputs to this particular layer, not whole network
 
-        for i in target.inputs:
-            if i not in self.model_cache.keys():
-                self.model_cache[i] = self.make_model_from_network(i)
-            i_network_inputs, i_keras_module = self.model_cache[i]
-            for new_input in i_network_inputs:
-                network_inputs[new_input.ref()] = new_input
-            keras_inputs.append(i_keras_module)
+        @singledispatchmethod
+        def visit(self, target, inputs: []) -> any:
+            raise Exception('Unsupported module of type "{}".'.format(type(target)))
 
-        keras_module, is_input = self.visit(target, keras_inputs)
+        @visit.register
+        def _(self, target: NInput, inputs: []) -> any:
+            return Input(shape=target.shape), True
 
-        if is_input:
-            network_inputs[keras_module.ref()] = keras_module
-        
-        return list(network_inputs.values()), keras_module
+        @visit.register
+        def _(self, target: NDense, inputs: []) -> any:
+            return Dense(
+                target.shape[0],
+                activation=target.activation,
+            )(*inputs), False
 
-    @singledispatchmethod
-    def visit(self, target, inputs: []) -> any:
-        raise Exception('Unsupported module of type "{}".'.format(type(target)))
+        @visit.register
+        def _(self, target: NAdd, inputs: []) -> any:
+            return tensorflow.keras.layers.add(inputs), False
 
-    @visit.register
-    def _(self, target: NInput, inputs: []) -> any:
-        return Input(shape=target.shape), True 
+    network_inputs = {}
+    keras_inputs = []
 
-    @visit.register
-    def _(self, target: NFullyConnectedLayer, inputs: []) -> any:
-        return Dense(
-            target.shape[0],
-            activation=target.activation,
-        )(*inputs), False
+    for i in target.inputs:
+        if i not in model_cache.keys():
+            model_cache[i] = make_model_from_network(i, model_cache)
+        i_network_inputs, i_keras_module = model_cache[i]
+        for new_input in i_network_inputs:
+            network_inputs[new_input.ref()] = new_input
+        keras_inputs.append(i_keras_module)
 
-    @visit.register
-    def _(self, target: NAdd, inputs: []) -> any:
-        return tensorflow.keras.layers.add(inputs), False
+    keras_module, is_input = MakeModelFromNetwork().visit(target, keras_inputs)
+
+    if is_input:
+        network_inputs[keras_module.ref()] = keras_module
+
+    return list(network_inputs.values()), keras_module
 
 
-def compute_network_configuration(dataset) -> (any, any):
-    output_activation = tensorflow.nn.relu
+def compute_network_configuration(num_outputs, dataset) -> (any, any):
+    output_activation = 'relu'
     run_task = dataset['Task']
     if run_task == 'regression':
         run_loss = losses.mean_squared_error
-        output_activation = tensorflow.nn.sigmoid
-        print('mean_squared_error')
+        output_activation = 'sigmoid'
+        # print('mean_squared_error')
     elif run_task == 'classification':
-        output_activation = tensorflow.nn.softmax
+        output_activation = 'softmax'
         if num_outputs == 1:
             run_loss = losses.binary_crossentropy
-            print('binary_crossentropy')
+            # print('binary_crossentropy')
         else:
             run_loss = losses.categorical_crossentropy
-            print('categorical_crossentropy')
+            # print('categorical_crossentropy')
     else:
         raise Exception('Unknown task "{}"'.format(run_task))
 
     return output_activation, run_loss
-
-
-# def make_model_from_network_old(
-#         dataset,
-#         inputs: numpy.ndarray,
-#         outputs: numpy.ndarray,
-#         network: NetworkModule,
-#         residual_mode: str,
-# ) -> Model:
-#     num_inputs = inputs.shape[1]
-#     num_outputs = outputs.shape[1]
-#
-#     run_optimizer = optimizers.Adam(0.001)
-#     run_metrics = [
-#         # metrics.CategoricalAccuracy(),
-#         'accuracy',
-#         metrics.CosineSimilarity(),
-#         metrics.Hinge(),
-#         metrics.KLDivergence(),
-#         metrics.MeanAbsoluteError(),
-#         metrics.MeanSquaredError(),
-#         metrics.MeanSquaredLogarithmicError(),
-#         metrics.RootMeanSquaredError(),
-#         metrics.SquaredHinge(),
-#     ]
-#
-#     print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
-#     # print(inputs[0, :])
-#     # print(outputs[0, :])
-#
-#     run_loss = losses.mean_squared_error
-#     output_activation = tensorflow.nn.relu
-#     run_task = dataset['Task']
-#     if run_task == 'regression':
-#         run_loss = losses.mean_squared_error
-#         output_activation = tensorflow.nn.sigmoid
-#         print('mean_squared_error')
-#     elif run_task == 'classification':
-#         output_activation = tensorflow.nn.softmax
-#         if num_outputs == 1:
-#             run_loss = losses.binary_crossentropy
-#             print('binary_crossentropy')
-#         else:
-#             run_loss = losses.categorical_crossentropy
-#             print('categorical_crossentropy')
-#     else:
-#         raise Exception('Unknown task "{}"'.format(run_task))
-#
-#     input_layer = Input(shape=(num_inputs,))
-#     previous = input_layer
-#     layers = []
-#     for d in range(depth):
-#         layer_width = widths[d]
-#
-#         if d == depth - 1:
-#             # output layer
-#             activation = output_activation
-#         else:
-#             activation = tensorflow.nn.relu
-#
-#         layer = None
-#         if d == 0:
-#             # input layer
-#             layer = tensorflow.keras.layers.Dense(
-#                 layer_width,
-#                 activation=activation,
-#                 # input_shape=(num_inputs,)
-#             )(previous)
-#
-#         else:
-#             if residual_mode == 'none':
-#                 layer = tensorflow.keras.layers.Dense(
-#                     layer_width,
-#                     activation=activation,
-#                 )()
-#             elif residual_mode == 'full':
-#                 layer = tensorflow.keras.layers.Dense(
-#                     layer_width,
-#                     activation=activation,
-#                 )(previous)
-#                 layer = Add()(previous, layer)
-#             else:
-#                 raise Exception('Unknown residual mode "{}".'.format(residual_mode))
-#
-#         print('d {} w {} in {}'.format(d, layer_width, num_inputs))
-#         layers.append(layer)
-#         previous = layer
-#
-#     # model = Sequential(layers)
-#     model = Model(inputs=input_layer, outputs=layers[-1])
-#     # model.compile(
-#     #     # loss='binary_crossentropy', # binary classification
-#     #     # loss='categorical_crossentropy', # categorical classification (one hot)
-#     #     loss=run_loss,  # regression
-#     #     optimizer=run_optimizer,
-#     #     # optimizer='rmsprop',
-#     #     # metrics=['accuracy'],
-#     #     metrics=run_metrics,
-#     # )
-#
-#     # count_trainable_parameters(model)
-#     return model
-
 
 def test_network(
         config: {},
@@ -296,7 +214,10 @@ def test_network(
         outputs: numpy.ndarray,
         keras_input,
         keras_output,
-) -> None:
+        network: NetworkModule,
+        run_loss,
+        widths
+) -> dict:
     """
     test_network
 
@@ -315,9 +236,7 @@ def test_network(
 
     config['name'] = name
 
-
     log_data = {'config': config}
-    run_config = config['run_config']
 
     run_name = run_tools.get_run_name(config)
     config['run_name'] = run_name
@@ -327,11 +246,9 @@ def test_network(
     config['num_hidden'] = max(0, depth - 2)
     config['widths'] = widths
 
-
     log_data = {'config': config}
-    run_config = config['run_config']
 
-    run_optimizer = optimizers.Adam(0.001) ## Why isn't this tuned?
+    run_optimizer = optimizers.get(config['optimizer'])
     run_metrics = [
         # metrics.CategoricalAccuracy(),
         'accuracy',
@@ -345,6 +262,8 @@ def test_network(
         metrics.SquaredHinge(),
     ]
     model = Model(inputs=keras_input, outputs=keras_output)
+
+    ## TODO: Would holding off on this step obviate the need for NetworkModule?
     model.compile(
         # loss='binary_crossentropy', # binary classification
         # loss='categorical_crossentropy', # categorical classification (one hot)
@@ -357,12 +276,15 @@ def test_network(
 
     gc.collect()
 
+    assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(
+        model), "Wrong number of trainable parameters"
+
     log_data['num_weights'] = count_trainable_parameters_in_keras_model(model)
-    log_data['num_inputs'] = num_inputs
+    log_data['num_inputs'] = inputs.shape[1]
     log_data['num_features'] = dataset['n_features']
     log_data['num_classes'] = dataset['n_classes']
-    log_data['num_outputs'] = num_outputs
-    log_data['num_observations'] = num_observations
+    log_data['num_outputs'] = outputs.shape[1]
+    log_data['num_observations'] = inputs.shape[0]
     log_data['task'] = dataset['Task']
     log_data['endpoint'] = dataset['Endpoint']
 
@@ -370,13 +292,41 @@ def test_network(
         callbacks.EarlyStopping(**config['early_stopping']),
     ]
 
-    print(keras_input)
-    print(inputs.shape)
+    run_config = config['run_config'].copy()
 
+    if config["test_split"] > 0:
+        ## train/test/val split
+        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
+        run_config["validation_split"] = run_config["validation_split"]/(1-config["test_split"])
+
+        ## Set up a custom callback to record test loss at each epoch
+        ## This could potentially cause performance issues with large datasets on GPU
+        class TestHistory(Callback):
+            def __init__(self,x_test,y_test):
+                self.x_test = x_test
+                self.y_test = y_test
+
+            def on_train_begin(self, logs={}):
+                self.history = {}
+
+            def on_epoch_end(self, epoch, logs=None):
+                eval_log = self.model.evaluate(x=self.x_test, y=self.y_test, return_dict=True)
+                for k, v in eval_log.items():
+                    k = "test_"+k
+                    self.history.setdefault(k, []).append(v)
+
+        test_history_callback = TestHistory(inputs_test, outputs_test)
+        run_callbacks.append(test_history_callback)
+    else:
+        ## Just train/val split
+        inputs_train, outputs_train = inputs, outputs
+
+    # TRAINING
     history_callback = model.fit(
-        x=inputs,
-        y=outputs,
+        x=inputs_train,
+        y=outputs_train,
         callbacks=run_callbacks,
+        verbose=0,
         **run_config,
     )
 
@@ -390,10 +340,19 @@ def test_network(
     log_data['val_loss'] = validation_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
 
+    if config["test_split"] > 0:
+        ## Record the history of test evals from the callback
+        log_data['history'].update(test_history_callback.history)
+        test_losses = numpy.array(history['test_loss'])
+        log_data['test_loss'] = test_losses[best_index]
+
     log_data['run_name'] = run_name
 
-    write_log(log_data, config['log'])
-    
+    log_data['environment'] = {
+        "tensorflow_version": tensorflow.__version__,
+    }
+
+    return log_data
 
 
 def binary_search_int(objective: Callable[[int], Union[int, float]],
@@ -422,13 +381,13 @@ def binary_search_int(objective: Callable[[int], Union[int, float]],
     return candidate, False
 
 
-def count_fully_connected_parameters(widths: [int]) -> int:
-    depth = len(widths)
-    p = (num_inputs + 1) * widths[0]
-    if depth > 1:
-        for k in range(1, depth):
-            p += (widths[k - 1] + 1) * widths[k]
-    return p
+# def count_fully_connected_parameters(widths: [int]) -> int:
+#     depth = len(widths)
+#     p = (num_inputs + 1) * widths[0]
+#     if depth > 1:
+#         for k in range(1, depth):
+#             p += (widths[k - 1] + 1) * widths[k]
+#     return p
 
 
 def find_best_layout_for_budget_and_depth(
@@ -439,6 +398,8 @@ def find_best_layout_for_budget_and_depth(
         output_activation,
         budget,
         make_widths: Callable[[int], List[int]],
+        depth,
+        topology
 ) -> (int, [int], NetworkModule):
     best = (math.inf, None, None)
 
@@ -451,6 +412,8 @@ def find_best_layout_for_budget_and_depth(
                                input_activation,
                                internal_activation,
                                output_activation,
+                               depth,
+                               topology
                                )
         delta = count_num_free_parameters(network) - budget
 
@@ -506,6 +469,19 @@ def get_wide_first_layer_rectangular_other_layers_widths(
     return make_layout
 
 
+def widths_factory(topology):
+    if topology == 'rectangle':
+        return get_rectangular_widths
+    elif topology == 'trapezoid':
+        return get_trapezoidal_widths
+    elif topology == 'exponential':
+        return get_exponential_widths
+    elif topology == 'wide_first':
+        return get_wide_first_layer_rectangular_other_layers_widths
+    else:
+        assert False, 'Topology "{}" not recognized.'.format(topology)
+
+
 pandas.set_option("display.max_rows", None, "display.max_columns", None)
 datasets = pmlb_loader.load_dataset_index()
 
@@ -523,9 +499,16 @@ datasets = pmlb_loader.load_dataset_index()
 
 
 default_config = {
+    'mode': 'direct',  # 'list', 'enqueue', ?
+    'seed': None,
     'log': './log',
     'dataset': 'wine_quality_white',
+    'test_split': 0,
     'activation': 'relu',
+    'optimizer': {
+        "class_name": "adam",
+        "config": {"learning_rate": 0.001},
+    },
     'topologies': ['exponential'],
     'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                 8388608, 16777216, 33554432],
@@ -542,13 +525,14 @@ default_config = {
         'restore_best_weights': False,
     },
     'run_config': {
-        'validation_split': .2,
+        'validation_split': .2,  # This is relative to the training set size.
         'shuffle': True,
         'epochs': 10000,
         'batch_size': 256,
         'verbose': 0,
     },
 }
+
 
 # example command line use with slurm:
 # sbatch -n1 -t8:00:00 --gres=gpu:1 ./srundmp.sh dmp.experiment.aspect_test.py "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
@@ -559,69 +543,111 @@ default_config = {
 # conda activate dmp
 # python -u -m dmp.experiment.aspect_test "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
 
-config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
+def aspect_test(config: dict) -> dict:
+    """
+    Programmatic interface to the main functionality of this module. Run an aspect test for a single configuration and return the result as a dictionary.
+    """
 
-dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
-gc.collect()
+    numpy.random.seed(config["seed"])
+    tensorflow.random.set_seed(config["seed"])
 
-num_observations = inputs.shape[0]
-num_inputs = inputs.shape[1]
-num_outputs = outputs.shape[1]
+    ## Load dataset
+    dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
 
-for topology in config['topologies']:
-    config['topology'] = topology
-    for residual_mode in config['residual_modes']:
-        config['residual_mode'] = residual_mode
-        for budget in config['budgets']:
-            config['budget'] = budget
-            for depth in config['depths']:
-                config['depth'] = depth
+    num_outputs = outputs.shape[1]
+    topology = config['topology']
+    depth = config['depth']
+    budget = config['budget']
 
-                widths_factory = None
-                if topology == 'rectangle':
-                    widths_factory = get_rectangular_widths
-                elif topology == 'trapezoid':
-                    widths_factory = get_trapezoidal_widths
-                elif topology == 'exponential':
-                    widths_factory = get_exponential_widths
-                elif topology == 'wide_first':
-                    widths_factory = get_wide_first_layer_rectangular_other_layers_widths
-                else:
-                    assert False, 'Topology "{}" not recognized.'.format(topology)
+    ## Network configuration
+    output_activation, run_loss = compute_network_configuration(num_outputs, dataset)
 
-                output_activation, run_loss = compute_network_configuration(dataset)
-                delta, widths, network = find_best_layout_for_budget_and_depth(
-                    inputs,
-                    residual_mode,
-                    tensorflow.nn.relu,
-                    tensorflow.nn.relu,
-                    output_activation,
-                    budget,
-                    widths_factory(num_outputs, depth))
-                config['widths'] = widths
-                reps = config['reps']
+    ## Build NetworkModule network
+    delta, widths, network = find_best_layout_for_budget_and_depth(
+        inputs,
+        config['residual_mode'],
+        'relu',
+        'relu',
+        output_activation,
+        budget,
+        widths_factory(topology)(num_outputs, depth),
+        depth,
+        config['topology']
+    )
 
-                print('begin reps: budget: {}, depth: {}, widths: {}, reps: {}'.format(budget, depth, widths, reps))
+    config['widths'] = widths
+    print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(budget, depth, widths, config['rep']))
 
-                keras_inputs, keras_output = MakeModelFromNetwork().make_model_from_network(network)
+    ## Create Keras model from NetworkModule
+    keras_inputs, keras_output = make_model_from_network(network)
 
-                print(keras_inputs)
-                assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
-                keras_input = keras_inputs[0]
+    assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
+    keras_input = keras_inputs[0]
 
-                test_network(config, dataset, inputs, outputs, keras_input, keras_output)
+    ## Run Keras model on dataset
+    run_log = test_network(config, dataset, inputs, outputs, keras_input, keras_output, network, run_loss, widths)
 
-                gc.collect()
+    return run_log
 
-                # for rep in range(reps):
-                #     print('begin rep {}...'.format(rep))
-                #     this_config = deepcopy(config)
-                #     this_config['datasetName'] = dataset['Dataset']
-                #     this_config['datasetRow'] = list(dataset)
-                #
-                #     model = make_network_model(dataset, inputs, outputs, widths, residual_mode)
-                #
-                #     test_network(config, dataset, inputs, outputs, model)
-                #     gc.collect()
 
-print('done.')
+
+
+def generate_all_tests_from_config(config: {}):
+    """
+    Generator yielding all test configs specified by a seed config
+    """
+
+    for topology in config['topologies']:
+        config['topology'] = topology
+        for residual_mode in config['residual_modes']:
+            config['residual_mode'] = residual_mode
+            for budget in config['budgets']:
+                config['budget'] = budget
+                for depth in config['depths']:
+                    config['depth'] = depth
+                    for rep in range(config['reps']):
+                        this_config = deepcopy(config)
+                        this_config['rep'] = rep
+                        this_config['mode'] = 'single'
+                        if this_config['seed'] is None:
+                            this_config['seed'] = random.getrandbits(31)
+                        yield this_config
+
+
+def run_aspect_test_from_config(config: {}):
+    """
+    Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run.
+    """
+    log_data = aspect_test(config)
+    write_log(log_data, config['log'])
+    gc.collect()
+    print('done.')
+
+
+# Generate full tests:
+# { mode:list, datasets: ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'], 'budgets': [1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20] }
+
+# Modes:
+# direct: run multiple aspect tests by iterating through the config and running the test on this machine
+# list: create single configs from an aspect-test config. Meant to be piped into a jobqueue enqueue script
+# single: run a single test from a config that has already been "unpacked", such as the output of "list". Meant to be used from a jobqueue queue runner.
+
+## Support the python -m runpy interface
+if __name__ == "__main__":
+
+    config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
+    mode = config['mode']
+
+    if mode == 'single':
+        run_aspect_test_from_config(config)
+    elif mode == 'direct':
+        for this_config in generate_all_tests_from_config(config):
+            print(this_config)
+            run_aspect_test_from_config(this_config)
+    elif mode == 'list':
+        for this_config in generate_all_tests_from_config(config):
+            this_config["jq_module"] = "dmp.experiment.aspect_test" # Full path to this module. Used by the job queue runner
+            json.dump(this_config, sys.stdout)
+            print("") ## newline
+    else:
+        assert (False), f"Invalid mode {mode}"
