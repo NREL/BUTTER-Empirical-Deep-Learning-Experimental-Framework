@@ -326,7 +326,6 @@ def test_network(
         x=inputs_train,
         y=outputs_train,
         callbacks=run_callbacks,
-        verbose=0,
         **run_config,
     )
 
