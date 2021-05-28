@@ -11,7 +11,6 @@ class NetworkJSONDeserializer:
 
     def __init__(self, serialized: str) -> None:
         raw_vertices: [{}] = json.loads(serialized)
-        print(f'raw: "{raw_vertices}"')
         vertices: [NetworkModule] = [self._make_module(raw_vertex) for raw_vertex in raw_vertices]
         for vertex in vertices:
             vertex.inputs = [vertices[index] for index in vertex.inputs]
