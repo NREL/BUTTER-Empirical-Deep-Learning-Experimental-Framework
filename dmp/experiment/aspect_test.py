@@ -546,6 +546,7 @@ default_config = {
         'shuffle': True,
         'epochs': 10000,
         'batch_size': 256,
+        'verbose': 0,
     },
 }
 
