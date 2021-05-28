@@ -4,6 +4,8 @@
 __pycache__
 /.pmlb_cache/
 /.idea/
+.idea
+.idea/*
 /dmp/experiment/.ipynb_checkpoints/
 /dmp/experiment/.pmlb_cache/
 .vscode
