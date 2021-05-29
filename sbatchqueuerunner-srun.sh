@@ -19,16 +19,5 @@ unset LD_PRELOAD
 #export PYTHONPATH=/scratch/ctripp/src/dmp
 #cd /projects/dmpapps/ctripp/src
 
-export DMP_NUM_GPU_WORKERS = 12
-export DMP_NUM_CPU_WORKERS = 36
-
-for (( RANK=0; RANK<=$DMP_NUM_GPU_WORKERS; RANK+=1 )); do
-    DMP_TYPE=GPU DMP_RANK=$RANK python -u -m dmp.jq_runner ${1} ${2} &
-done
-
-for (( RANK=0; RANK<=$DMP_NUM_CPU_WORKERS; RANK+=1 )); do
-    DMP_TYPE=CPU DMP_RANK=$RANK python -u -m dmp.jq_runner ${1} ${2} &
-done
-
 # Launch the dmp queue runner
-#srun python -u -m dmp.jq_runner ${1} ${2}
+srun python -u -m dmp.jq_runner ${1} ${2}
