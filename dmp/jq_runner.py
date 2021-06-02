@@ -4,7 +4,6 @@ import tensorflow as tf
 import time
 import jobqueue
 import sys
-import json
 import os
 
 def start_jobqueue():
@@ -12,19 +11,26 @@ def start_jobqueue():
     jq = jobqueue.JobQueue(sys.argv[1], sys.argv[2])
 
     while True:
+        
+        # Pull job off the queue
         message = jq.get_message()
+
         if message is None:
+            # No jobs, wait one second and try again.
             time.sleep(1)
             continue
         try:
             print(f"Job Queue: {message.uuid} RUNNING")
 
+            # Run the experiment
             result = exp.aspect_test(message.config)
-            
+
+            # Write the log
             write_log(result, message.config["log"],
                       name = result["run_name"],
                       job = message.uuid)
 
+            # Mark the job as complete in the queue.
             message.mark_complete()
 
             print(f"Job Queue: {message.uuid} DONE")
@@ -33,6 +39,9 @@ def start_jobqueue():
 
 
 def tf_gpu_session():
+    """
+    Return a tensorflow session with the configuration we'll use on a GPU node.
+    """
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     return tf.Session(config=config)
@@ -54,8 +63,8 @@ def start_jobqueue_with_device_based_on_type(DMP_TYPE, DMP_RANK):
 
 if __name__ == "__main__":
 
-    DMP_TYPE = os.getenv('DMP_TYPE', 'CPU')
-    DMP_RANK = os.getenv('DMP_RANK', '0')
+    DMP_TYPE = os.getenv('DMP_TYPE')
+    DMP_RANK = os.getenv('DMP_RANK')
 
     if DMP_TYPE is not None and DMP_RANK is not None:
         start_jobqueue_with_device_based_on_type(DMP_TYPE, int(DMP_RANK))
@@ -63,8 +72,3 @@ if __name__ == "__main__":
         print("Starting job queue without explicit device placement")
         start_jobqueue()
 
-    
-
-
-# SELECT * FROM jobqueue WHERE groupname='test_tag';
-# DELETE FROM jobqueue WHERE groupname='test_tag';

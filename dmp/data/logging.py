@@ -124,16 +124,24 @@ import subprocess, os, platform, datetime
 
 def get_environment():
     env = {}
-    # git version
+    
+    # Git hash of current version of codebase
     try:
         file_dir = os.path.dirname(__file__)
         env["git_hash"] = subprocess.check_output(["git", "describe", "--always"], cwd=file_dir).strip().decode()
     except Exception as e:
         print("Caught exception while retrieving git hash: "+str(e))
-    env["timestamp"] = datetime.datetime.now().isoformat()
+    
+    # Platform
     env["hostname"] = platform.node()
     env["platform"] = platform.platform()
     env["python_version"] = platform.python_version()
+
+    # Environment variables
+    env["DMP_TYPE"] = os.getenv('DMP_TYPE')
+    env["DMP_RANK"] = os.getenv('DMP_RANK')
+    env["SLURM_JOB_ID"] = os.getenv("SLURM_JOB_ID")
+    
     return env
 
 
