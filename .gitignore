@@ -13,3 +13,5 @@ __pycache__
 log
 *.pyc
 *.ipynb_checkpoints
+admp
+*slurm-*.out
