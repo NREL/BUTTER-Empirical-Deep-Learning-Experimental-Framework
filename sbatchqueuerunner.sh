@@ -20,8 +20,9 @@ unset LD_PRELOAD
 #export PYTHONPATH=/scratch/ctripp/src/dmp
 #cd /projects/dmpapps/ctripp/src
 
-export DMP_NUM_GPU_WORKERS=2
-export DMP_NUM_CPU_WORKERS=30
+
+export DMP_NUM_GPU_WORKERS=8
+export DMP_NUM_CPU_WORKERS=10
 
 for (( RANK=1; RANK<=$DMP_NUM_GPU_WORKERS; RANK+=1 )); do
     DMP_TYPE=GPU DMP_RANK=$RANK python -u -m dmp.jq_runner ${1} ${2} &

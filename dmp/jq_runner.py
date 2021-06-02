@@ -17,6 +17,7 @@ def start_jobqueue():
 
         if message is None:
             # No jobs, wait one second and try again.
+            print("No Jobs, waiting")
             time.sleep(1)
             continue
         try:
@@ -43,27 +44,45 @@ def tf_gpu_session():
     Return a tensorflow session with the configuration we'll use on a GPU node.
     """
     config = tf.ConfigProto()
-    config.gpu_options.allow_growth=True
-    config.gpu_options.per_process_gpu_memory_fraction = 0.3
+    config.gpu_options.allow_growth=False
+    config.gpu_options.per_process_gpu_memory_fraction = 0.2
     return tf.Session(config=config)
 
+## Set number of threads
+# session_conf = tf.ConfigProto(
+#       intra_op_parallelism_threads=1,
+#       inter_op_parallelism_threads=1)
+# sess = tf.Session(config=session_conf)
+
+## Detect when more than one GPU with nvidia-smi
 
 def start_jobqueue_with_device_based_on_type(DMP_TYPE, DMP_RANK):
     
-    devices = tf.config.list_logical_devices(device_type=DMP_TYPE)
-
-    device = devices[DMP_RANK%len(devices)]
-
-    print(f"Starting {DMP_TYPE} rank {DMP_RANK} job queue on device {device.name}")
-
-    with tf.device(device.name):
-        
-        if type=="GPU":
+    if type=="GPU":
+        with tf.device("/device:GPU:0"):
             with tf_gpu_session().as_default():
                 start_jobqueue()
         
-        else:
+    else:
+        with tf.device("/device:CPU:0"):
             start_jobqueue()
+
+# def start_jobqueue_with_device_based_on_type(DMP_TYPE, DMP_RANK):
+    
+#     devices = tf.config.list_logical_devices(device_type=DMP_TYPE)
+
+#     device = devices[DMP_RANK%len(devices)]
+
+#     print(f"Starting {DMP_TYPE} rank {DMP_RANK} job queue on device {device.name}")
+
+#     with tf.device(device.name):
+        
+#         if type=="GPU":
+#             with tf_gpu_session().as_default():
+#                 start_jobqueue()
+        
+#         else:
+#             start_jobqueue()
 
 
 if __name__ == "__main__":
