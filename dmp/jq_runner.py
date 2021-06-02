@@ -49,15 +49,16 @@ def tf_gpu_session():
 
 def start_jobqueue_with_device_based_on_type(DMP_TYPE, DMP_RANK):
     
-    devices = tf.config.list_physical_devices(device_type=DMP_TYPE)
-    device_name = devices[DMP_RANK%len(devices)].name
+    devices = tf.config.list_logical_devices(device_type=DMP_TYPE)
+
+    device = devices[DMP_RANK%len(devices)]
     
-    with tf.device(device_name):
+    with tf.device(device.name):
         
         if type=="GPU":
             sess = tf_gpu_session()
 
-        print(f"Starting {DMP_TYPE} job queue on device {device_name}")
+        print(f"Starting {DMP_TYPE} job queue on device {device.name}")
         start_jobqueue()
 
 

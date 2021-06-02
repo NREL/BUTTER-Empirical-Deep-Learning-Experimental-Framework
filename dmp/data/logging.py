@@ -140,6 +140,8 @@ def get_environment():
     # Environment variables
     env["DMP_TYPE"] = os.getenv('DMP_TYPE')
     env["DMP_RANK"] = os.getenv('DMP_RANK')
+    env["DMP_NUM_CPU_WORKERS"] = os.getenv('DMP_NUM_CPU_WORKERS')
+    env["DMP_NUM_GPU_WORKERS"] = os.getenv('DMP_NUM_GPU_WORKERS')
     env["SLURM_JOB_ID"] = os.getenv("SLURM_JOB_ID")
     
     return env

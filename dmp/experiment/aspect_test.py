@@ -322,6 +322,7 @@ def test_network(
         inputs_train, outputs_train = inputs, outputs
 
     # TRAINING
+    run_config["verbose"] = 0 #This overrides verbose logging.
     history_callback = model.fit(
         x=inputs_train,
         y=outputs_train,
