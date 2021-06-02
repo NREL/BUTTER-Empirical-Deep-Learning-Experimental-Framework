@@ -44,6 +44,7 @@ def tf_gpu_session():
     """
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
+    config.gpu_options.per_process_gpu_memory_fraction = 0.3
     return tf.Session(config=config)
 
 
@@ -52,14 +53,17 @@ def start_jobqueue_with_device_based_on_type(DMP_TYPE, DMP_RANK):
     devices = tf.config.list_logical_devices(device_type=DMP_TYPE)
 
     device = devices[DMP_RANK%len(devices)]
-    
+
+    print(f"Starting {DMP_TYPE} rank {DMP_RANK} job queue on device {device.name}")
+
     with tf.device(device.name):
         
         if type=="GPU":
-            sess = tf_gpu_session()
-
-        print(f"Starting {DMP_TYPE} job queue on device {device.name}")
-        start_jobqueue()
+            with tf_gpu_session().as_default():
+                start_jobqueue()
+        
+        else:
+            start_jobqueue()
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ unset LD_PRELOAD
 #export PYTHONPATH=/scratch/ctripp/src/dmp
 #cd /projects/dmpapps/ctripp/src
 
-export DMP_NUM_GPU_WORKERS=1
+export DMP_NUM_GPU_WORKERS=2
 export DMP_NUM_CPU_WORKERS=30
 
 for (( RANK=1; RANK<=$DMP_NUM_GPU_WORKERS; RANK+=1 )); do
