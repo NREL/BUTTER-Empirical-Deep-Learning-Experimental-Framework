@@ -63,22 +63,24 @@ def tf_gpu_session():
 def make_strategy(DMP_CPU_LOW, DMP_CPU_HIGH, DMP_GPU_LOW, DMP_GPU_HIGH):
     # tensorflow.distribute.MirroredStrategy(devices=["/gpu:0", "/gpu:1"])
 
-    devices = []
-    devices.extend(['/CPU:' + str(i) for i in range(DMP_CPU_LOW, DMP_CPU_HIGH)])
-    devices.extend(['/GPU:' + str(i) for i in range(DMP_GPU_LOW, DMP_GPU_HIGH)])
-
-
-    # session_conf = tf.ConfigProto(
-    #     intra_op_parallelism_threads=1,
-    #     inter_op_parallelism_threads=1)
-    # sess = tf.Session(config=session_conf)
-
     num_cpu = DMP_CPU_HIGH - DMP_CPU_LOW
-    tensorflow.config.threading.set_intra_op_parallelism_threads(num_cpu)
-    tensorflow.config.threading.set_inter_op_parallelism_threads(num_cpu)
+    num_gpu = DMP_GPU_HIGH - DMP_GPU_LOW
 
-    strategy = tensorflow.distribute.MirroredStrategy(devices)
-    print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+    devices = []
+    devices.extend(['/GPU:' + str(i) for i in range(DMP_GPU_LOW, DMP_GPU_HIGH)])
+    if num_cpu >= num_gpu:  # no CPU device if num_gpu >= num_cpu
+        devices.append('/CPU:0')  # TF batches all CPU's into one device
+
+    num_threads = max(1, num_cpu)  # make sure we have one thread even if not using any CPUs
+    tensorflow.config.threading.set_intra_op_parallelism_threads(num_threads)
+    tensorflow.config.threading.set_inter_op_parallelism_threads(num_threads)
+
+    if len(devices) == 1:
+        strategy = tensorflow.distribute.OneDeviceStrategy(device=devices[0])
+    else:
+        strategy = tensorflow.distribute.MirroredStrategy(devices)
+
+    print('num_replicas_in_sync: {}'.format(strategy.num_replicas_in_sync))
     return strategy
     #
     #

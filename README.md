@@ -24,8 +24,8 @@ If you're using the job queue:
 ## Extra Eagle Setup Steps
 
 This uses the optimized tensorflow build for Eagle CPUs and GPUs:
-        
-    pip install --upgrade --force-reinstall /nopt/nrel/apps/wheels/tensorflow-2.3.2-cp38-cp38-linux_x86_64.whl
+    
+    pip install --upgrade --force-reinstall /nopt/nrel/apps/wheels/tensorflow-2.4.0-cp38-cp38-linux_x86_64.whl
 
 
 ## Example Eagle Environment Setup Script
