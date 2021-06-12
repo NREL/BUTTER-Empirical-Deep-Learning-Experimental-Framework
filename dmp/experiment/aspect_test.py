@@ -9,7 +9,7 @@ import sys
 import json
 from copy import deepcopy
 from functools import singledispatchmethod
-from typing import Callable, Union, List, Generator
+from typing import Callable, Union, List, Generator, Optional
 
 import numpy
 import pandas
@@ -31,6 +31,7 @@ from command_line_tools import (
     command_line_config,
     run_tools,
 )
+from dmp import jq_runner
 from dmp.data.logging import write_log
 from dmp.data.pmlb import pmlb_loader
 from dmp.data.pmlb.pmlb_loader import load_dataset
@@ -96,9 +97,9 @@ def make_network(
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput(label = 0,
-                         inputs = [],
-                         shape = list(inputs.shape[1:]))
+    input_layer = NInput(label=0,
+                         inputs=[],
+                         shape=list(inputs.shape[1:]))
     current = input_layer
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d in range(depth):
@@ -112,24 +113,25 @@ def make_network(
             activation = output_activation
 
         # Fully connected layer
-        layer = NDense(label = 0,
-                       inputs = [current, ],
-                       shape = [layer_width, ],
-                       activation = activation)
+        layer = NDense(label=0,
+                       inputs=[current, ],
+                       shape=[layer_width, ],
+                       activation=activation)
 
         # Skip connections for residual modes
         assert residual_mode in ['full', 'none'], f"Invalid residual mode {residual_mode}"
         if residual_mode == 'full':
-            assert topology in ['rectangular', 'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
+            assert topology in ['rectangular',
+                                'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
 
             # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
             first_residual_layer = 1 if topology == "wide_first" else 0
             # Output layer is assumed to be of a different dimension, and will therefore not directly receive skip connections
-            last_residual_layer = depth-1
+            last_residual_layer = depth - 1
             if d > first_residual_layer and d < last_residual_layer:
-                layer = NAdd(label = 0,
-                             inputs = [layer, current],
-                             shape = layer.shape.copy())  ## TODO JP: Only works for rectangle
+                layer = NAdd(label=0,
+                             inputs=[layer, current],
+                             shape=layer.shape.copy())  ## TODO JP: Only works for rectangle
 
         current = layer
 
@@ -206,6 +208,7 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
         raise Exception('Unknown task "{}"'.format(run_task))
 
     return output_activation, run_loss
+
 
 def test_network(
         config: {},
@@ -296,13 +299,14 @@ def test_network(
 
     if config["test_split"] > 0:
         ## train/test/val split
-        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs, test_size=config["test_split"])
-        run_config["validation_split"] = run_config["validation_split"]/(1-config["test_split"])
+        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs,
+                                                                                  test_size=config["test_split"])
+        run_config["validation_split"] = run_config["validation_split"] / (1 - config["test_split"])
 
         ## Set up a custom callback to record test loss at each epoch
         ## This could potentially cause performance issues with large datasets on GPU
         class TestHistory(Callback):
-            def __init__(self,x_test,y_test):
+            def __init__(self, x_test, y_test):
                 self.x_test = x_test
                 self.y_test = y_test
 
@@ -312,7 +316,7 @@ def test_network(
             def on_epoch_end(self, epoch, logs=None):
                 eval_log = self.model.evaluate(x=self.x_test, y=self.y_test, return_dict=True)
                 for k, v in eval_log.items():
-                    k = "test_"+k
+                    k = "test_" + k
                     self.history.setdefault(k, []).append(v)
 
         test_history_callback = TestHistory(inputs_test, outputs_test)
@@ -322,7 +326,7 @@ def test_network(
         inputs_train, outputs_train = inputs, outputs
 
     # TRAINING
-    run_config["verbose"] = 0 #This overrides verbose logging.
+    run_config["verbose"] = 0  # This overrides verbose logging.
     history_callback = model.fit(
         x=inputs_train,
         y=outputs_train,
@@ -543,10 +547,13 @@ default_config = {
 # conda activate dmp
 # python -u -m dmp.experiment.aspect_test "{'dataset' : mnist, 'budgets' : [ 32768 ], 'topologies' : [ trapezoid ], 'depths' : [ 4 ], 'reps' : 19 }"
 
-def aspect_test(config: dict) -> dict:
+def aspect_test(config: dict, strategy: Optional[tensorflow.distribute.Strategy] = None) -> dict:
     """
     Programmatic interface to the main functionality of this module. Run an aspect test for a single configuration and return the result as a dictionary.
     """
+
+    if strategy is None:
+        strategy = tensorflow.distribute.get_strategy()
 
     numpy.random.seed(config["seed"])
     tensorflow.random.set_seed(config["seed"])
@@ -579,17 +586,16 @@ def aspect_test(config: dict) -> dict:
     print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(budget, depth, widths, config['rep']))
 
     ## Create Keras model from NetworkModule
-    keras_inputs, keras_output = make_model_from_network(network)
+    with strategy.scope():
+        keras_inputs, keras_output = make_model_from_network(network)
 
-    assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
-    keras_input = keras_inputs[0]
+        assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
+        keras_input = keras_inputs[0]
 
-    ## Run Keras model on dataset
-    run_log = test_network(config, dataset, inputs, outputs, keras_input, keras_output, network, run_loss, widths)
+        ## Run Keras model on dataset
+        run_log = test_network(config, dataset, inputs, outputs, keras_input, keras_output, network, run_loss, widths)
 
     return run_log
-
-
 
 
 def generate_all_tests_from_config(config: {}):
@@ -614,11 +620,11 @@ def generate_all_tests_from_config(config: {}):
                         yield this_config
 
 
-def run_aspect_test_from_config(config: {}):
+def run_aspect_test_from_config(config: {}, strategy=None):
     """
     Entrypoint for the primary use of this module. Take a config that describes many different potential runs, and loop through them in series - logging data after each run.
     """
-    log_data = aspect_test(config)
+    log_data = aspect_test(config, strategy=strategy)
     write_log(log_data, config['log'])
     gc.collect()
     print('done.')
@@ -638,16 +644,19 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
+    strategy = jq_runner.make_strategy(0, 1, 0, 0)
+
     if mode == 'single':
         run_aspect_test_from_config(config)
     elif mode == 'direct':
         for this_config in generate_all_tests_from_config(config):
             print(this_config)
-            run_aspect_test_from_config(this_config)
+            run_aspect_test_from_config(this_config, strategy=strategy)
     elif mode == 'list':
         for this_config in generate_all_tests_from_config(config):
-            this_config["jq_module"] = "dmp.experiment.aspect_test" # Full path to this module. Used by the job queue runner
+            this_config[
+                "jq_module"] = "dmp.experiment.aspect_test"  # Full path to this module. Used by the job queue runner
             json.dump(this_config, sys.stdout)
-            print("") ## newline
+            print("")  ## newline
     else:
         assert (False), f"Invalid mode {mode}"
