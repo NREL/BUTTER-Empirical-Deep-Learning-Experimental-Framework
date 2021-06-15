@@ -2,14 +2,13 @@
 
 """
 import gc
-import json
 import math
 import random
 import sys
 import json
 from copy import deepcopy
 from functools import singledispatchmethod
-from typing import Callable, Union, List, Generator, Optional
+from typing import Callable, Union, List, Optional
 
 import numpy
 import pandas
@@ -31,11 +30,10 @@ from command_line_tools import (
     command_line_config,
     run_tools,
 )
-from dmp import jq_runner
+from dmp.jobqueue import jq_worker
 from dmp.data.logging import write_log
 from dmp.data.pmlb import pmlb_loader
 from dmp.data.pmlb.pmlb_loader import load_dataset
-from dmp.experiment.structure.algorithm.network_json_serializer import NetworkJSONSerializer
 from dmp.experiment.structure.n_add import NAdd
 from dmp.experiment.structure.n_dense import NDense
 from dmp.experiment.structure.n_input import NInput
@@ -644,7 +642,7 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
-    strategy = jq_runner.make_strategy(0, 0, 0, 1)
+    strategy = jq_worker.make_strategy(0, 0, 0, 1)
 
     if mode == 'single':
         run_aspect_test_from_config(config)
