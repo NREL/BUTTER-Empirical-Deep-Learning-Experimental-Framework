@@ -1,13 +1,16 @@
+import platform
 import subprocess
 import sys
+import time
 
 if __name__ == "__main__":
     subprocess_args = sys.argv[1:]
-    print('Starting Worker Manager...')
+    print(f'Starting Worker Manager...')
     while True:
-        print('Launching subprocess command "{}"...'.format(' '.join(subprocess_args)))
+        print(f'Launching subprocess command "{" ".join(subprocess_args)}"...')
         completed_process = subprocess.run(subprocess_args)
-        if completed_process.returncode == 0:
+        if completed_process.returncode != 1:
             break
-        print('Subprocess failed with returncode {}.'.format(completed_process.returncode))
-    print('Subprocess completed successfully, exiting Worker Manager...')
+        print(f'Subprocess failed with returncode {completed_process.returncode}.')
+        time.sleep(5)
+    print(f'Subprocess completed with returncode {completed_process.returncode}, exiting Worker Manager...')

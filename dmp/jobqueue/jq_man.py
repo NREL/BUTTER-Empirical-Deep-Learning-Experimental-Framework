@@ -35,7 +35,7 @@ if __name__ == "__main__":
             break
 
         print('Starting new SLURM Job.')
-        result = subprocess.call(['sbatch', '--wait', 'sbatchqueuerunner.sh', args.project, args.tag])
+        result = subprocess.call(['sbatch', '--wait', 'slurm_job_runner.sh', args.project, args.tag])
         # blocks until slurm job is done
 
     print('Done.')

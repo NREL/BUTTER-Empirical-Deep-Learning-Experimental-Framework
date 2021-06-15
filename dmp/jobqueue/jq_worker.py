@@ -1,5 +1,6 @@
 import argparse
 import gc
+import random
 
 import dmp.experiment.aspect_test as exp
 from dmp.data.logging import write_log
@@ -10,21 +11,33 @@ import sys
 import os
 
 
-def run_worker(strategy):
-    jq = jobqueue.JobQueue(sys.argv[1], sys.argv[2])
+def run_worker(strategy, project, group, max_waiting_time=10 * 60):
+    print(f"Job Queue: Starting...")
 
+    jq = jobqueue.JobQueue(project, group)
+    wait_start = None
     while True:
 
         # Pull job off the queue
         message = jq.get_message()
 
         if message is None:
+
+            if wait_start is None:
+                wait_start = time.time()
+            else:
+                waiting_time = time.time() - wait_start
+                if waiting_time > max_waiting_time:
+                    print("Job Queue: No Jobs, max waiting time exceeded. Exiting...")
+                    break
+
             # No jobs, wait one second and try again.
-            print("No Jobs, waiting")
-            time.sleep(1)
+            print("Job Queue: No jobs found. Waiting...")
+            time.sleep(random.randint(1, 10))  # TODO: could use exponential backoff...
             continue
         try:
-            print(f"Job Queue: {message.uuid} RUNNING")
+            wait_start = None
+            print(f"Job Queue: {message.uuid} running")
 
             # Run the experiment
             result = exp.aspect_test(message.config, strategy=strategy)
@@ -63,7 +76,7 @@ def make_strategy(cpu_min, cpu_max, gpu_min, gpu_max):
 
     devices = []
     devices.extend(['/GPU:' + str(i) for i in range(gpu_min, gpu_max)])
-    if num_cpu >= num_gpu:  # no CPU device if num_gpu >= num_cpu
+    if num_cpu > num_gpu * 2:  # no CPU device if 2 or fewer CPUs per GPU
         devices.append('/CPU:0')  # TF batches all CPU's into one device
 
     num_threads = max(1, num_cpu)  # make sure we have one thread even if not using any CPUs
@@ -73,20 +86,23 @@ def make_strategy(cpu_min, cpu_max, gpu_min, gpu_max):
     if len(devices) == 1:
         strategy = tensorflow.distribute.OneDeviceStrategy(device=devices[0])
     else:
-        strategy = tensorflow.distribute.MirroredStrategy(devices)
+        strategy = tensorflow.distribute.MirroredStrategy(
+            devices=devices,
+            cross_device_ops=tensorflow.contrib.distribute.AllReduceCrossDeviceOps(all_reduce_alg="hierarchical_copy"))
 
     print('num_replicas_in_sync: {}'.format(strategy.num_replicas_in_sync))
     return strategy
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('project', help='project identifier in your jobqueue.json file')
-    parser.add_argument('group', help='group name or tag')
     parser.add_argument('cpu_low', type=int, help='minimum CPU id to use')
     parser.add_argument('cpu_high', type=int, help='1 + maximum CPU id to use')
     parser.add_argument('gpu_low', type=int, help='minimum GPU id to use')
     parser.add_argument('gpu_high', type=int, help='1 + maximum GPU id to use')
+    parser.add_argument('project', help='project identifier in your jobqueue.json file')
+    parser.add_argument('group', help='group name or tag')
     args = parser.parse_args()
 
     strategy = make_strategy(args.cpu_low, args.gpu_high, args.gpu_low, args.gpu_high)
-    run_worker(strategy)
+    run_worker(strategy, args.project, args.group)
