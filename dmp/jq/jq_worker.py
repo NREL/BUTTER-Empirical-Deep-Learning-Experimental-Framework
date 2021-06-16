@@ -90,15 +90,15 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high):
     # print(tensorflow.config.experimental.list_physical_devices('GPU'))
 
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
-
-
+    visible_gpus = []
     for i in range(gpu_low, gpu_high):
         gpu = gpus[i]
+        visible_gpus.append(gpu)
         tensorflow.config.experimental.set_virtual_device_configuration(
             gpu,
             [tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=8192)])
 
-    tensorflow.config.set_visible_devices(devices)
+    tensorflow.config.set_visible_devices(visible_gpus)
 
     # for gpu in gpus:
     #     tensorflow.config.experimental.set_virtual_device_configuration(gpu, [
