@@ -69,7 +69,7 @@ def run_worker(strategy, config, project, group, max_waiting_time=10 * 60):
 #     return tensorflow.Session(config=config)
 
 
-def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high):
+def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     # tensorflow.distribute.MirroredStrategy(devices=["/gpu:0", "/gpu:1"])
 
     num_cpu = cpu_high - cpu_low
@@ -97,7 +97,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high):
         visible_devices.append(gpu)
         tensorflow.config.experimental.set_virtual_device_configuration(
             gpu,
-            [tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=1024*7)])
+            [tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=gpu_mem)])
 
     cpus = tensorflow.config.experimental.list_physical_devices('CPU')
     print(f'cpus: {cpus}')
@@ -120,9 +120,9 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high):
 
     if len(devices) == 1:
         # if num_gpu > 1:
-        strategy = tensorflow.distribute.OneDeviceStrategy(device=devices[0])
+        #     strategy = tensorflow.distribute.OneDeviceStrategy(device=devices[0])
         # else:
-        #     strategy = tensorflow.distribute.get_strategy()  # the default strategy
+        strategy = tensorflow.distribute.get_strategy()  # the default strategy
     else:
         strategy = tensorflow.distribute.MirroredStrategy(devices=devices)
 
@@ -136,9 +136,10 @@ if __name__ == "__main__":
     parser.add_argument('cpu_high', type=int, help='1 + maximum CPU id to use')
     parser.add_argument('gpu_low', type=int, help='minimum GPU id to use')
     parser.add_argument('gpu_high', type=int, help='1 + maximum GPU id to use')
+    parser.add_argument('gpu_mem', type=int, help='Per-GPU RAM to allocate')
     parser.add_argument('project', help='project identifier in your jobqueue.json file')
     parser.add_argument('group', help='group name or tag')
     args = parser.parse_args()
 
-    strategy, config = make_strategy(args.cpu_low, args.cpu_high, args.gpu_low, args.gpu_high)
+    strategy, config = make_strategy(args.cpu_low, args.cpu_high, args.gpu_low, args.gpu_high, args.gpu_mem)
     run_worker(strategy, config, args.project, args.group)
