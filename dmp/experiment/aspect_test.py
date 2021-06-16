@@ -642,7 +642,7 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
-    strategy = jq_worker.make_strategy(0, 0, 0, 1)
+    strategy = jq_worker.make_strategy(0, 1, 0, 0)
 
     if mode == 'single':
         run_aspect_test_from_config(config)
