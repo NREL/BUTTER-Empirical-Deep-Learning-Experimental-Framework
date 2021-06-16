@@ -118,13 +118,14 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high):
 
     print(f'num_cpu {num_cpu}, num_gpu {num_gpu}, num_threads {num_threads}')
 
-    if len(devices) == 1:
-        # if num_gpu > 1:
-        #     strategy = tensorflow.distribute.OneDeviceStrategy(device=devices[0])
-        # else:
-        strategy = tensorflow.distribute.get_strategy()  # the default strategy
-    else:
-        strategy = tensorflow.distribute.MirroredStrategy(devices=devices)
+    # if len(devices) == 1:
+    #     # if num_gpu > 1:
+    #     strategy = tensorflow.distribute.OneDeviceStrategy(device=devices[0])
+    #     # else:
+    #     #     strategy = tensorflow.distribute.get_strategy()  # the default strategy
+    # else:
+        # strategy = tensorflow.distribute.MirroredStrategy(devices=devices)
+    strategy = tensorflow.distribute.get_strategy()  # the default strategy
 
     print('num_replicas_in_sync: {}'.format(strategy.num_replicas_in_sync))
     return strategy, None
