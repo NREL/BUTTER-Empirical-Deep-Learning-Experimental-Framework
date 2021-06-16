@@ -1,6 +1,7 @@
 import argparse
 import gc
 import random
+import uuid
 
 import dmp.experiment.aspect_test as exp
 from dmp.data.logging import write_log
@@ -14,13 +15,15 @@ import os
 def run_worker(strategy, config, project, group, max_waiting_time=10 * 60):
     print(f"Job Queue: Starting...")
 
+    worker_id = uuid.UUID()
+
     # with tensorflow.Session(config=config):
     jq = jobqueue.JobQueue(project, group)
     wait_start = None
     while True:
 
         # Pull job off the queue
-        message = jq.get_message()
+        message = jq.get_message(worker=worker_id)
 
         if message is None:
 
