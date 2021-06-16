@@ -25,7 +25,7 @@ echo "nodes_array: " $nodes_array
 
 for ((i = 0; i < $num_nodes; i++)); do
   node=${nodes_array[$i]}
-  echo "srun --nodes=1 --ntasks=1 -w $node $* &"
+  echo "srun --nodes=1 --ntasks=1 -w $node "$@" &"
   srun --nodes=1 --ntasks=1 -w $node "$@" &
 done
 
