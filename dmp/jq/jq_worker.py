@@ -75,12 +75,30 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high):
     num_cpu = cpu_high - cpu_low
     num_gpu = gpu_high - gpu_low
 
+
+
     devices = []
     devices.extend(['/GPU:' + str(i) for i in range(gpu_low, gpu_high)])
     if num_cpu > num_gpu * 2:  # no CPU device if 2 or fewer CPUs per GPU
         devices.append('/CPU:0')  # TF batches all CPU's into one device
 
     num_threads = max(1, num_cpu)  # make sure we have one thread even if not using any CPUs
+
+    # gpus = tensorflow.config.experimental.list_physical_devices('GPU')  # Get GPU list
+    # tensorflow.config.experimental.set_memory_growth(True)
+
+    # print(tensorflow.config.experimental.list_physical_devices('GPU'))
+    gpus = tensorflow.config.experimental.list_physical_devices('GPU')
+
+    for i in range(gpu_low, gpu_high):
+        gpu = gpus[i]
+        tensorflow.config.experimental.set_virtual_device_configuration(
+            gpu,
+            [tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=8192)])
+
+    # for gpu in gpus:
+    #     tensorflow.config.experimental.set_virtual_device_configuration(gpu, [
+    #         tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
 
     # tensorflow.config.threading.set_intra_op_parallelism_threads(num_threads)
     # tensorflow.config.threading.set_inter_op_parallelism_threads(num_threads)
