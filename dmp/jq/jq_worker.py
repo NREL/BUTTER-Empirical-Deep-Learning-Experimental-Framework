@@ -99,7 +99,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high):
             [tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=8192)])
 
     tensorflow.config.set_visible_devices(devices)
-    
+
     # for gpu in gpus:
     #     tensorflow.config.experimental.set_virtual_device_configuration(gpu, [
     #         tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
