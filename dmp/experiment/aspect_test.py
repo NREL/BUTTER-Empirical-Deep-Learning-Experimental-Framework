@@ -600,22 +600,23 @@ def generate_all_tests_from_config(config: {}):
     """
     Generator yielding all test configs specified by a seed config
     """
-
-    for topology in config['topologies']:
-        config['topology'] = topology
-        for residual_mode in config['residual_modes']:
-            config['residual_mode'] = residual_mode
-            for budget in config['budgets']:
-                config['budget'] = budget
-                for depth in config['depths']:
-                    config['depth'] = depth
-                    for rep in range(config['reps']):
-                        this_config = deepcopy(config)
-                        this_config['rep'] = rep
-                        this_config['mode'] = 'single'
-                        if this_config['seed'] is None:
-                            this_config['seed'] = random.getrandbits(31)
-                        yield this_config
+    for dataset in config['datasets']:
+        config['dataset'] = dataset
+        for topology in config['topologies']:
+            config['topology'] = topology
+            for residual_mode in config['residual_modes']:
+                config['residual_mode'] = residual_mode
+                for budget in config['budgets']:
+                    config['budget'] = budget
+                    for depth in config['depths']:
+                        config['depth'] = depth
+                        for rep in range(config['reps']):
+                            this_config = deepcopy(config)
+                            this_config['rep'] = rep
+                            this_config['mode'] = 'single'
+                            if this_config['seed'] is None:
+                                this_config['seed'] = random.getrandbits(31)
+                            yield this_config
 
 
 def run_aspect_test_from_config(config: {}, strategy=None):
