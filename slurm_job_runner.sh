@@ -23,11 +23,14 @@ nodes_array=($nodes)
 echo "nodes: " $nodes
 echo "nodes_array: " $nodes_array
 
-for ((i = 0; i < $num_nodes; i++)); do
+for ((i = 1; i < $num_nodes; i++)); do
   node=${nodes_array[$i]}
   echo "srun --nodes=1 --ntasks=1 -w $node "$@" &"
   srun --nodes=1 --ntasks=1 -w $node "$@" &
 done
+
+echo ""$@""
+"$@"
 
 # [[0, 3, 0, 1, 3840], [3, 6, 0, 1, 3840], [6, 9, 0, 1, 3840], [9, 12, 0, 1, 3840], [12, 15, 1, 2, 3840], [15, 18, 1, 2, 3840], [18, 21, 1, 2, 3840], [21, 24, 1, 2, 3840], [24, 36, 0, 0, 0]]
 # sbatch -N1 -t59 python -m dmp.jq.jq_node_manager dmp charles_test "[[0,2,0,1], [2,34,0,0], [34,36,1,2]]"
