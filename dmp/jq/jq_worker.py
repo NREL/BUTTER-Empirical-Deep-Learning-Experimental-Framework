@@ -125,7 +125,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     strategy = tensorflow.distribute.get_strategy()  # the default strategy
 
     # print('num_replicas_in_sync: {}'.format(strategy.num_replicas_in_sync))
-    return strategy, None
+    return strategy
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ If you're using the job queue:
 
 ## Running experiments locally
 
-    python -u -m dmp.experiment.aspect_test "{'dataset': 'nursery','budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 2}, 'test_split': 0.1, 'reps': 1 }"
+    python -u -m dmp.experiment.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'test_split': 0.1, 'reps': 1, 'mode':'direct' }"
 
 ## Extra Eagle Setup Steps
 

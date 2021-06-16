@@ -32,7 +32,7 @@ from command_line_tools import (
 import os
 # import json
 import numpy
-import simplejson as json
+import json
 
 from dmp.data.safe_json_encoder import SafeJSONEncoder
 
