@@ -69,7 +69,7 @@ def run_worker(strategy, config, project, group, max_waiting_time=10 * 60):
 #     return tensorflow.Session(config=config)
 
 
-def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
+def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high):
     # tensorflow.distribute.MirroredStrategy(devices=["/gpu:0", "/gpu:1"])
 
     num_cpu = cpu_high - cpu_low
