@@ -91,7 +91,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     # print(tensorflow.config.experimental.list_physical_devices('GPU'))
 
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
-    print(f'gpus: {gpus}')
+    # print(f'gpus: {gpus}')
     visible_devices = []
     for i in range(gpu_low, gpu_high):
         gpu = gpus[i]
@@ -101,7 +101,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
             [tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=gpu_mem)])
 
     cpus = tensorflow.config.experimental.list_physical_devices('CPU')
-    print(f'cpus: {cpus}')
+    # print(f'cpus: {cpus}')
     visible_devices.extend(cpus)
     tensorflow.config.set_visible_devices(visible_devices)
 
@@ -113,7 +113,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     # cpu_options = tensorflow.CPU
     # config = tensorflow.ConfigProto(gpu_options=gpu_options)
 
-    print(f'num_cpu {num_cpu}, num_gpu {num_gpu}, num_threads {num_threads}')
+    # print(f'num_cpu {num_cpu}, num_gpu {num_gpu}, num_threads {num_threads}')
 
     # if len(devices) == 1:
     #     # if num_gpu > 1:
@@ -124,7 +124,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     # strategy = tensorflow.distribute.MirroredStrategy(devices=devices)
     strategy = tensorflow.distribute.get_strategy()  # the default strategy
 
-    print('num_replicas_in_sync: {}'.format(strategy.num_replicas_in_sync))
+    # print('num_replicas_in_sync: {}'.format(strategy.num_replicas_in_sync))
     return strategy, None
 
 
