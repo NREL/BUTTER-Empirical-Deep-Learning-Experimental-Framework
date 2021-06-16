@@ -30,7 +30,7 @@ from command_line_tools import (
     command_line_config,
     run_tools,
 )
-from dmp.jobqueue import jq_worker
+from dmp.jq import jq_worker
 from dmp.data.logging import write_log
 from dmp.data.pmlb import pmlb_loader
 from dmp.data.pmlb.pmlb_loader import load_dataset

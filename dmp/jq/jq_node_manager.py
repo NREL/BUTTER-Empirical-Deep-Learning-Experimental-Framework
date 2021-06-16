@@ -23,8 +23,8 @@ if __name__ == "__main__":
     print(f'Launching worker processes...')
     print(json.dumps(configs))
     workers = [subprocess.Popen(
-        ['python', '-m', 'dmp.jobqueue.jq_worker_manager',
-         'python', '-m', 'dmp.jobqueue.jq_worker',
+        ['python', '-m', 'dmp.jq.jq_worker_manager',
+         'python', '-m', 'dmp.jq.jq_worker',
          *[str(e) for e in config],
          args.project,
          args.group])
