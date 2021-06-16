@@ -141,5 +141,5 @@ if __name__ == "__main__":
     parser.add_argument('group', help='group name or tag')
     args = parser.parse_args()
 
-    strategy, config = make_strategy(args.cpu_low, args.cpu_high, args.gpu_low, args.gpu_high, args.gpu_mem)
+    strategy, config = make_strategy(args.cpu_low, args.cpu_high, args.gpu_low, args.gpu_high)
     run_worker(strategy, config, args.project, args.group)
