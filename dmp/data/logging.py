@@ -30,9 +30,8 @@ from command_line_tools import (
     run_tools,
 )
 import os
-# import json
+import json
 import numpy
-import simplejson as json
 
 from dmp.data.safe_json_encoder import SafeJSONEncoder
 
