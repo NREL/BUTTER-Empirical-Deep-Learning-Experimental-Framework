@@ -10,7 +10,7 @@ if __name__ == "__main__":
     parser.add_argument('project', help='project identifier in your jobqueue.json file')
     parser.add_argument('group', help='group name or tag')
     parser.add_argument('worker_configs',
-                        help='A json list of worker configs. Example: [[0,2,0,1], [2,34,0,0], [34,36,1,2]] places three workers:  one on CPUs 0-1 and GPU 0, one on CPUs 2-33, and one on CPUs 34-35 and GPU 1.'
+                        help='A json list of worker configs. Example: [[0,2,0,1,4096], [2,34,0,0,0], [34,36,1,2,4096]] places three workers:  one on CPUs 0-1 and GPU 0, one on CPUs 2-33, and one on CPUs 34-35 and GPU 1.'
                         )
     args = parser.parse_args()
 
