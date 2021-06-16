@@ -15,7 +15,7 @@ import os
 def run_worker(strategy, config, project, group, max_waiting_time=10 * 60):
     print(f"Job Queue: Starting...")
 
-    worker_id = uuid.uuid4()
+    worker_id = str(uuid.uuid4())
 
     # with tensorflow.Session(config=config):
     jq = jobqueue.JobQueue(project, group)
