@@ -136,7 +136,7 @@ if __name__ == "__main__":
     parser.add_argument('cpu_high', type=int, help='1 + maximum CPU id to use')
     parser.add_argument('gpu_low', type=int, help='minimum GPU id to use')
     parser.add_argument('gpu_high', type=int, help='1 + maximum GPU id to use')
-    parser.add_argument('gpu_mem', type=int, help='Per-GPU RAM to allocate')
+    # parser.add_argument('gpu_mem', type=int, help='Per-GPU RAM to allocate')
     parser.add_argument('project', help='project identifier in your jobqueue.json file')
     parser.add_argument('group', help='group name or tag')
     args = parser.parse_args()
