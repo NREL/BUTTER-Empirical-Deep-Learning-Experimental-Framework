@@ -75,8 +75,6 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     num_cpu = cpu_high - cpu_low
     num_gpu = gpu_high - gpu_low
 
-
-
     devices = []
     devices.extend(['/GPU:' + str(i) for i in range(gpu_low, gpu_high)])
     if num_cpu > num_gpu * 2:  # no CPU device if 2 or fewer CPUs per GPU
@@ -104,12 +102,8 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     visible_devices.extend(cpus)
     tensorflow.config.set_visible_devices(visible_devices)
 
-    for gpu in gpus:
-        tensorflow.config.experimental.set_virtual_device_configuration(gpu, [
-            tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
-
-    # tensorflow.config.threading.set_intra_op_parallelism_threads(num_threads)
-    # tensorflow.config.threading.set_inter_op_parallelism_threads(num_threads)
+    tensorflow.config.threading.set_intra_op_parallelism_threads(num_threads)
+    tensorflow.config.threading.set_inter_op_parallelism_threads(num_threads)
     # tensorflow.config.set_visible_devices(devices)
 
     # gpu_options = tensorflow.GPUOptions(per_process_gpu_memory_fraction=0.995)
@@ -124,7 +118,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     #     # else:
     #     #     strategy = tensorflow.distribute.get_strategy()  # the default strategy
     # else:
-        # strategy = tensorflow.distribute.MirroredStrategy(devices=devices)
+    # strategy = tensorflow.distribute.MirroredStrategy(devices=devices)
     strategy = tensorflow.distribute.get_strategy()  # the default strategy
 
     print('num_replicas_in_sync: {}'.format(strategy.num_replicas_in_sync))
