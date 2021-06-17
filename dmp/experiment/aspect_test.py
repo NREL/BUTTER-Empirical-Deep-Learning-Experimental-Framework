@@ -25,6 +25,7 @@ from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
+from tensorflow.keras.callbacks import TensorBoard
 
 from command_line_tools import (
     command_line_config,
@@ -323,6 +324,11 @@ def test_network(
         ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
 
+    run_callbacks.append( TensorBoard(
+        log_dir='./log/tensorboard/',
+        histogram_freq=1
+        ))
+
     # TRAINING
     run_config["verbose"] = 0  # This overrides verbose logging.
     history_callback = model.fit(
@@ -331,6 +337,9 @@ def test_network(
         callbacks=run_callbacks,
         **run_config,
     )
+
+    model.save_weights(f"./log/weights/{run_name}")
+    model.save(f"./log/{run_name}_model/")
 
     history = history_callback.history
     log_data['history'] = history
