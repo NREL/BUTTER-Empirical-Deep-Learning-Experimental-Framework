@@ -5,6 +5,7 @@ import gc
 import math
 import random
 import sys
+import os
 import json
 from copy import deepcopy
 from functools import singledispatchmethod
@@ -26,6 +27,8 @@ from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
 from tensorflow.keras.callbacks import TensorBoard
+
+from keras_buoy.models import ResumableModel
 
 from command_line_tools import (
     command_line_config,
@@ -263,7 +266,19 @@ def test_network(
         metrics.RootMeanSquaredError(),
         metrics.SquaredHinge(),
     ]
+
     model = Model(inputs=keras_input, outputs=keras_output)
+
+    ## Checkpoint Code
+    if "checkpoint_epochs" in config.keys():
+        DMP_CHECKPOINT_DIR = os.getenv("DMP_CHECKPOINT_DIR", default="checkpoints")
+        if "checkpoint_dir" in config.keys():
+            DMP_CHECKPOINT_DIR = config["checkpoint_dir"]
+
+        model = ResumableModel(model,
+                               save_every_epochs=config["checkpoint_epochs"],
+                               to_path=os.path.join(DMP_CHECKPOINT_DIR, f"{run_name}.h5"))
+        ##TODO JPS: AttributeError: 'ResumableModel' object has no attribute 'compile'
 
     ## TODO: Would holding off on this step obviate the need for NetworkModule?
     model.compile(
@@ -324,10 +339,10 @@ def test_network(
         ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
 
-    run_callbacks.append( TensorBoard(
-        log_dir='./log/tensorboard/',
-        histogram_freq=1
-        ))
+    #run_callbacks.append( TensorBoard(
+    #    log_dir='./log/tensorboard/',
+    #    histogram_freq=1
+    #    ))
 
     # TRAINING
     run_config["verbose"] = 0  # This overrides verbose logging.
@@ -338,8 +353,9 @@ def test_network(
         **run_config,
     )
 
-    model.save_weights(f"./log/weights/{run_name}")
-    model.save(f"./log/{run_name}_model/")
+    # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
+    model.save_weights(f"./log/weights/{run_name}.h5", save_format="h5")
+    model.save(f"./log/models/{run_name}.h5", save_format="h5")
 
     history = history_callback.history
     log_data['history'] = history
