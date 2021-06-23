@@ -1,6 +1,6 @@
 """
-jq slurm
-Launches slurm jobs to finish a queue
+jq man
+Utility to manage a job queue
 """
 
 import subprocess
@@ -13,12 +13,13 @@ import argparse
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("project", help="project identifier in your jobqueue.json file")
-    parser.add_argument("tag", help="tag or group name")
+    parser.add_argument('project', help='project identifier in your jobqueue.json file')
+    parser.add_argument('group', help='group name or tag')
+    parser.add_argument('command', help='queue command: version, create, recreate, clear, ')
     args = parser.parse_args()
 
-    print("SLURM NANNY ACTIVATED")
-    print("Nannying batch jobs for {} {}".format(args.project, args.tag))
+    print('SLURM NANNY ACTIVATED')
+    print('Nannying batch jobs for {} {}'.format(args.project, args.tag))
 
     jq = jobqueue.JobQueue(args.project, args.tag)
 
@@ -29,15 +30,15 @@ if __name__ == "__main__":
                                    # jobs that fail many times
                                    # jobs that hang
         messages = jq.messages
-        print("Jobs remaining: {}".format(messages))
+        print('Jobs remaining: {}'.format(messages))
         if messages == 0:
             break
 
-        print("Starting new SLURM Job.")
-        result = subprocess.call(["sbatch", "--wait", "sbatchqueuerunner.sh", args.project, args.tag])
+        print('Starting new SLURM Job.')
+        result = subprocess.call(['sbatch', '--wait', 'slurm_job_runner.sh', args.project, args.tag])
         # blocks until slurm job is done
 
-    print("Done.")
+    print('Done.')
 
 
 

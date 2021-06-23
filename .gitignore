@@ -1,12 +1,11 @@
 /dataset_folder/
 /.envrc
 /download/
-/src
 __pycache__
 /.pmlb_cache/
-/.pytest_cache
 /.idea/
-/.idea
+.idea
+.idea/*
 /dmp/experiment/.ipynb_checkpoints/
 /dmp/experiment/.pmlb_cache/
 .vscode
@@ -14,8 +13,5 @@ __pycache__
 log
 *.pyc
 *.ipynb_checkpoints
-*.pmlb_cache
-
 admp
-
-slurm-*
+*slurm-*.out
