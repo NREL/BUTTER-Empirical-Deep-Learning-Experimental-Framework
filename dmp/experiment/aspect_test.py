@@ -269,17 +269,6 @@ def test_network(
 
     model = Model(inputs=keras_input, outputs=keras_output)
 
-    ## Checkpoint Code
-    if "checkpoint_epochs" in config.keys():
-        DMP_CHECKPOINT_DIR = os.getenv("DMP_CHECKPOINT_DIR", default="checkpoints")
-        if "checkpoint_dir" in config.keys():
-            DMP_CHECKPOINT_DIR = config["checkpoint_dir"]
-
-        model = ResumableModel(model,
-                               save_every_epochs=config["checkpoint_epochs"],
-                               to_path=os.path.join(DMP_CHECKPOINT_DIR, f"{run_name}.h5"))
-        ##TODO JPS: AttributeError: 'ResumableModel' object has no attribute 'compile'
-
     ## TODO: Would holding off on this step obviate the need for NetworkModule?
     model.compile(
         # loss='binary_crossentropy', # binary classification
@@ -333,6 +322,7 @@ def test_network(
                     k = "test_" + k
                     self.history.setdefault(k, []).append(v)
 
+
         test_history_callback = TestHistory(inputs_test, outputs_test)
         run_callbacks.append(test_history_callback)
     else:
@@ -346,18 +336,39 @@ def test_network(
 
     # TRAINING
     run_config["verbose"] = 0  # This overrides verbose logging.
-    history_callback = model.fit(
-        x=inputs_train,
-        y=outputs_train,
-        callbacks=run_callbacks,
-        **run_config,
-    )
 
+    ## Checkpoint Code
+    if "checkpoint_epochs" in config.keys():
+        
+        assert config["test_split"] == 0, "Checkpointing is not compatible with test_split."
+
+        DMP_CHECKPOINT_DIR = os.getenv("DMP_CHECKPOINT_DIR", default="checkpoints")
+        if "checkpoint_dir" in config.keys():
+            DMP_CHECKPOINT_DIR = config["checkpoint_dir"]
+        if not os.path.exists(DMP_CHECKPOINT_DIR):
+            os.makedirs(DMP_CHECKPOINT_DIR)
+
+        model = ResumableModel(model,
+                               save_every_epochs=config["checkpoint_epochs"],
+                               to_path=os.path.join(DMP_CHECKPOINT_DIR, config["jq_uuid"] + ".h5"))
+
+    history = model.fit(
+            x=inputs_train,
+            y=outputs_train,
+            callbacks=run_callbacks,
+            **run_config,
+        )
+
+    if not "checkpoint_epochs" in config.keys():
+        # Tensorflow models return a History object from their fit function, but ResumableModel objects return a dictionary.
+        history = history.history
+
+
+    # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
     # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
-    model.save_weights(f"./log/weights/{run_name}.h5", save_format="h5")
-    model.save(f"./log/models/{run_name}.h5", save_format="h5")
+    # model.save_weights(f"./log/weights/{run_name}.h5", save_format="h5")
+    # model.save(f"./log/models/{run_name}.h5", save_format="h5")
 
-    history = history_callback.history
     log_data['history'] = history
 
     validation_losses = numpy.array(history['val_loss'])
@@ -369,8 +380,7 @@ def test_network(
 
     if config["test_split"] > 0:
         ## Record the history of test evals from the callback
-        log_data['history'].update(test_history_callback.history)
-        test_losses = numpy.array(history['test_loss'])
+        test_losses = numpy.array(test_history_callback.history['test_loss'])
         log_data['test_loss'] = test_losses[best_index]
 
     log_data['run_name'] = run_name

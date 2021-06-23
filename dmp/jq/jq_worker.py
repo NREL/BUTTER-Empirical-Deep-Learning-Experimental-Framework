@@ -43,6 +43,8 @@ def run_worker(strategy, config, project, group, max_waiting_time=10 * 60):
             wait_start = None
             print(f"Job Queue: {message.uuid} running")
 
+            message.config["jq_uuid"] = message.uuid
+
             # Run the experiment
             result = exp.aspect_test(message.config, strategy=strategy)
 
