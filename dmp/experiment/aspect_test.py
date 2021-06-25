@@ -332,7 +332,7 @@ def test_network(
 
     if "tensorboard" in config.keys():
         run_callbacks.append( TensorBoard(
-            log_dir=os.path.join(config["tensorboard"], run_name),
+            log_dir=os.path.join(config["tensorboard"], run_name), #append ", config["residual_mode"]" to add resisual to tensorboard path
             histogram_freq=1
             ))
 
