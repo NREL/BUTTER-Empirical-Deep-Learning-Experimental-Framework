@@ -348,9 +348,14 @@ def test_network(
         if not os.path.exists(DMP_CHECKPOINT_DIR):
             os.makedirs(DMP_CHECKPOINT_DIR)
 
+        if "jq_uuid" in config.keys():
+            checkpoint_name = config["jq_uuid"]
+        else:
+            checkpoint_name = run_name
+
         model = ResumableModel(model,
                                save_every_epochs=config["checkpoint_epochs"],
-                               to_path=os.path.join(DMP_CHECKPOINT_DIR, config["jq_uuid"] + ".h5"))
+                               to_path=os.path.join(DMP_CHECKPOINT_DIR, checkpoint_name + ".h5"))
 
     history = model.fit(
             x=inputs_train,
@@ -590,6 +595,7 @@ def aspect_test(config: dict, strategy: Optional[tensorflow.distribute.Strategy]
 
     numpy.random.seed(config["seed"])
     tensorflow.random.set_seed(config["seed"])
+    random.seed(config["seed"])
 
     ## Load dataset
     dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
