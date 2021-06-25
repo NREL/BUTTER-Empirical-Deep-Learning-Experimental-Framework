@@ -34,6 +34,36 @@ Note:
 
     python -u -m dmp.experiment.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'reps': 1, 'mode':'direct', 'checkpoint_epochs':1, 'jq_uuid':'nursery_500_widefirst_4' }"
 
+## Tensorboard Logging
+
+You can enable tensorboard logging with 'tensorboard' configuration. Set this to the tensorboard log directory.
+
+```
+'tensorboard':'./log/tensorboard'
+```
+
+To view the tensorboard logs, use the following command:
+
+```
+tensorboard --logdir ./log/tensorboard/
+```
+
+## Keras model output (as graphviz / png image)
+
+Note: You must install Graphviz and Pydot to use this feature.
+
+```
+'plot_model':'./log/plot'
+```
+
+## Residual Networks
+
+DMP supports training of residual networks by using the 'residual_mode' configuration. Set this to "full" for wide_first or rectangular networks only to enable residual mode.
+
+```
+'residual_mode':'full'
+```
+
 ## Extra Eagle Setup Steps
 
 This uses the optimized tensorflow build for Eagle CPUs and GPUs:

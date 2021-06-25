@@ -26,7 +26,7 @@ from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
-#from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.callbacks import TensorBoard
 
 from keras_buoy.models import ResumableModel
 
@@ -123,7 +123,7 @@ def make_network(
         # Skip connections for residual modes
         assert residual_mode in ['full', 'none'], f"Invalid residual mode {residual_mode}"
         if residual_mode == 'full':
-            assert topology in ['rectangular',
+            assert topology in ['rectangle',
                                 'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
 
             # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
@@ -329,10 +329,26 @@ def test_network(
         ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
 
-    #run_callbacks.append( TensorBoard(
-    #    log_dir='./log/tensorboard/',
-    #    histogram_freq=1
-    #    ))
+
+    if "tensorboard" in config.keys():
+        run_callbacks.append( TensorBoard(
+            log_dir=os.path.join(config["tensorboard"], run_name),
+            histogram_freq=1
+            ))
+
+    if "plot_model" in config.keys():
+        if not os.path.exists(config["plot_model"]):
+            os.makedirs(config["plot_model"])
+        tensorflow.keras.utils.plot_model(
+                model,
+                to_file=os.path.join(config["plot_model"], run_name+".png"),
+                show_shapes=False,
+                show_dtype=False,
+                show_layer_names=True,
+                rankdir="TB",
+                expand_nested=False,
+                dpi=96,
+        )
 
     # TRAINING
     run_config["verbose"] = 0  # This overrides verbose logging.
