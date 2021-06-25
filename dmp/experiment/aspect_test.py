@@ -365,7 +365,7 @@ def test_network(
         )
 
     if not "checkpoint_epochs" in config.keys():
-        # Tensorflow models return a History object from their fit function, but ResumableModel objects return a dictionary.
+        # Tensorflow models return a History object from their fit function, but ResumableModel objects returns History.history. This smooths out that incompatibility.
         history = history.history
 
 
@@ -385,7 +385,8 @@ def test_network(
 
     if config["test_split"] > 0:
         ## Record the history of test evals from the callback
-        test_losses = numpy.array(test_history_callback.history['test_loss'])
+        log_data['history'].update(test_history_callback.history)
+        test_losses = numpy.array(history['test_loss'])
         log_data['test_loss'] = test_losses[best_index]
 
     log_data['run_name'] = run_name
