@@ -26,7 +26,7 @@ from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
-from tensorflow.keras.callbacks import TensorBoard
+#from tensorflow.keras.callbacks import TensorBoard
 
 from keras_buoy.models import ResumableModel
 
