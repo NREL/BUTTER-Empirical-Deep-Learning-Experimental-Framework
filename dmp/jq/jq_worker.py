@@ -1,6 +1,7 @@
 import argparse
 import gc
 import uuid
+import random
 
 import jobqueue
 import tensorflow

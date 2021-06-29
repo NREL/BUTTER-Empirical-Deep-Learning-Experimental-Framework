@@ -123,6 +123,8 @@ def read_file(log_file):
 ### Generic logger
 def write_log(log_data, path="./log", log_environment=True, name=None, job=None):
     _log_data = log_data.copy()
+    if name is None:
+        name = log_data["run_name"]
     if log_environment:
         _log_data.setdefault("environment", {}).update(get_environment())
     if path[:8] == 'postgres':
