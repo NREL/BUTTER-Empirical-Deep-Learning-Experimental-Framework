@@ -19,6 +19,7 @@ dependencies:
   - tensorflow_datasets
   - pmlb
   - keras
+  - keras_buoy
 
 
   
