@@ -5,6 +5,7 @@ import gc
 import math
 import random
 import sys
+import os
 import json
 from copy import deepcopy
 from functools import singledispatchmethod
@@ -25,6 +26,9 @@ from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
+from tensorflow.keras.callbacks import TensorBoard
+
+from keras_buoy.models import ResumableModel
 
 from command_line_tools import (
     command_line_config,
@@ -119,7 +123,7 @@ def make_network(
         # Skip connections for residual modes
         assert residual_mode in ['full', 'none'], f"Invalid residual mode {residual_mode}"
         if residual_mode == 'full':
-            assert topology in ['rectangular',
+            assert topology in ['rectangle',
                                 'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
 
             # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
@@ -262,6 +266,7 @@ def test_network(
         metrics.RootMeanSquaredError(),
         metrics.SquaredHinge(),
     ]
+
     model = Model(inputs=keras_input, outputs=keras_output)
 
     ## TODO: Would holding off on this step obviate the need for NetworkModule?
@@ -317,22 +322,74 @@ def test_network(
                     k = "test_" + k
                     self.history.setdefault(k, []).append(v)
 
+
         test_history_callback = TestHistory(inputs_test, outputs_test)
         run_callbacks.append(test_history_callback)
     else:
         ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
 
+
+    if "tensorboard" in config.keys():
+        run_callbacks.append( TensorBoard(
+            log_dir=os.path.join(config["tensorboard"], run_name), #append ", config["residual_mode"]" to add resisual to tensorboard path
+            histogram_freq=1
+            ))
+
+    if "plot_model" in config.keys():
+        if not os.path.exists(config["plot_model"]):
+            os.makedirs(config["plot_model"])
+        tensorflow.keras.utils.plot_model(
+                model,
+                to_file=os.path.join(config["plot_model"], run_name+".png"),
+                show_shapes=False,
+                show_dtype=False,
+                show_layer_names=True,
+                rankdir="TB",
+                expand_nested=False,
+                dpi=96,
+        )
+
     # TRAINING
     run_config["verbose"] = 0  # This overrides verbose logging.
-    history_callback = model.fit(
-        x=inputs_train,
-        y=outputs_train,
-        callbacks=run_callbacks,
-        **run_config,
-    )
 
-    history = history_callback.history
+    ## Checkpoint Code
+    if "checkpoint_epochs" in config.keys():
+        
+        assert config["test_split"] == 0, "Checkpointing is not compatible with test_split."
+
+        DMP_CHECKPOINT_DIR = os.getenv("DMP_CHECKPOINT_DIR", default="checkpoints")
+        if "checkpoint_dir" in config.keys():
+            DMP_CHECKPOINT_DIR = config["checkpoint_dir"]
+        if not os.path.exists(DMP_CHECKPOINT_DIR):
+            os.makedirs(DMP_CHECKPOINT_DIR)
+
+        if "jq_uuid" in config.keys():
+            checkpoint_name = config["jq_uuid"]
+        else:
+            checkpoint_name = run_name
+
+        model = ResumableModel(model,
+                               save_every_epochs=config["checkpoint_epochs"],
+                               to_path=os.path.join(DMP_CHECKPOINT_DIR, checkpoint_name + ".h5"))
+
+    history = model.fit(
+            x=inputs_train,
+            y=outputs_train,
+            callbacks=run_callbacks,
+            **run_config,
+        )
+
+    if not "checkpoint_epochs" in config.keys():
+        # Tensorflow models return a History object from their fit function, but ResumableModel objects returns History.history. This smooths out that incompatibility.
+        history = history.history
+
+
+    # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
+    # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
+    # model.save_weights(f"./log/weights/{run_name}.h5", save_format="h5")
+    # model.save(f"./log/models/{run_name}.h5", save_format="h5")
+
     log_data['history'] = history
 
     validation_losses = numpy.array(history['val_loss'])
@@ -555,6 +612,7 @@ def aspect_test(config: dict, strategy: Optional[tensorflow.distribute.Strategy]
 
     numpy.random.seed(config["seed"])
     tensorflow.random.set_seed(config["seed"])
+    random.seed(config["seed"])
 
     ## Load dataset
     dataset, inputs, outputs = load_dataset(datasets, config['dataset'])

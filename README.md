@@ -21,6 +21,49 @@ If you're using the job queue:
 
     python -u -m dmp.experiment.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'test_split': 0.1, 'reps': 1, 'mode':'direct' }"
 
+## Checkpointing
+
+You can add checkpointing and automatic-resuming of model runs by including the "checkpoint_epochs" parameter in the run config. This should be set to an integer number of epochs. The model will be checkpointed after this number of epochs have been completed. By default, the checkpoints will be saved to the directory "./checkpoints". This can be overridden by setting the environment variable $DMP_CHECKPOINT_DIR, which can itself be overridden by the "checkpoint_dir" parmeter in the config.
+
+The name of the checkpoint will be "run_name" if not specified. If run through the job queue, it will be set to the uuid of the job being run. You can name the checkpoint file manually by passing in "jq_uuid" to the configuration.
+
+Note:
+- This feature relies on keras-buoy package from PyPi.
+- This feature is not compatible with test_split configuration due to the way Keras stores historical losses in callback objects.
+- This feature does not restore the random state, so a result from a session which has been checkpointed and resumed may not be reproducible.
+
+    python -u -m dmp.experiment.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'reps': 1, 'mode':'direct', 'checkpoint_epochs':1, 'jq_uuid':'nursery_500_widefirst_4' }"
+
+## Tensorboard Logging
+
+You can enable tensorboard logging with 'tensorboard' configuration. Set this to the tensorboard log directory.
+
+```
+'tensorboard':'./log/tensorboard'
+```
+
+To view the tensorboard logs, use the following command:
+
+```
+tensorboard --logdir ./log/tensorboard/
+```
+
+## Keras model output (as graphviz / png image)
+
+Note: You must install Graphviz and Pydot to use this feature.
+
+```
+'plot_model':'./log/plot'
+```
+
+## Residual Networks
+
+DMP supports training of residual networks by using the 'residual_mode' configuration. Set this to "full" for wide_first or rectangular networks only to enable residual mode.
+
+```
+'residual_mode':'full'
+```
+
 ## Extra Eagle Setup Steps
 
 This uses the optimized tensorflow build for Eagle CPUs and GPUs:
