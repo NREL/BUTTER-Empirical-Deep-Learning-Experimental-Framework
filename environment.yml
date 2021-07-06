@@ -21,6 +21,9 @@ dependencies:
   - pmlb
   - keras
   - keras_buoy
+  - orjson
+  - connectorx
+  - pathos
 
 
   

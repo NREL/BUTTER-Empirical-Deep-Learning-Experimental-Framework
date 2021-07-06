@@ -53,7 +53,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import FetchedValue
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, Text, TIMESTAMP, String
+from sqlalchemy import Column, Integer, Text, TIMESTAMP, String, Index
 from sqlalchemy.dialects.postgresql import UUID, JSON, JSONB
 import sqlalchemy
 
@@ -65,10 +65,12 @@ Base = declarative_base()
 
 class _log(Base):
     __tablename__ = 'log'
+    __table_args__ = (Index('groupname_timestamp', "groupname", "timestamp"),)
     id = Column(Integer, primary_key=True)
-    job = Column(String)
+    job = Column(UUID, index=True)
+    groupname = Column(String)
     name = Column(String)
-    timestamp = Column(TIMESTAMP, server_default=func.now())
+    timestamp = Column(TIMESTAMP, server_default=func.now(), index=True)
     doc = Column(JSON)
 
 
@@ -82,9 +84,8 @@ def _connect():
             user = _credentials["user"]
         except KeyError as e:
             raise Exception("No credetials for {} found in {}".format(_database, filename))
-    connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
-    db = sqlalchemy.create_engine(connection_string)
-    engine = db.connect()
+    pip
+    engine.execution_options(stream_results=True)
     Base.metadata.create_all(engine)
     session = sessionmaker(engine)()
     return engine, session
