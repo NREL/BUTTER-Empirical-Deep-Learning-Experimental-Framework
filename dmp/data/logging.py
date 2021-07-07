@@ -71,7 +71,7 @@ class _log(Base):
     groupname = Column(String)
     name = Column(String)
     timestamp = Column(TIMESTAMP, server_default=func.now(), index=True)
-    doc = Column(JSON)
+    doc = Column(JSONB)
 
 
 def _connect():
