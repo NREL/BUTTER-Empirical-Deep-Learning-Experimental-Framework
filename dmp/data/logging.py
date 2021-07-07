@@ -84,8 +84,9 @@ def _connect():
             user = _credentials["user"]
         except KeyError as e:
             raise Exception("No credetials for {} found in {}".format(_database, filename))
-    pip
-    engine.execution_options(stream_results=True)
+    connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
+    db = sqlalchemy.create_engine(connection_string)
+    engine = db.connect()
     Base.metadata.create_all(engine)
     session = sessionmaker(engine)()
     return engine, session
