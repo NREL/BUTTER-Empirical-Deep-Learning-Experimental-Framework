@@ -67,7 +67,7 @@ class _log(Base):
     __tablename__ = 'log'
     __table_args__ = (Index('groupname_timestamp', "groupname", "timestamp"),)
     id = Column(Integer, primary_key=True)
-    job = Column(UUID, index=True, as_uuid=True)
+    job = Column(UUID(as_uuid=True), index=True)
     groupname = Column(String)
     name = Column(String)
     timestamp = Column(TIMESTAMP, server_default=func.now(), index=True)
