@@ -572,7 +572,7 @@ default_config = {
     'budgets': [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                 8388608, 16777216, 33554432],
-    'depths': [2, 3, 4, 5, 7, 8, 9, 10, 12, 14, 16, 18, 20],
+    'depths': [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20],
     'residual_modes': ['none', ],
     'reps': 30,
     'early_stopping': {
@@ -587,7 +587,7 @@ default_config = {
     'run_config': {
         'validation_split': .2,  # This is relative to the training set size.
         'shuffle': True,
-        'epochs': 10000,
+        'epochs': 5000,
         'batch_size': 256,
         'verbose': 0,
     },
