@@ -66,12 +66,13 @@ Base = declarative_base()
 class _log(Base):
     __tablename__ = 'log'
     __table_args__ = (Index('groupname_timestamp', "groupname", "timestamp"),)
-    id = Column(Integer, primary_key=True)
-    job = Column(UUID(as_uuid=True), index=True)
-    groupname = Column(String)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
     timestamp = Column(TIMESTAMP, server_default=func.now(), index=True)
     doc = Column(JSONB)
+    job = Column(UUID(as_uuid=True), index=True)
+    groupname = Column(String)
+    jobid = Column(sqlalchemy.BIGINT)
 
 
 def _connect():
@@ -98,10 +99,10 @@ def _close(engine, session):
 
 
 ### Postgres logger
-def write_postgres(run_name, log_data, job=None):
+def write_postgres(run_name, groupname, log_data, job=None):
     engine, session = _connect()
     log_data = json.loads(NpEncoder().encode(log_data))
-    newlog = _log(name=run_name, doc=log_data, job=job)
+    newlog = _log(name=run_name, doc=log_data, job=job, groupname=groupname)
     print('log postgres: committing {}'.format(run_name))
     session.add(newlog)
     session.commit()
@@ -123,14 +124,15 @@ def read_file(log_file):
 
 
 ### Generic logger
-def write_log(log_data, path="./log", log_environment=True, name=None, job=None):
+def write_log(log_data, groupname, path="./log", log_environment=True, name=None, job=None):
     _log_data = log_data.copy()
     if name is None:
         name = log_data["run_name"]
     if log_environment:
         _log_data.setdefault("environment", {}).update(get_environment())
     if path[:8] == 'postgres':
-        write_postgres(name, _log_data, job=job)
+        print('write postgres...')
+        write_postgres(name, groupname, _log_data, job=job)
     else:
         write_file(name, _log_data, path)
 
