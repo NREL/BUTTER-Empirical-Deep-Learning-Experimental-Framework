@@ -7,6 +7,7 @@ from typing import (
 )
 
 import numpy
+import numpy as np
 import pandas
 import pmlb
 from numpy import ndarray
@@ -153,4 +154,4 @@ def _one_hot(value: ndarray) -> ndarray:
 
 def _binary(value: ndarray) -> ndarray:
     # if there are only two values, set them as 0 and 1
-    return value == value[0]
+    return (value == value[0]).astype(np.int)

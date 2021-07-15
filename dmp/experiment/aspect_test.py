@@ -197,15 +197,16 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
     if run_task == 'regression':
         run_loss = losses.mean_squared_error
         output_activation = 'sigmoid'
-        # print('mean_squared_error')
+        print('mean_squared_error')
     elif run_task == 'classification':
-        output_activation = 'softmax'
         if num_outputs == 1:
+            output_activation = 'sigmoid'
             run_loss = losses.binary_crossentropy
-            # print('binary_crossentropy')
+            print('binary_crossentropy')
         else:
+            output_activation = 'softmax'
             run_loss = losses.categorical_crossentropy
-            # print('categorical_crossentropy')
+            print('categorical_crossentropy')
     else:
         raise Exception('Unknown task "{}"'.format(run_task))
 
@@ -351,7 +352,7 @@ def test_network(
         )
 
     # TRAINING
-    run_config["verbose"] = 0  # This overrides verbose logging.
+    # run_config["verbose"] = 0  # This overrides verbose logging.
 
     ## Checkpoint Code
     if "checkpoint_epochs" in config.keys():
@@ -527,6 +528,11 @@ def get_wide_first_layer_rectangular_other_layers_widths(
 
     return make_layout
 
+def get_wide_first_5x(num_outputs, depth) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
+
+def get_wide_first_20x(num_outputs, depth) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 20)
 
 def widths_factory(topology):
     if topology == 'rectangle':
@@ -537,6 +543,10 @@ def widths_factory(topology):
         return get_exponential_widths
     elif topology == 'wide_first':
         return get_wide_first_layer_rectangular_other_layers_widths
+    elif topology == 'wide_first_5x':
+        return get_wide_first_5x
+    elif topology == 'wide_first_20x':
+        return get_wide_first_20x
     else:
         assert False, 'Topology "{}" not recognized.'.format(topology)
 
@@ -576,7 +586,7 @@ default_config = {
     'residual_modes': ['none', ],
     'reps': 30,
     'early_stopping': {
-        'patience': 100,
+        'patience': 1000,
         'monitor': 'loss',
         'min_delta': 0,
         'verbose': 0,
@@ -587,9 +597,9 @@ default_config = {
     'run_config': {
         'validation_split': .2,  # This is relative to the training set size.
         'shuffle': True,
-        'epochs': 5000,
+        'epochs': 2000,
         'batch_size': 256,
-        'verbose': 0,
+        # 'verbose': 3,
     },
 }
 
@@ -617,6 +627,10 @@ def aspect_test(config: dict, strategy: Optional[tensorflow.distribute.Strategy]
 
     ## Load dataset
     dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
+
+    print(f'outputs.shape {outputs.shape} inputs.shape {inputs.shape} task {dataset["Task"]}')
+    print(f'inputs {inputs}')
+    print(f'outputs {outputs}')
 
     num_outputs = outputs.shape[1]
     topology = config['topology']
@@ -702,7 +716,7 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
-    strategy = jq_worker.make_strategy(0, 1, 0, 0, 0)
+    strategy = jq_worker.make_strategy(0, 6, 0, 1, 8192)
 
     if mode == 'single':
         run_aspect_test_from_config(config)
