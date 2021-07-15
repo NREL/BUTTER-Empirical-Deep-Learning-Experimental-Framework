@@ -197,16 +197,16 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
     if run_task == 'regression':
         run_loss = losses.mean_squared_error
         output_activation = 'sigmoid'
-        print('mean_squared_error')
+        # print('mean_squared_error')
     elif run_task == 'classification':
         if num_outputs == 1:
             output_activation = 'sigmoid'
             run_loss = losses.binary_crossentropy
-            print('binary_crossentropy')
+            # print('binary_crossentropy')
         else:
             output_activation = 'softmax'
             run_loss = losses.categorical_crossentropy
-            print('categorical_crossentropy')
+            # print('categorical_crossentropy')
     else:
         raise Exception('Unknown task "{}"'.format(run_task))
 
@@ -578,6 +578,7 @@ default_config = {
         "class_name": "adam",
         "config": {"learning_rate": 0.001},
     },
+    'learning_rates': [ 0.001 ],
     'topologies': ['exponential'],
     'budgets': [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
@@ -628,9 +629,9 @@ def aspect_test(config: dict, strategy: Optional[tensorflow.distribute.Strategy]
     ## Load dataset
     dataset, inputs, outputs = load_dataset(datasets, config['dataset'])
 
-    print(f'outputs.shape {outputs.shape} inputs.shape {inputs.shape} task {dataset["Task"]}')
-    print(f'inputs {inputs}')
-    print(f'outputs {outputs}')
+    # print(f'outputs.shape {outputs.shape} inputs.shape {inputs.shape} task {dataset["Task"]}')
+    # print(f'inputs {inputs}')
+    # print(f'outputs {outputs}')
 
     num_outputs = outputs.shape[1]
     topology = config['topology']
@@ -675,21 +676,23 @@ def generate_all_tests_from_config(config: {}):
     """
     for dataset in config['datasets']:
         config['dataset'] = dataset
-        for topology in config['topologies']:
-            config['topology'] = topology
-            for residual_mode in config['residual_modes']:
-                config['residual_mode'] = residual_mode
-                for budget in config['budgets']:
-                    config['budget'] = budget
-                    for depth in config['depths']:
-                        config['depth'] = depth
-                        for rep in range(config['reps']):
-                            this_config = deepcopy(config)
-                            this_config['rep'] = rep
-                            this_config['mode'] = 'single'
-                            if this_config['seed'] is None:
-                                this_config['seed'] = random.getrandbits(31)
-                            yield this_config
+        for learning_rate in config['learning_rates']:
+            config['optimizer']['config']['learning_rate'] = float(learning_rate)
+            for topology in config['topologies']:
+                config['topology'] = topology
+                for residual_mode in config['residual_modes']:
+                    config['residual_mode'] = residual_mode
+                    for budget in config['budgets']:
+                        config['budget'] = budget
+                        for depth in config['depths']:
+                            config['depth'] = depth
+                            for rep in range(config['reps']):
+                                this_config = deepcopy(config)
+                                this_config['rep'] = rep
+                                this_config['mode'] = 'single'
+                                if this_config['seed'] is None:
+                                    this_config['seed'] = random.getrandbits(31)
+                                yield this_config
 
 
 def run_aspect_test_from_config(config: {}, strategy=None):
