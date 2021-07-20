@@ -1,3 +1,14 @@
+ssh vs.hpc.nrel.gov
+
+Qty 8 – GPU servers – AS-2024US-TRT
+Dual-CPU: AMD EPYC 7532 Rome CPU (total 64 real cores); 256G RAM; ConnectX-5 dual port 25Gbe
+One Nvidia A100 GPU
+4 x 3.8T SSD local scratch
+
+30 CPU's / virtual GPU node
+
+
+
 srun -A dmpapps -N1 -t240 --gres=gpu:2 --pty $SHELL
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'], 'budgets': [32, 64, 128, 256, 512], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp01_01.jobs
@@ -381,10 +392,6 @@ python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['201_pol'], 'to
 cat ../exp02.jobs | python -u -m dmp.jq.jq_enqueue dmp exp02
 
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['201_pol'], 'topologies': ['wide_first'], 'residual_modes':['none','full'], 'budgets': [64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp03.jobs
-
-cat ../exp03.jobs | python -u -m dmp.jq.jq_enqueue dmp exp03
-
 for i in {1..4}; do sbatch -J exp02 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp02 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
 
@@ -410,3 +417,122 @@ Submitted batch job 7111163
 Submitted batch job 7111164
 Submitted batch job 7111165
 Submitted batch job 7111166
+
+
+Patience = 500, epochs = 1000, monitor = loss, lr = .001
+
+python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['mnist', '529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first, 'wide_first_5x', 'wide_first_20x'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp04.jobs
+
+cat ../exp04.jobs | python -u -m dmp.jq.jq_enqueue dmp exp04
+
+python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['mnist', '529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first, 'wide_first_5x', 'wide_first_20x'], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp04r.jobs
+
+cat ../exp04r.jobs | python -u -m dmp.jq.jq_enqueue dmp exp04
+
+
+python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.01, 0.0075, 0.005, 0.0025, 0.001, 0.00075, 0.0005, 0.00025, 0.0001, 0.000075, 0.00005, 0.000025], datasets: ['537_houses'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp05lr.jobs
+
+cat ../exp05lr.jobs | python -u -m dmp.jq.jq_enqueue dmp exp05
+
+for i in {1..12}; do sbatch -J exp05 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp02 "[[0,2,0,1,15000], [2,4,1,2,15000], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+
+sbatch -J exp05 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp02 "[[0,2,0,1,15000], [2,4,1,2,15000], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"
+
+
+Submitted batch job 7132326
+Submitted batch job 7132328
+Submitted batch job 7132330
+Submitted batch job 7132332
+Submitted batch job 7132334
+Submitted batch job 7132336
+Submitted batch job 7132338
+Submitted batch job 7132340
+Submitted batch job 7132342
+Submitted batch job 7132344
+Submitted batch job 7132346
+Submitted batch job 7132348
+
+for i in {1..12}; do sbatch -A aces -J exp05 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp02 "[[0,2,0,0,0], [2,4,0,0,0], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+
+sbatch -A aces -J exp05 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp02 "[[0,2,0,0,0], [2,4,0,0,0], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"
+
+
+Submitted batch job 7132327
+Submitted batch job 7132329
+Submitted batch job 7132331
+Submitted batch job 7132333
+Submitted batch job 7132335
+Submitted batch job 7132337
+Submitted batch job 7132339
+Submitted batch job 7132341
+Submitted batch job 7132343
+Submitted batch job 7132345
+Submitted batch job 7132347
+Submitted batch job 7132349
+
+
+for i in {1..12}; do sbatch -J exp05 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp05 "[[0,2,0,1,15000], [2,4,1,2,15000], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; sbatch -A aces -J exp05 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp05 "[[0,2,0,0,0], [2,4,0,0,0], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+
+
+
+----
+
+wide_first learning rate sweep:
+
+python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.01, 0.0001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06.jobs
+
+cat ../exp06.jobs | python -u -m dmp.jq.jq_enqueue dmp exp06
+
+for i in {1..24}; do sbatch -J exp06 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp06 "[[0,2,0,1,15000], [2,4,1,2,15000], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; sbatch -A aces -J exp06 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp06 "[[0,2,0,0,0], [2,4,0,0,0], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+
+with GPUs:
+Submitted batch job 7156504
+Submitted batch job 7156506
+Submitted batch job 7156508
+Submitted batch job 7156510
+Submitted batch job 7156512
+Submitted batch job 7156514
+Submitted batch job 7156516
+Submitted batch job 7156518
+Submitted batch job 7156520
+Submitted batch job 7156522
+Submitted batch job 7156524
+Submitted batch job 7156526
+Submitted batch job 7156528
+Submitted batch job 7156530
+Submitted batch job 7156532
+Submitted batch job 7156534
+Submitted batch job 7156536
+Submitted batch job 7156538
+Submitted batch job 7156540
+Submitted batch job 7156542
+Submitted batch job 7156544
+Submitted batch job 7156546
+Submitted batch job 7156548
+Submitted batch job 7156550
+
+without GPUs:
+Submitted batch job 7156505
+Submitted batch job 7156507
+Submitted batch job 7156509
+Submitted batch job 7156511
+Submitted batch job 7156513
+Submitted batch job 7156515
+Submitted batch job 7156517
+Submitted batch job 7156519
+Submitted batch job 7156521
+Submitted batch job 7156523
+Submitted batch job 7156525
+Submitted batch job 7156527
+Submitted batch job 7156529
+Submitted batch job 7156531
+Submitted batch job 7156533
+Submitted batch job 7156535
+Submitted batch job 7156537
+Submitted batch job 7156539
+Submitted batch job 7156541
+Submitted batch job 7156543
+Submitted batch job 7156545
+Submitted batch job 7156547
+Submitted batch job 7156549
+Submitted batch job 7156551

@@ -34,6 +34,7 @@ from command_line_tools import (
     command_line_config,
     run_tools,
 )
+from dmp.experiment.structure.algorithm.network_json_serializer import NetworkJSONSerializer
 from dmp.jq import jq_worker
 from dmp.data.logging import write_log
 from dmp.data.pmlb import pmlb_loader
@@ -323,32 +324,31 @@ def test_network(
                     k = "test_" + k
                     self.history.setdefault(k, []).append(v)
 
-
         test_history_callback = TestHistory(inputs_test, outputs_test)
         run_callbacks.append(test_history_callback)
     else:
         ## Just train/val split
         inputs_train, outputs_train = inputs, outputs
 
-
     if "tensorboard" in config.keys():
-        run_callbacks.append( TensorBoard(
-            log_dir=os.path.join(config["tensorboard"], run_name), #append ", config["residual_mode"]" to add resisual to tensorboard path
+        run_callbacks.append(TensorBoard(
+            log_dir=os.path.join(config["tensorboard"], run_name),
+            # append ", config["residual_mode"]" to add resisual to tensorboard path
             histogram_freq=1
-            ))
+        ))
 
     if "plot_model" in config.keys():
         if not os.path.exists(config["plot_model"]):
             os.makedirs(config["plot_model"])
         tensorflow.keras.utils.plot_model(
-                model,
-                to_file=os.path.join(config["plot_model"], run_name+".png"),
-                show_shapes=False,
-                show_dtype=False,
-                show_layer_names=True,
-                rankdir="TB",
-                expand_nested=False,
-                dpi=96,
+            model,
+            to_file=os.path.join(config["plot_model"], run_name + ".png"),
+            show_shapes=False,
+            show_dtype=False,
+            show_layer_names=True,
+            rankdir="TB",
+            expand_nested=False,
+            dpi=96,
         )
 
     # TRAINING
@@ -356,7 +356,7 @@ def test_network(
 
     ## Checkpoint Code
     if "checkpoint_epochs" in config.keys():
-        
+
         assert config["test_split"] == 0, "Checkpointing is not compatible with test_split."
 
         DMP_CHECKPOINT_DIR = os.getenv("DMP_CHECKPOINT_DIR", default="checkpoints")
@@ -375,16 +375,15 @@ def test_network(
                                to_path=os.path.join(DMP_CHECKPOINT_DIR, checkpoint_name + ".h5"))
 
     history = model.fit(
-            x=inputs_train,
-            y=outputs_train,
-            callbacks=run_callbacks,
-            **run_config,
-        )
+        x=inputs_train,
+        y=outputs_train,
+        callbacks=run_callbacks,
+        **run_config,
+    )
 
     if not "checkpoint_epochs" in config.keys():
         # Tensorflow models return a History object from their fit function, but ResumableModel objects returns History.history. This smooths out that incompatibility.
         history = history.history
-
 
     # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
     # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
@@ -528,11 +527,14 @@ def get_wide_first_layer_rectangular_other_layers_widths(
 
     return make_layout
 
+
 def get_wide_first_5x(num_outputs, depth) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
 
+
 def get_wide_first_20x(num_outputs, depth) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 20)
+
 
 def widths_factory(topology):
     if topology == 'rectangle':
@@ -578,7 +580,7 @@ default_config = {
         "class_name": "adam",
         "config": {"learning_rate": 0.001},
     },
-    'learning_rates': [ 0.001 ],
+    'learning_rates': [0.001],
     'topologies': ['exponential'],
     'budgets': [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
@@ -655,6 +657,7 @@ def aspect_test(config: dict, strategy: Optional[tensorflow.distribute.Strategy]
     )
 
     config['widths'] = widths
+    config['network_structure'] = NetworkJSONSerializer(network)()
     print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(budget, depth, widths, config['rep']))
 
     ## Create Keras model from NetworkModule
