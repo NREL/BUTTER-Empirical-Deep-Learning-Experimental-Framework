@@ -243,8 +243,6 @@ def test_network(
 
     config['name'] = name
 
-    log_data = {'config': config}
-
     run_name = run_tools.get_run_name(config)
     config['run_name'] = run_name
 

@@ -480,8 +480,12 @@ for i in {1..12}; do sbatch -J exp05 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh 
 wide_first learning rate sweep:
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.01, 0.0001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06.jobs
+python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.01, 0.0001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06r.jobs
+python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'residual_modes': ['none', ''full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06m.jobs
 
 cat ../exp06.jobs | python -u -m dmp.jq.jq_enqueue dmp exp06
+cat ../exp06r.jobs | python -u -m dmp.jq.jq_enqueue dmp exp06
+cat ../exp06m.jobs | python -u -m dmp.jq.jq_enqueue dmp exp06
 
 for i in {1..24}; do sbatch -J exp06 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp06 "[[0,2,0,1,15000], [2,4,1,2,15000], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; sbatch -A aces -J exp06 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp06 "[[0,2,0,0,0], [2,4,0,0,0], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
 
@@ -510,6 +514,44 @@ Submitted batch job 7156544
 Submitted batch job 7156546
 Submitted batch job 7156548
 Submitted batch job 7156550
+Submitted batch job 7162434
+Submitted batch job 7162436
+Submitted batch job 7162438
+Submitted batch job 7162440
+Submitted batch job 7162442
+Submitted batch job 7162444
+Submitted batch job 7162446
+Submitted batch job 7162448
+Submitted batch job 7162450
+Submitted batch job 7162452
+Submitted batch job 7162454
+Submitted batch job 7162456
+Submitted batch job 7162458
+Submitted batch job 7162460
+Submitted batch job 7162462
+Submitted batch job 7162464
+Submitted batch job 7162466
+Submitted batch job 7162468
+Submitted batch job 7162470
+Submitted batch job 7162472
+Submitted batch job 7162474
+Submitted batch job 7162476
+Submitted batch job 7162478
+Submitted batch job 7162480
+Submitted batch job 7165261
+Submitted batch job 7165263
+Submitted batch job 7165265
+Submitted batch job 7165267
+Submitted batch job 7165269
+Submitted batch job 7165271
+Submitted batch job 7165273
+Submitted batch job 7165275
+Submitted batch job 7165277
+Submitted batch job 7165279
+Submitted batch job 7165281
+Submitted batch job 7165283
+
+
 
 without GPUs:
 Submitted batch job 7156505
@@ -536,3 +578,96 @@ Submitted batch job 7156545
 Submitted batch job 7156547
 Submitted batch job 7156549
 Submitted batch job 7156551
+Submitted batch job 7162435
+Submitted batch job 7162437
+Submitted batch job 7162439
+Submitted batch job 7162441
+Submitted batch job 7162443
+Submitted batch job 7162445
+Submitted batch job 7162447
+Submitted batch job 7162449
+Submitted batch job 7162451
+Submitted batch job 7162453
+Submitted batch job 7162455
+Submitted batch job 7162457
+Submitted batch job 7162459
+Submitted batch job 7162461
+Submitted batch job 7162463
+Submitted batch job 7162465
+Submitted batch job 7162467
+Submitted batch job 7162469
+Submitted batch job 7162471
+Submitted batch job 7162473
+Submitted batch job 7162475
+Submitted batch job 7162477
+Submitted batch job 7162479
+Submitted batch job 7162481
+Submitted batch job 7165262
+Submitted batch job 7165264
+Submitted batch job 7165266
+Submitted batch job 7165268
+Submitted batch job 7165270
+Submitted batch job 7165272
+Submitted batch job 7165274
+Submitted batch job 7165276
+Submitted batch job 7165278
+Submitted batch job 7165280
+Submitted batch job 7165282
+Submitted batch job 7165284
+
+
+
+-----------
+
+for i in {1..6}; do sbatch -J exp06 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp06 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+Submitted batch job 7168190
+Submitted batch job 7168191
+Submitted batch job 7168192
+Submitted batch job 7168193
+Submitted batch job 7168194
+Submitted batch job 7168195
+Submitted batch job 7177055
+Submitted batch job 7177056
+Submitted batch job 7177057
+Submitted batch job 7177058
+Submitted batch job 7177059
+Submitted batch job 7177060
+
+-----------
+for i in {1..3}; do sbatch -J exp06 -N1 -t960 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp06 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+
+Submitted batch job 7177097
+Submitted batch job 7177098
+Submitted batch job 7177099
+Submitted batch job 7177100
+Submitted batch job 7177101
+Submitted batch job 7177102
+Submitted batch job 7197270
+Submitted batch job 7197271
+Submitted batch job 7197272
+
+-----------
+for i in {1..2}; do sbatch -J exp06 -N1 -t960 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp exp06 "[[0,2,0,1,15000], [2,4,1,2,15000], [7,10,0,0,0], [10,13,0,0,0], [13,16,0,0,0], [16,19,0,0,0], [19, 22, 0, 0, 0], [22, 25, 0, 0, 0], [25, 28, 0, 0, 0], [28, 31, 0, 0, 0], [31, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+Submitted batch job 7189841
+Submitted batch job 7189842
+Submitted batch job 7189843
+Submitted batch job 7189844
+Submitted batch job 7189845
+Submitted batch job 7189846
+Submitted batch job 7197238
+Submitted batch job 7197239
+Submitted batch job 7199209
+Submitted batch job 7199210
+
+-----------
+
+what patience to  use?
+what learning rate to use?
+effect of batch size?
+other topologies? Diamond, double exponential, pinch point, different wide-first ratios?
+
+
+
+
+
+
