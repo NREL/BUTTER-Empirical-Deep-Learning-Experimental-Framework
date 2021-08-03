@@ -1,6 +1,7 @@
 import argparse
 import gc
 import uuid
+import random
 
 import jobqueue
 import tensorflow
@@ -91,6 +92,7 @@ if __name__ == "__main__":
 
         # Write the log
         write_log(result,
+                  message.groupname,
                   message.config["log"],
                   name=result["run_name"],
                   job=message.uuid,
