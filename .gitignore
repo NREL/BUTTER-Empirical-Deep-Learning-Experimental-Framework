@@ -8,6 +8,7 @@ __pycache__
 .idea/*
 /dmp/experiment/.ipynb_checkpoints/
 /dmp/experiment/.pmlb_cache/
+/dmp/experiment/cache/
 .vscode
 *.DS_Store
 log
