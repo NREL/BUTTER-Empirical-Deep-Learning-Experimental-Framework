@@ -568,26 +568,31 @@ datasets = pmlb_loader.load_dataset_index()
 
 
 default_config = {
-    'mode': 'direct',  # 'list', 'enqueue', ?
+    'mode': 'list',  # 'direct', 'list', 'enqueue', ?
     'seed': None,
     'log': './log',
-    'dataset': 'wine_quality_white',
+    'dataset': '529_pollen',
     'test_split': 0,
     'activation': 'relu',
     'optimizer': {
         "class_name": "adam",
         "config": {"learning_rate": 0.001},
     },
+    'datasets': ['529_pollen'],
     'learning_rates': [0.001],
-    'topologies': ['exponential'],
-    'budgets': [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
+    'topologies': ['wide_first'],
+    'budgets': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                 8388608, 16777216, 33554432],
     'depths': [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20],
+    'epoch_scale': {
+        'm': -0.1828880380176178,
+        'b': 7.143084069374159,
+    },
     'residual_modes': ['none', ],
-    'reps': 30,
+    'reps': 10,
     'early_stopping': {
-        'patience': 500,
+        'patience': 10000000,
         'monitor': 'loss',
         'min_delta': 0,
         'verbose': 0,
@@ -685,6 +690,16 @@ def generate_all_tests_from_config(config: {}):
                     config['residual_mode'] = residual_mode
                     for budget in config['budgets']:
                         config['budget'] = budget
+
+                        if 'epoch_scale' in config:
+                            epoch_scale = config['epoch_scale']
+                            m = epoch_scale['m']
+                            b = epoch_scale['b']
+                            epochs = int(numpy.ceil(numpy.exp(m * numpy.log(budget) + b)))
+                            config['run_config']['epochs'] = epochs
+
+                            print(f"budget: {budget}, epochs {epochs}, log {numpy.log(epochs)} m {m} b {b}")
+
                         for depth in config['depths']:
                             config['depth'] = depth
                             for rep in range(config['reps']):
@@ -732,7 +747,7 @@ if __name__ == "__main__":
         for this_config in generate_all_tests_from_config(config):
             this_config[
                 "jq_module"] = "dmp.experiment.aspect_test"  # Full path to this module. Used by the job queue runner
-            json.dump(this_config, sys.stdout)
-            print("")  ## newline
+            # json.dump(this_config, sys.stdout)
+            # print("")  ## newline
     else:
         assert (False), f"Invalid mode {mode}"
