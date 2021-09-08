@@ -697,8 +697,7 @@ def generate_all_tests_from_config(config: {}):
                             b = epoch_scale['b']
                             epochs = int(numpy.ceil(numpy.exp(m * numpy.log(budget) + b)))
                             config['run_config']['epochs'] = epochs
-
-                            print(f"budget: {budget}, epochs {epochs}, log {numpy.log(epochs)} m {m} b {b}")
+                            # print(f"budget: {budget}, epochs {epochs}, log {numpy.log(epochs)} m {m} b {b}")
 
                         for depth in config['depths']:
                             config['depth'] = depth
@@ -747,7 +746,7 @@ if __name__ == "__main__":
         for this_config in generate_all_tests_from_config(config):
             this_config[
                 "jq_module"] = "dmp.experiment.aspect_test"  # Full path to this module. Used by the job queue runner
-            # json.dump(this_config, sys.stdout)
-            # print("")  ## newline
+            json.dump(this_config, sys.stdout)
+            print("")  ## newline
     else:
         assert (False), f"Invalid mode {mode}"
