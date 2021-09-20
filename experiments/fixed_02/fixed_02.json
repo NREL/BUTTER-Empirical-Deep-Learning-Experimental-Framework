@@ -1,0 +1,24 @@
+{
+    "mode":"list",
+    "reps": 10,
+    "residual_mode": "none",
+    "log":"postgres",
+    "test_split":0.2,
+    "activation":"relu",
+    "checkpoint_epochs":100,
+    "run_config": {
+        "validation_split": 0.2,
+        "shuffle": true,
+        "epochs": 4000,
+        "batch_size": 256,
+        "verbose": 0
+    },
+    "optimizer": {
+        "class_name": "adam",
+        "config": {"learning_rate": 0.001}
+    },
+    "datasets": ["mnist", "sleep"],
+    "topologies": ["rectangle"],
+    "budgets": [32768, 262144, 2097152, 16777216],
+    "depths": [10]
+}
