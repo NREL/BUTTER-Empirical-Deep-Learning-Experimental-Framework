@@ -1,0 +1,1 @@
+cat long_runs_01.jobs | python -u -m dmp.jq.jq_enqueue dmp long_runs_01
