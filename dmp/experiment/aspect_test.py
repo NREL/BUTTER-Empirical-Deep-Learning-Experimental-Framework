@@ -294,9 +294,9 @@ def test_network(
     log_data['task'] = dataset['Task']
     log_data['endpoint'] = dataset['Endpoint']
 
-    run_callbacks = [
-        callbacks.EarlyStopping(**config['early_stopping']),
-    ]
+    run_callbacks = []    
+    if config['early_stopping'] != False:
+        run_callbacks.append( callbacks.EarlyStopping(**config['early_stopping']) )
 
     run_config = config['run_config'].copy()
 
