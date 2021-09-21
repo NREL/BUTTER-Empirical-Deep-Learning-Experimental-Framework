@@ -591,19 +591,11 @@ default_config = {
     },
     'residual_modes': ['none', ],
     'reps': 10,
-    'early_stopping': {
-        'patience': 10000000,
-        'monitor': 'loss',
-        'min_delta': 0,
-        'verbose': 0,
-        'mode': 'min',
-        'baseline': None,
-        'restore_best_weights': False,
-    },
+    'early_stopping': False,
     'run_config': {
         'validation_split': .2,  # This is relative to the training set size.
         'shuffle': True,
-        'epochs': 10000,
+        'epochs': 3000,
         'batch_size': 256,
         'verbose': 0,
     },
