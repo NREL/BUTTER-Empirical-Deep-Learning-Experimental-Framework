@@ -5,6 +5,7 @@
     "log":"postgres",
     "test_split":0.0,
     "activation":"relu",
+    "early_stopping":false,
     "run_config": {
         "validation_split": 0.2,
         "shuffle": true,
