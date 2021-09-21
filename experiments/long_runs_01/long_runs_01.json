@@ -3,13 +3,12 @@
     "reps": 10,
     "residual_mode": "none",
     "log":"postgres",
-    "test_split":0.2,
+    "test_split":0.0,
     "activation":"relu",
-    "checkpoint_epochs":100,
     "run_config": {
         "validation_split": 0.2,
         "shuffle": true,
-        "epochs": 4000,
+        "epochs": 1300,
         "batch_size": 256,
         "verbose": 0
     },
@@ -19,6 +18,6 @@
     },
     "datasets": ["mnist", "sleep"],
     "topologies": ["rectangle"],
-    "budgets": [32768, 262144, 2097152, 16777216],
+    "budgets": [16384, 65536, 262144, 1048576],
     "depths": [10]
 }

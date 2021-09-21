@@ -1,1 +1,0 @@
-python -u -m dmp.experiment.aspect_test $(cat fixed_02.json) > fixed_02.jobs
