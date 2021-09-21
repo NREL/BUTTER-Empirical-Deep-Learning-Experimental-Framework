@@ -23,13 +23,24 @@ UPDATE jobqueue
     FROM (SELECT job, jobid, groupname FROM log) as log
     WHERE log.job = jobqueue.uuid AND log.jobid IS NOT NULL;
 
-SELECT status, retry_count, COUNT(*), AVG((config->>'budget')::int) AS budget FROM jobqueue WHERE groupname = 'exp00' GROUP BY status, retry_count;
-SELECT status, retry_count,
-       COUNT(*), AVG((config->>'budget')::int) AS budget FROM jobqueue WHERE groupname = 'exp02' GROUP BY status, retry_count;
+SELECT groupname, status, MIN(retry_count) as "min_retry", MAX(retry_count) as "max_retry",
+       COUNT(*), SUM((end_time - start_time)) as "time", AVG((config->>'budget')::int) AS budget, AVG((config->>'depth')::int) AS depth FROM jobqueue WHERE groupname = 'fixed_01' GROUP BY groupname, status;
+
+
+
+SELECT COUNT(*) FROM log WHERE groupname = 'fixed_01';
+
+
+SELECT groupname, status, MIN(retry_count) as "min_retry", MAX(retry_count) as "max_retry",
+       COUNT(*), SUM((end_time - start_time)) as "time", AVG((config->>'budget')::int) AS budget, AVG((config->>'depth')::int) AS depth FROM jobqueue WHERE status = 'done' GROUP BY groupname, status;
+
+SELECT ((config->>'budget')::int) AS budget, ((config->>'depth')::int) AS depth FROM jobqueue WHERE groupname = 'exp06' AND status = 'running';
+SELECT (end_time - start_time) , ((config->>'budget')::int) AS budget, ((config->>'depth')::int) AS depth FROM jobqueue WHERE groupname = 'exp06' AND status = 'done' ORDER BY (end_time - start_time) DESC;
+
 
 SELECT status, AVG((config->>'budget')::int) AS budget FROM jobqueue WHERE groupname = 'exp00' AND (CURRENT_TIMESTAMP - update_time) < '8 hours' GROUP BY status;
 
-SELECT status, AVG((config->>'budget')::int) AS budget FROM jobqueue WHERE groupname = 'exp00' AND
+SELECT status, AVG((config->>'budget')::int) AS budget FROM jobqueue WHERE groupname = 'fixed_01' AND
                                                                            status = 'running' AND
                                                                            (CURRENT_TIMESTAMP - update_time) > '4 hours'
                                                                            GROUP BY status;
@@ -44,7 +55,7 @@ alter table jobqueue alter column config type jsonb using config::jsonb;
 
 create index log_doc_index on log using gin(doc);
 
-select doc->'config'->'early_stopping'->'baseline' AS "endpoint" from log limit 100;
+select doc AS "endpoint" from log limit 100;
 
 SELECT DISTINCT "config.dataset" FROM materialized_experiments_0;
 
@@ -86,12 +97,12 @@ SELECT DISTINCT "config.dataset" FROM materialized_experiments_0;
 --     FROM log;
 
 CREATE INDEX materialized_experiments_0_id on materialized_experiments_0 (id);
-CREATE INDEX materialized_experiments_0_name on materialized_experiments_0 (name);
+-- CREATE INDEX materialized_experiments_0_name on materialized_experiments_0 (name);
 CREATE INDEX materialized_experiments_0_num_weights ON materialized_experiments_0 ("num_weights");
-CREATE INDEX materialized_experiments_0_run_name ON materialized_experiments_0 ("run_name");
+-- CREATE INDEX materialized_experiments_0_run_name ON materialized_experiments_0 ("run_name");
 CREATE INDEX materialized_experiments_0_task ON materialized_experiments_0 ("task");
 CREATE INDEX materialized_experiments_0_timestamp on materialized_experiments_0 (timestamp);
-CREATE INDEX materialized_experiments_0_topology ON materialized_experiments_0 ("topology");
+-- CREATE INDEX materialized_experiments_0_topology ON materialized_experiments_0 ("topology");
 
 -- CREATE INDEX materialized_experiments_0_groupname on materialized_experiments_0 (groupname);
 -- CREATE INDEX materialized_experiments_0_iterations ON materialized_experiments_0 ("iterations");
@@ -113,15 +124,24 @@ CREATE INDEX materialized_experiments_0_config_depth ON materialized_experiments
 -- CREATE INDEX materialized_experiments_0_config_early_stopping_mode ON materialized_experiments_0 ("config.early_stopping.mode");
 CREATE INDEX materialized_experiments_0_config_early_stopping_monitor ON materialized_experiments_0 ("config.early_stopping.monitor");
 CREATE INDEX materialized_experiments_0_config_early_stopping_patience ON materialized_experiments_0 ("config.early_stopping.patience");
-CREATE INDEX materialized_experiments_0_config_log ON materialized_experiments_0 ("config.log");
+-- CREATE INDEX materialized_experiments_0_config_log ON materialized_experiments_0 ("config.log");
 -- CREATE INDEX materialized_experiments_0_config_mode ON materialized_experiments_0 ("config.mode");
-CREATE INDEX materialized_experiments_0_config_name ON materialized_experiments_0 ("config.name");
+-- CREATE INDEX materialized_experiments_0_config_name ON materialized_experiments_0 ("config.name");
 CREATE INDEX materialized_experiments_0_config_num_hidden ON materialized_experiments_0 ("config.num_hidden");
 CREATE INDEX materialized_experiments_0_config_residual_mode ON materialized_experiments_0 ("config.residual_mode");
-CREATE INDEX materialized_experiments_0_config_run_name ON materialized_experiments_0 ("config.run_name");
+-- CREATE INDEX materialized_experiments_0_config_run_name ON materialized_experiments_0 ("config.run_name");
 -- CREATE INDEX materialized_experiments_0_config_test_split ON materialized_experiments_0 ("config.test_split");
 CREATE INDEX materialized_experiments_0_config_topology ON materialized_experiments_0 ("config.topology");
 
+SELECT COUNT(*), "config.topology", "config.budget"  from materialized_experiments_0 WHERE groupname='exp05' GROUP BY "config.topology", "config.budget";
+
+SELECT COUNT(*), doc->'config'->>'topology', doc->'config'->>'budget'  from log WHERE groupname='exp05' GROUP BY doc->'config'->>'topology', doc->'config'->>'budget';
+
+SELECT * FROM jobqueue where groupname='exp05' AND status <> 'done' LIMIT 100;
+
+SELECT COUNT(*), config->>'topology' FROM jobqueue where groupname='exp05' GROUP BY config->>'topology';
+
+SELECT * from jobqueue WHERE uuid = '24f9e605-9edd-44bd-a491-294b12d85179';
 
 INSERT INTO materialized_experiments_0
 SELECT
@@ -161,7 +181,6 @@ SELECT
     (doc->'config'->>'run_name') AS "config.run_name",
     (doc->'config'->>'test_split')::float AS "config.test_split",
     (doc->'config'->>'topology') AS "config.topology",
-    (doc->>'topology') AS "topology",
     (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'loss') as v) AS "history_loss",
     (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'hinge') as v) AS "history_hinge",
     (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'accuracy') as v) AS "history_accuracy",
@@ -184,8 +203,12 @@ SELECT
     (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_mean_squared_logarithmic_error') as v) AS "history_val_mean_squared_logarithmic_error"
     FROM log
     WHERE
-    log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0) AND
+--     log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0) AND
           NOT EXISTS (SELECT id from materialized_experiments_0 WHERE id = log.id);
+
+vacuum materialized_experiments_0;
+vacuum log;
+vacuum jobqueue;
 
 update log as mat
     set groupname = (SELECT groupname from jobqueue WHERE jobqueue.uuid = mat.job)
@@ -328,7 +351,7 @@ UPDATE jobqueue
         start_time = null,
         host = null,
         retry_count = retry_count + 1
-    WHERE groupname = 'exp00'
+    WHERE groupname = 'fixed_01'
         AND (status = 'running' AND
               update_time < CURRENT_TIMESTAMP - INTERVAL '4 hours');
 
@@ -337,17 +360,19 @@ UPDATE jobqueue
         start_time = null,
         host = null,
         retry_count = retry_count + 1
-    WHERE groupname = 'exp00'
+    WHERE groupname = 'fixed_01'
         AND (status = 'failed' OR
              (status = 'running' AND
               update_time < CURRENT_TIMESTAMP - INTERVAL '4 hours'));
+
 
 UPDATE jobqueue
     SET status = null,
         start_time = null,
         host = null,
-        retry_count = retry_count + 1
-    WHERE groupname = 'exp02'
+        retry_count = retry_count + 1,
+        priority = CURRENT_TIMESTAMP::varchar
+    WHERE groupname = 'fixed_01'
         AND status IN ('failed', 'running');
 
 select COUNT(*) FROM log;
@@ -375,3 +400,60 @@ SELECT groupname, COUNT(*) from log GROUP BY groupname;
 SELECT * from log where groupname is NULL ORDER BY timestamp DESC LIMIT 100;
 
 select * from jobqueue where groupname = 'exp02' limit 10;
+
+
+SELECT jsonb_set(config, '{early_stopping,patience}', '300'::jsonb) from jobqueue WHERE groupname = 'exp06' AND status IS NULL LIMIT 10;
+
+UPDATE jobqueue
+    SET config = jsonb_set(config, '{early_stopping,min_delta}', '1.0e-12'::jsonb)
+    WHERE groupname = 'exp06'
+        AND status IS NULL;
+
+UPDATE jobqueue
+    SET config = jsonb_set(config, '{early_stopping,patience}', '200'::jsonb)
+    WHERE groupname = 'exp06'
+        AND status IS NULL;
+
+SELECT MAX(iter), MIN(iter), AVG(iter), stddev(iter) FROM (SELECT (doc->'iterations')::int as iter from log where groupname = 'exp05') AS i;
+
+SELECT DISTINCT("groupname") FROM materialized_experiments_0;
+
+SELECT "groupname", MAX("config.early_stopping.patience"), MIN("config.early_stopping.patience"), MAX(("doc"->'config'->'run_config'->'epochs')::bigint), MIN(("doc"->'config'->'run_config'->'epochs')::bigint) FROM materialized_experiments_0 GROUP BY groupname;
+
+
+select max(max_iterations) as max_iterations,
+       max(p95) as p95,
+       max(p90) as p90,
+       max(p67) as p67,
+       max(p50) as p50,
+       max(p33) as p33,
+       max(avg_percentile) as avg_percentile,
+       max(foo.max_patience) as max_patience,
+       min(foo.min_patience) as min_patience,
+    foo."config.dataset",
+    foo."config.budget"
+FROM
+    (SELECT
+        MAX(iterations) as max_iterations,
+        (percentile_disc(0.95) within group (order by iterations ASC)) as p95,
+        (percentile_disc(0.9) within group (order by iterations ASC)) as p90,
+        (percentile_disc(0.67) within group (order by iterations ASC)) as p67,
+        (percentile_disc(0.5) within group (order by iterations ASC)) as p50,
+        (percentile_disc(0.33) within group (order by iterations ASC)) as p33,
+        AVG(iterations) as avg_percentile,
+        "config.dataset",
+        "config.budget",
+        max("config.early_stopping.patience") as max_patience,
+        min("config.early_stopping.patience") as min_patience
+    FROM
+        materialized_experiments_0 t
+    WHERE
+        "groupname" IN ('exp00','exp01','exp02','exp05','exp06')
+    GROUP BY
+        "config.topology",
+        "config.residual_mode",
+        "config.dataset",
+        "config.budget") AS foo
+    GROUP BY
+        foo."config.dataset",
+        foo."config.budget"

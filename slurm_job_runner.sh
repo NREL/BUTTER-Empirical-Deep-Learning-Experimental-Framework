@@ -2,7 +2,6 @@
 
 #SBATCH --job-name=dmp
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=3
 #SBATCH --tasks-per-node=1
 #SBATCH --time=59

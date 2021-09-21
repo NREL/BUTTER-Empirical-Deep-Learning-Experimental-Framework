@@ -74,8 +74,7 @@ class _log(Base):
     groupname = Column(String)
     jobid = Column(sqlalchemy.BIGINT)
 
-
-def _connect():
+def _get_sql_engine():
     global _credentials
     if _credentials is None:
         try:
@@ -86,7 +85,10 @@ def _connect():
         except KeyError as e:
             raise Exception("No credetials for {} found in {}".format(_database, filename))
     connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
-    db = sqlalchemy.create_engine(connection_string)
+    return sqlalchemy.create_engine(connection_string)
+
+def _connect():
+    db = _get_sql_engine()
     engine = db.connect()
     Base.metadata.create_all(engine)
     session = sessionmaker(engine)()
