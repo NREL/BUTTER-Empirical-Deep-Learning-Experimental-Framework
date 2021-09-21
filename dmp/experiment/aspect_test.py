@@ -505,7 +505,7 @@ def get_trapezoidal_widths(num_outputs, depth) -> Callable[[float], List[int]]:
 def get_exponential_widths(num_outputs, depth) -> Callable[[float], List[int]]:
     def make_layout(w0):
         beta = math.exp(math.log(num_outputs / w0) / (depth - 1))
-        return [round(w0 * (beta ** k)) for k in range(0, depth)]
+        return [max(num_outputs, w0 * (beta ** k)) for k in range(0, depth)]
 
     return make_layout
 
