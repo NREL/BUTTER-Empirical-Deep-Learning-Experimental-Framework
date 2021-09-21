@@ -603,7 +603,7 @@ default_config = {
     'run_config': {
         'validation_split': .2,  # This is relative to the training set size.
         'shuffle': True,
-        'epochs': 1000,
+        'epochs': 10000,
         'batch_size': 256,
         'verbose': 0,
     },
