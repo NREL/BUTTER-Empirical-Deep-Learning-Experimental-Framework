@@ -2,47 +2,44 @@
 
 """
 import gc
+import json
 import math
+import os
 import random
 import sys
-import os
-import json
 from copy import deepcopy
 from functools import singledispatchmethod
 from typing import Callable, Union, List, Optional
 
 import numpy
 import pandas
-from sklearn.model_selection import train_test_split
-
 import tensorflow
+from keras_buoy.models import ResumableModel
+from sklearn.model_selection import train_test_split
 from tensorflow.keras import (
     callbacks,
     metrics,
     optimizers,
 )
-
+from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
-from tensorflow.keras.callbacks import TensorBoard
-
-from keras_buoy.models import ResumableModel
 
 from command_line_tools import (
     command_line_config,
     run_tools,
 )
-from dmp.experiment.structure.algorithm.network_json_serializer import NetworkJSONSerializer
-from dmp.jq import jq_worker
 from dmp.data.logging import write_log
 from dmp.data.pmlb import pmlb_loader
 from dmp.data.pmlb.pmlb_loader import load_dataset
+from dmp.experiment.structure.algorithm.network_json_serializer import NetworkJSONSerializer
 from dmp.experiment.structure.n_add import NAdd
 from dmp.experiment.structure.n_dense import NDense
 from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
+from dmp.jq import jq_worker
 
 
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
@@ -282,8 +279,8 @@ def test_network(
 
     gc.collect()
 
-    assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(
-        model), "Wrong number of trainable parameters"
+    assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(model), \
+        "Wrong number of trainable parameters"
 
     log_data['num_weights'] = count_trainable_parameters_in_keras_model(model)
     log_data['num_inputs'] = inputs.shape[1]
@@ -294,9 +291,9 @@ def test_network(
     log_data['task'] = dataset['Task']
     log_data['endpoint'] = dataset['Endpoint']
 
-    run_callbacks = []    
+    run_callbacks = []
     if config['early_stopping'] != False:
-        run_callbacks.append( callbacks.EarlyStopping(**config['early_stopping']) )
+        run_callbacks.append(callbacks.EarlyStopping(**config['early_stopping']))
 
     run_config = config['run_config'].copy()
 
@@ -483,42 +480,42 @@ def find_best_layout_for_budget_and_depth(
     return best
 
 
-def get_rectangular_widths(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_rectangular_widths(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     def make_layout(w0):
         layout = []
         if depth > 1:
-            layout.extend((round(w0) for k in range(0, depth - 1)))
+            layout.extend((int(round(w0)) for k in range(0, depth - 1)))
         layout.append(num_outputs)
         return layout
 
     return make_layout
 
 
-def get_trapezoidal_widths(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_trapezoidal_widths(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     def make_layout(w0):
         beta = (w0 - num_outputs) / (depth - 1)
-        return [round(w0 - beta * k) for k in range(0, depth)]
+        return [int(round(w0 - beta * k)) for k in range(0, depth)]
 
     return make_layout
 
 
-def get_exponential_widths(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_exponential_widths(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     def make_layout(w0):
         beta = math.exp(math.log(num_outputs / w0) / (depth - 1))
-        return [max(num_outputs, w0 * (beta ** k)) for k in range(0, depth)]
+        return [max(num_outputs, int(round(w0 * (beta ** k)))) for k in range(0, depth)]
 
     return make_layout
 
 
 def get_wide_first_layer_rectangular_other_layers_widths(
-        num_outputs, depth, first_layer_width_multiplier=10,
+        num_outputs: int, depth: int, first_layer_width_multiplier: float = 10,
 ) -> Callable[[float], List[int]]:
     def make_layout(w0):
         layout = []
         if depth > 1:
             layout.append(w0)
         if depth > 2:
-            inner_width = max(1, round(w0 / first_layer_width_multiplier))
+            inner_width = max(1, int(round(w0 / first_layer_width_multiplier)))
             layout.extend((inner_width for k in range(0, depth - 2)))
         layout.append(num_outputs)
         return layout
@@ -526,11 +523,11 @@ def get_wide_first_layer_rectangular_other_layers_widths(
     return make_layout
 
 
-def get_wide_first_5x(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_wide_first_5x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
 
 
-def get_wide_first_20x(num_outputs, depth) -> Callable[[float], List[int]]:
+def get_wide_first_20x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 20)
 
 
