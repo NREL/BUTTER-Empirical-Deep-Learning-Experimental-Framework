@@ -299,16 +299,25 @@ def test_network(
         run_callbacks.append( callbacks.EarlyStopping(**config['early_stopping']) )
 
     run_config = config['run_config'].copy()
+    
+    if config["validation_split_method"] == "shuffled_train_test_split":
 
-    inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config["validation_split"], shuffle=True)
-    del run_config["validation_split"]
+        inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config["validation_split"], shuffle=True)
+        run_config["validation_data"] = (inputs_val, outputs_val)
+        run_config["x"] = inputs_train
+        run_config["y"] = outputs_train
 
-    if config["label_noise"] != "none":
-        train_size = len(outputs_train)
-        num_to_perturb = int(train_size*config["label_noise"])
-        noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
-        noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
-        outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
+        del run_config["validation_split"]
+
+        if config["label_noise"] != "none":
+            train_size = len(outputs_train)
+            num_to_perturb = int(train_size*config["label_noise"])
+            noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
+            noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
+            outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
+    else:
+        run_config["x"] = inputs
+        run_config["y"] = outputs
 
     if "tensorboard" in config.keys():
         run_callbacks.append(TensorBoard(
@@ -355,9 +364,6 @@ def test_network(
                                to_path=os.path.join(DMP_CHECKPOINT_DIR, checkpoint_name + ".h5"))
 
     history = model.fit(
-        x=inputs_train,
-        y=outputs_train,
-        validation_data=(inputs_val, outputs_val),
         callbacks=run_callbacks,
         **run_config,
     )
@@ -573,8 +579,9 @@ default_config = {
         'shuffle': True,
         'epochs': 3000,
         'batch_size': 256,
-        'verbose': 5,
+        'verbose': 0,
     },
+    'validation_split_method':'old',
     'label_noises':['none']
 }
 
@@ -705,7 +712,7 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
-    strategy = jq_worker.make_strategy(0, 6, 0, 0, 8192)
+    strategy = jq_worker.make_strategy(0, 6, 0, 0, 8192) # only used in mode=direct for local testing purposes
 
     if mode == 'single':
         run_aspect_test_from_config(config)
