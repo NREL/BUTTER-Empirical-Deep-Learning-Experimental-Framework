@@ -300,33 +300,15 @@ def test_network(
 
     run_config = config['run_config'].copy()
 
-    if config["test_split"] > 0:
-        ## train/test/val split
-        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs,
-                                                                                  test_size=config["test_split"])
-        run_config["validation_split"] = run_config["validation_split"] / (1 - config["test_split"])
+    inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config["validation_split"], shuffle=True)
+    del run_config["validation_split"]
 
-        ## Set up a custom callback to record test loss at each epoch
-        ## This could potentially cause performance issues with large datasets on GPU
-        class TestHistory(Callback):
-            def __init__(self, x_test, y_test):
-                self.x_test = x_test
-                self.y_test = y_test
-
-            def on_train_begin(self, logs={}):
-                self.history = {}
-
-            def on_epoch_end(self, epoch, logs=None):
-                eval_log = self.model.evaluate(x=self.x_test, y=self.y_test, return_dict=True)
-                for k, v in eval_log.items():
-                    k = "test_" + k
-                    self.history.setdefault(k, []).append(v)
-
-        test_history_callback = TestHistory(inputs_test, outputs_test)
-        run_callbacks.append(test_history_callback)
-    else:
-        ## Just train/val split
-        inputs_train, outputs_train = inputs, outputs
+    if config["label_noise"] != "none":
+        train_size = len(outputs_train)
+        num_to_perturb = int(train_size*config["label_noise"])
+        noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
+        noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
+        outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
 
     if "tensorboard" in config.keys():
         run_callbacks.append(TensorBoard(
@@ -375,6 +357,7 @@ def test_network(
     history = model.fit(
         x=inputs_train,
         y=outputs_train,
+        validation_data=(inputs_val, outputs_val),
         callbacks=run_callbacks,
         **run_config,
     )
@@ -396,12 +379,6 @@ def test_network(
     log_data['iterations'] = best_index + 1
     log_data['val_loss'] = validation_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
-
-    if config["test_split"] > 0:
-        ## Record the history of test evals from the callback
-        log_data['history'].update(test_history_callback.history)
-        test_losses = numpy.array(history['test_loss'])
-        log_data['test_loss'] = test_losses[best_index]
 
     log_data['run_name'] = run_name
 
@@ -572,7 +549,6 @@ default_config = {
     'seed': None,
     'log': './log',
     'dataset': '529_pollen',
-    'test_split': 0,
     'activation': 'relu',
     'optimizer': {
         "class_name": "adam",
@@ -597,8 +573,9 @@ default_config = {
         'shuffle': True,
         'epochs': 3000,
         'batch_size': 256,
-        'verbose': 0,
+        'verbose': 5,
     },
+    'label_noises':['none']
 }
 
 
@@ -682,24 +659,26 @@ def generate_all_tests_from_config(config: {}):
                     config['residual_mode'] = residual_mode
                     for budget in config['budgets']:
                         config['budget'] = budget
+                        for label_noise in config["label_noises"]:
+                            config["label_noise"] = label_noise
 
-                        if 'epoch_scale' in config:
-                            epoch_scale = config['epoch_scale']
-                            m = epoch_scale['m']
-                            b = epoch_scale['b']
-                            epochs = int(numpy.ceil(numpy.exp(m * numpy.log(budget) + b)))
-                            config['run_config']['epochs'] = epochs
-                            # print(f"budget: {budget}, epochs {epochs}, log {numpy.log(epochs)} m {m} b {b}")
+                            if 'epoch_scale' in config and config["epoch_scale"]!="none":
+                                epoch_scale = config['epoch_scale']
+                                m = epoch_scale['m']
+                                b = epoch_scale['b']
+                                epochs = int(numpy.ceil(numpy.exp(m * numpy.log(budget) + b)))
+                                config['run_config']['epochs'] = epochs
+                                # print(f"budget: {budget}, epochs {epochs}, log {numpy.log(epochs)} m {m} b {b}")
 
-                        for depth in config['depths']:
-                            config['depth'] = depth
-                            for rep in range(config['reps']):
-                                this_config = deepcopy(config)
-                                this_config['rep'] = rep
-                                this_config['mode'] = 'single'
-                                if this_config['seed'] is None:
-                                    this_config['seed'] = random.getrandbits(31)
-                                yield this_config
+                            for depth in config['depths']:
+                                config['depth'] = depth
+                                for rep in range(config['reps']):
+                                    this_config = deepcopy(config)
+                                    this_config['rep'] = rep
+                                    this_config['mode'] = 'single'
+                                    if this_config['seed'] is None:
+                                        this_config['seed'] = random.getrandbits(31)
+                                    yield this_config
 
 
 def run_aspect_test_from_config(config: {}, strategy=None):
@@ -726,7 +705,7 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
-    strategy = jq_worker.make_strategy(0, 6, 0, 1, 8192)
+    strategy = jq_worker.make_strategy(0, 6, 0, 0, 8192)
 
     if mode == 'single':
         run_aspect_test_from_config(config)

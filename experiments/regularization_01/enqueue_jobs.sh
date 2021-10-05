@@ -1,0 +1,1 @@
+cat regularization_01.jobs | python -u -m dmp.jq.jq_enqueue dmp regularization_01
