@@ -303,11 +303,6 @@ def test_network(
     if config["validation_split_method"] == "shuffled_train_test_split":
 
         inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config["validation_split"], shuffle=True)
-        run_config["validation_data"] = (inputs_val, outputs_val)
-        run_config["x"] = inputs_train
-        run_config["y"] = outputs_train
-
-        del run_config["validation_split"]
 
         if config["label_noise"] != "none":
             train_size = len(outputs_train)
@@ -315,6 +310,11 @@ def test_network(
             noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
             noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
             outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
+
+        del run_config["validation_split"]
+        run_config["validation_data"] = (inputs_val, outputs_val)
+        run_config["x"] = inputs_train
+        run_config["y"] = outputs_train
     else:
         run_config["x"] = inputs
         run_config["y"] = outputs
