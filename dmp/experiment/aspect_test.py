@@ -279,7 +279,6 @@ def test_network(
 
     gc.collect()
 
-    print(f'{count_num_free_parameters(network)} {count_trainable_parameters_in_keras_model(model)}')
     assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(model), \
         "Wrong number of trainable parameters"
 
