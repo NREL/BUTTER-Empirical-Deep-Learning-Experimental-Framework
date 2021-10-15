@@ -1,8 +1,11 @@
-from typing import Callable, Optional, Hashable
+from typing import Callable, Optional, Hashable, Union
 
-TypeCode = Hashable
-# AtomicData = Union[int, float, str]
+from lmarshal.demarshaler import Demarshaler
+from lmarshal.marshaler import Marshaler
+
+TypeCode = Union[int, str]
+AtomicData = Union[int, float, str]
 # MarshaledData = Union[AtomicData, dict, list]
 
-ObjectMarshaler = Optional[Callable[[any], any]]
-ObjectDemarshaler = Callable[[any], any]
+ObjectMarshaler = Callable[[Marshaler, any], any]
+ObjectDemarshaler = Callable[[Demarshaler, any], any]
