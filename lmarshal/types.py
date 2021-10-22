@@ -8,7 +8,7 @@ AtomicData = Union[int, float, str]
 # MarshaledData = Union[AtomicData, dict, list]
 
 ObjectMarshaler = Callable[[Marshaler, any], any]
-ObjectDemarshaler = Callable[[Demarshaler, any], any]
+ObjectDemarshaler = Callable[[Demarshaler, any], (any, bool)]
 
-PostDemarshalReferenceSetter = Callable[[any], any]
+PostDemarshalSetter = Callable[[any], any]
 PostDemarshalListener = Callable[[], any]
