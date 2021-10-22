@@ -30,4 +30,4 @@ class Marshal:
         return Marshaler(self._config).marshal(target)
 
     def demarshal(self, target: any) -> any:
-        return Demarshaler(self._config).demarshal(target)
+        return Demarshaler(self._config)._demarshal(target)
