@@ -1,8 +1,8 @@
-from typing import Iterable, Mapping, Type, Callable, Iterator, Optional
+from typing import Iterable, Mapping, Type, Iterator
 
 from lmarshal.marshal_config import MarshalConfig
-from lmarshal.marshaler import Marshaler
-from lmarshal.types import PostDemarshalReferenceSetter, PostDemarshalListener, PostDemarshalSetter
+from lmarshal.types import ObjectDemarshalingFactory, \
+    ObjectDemarshalingInitializer
 
 
 class Demarshaler:
@@ -14,197 +14,180 @@ class Demarshaler:
 
     """
 
-    def __init__(self, config: MarshalConfig) -> None:
+    def __init__(self, config: MarshalConfig, source: any) -> None:
         self._config: MarshalConfig = config
         self._reference_index: {str: any} = {}
-        self._setters: [(PostDemarshalSetter, str)] = []
-        self._initializers: [PostDemarshalListener] = []
+        self._result: any = self.demarshal(source)
 
-    def demarshal(self, target: any) -> any:
+    def __call__(self) -> any:
+        return self._result
 
-        # recursively demarshal target
-        result, is_reference = self._demarshal(target)
-        if is_reference:
-            raise ValueError('Demarshaling a bare reference.')
+    def demarshal(self, source: any) -> any:
+        source_type = type(source)
+        demarshaler_map = self._config.demarshaler_map
+        if source_type not in demarshaler_map:
+            raise ValueError(f'Type has undefined demarshaling protocol: "{source_type}".')
+        return demarshaler_map[source_type](self, source)
 
-        # dereference deferred references
-        reference_index = self._reference_index
-        for setter, label in self._setters:
-            if label not in reference_index:
-                raise ValueError(f'Undefined reference {label}.')
-            setter(reference_index[label])
+    def demarshal_passthrough(self, source: any) -> any:
+        return source
 
-        # initialize elements
-        for initializer in self._initializers:
-            initializer()
-
-        return result
-
-    def _demarshal(self, target: any) -> (any, bool):
-        target_type = type(target)
-        demarshaler_type_map = self._config.demarshaler_type_map
-        if target_type not in demarshaler_type_map:
-            raise ValueError(f'Type has undefined demarshaling protocol: "{target_type}".')
-        return demarshaler_type_map[target_type](self, target)
-
-    def demarshal_passthrough(self, target: any) -> any:
-        return target
-
-    def demarshal_string(self, target: str) -> str:
-        if target.startswith(self._config.escape_prefix):
-            return self.unescape_string(target)
-        return target
-
-    def unescape_string(self, target: str) -> str:
-        return target[1:]
-
-    def demarshal_list(self, target: Iterable) -> []:
-        return [self._demarshal(e) for e in target]
-
-    def demarshal_dict_or_typed_object(self, target: Mapping) -> any:
-        if self._config.type_key not in target:
-            return self.demarshal_dict(target)  # demarshal normal dict
-        # demarshal typed objects
-        type_code = target[self._config.type_key]
-        type_code_map = self._config.demarshaler_type_code_map
-        if type_code not in type_code_map:
-            raise ValueError(f'Unknown type code "{type_code}".')
-        return type_code_map[type_code](target)
-
-    # def demarshal_dict(self, target: Mapping):
-    #     if self._config.flat_dict_key in target:
-    #         if len(target) > 1:
-    #             raise ValueError('Demarshaling a flat dict with more than one key.')
-    #         return self.demarshal_flat_dict(target[self._config.flat_dict_key])  # handle nonconformant keys
-    #     # TODO: optionally allow referenced strings as keys?
-    #     return {self.demarshal_key(k): self._demarshal(v) for k, v in sorted(target.items())}
-
-    def demarshal_key(self, target: str) -> str:
-        if target.startswith(self._config.escape_prefix):
-            return self.unescape_string(target)
-        return target
-
-    # def demarshal_flat_dict(self, target: list):
-    #     demarshaled = self._demarshal(target)
-    #     if not isinstance(demarshaled, Iterable):
-    #         raise ValueError(f'Found a non-Iterable {type(demarshaled)} while demarshaling a flat dict.')
-    #     result = {}
-    #     for kvp in demarshaled:
-    #         if not isinstance(kvp, list) or len(kvp) != 2:
-    #             raise ValueError('Expected a Key-Value pair list of length 2, but found something else.')
-    #         result[kvp[0]] = kvp[1]
-    #     return result
-
-    def demarshal_referencable(self, target: any) -> (any, bool):
-        reference_index = self._reference_index
+    def demarshal_string(self, source: str) -> str:
         reference_prefix = self._config.reference_prefix
-        if isinstance(target, str) and target.startswith(reference_prefix):  # if target is a reference:
-            label = self.demarshal_reference(target)
-            if label in reference_index:
-                return reference_index[label], False  # if reference is demarshaled, just return it
-            return label, True  # if result is not demarshaled yet, return the label for deferred dereferencing
+        if source.startswith(reference_prefix):
+            label = source[len(reference_prefix):]
+            if label in self._reference_index:
+                return self._reference_index[label]  # dereference: return referent
+            raise ValueError(f'Encountered undefined reference "{label}"')
+        if source.startswith(self._config.escape_prefix):
+            source = self.unescape_string(source)
+        return self.register_implicit_label(source)
 
-        # if target is not a reference, demarshal and index it
-        label_key = self._config.label_key
-        label = target[label_key] if isinstance(target, Mapping) and label_key in target else \
-            Marshaler.make_implicit_label(len(reference_index))
-        result = self._demarshal(target)
-        reference_index[label] = result
-        return result, False
+    def unescape_string(self, source: str) -> str:
+        return source[1:]
 
-    def demarshal_reference(self, target: str) -> any:
-        return target[len(self._config.reference_prefix):]
+    def register_implicit_label(self, element: any) -> any:
+        return self.register_label(self._config.make_implicit_label(len(self._reference_index)), element)
 
-    def dereference(self, label: str) -> any:
-        reference_index = self._reference_index
-        if label not in reference_index:
-            raise ValueError(f'Undefined reference {label}.')
-        return reference_index[label]
+    def make_implicit_label(self, source: any) -> str:
+        return self._config.make_implicit_label(len(self._reference_index))
 
-    def demarshal_dict_items(self, target: Mapping) -> Iterator[(any, any, bool)]:
-        item_iterator = None
-        flat_dict_key = self._config.flat_dict_key
-        if flat_dict_key in target:
-            if len(target) > 1:
-                raise ValueError('Demarshaling a flattened dict with more than one key.')
-            item_iterator = ((kvp[0], kvp[1]) for kvp in target[flat_dict_key])
-        else:
-            item_iterator = sorted(target.items())
-        return ((self.demarshal_key(k), *self._demarshal(v)) for k, v in item_iterator)
+    def register_label(self, element: any, label: str) -> any:
+        self._reference_index[label] = element
+        return element
 
-    def demarshal_flat_dict_items(self, target: any) -> Iterator[(any, any, bool)]:
-        demarshaled, is_reference = self._demarshal(target)
-        if is_reference or not isinstance(demarshaled, Iterator):
-            raise ValueError(f'Found a non-Iterator {type(demarshaled)} while demarshaling a flat dict.')
-        for kvp, is_reference in demarshaled:
-            if not isinstance(kvp, list) or len(kvp) != 2:
-                raise ValueError(
-                    'Expected a list of length 2 while demarshaling a flat dict, but found something else.')
-            key, key_is_reference = self.demarshal_key()
-            yield kvp[0], *kvp[1]
-
-    def demarshal_recursively(
-            self,
-            target: any,
-            factory: Callable[[], any],
-            element_demarshaler: Callable[[any], Iterator[(any, any, bool)]],
-            element_setter: Callable[[any, any, any], any],
-            initializer: Optional[Callable[[], any]],
-    ) -> (any, bool):
-        result = factory()
-        for key, value, is_reference in element_demarshaler(target):
-            if is_reference:
-                self._setters.append((element_setter, value))
-            else:
-                element_setter(result, key, value)
-
-        if initializer is not None:
-            self._initializers.append(initializer)
-        return result, False
-
-    def demarshal_list(self, target: Iterable, result_type: Type = list) -> any:
-
-        def setter(result, key, value):
-            while len(result) < key:
-                result.append(None)
-            result.insert(key, value)
-
-        return self.demarshal_recursively(
-            target,
-            result_type.__call__,
-            lambda t: ((k, *self._demarshal(v)) for k, v in enumerate(t)),
-            setter,
-            lambda result: None,
-        )
-
-    def demarshal_dict(self, target: Mapping, result_type: Type = dict) -> any:
-        def setter(result, key, value):
-            result[key] = value
-
-        return self.demarshal_recursively(
-            target,
-            result_type.__call__,
-            lambda t: ((self.demarshal_key(k), *self._demarshal(v)) for k, v in self.demarshal_dict_items(t)),
-            setter,
-            lambda result: None,
-        )
-
-    def demarshal_object(self, target: Mapping, result_type: Type) -> any:
-        def setter(result, key, value):
-            result[key] = value
-
-        return self.demarshal_recursively(
-            target,
-            result_type.__new__,
-            lambda t: ((self.demarshal_key(k), *self._demarshal(v)) for k, v in self.demarshal_dict_items(t)),
-            setter,
-            lambda result: None,
-        )
-
-        result = result_type.__new__(result_type)
-        for key, value in self.demarshal_dict(target):
-            self.enqueue_delayed_setter(key, lambda dereferenced: result.__setattr__(key, dereferenced))
+    def demarshal_composite(self,
+                            source: any,
+                            make: ObjectDemarshalingFactory,
+                            get_label,
+                            initialize: ObjectDemarshalingInitializer):
+        result = make(self, source)
+        self.register_label(result, get_label(self, source))
+        initialize(self, source, result)
         return result
 
-    def enqueue_delayed_setter(self, label: str, setter: PostDemarshalReferenceSetter) -> None:
-        self._post_demarshal_reference_setters.append((label, setter))
+    def demarshal_list(self, source: Iterable) -> []:
+        return self.demarshal_composite(
+            source,
+            lambda marshaller, source: [],
+            self.make_implicit_label,
+            self.list_initializer,
+        )
+
+    def list_initializer(self, source: Iterable, result: []) -> None:
+        result.extend((self.demarshal(e) for e in source))
+
+    def demarshal_dict(self, source: Mapping) -> any:
+        type_key = self._config.type_key
+        if type_key not in source:
+            return self.demarshal_plain_dict(source)  # demarshal untyped dicts
+
+        if self._config.label_key in source:
+            label = source[self._config.label_key]
+
+        # demarshal typed dicts
+        type_code = source[type_key]
+        type_code_map = self._config.demarshaler_type_code_map
+        if type_code in type_code_map:
+            return type_code_map[type_code](source)
+        raise ValueError(f'Unknown type code "{type_code}".')
+
+    def demarshal_plain_dict(self, source: Mapping) -> any:
+        return self.demarshal_composite(source, lambda marshaller, source: {}, self.dict_initializer)
+
+    def dict_initializer(self, source: Mapping, result: {}) -> None:
+        result.update(self.dict_demarshaling_generator(source))
+
+    def dict_demarshaling_generator(self, source: Mapping) -> Iterator[(any, any)]:
+        flat_dict_key = self._config.flat_dict_key
+        if flat_dict_key in source:  # demarshal flattened key value pairs
+            items = source[flat_dict_key]
+            if not isinstance(items, list):
+                raise ValueError(f'Found a {type(items)} instead of a list while demarshaling a flattened dict.')
+            for item in items:
+                if not isinstance(item, list) or len(item) != 2:
+                    raise ValueError('Expected a list of length 2, but found something else.')
+                yield self.demarshal(item[0]), self.demarshal(item[1])
+
+        # TODO: optionally allow referenced strings as keys?
+        control_key_set = self._config.control_key_set
+        yield from ((self.demarshal_key(k), self.demarshal(v))
+                    for k, v in sorted(source.items())
+                    if k not in control_key_set)
+
+    def demarshal_key(self, source: str) -> str:
+        if source.startswith(self._config.escape_prefix):
+            return self.unescape_string(source)
+        return source
+
+    def make_regular_object_demarshaler(self, type: Type) -> any:
+        return self.demarshal_composite(
+            source,
+            lambda demarshaller, source: type.__new__(),
+            self.initialize_regular_object
+        )
+
+    def initialize_regular_object(self, source: Mapping, result: any) -> None:
+        for member_name, member_value in self.dict_demarshaling_generator(source):
+            setattr(result, member_name, member_value)
+
+    # # def demarshal_dict(self, source: Mapping) -> any:
+    # #     type_key = self._config.type_key
+    # #     if type_key in source:
+    # #         # demarshal typed dicts
+    # #         type_code = source[type_key]
+    # #         type_code_map = self._config.demarshaler_type_code_map
+    # #         if type_code not in type_code_map:
+    # #             raise ValueError(f'Unknown type code "{type_code}".')
+    # #         return type_code_map[type_code](source)
+    # #
+    # #     # demarshal untyped dicts
+    # #     result = self.register_implicit_label({})
+    # #     label_key = self._config.label_key
+    # #     if label_key in source:  # register explicit label
+    # #         self.register_label(result, source[label_key])
+    # #
+    # #     result.update(self.dict_demarshaling_generator(source))
+    # #     return result
+    #
+    # def demarshal_dict(self, source: Mapping) -> any:
+    #     type_key = self._config.type_key
+    #     if type_key in source:
+    #         # demarshal typed dicts
+    #         type_code = source[type_key]
+    #         type_code_map = self._config.demarshaler_type_code_map
+    #         if type_code not in type_code_map:
+    #             raise ValueError(f'Unknown type code "{type_code}".')
+    #         return type_code_map[type_code](source)
+    #
+    #     # demarshal untyped dicts
+    #     result = self.register_implicit_label({})
+    #     label_key = self._config.label_key
+    #     if label_key in source:  # register explicit label
+    #         self.register_label(result, source[label_key])
+    #
+    #     result.update(self.dict_demarshaling_generator(source))
+    #     return result
+    #
+
+    #
+
+    #
+    # def register_implicit_label(self, element: any) -> any:
+    #     return self.register_label(self._config.make_implicit_label(len(self._reference_index)), element)
+    #
+    # def register_label(self, element: any, label: str) -> any:
+    #     self._reference_index[label] = element
+    #     return element
+    #
+    # def demarshal_referencable(self, source: any, registrar: ReferenceRegistrar) -> any:
+    #     if isinstance(source, str) and source.startswith(self._config.reference_prefix):  # if source is a reference:
+    #         label = self.demarshal_reference(source)
+    #         if label in self._reference_index:
+    #             return self._reference_index[label]  # dereference: return referent
+    #         raise ValueError(f'Encountered undefined reference "{label}"')
+    #     # if source is not a reference, demarshal it
+    #     return self.demarshal(source, self.register_implicit_label)
+    #
+    # def demarshal_reference(self, source: str) -> any:
+    #     return source[len(self._config.reference_prefix):]

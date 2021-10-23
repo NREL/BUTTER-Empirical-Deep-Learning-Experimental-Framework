@@ -27,7 +27,7 @@ class Marshal:
         return self._config.register_type(target_type, marshaler, demarshaler, type_code)
 
     def marshal(self, target: any) -> any:
-        return Marshaler(self._config).marshal(target)
+        return Marshaler(self._config)(target)
 
     def demarshal(self, target: any) -> any:
-        return Demarshaler(self._config)._demarshal(target)
+        return Demarshaler(self._config)(target)
