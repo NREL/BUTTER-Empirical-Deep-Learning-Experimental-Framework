@@ -1,4 +1,4 @@
-from typing import Callable, Union
+from typing import Callable, Union, Optional
 
 from lmarshal.demarshaler import Demarshaler
 from lmarshal.marshaler import Marshaler
@@ -10,8 +10,8 @@ AtomicData = Union[int, float, str]
 ObjectMarshaler = Callable[[Marshaler, any], any]
 ReferenceRegister = Callable[[Demarshaler, any], any]
 ObjectDemarshaler = Callable[[Demarshaler, any], any]
-ObjectDemarshalingFactory = Callable[[Demarshaler, any], any]
-ObjectDemarshalingInitializer = Callable[[Demarshaler, any, any], any]
+DemarshalingFactory = Callable[[Demarshaler, any], any]
+DemarshalingInitializer = Callable[[Demarshaler, any, any], any]
 
 
 PostDemarshalSetter = Callable[[any], any]
