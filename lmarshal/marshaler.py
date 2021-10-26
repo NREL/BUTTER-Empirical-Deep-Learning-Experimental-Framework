@@ -1,4 +1,3 @@
-from types import NoneType
 from typing import Type, Mapping, Iterable
 
 from lmarshal.common_marshaler import CommonMarshaler
@@ -36,41 +35,42 @@ class Marshaler(CommonMarshaler):
         return self._type_map[source_type](self, source)
 
     @staticmethod
-    def marshal_passthrough(self: 'Marshaler', source: any) -> any:
+    def marshal_passthrough(marshaler: 'Marshaler', source: any) -> any:
         return source
 
     @staticmethod
-    def marshal_untyped(self: 'Marshaler', source: any, object_marshaler: ObjectMarshaler) -> any:
-        vertex_index = self._vertex_index
+    def marshal_untyped(marshaler: 'Marshaler', source: any, object_marshaler: ObjectMarshaler) -> any:
+        vertex_index = marshaler._vertex_index
         source_id = id(source)
         if source_id in vertex_index:  # if source is already indexed, return its reference index
-            label, source = vertex_index[source_id]
-            if source is None or not self._config.circular_references_only:
-                self._referenced.add(source_id)
-                return self._config.reference_prefix + label
-        label = self._make_label(len(vertex_index))
+            label, dest = vertex_index[source_id]
+            if marshaler._config.circular_references_only and dest is not None:
+                return dest
+            marshaler._referenced.add(source_id)
+            return marshaler._config.reference_prefix + label
+        label = marshaler._make_label(len(vertex_index))
         vertex_index[source_id] = (label, None)
-        dest = object_marshaler(self, source)
+        dest = object_marshaler(marshaler, source)
         vertex_index[source_id] = (label, dest)
-        if self._config.label_all and isinstance(dest, dict):
-            dest[self._config.label_key] = label
+        if marshaler._config.label_all and isinstance(dest, dict):
+            dest[marshaler._config.label_key] = label
         return dest
 
     @staticmethod
-    def marshal_string(self: 'Marshaler', source: str) -> str:
-        if len(source) > 0 and source[0] in self._config.control_prefix_set:
-            source = self._escape_string(source)
+    def marshal_string(marshaler: 'Marshaler', source: str) -> str:
+        if len(source) > 0 and source[0] in marshaler._config.control_prefix_set:
+            source = marshaler._escape_string(source)
         return source
 
     @staticmethod
-    def marshal_list(self: 'Marshaler', source: Iterable) -> list:
+    def marshal_list(marshaler: 'Marshaler', source: Iterable) -> list:
         return Marshaler.marshal_untyped(
-            self,
+            marshaler,
             source,
             lambda m, s: [m.marshal(e) for e in s])
 
     @staticmethod
-    def marshal_dict(self: 'Marshaler', source: Mapping) -> dict:
+    def marshal_dict(marshaler: 'Marshaler', source: Mapping) -> dict:
         def marshal_bare_dict(m: 'Marshaler', s: Mapping) -> dict:
             items = []
             for k, v in s.items():
@@ -80,7 +80,7 @@ class Marshaler(CommonMarshaler):
             return {k: m.marshal(v) for k, v in sorted(items)}
 
         return Marshaler.marshal_untyped(
-            self,
+            marshaler,
             source,
             marshal_bare_dict)
 
@@ -91,7 +91,7 @@ class Marshaler(CommonMarshaler):
 
     @staticmethod
     def marshal_typed(
-            self: 'Marshaler',
+            marshaler: 'Marshaler',
             source: any,
             type_code: TypeCode,
             object_marshaler: ObjectMarshaler,
@@ -103,14 +103,23 @@ class Marshaler(CommonMarshaler):
             result[m._config.type_key] = type_code
             return result
 
-        return self.marshal_untyped(self, source, type_checked_object_marshaler)
+        return marshaler.marshal_untyped(marshaler, source, type_checked_object_marshaler)
 
     @staticmethod
-    def initialize_type_map(type_map: {Type: ObjectMarshaler}) -> None:
-        type_map[NoneType] = Marshaler.marshal_passthrough
+    def default_object_marshaler(marshaler: 'Marshaler', source: any) -> {}:
+        return {marshaler.marshal_key(k): marshaler.marshal(v) for k, v in sorted(vars(source).items())}
+
+    @staticmethod
+    def initialize_type_map(type_map: {Type: ObjectMarshaler}, config: MarshalConfig) -> None:
+        type_map[type(None)] = Marshaler.marshal_passthrough
         type_map[bool] = Marshaler.marshal_passthrough
         type_map[int] = Marshaler.marshal_passthrough
         type_map[float] = Marshaler.marshal_passthrough
-        type_map[str] = Marshaler.marshal_string
+
+        if config.reference_strings:
+            type_map[str] = lambda m, s: Marshaler.marshal_untyped(m, s, Marshaler.marshal_string)
+        else:
+            type_map[str] = Marshaler.marshal_string
+
         type_map[list] = Marshaler.marshal_list
         type_map[dict] = Marshaler.marshal_dict

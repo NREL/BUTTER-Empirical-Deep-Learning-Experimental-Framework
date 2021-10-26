@@ -14,4 +14,4 @@ class CommonMarshaler:
         return self._config.escape_prefix + source
 
     def _unescape_string(self, source: str) -> str:
-        return source[1:]
+        return source[len(self._config.escape_prefix):]
