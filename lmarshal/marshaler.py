@@ -15,12 +15,12 @@ class Marshaler(CommonMarshaler):
                  ) -> None:
         super().__init__(config)
         self._type_map: {Type: ObjectMarshaler} = type_map
-        self._vertex_index: {int: (str, any)} = {}
+        self._vertex_index: {int: (str, any, any)} = {}
         self._referenced: {int} = set()
         self._result: any = self.marshal(source)
         if self._config.label_referenced and not self._config.label_all:
             for element_id in self._referenced:
-                label, element = self._vertex_index[element_id]
+                label, _, element = self._vertex_index[element_id]
                 if isinstance(element, dict):
                     element[self._config.label_key] = label
 
@@ -43,15 +43,18 @@ class Marshaler(CommonMarshaler):
         vertex_index = marshaler._vertex_index
         source_id = id(source)
         if source_id in vertex_index:  # if source is already indexed, return its reference index
-            label, dest = vertex_index[source_id]
+            label, _, dest = vertex_index[source_id]
             if marshaler._config.circular_references_only and dest is not None:
                 return dest
-            marshaler._referenced.add(source_id)
+            if marshaler._config.label_referenced:
+                marshaler._referenced.add(source_id)
             return marshaler._config.reference_prefix + label
+
         label = marshaler._make_label(len(vertex_index))
-        vertex_index[source_id] = (label, None)
+        vertex_index[source_id] = (label, source, None)
         dest = object_marshaler(marshaler, source)
-        vertex_index[source_id] = (label, dest)
+        vertex_index[source_id] = (label, source, dest)
+
         if marshaler._config.label_all and isinstance(dest, dict):
             dest[marshaler._config.label_key] = label
         return dest
@@ -72,12 +75,12 @@ class Marshaler(CommonMarshaler):
     @staticmethod
     def marshal_dict(marshaler: 'Marshaler', source: Mapping) -> dict:
         def marshal_bare_dict(m: 'Marshaler', s: Mapping) -> dict:
-            items = []
+            mod_items = []
             for k, v in s.items():
                 if not isinstance(k, str):
                     return {m._config.flat_dict_key: m.marshal([[k, v] for k, v in s.items()])}
-                items.append((m.marshal_key(k), v))
-            return {k: m.marshal(v) for k, v in sorted(items)}
+                mod_items.append((m.marshal_key(k), v))
+            return {k: m.marshal(v) for k, v in sorted(mod_items)}
 
         return Marshaler.marshal_untyped(
             marshaler,

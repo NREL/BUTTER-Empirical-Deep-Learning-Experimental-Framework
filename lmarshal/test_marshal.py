@@ -1,4 +1,5 @@
 import json
+import pickle
 
 import pytest
 
@@ -9,11 +10,11 @@ from lmarshal.marshal import Marshal
 from lmarshal.marshal_config import MarshalConfig
 
 
-@pytest.mark.parametrize("type_key", ['%', 't', 'type code'])
+@pytest.mark.parametrize("type_key", ['', '%', 'type code'])
 @pytest.mark.parametrize("label_key", ['&', '*', 'label'])
-@pytest.mark.parametrize("reference_prefix", ['*', '&', 'ref-',])
-@pytest.mark.parametrize("escape_prefix", ['!', '\\', 'esc', '_', '__', '\n'])
-@pytest.mark.parametrize("flat_dict_key", [':', 'flat', ''])
+@pytest.mark.parametrize("reference_prefix", ['*', '&', 'ref-', ])
+@pytest.mark.parametrize("escape_prefix", ['!', '__', '\\'])
+@pytest.mark.parametrize("flat_dict_key", [':', 'flat', ' '])
 @pytest.mark.parametrize("label_all", [False, True])
 @pytest.mark.parametrize("label_referenced", [False, True])
 @pytest.mark.parametrize("circular_references_only", [False, True])
@@ -51,23 +52,58 @@ def test_network_json_serializer(
     marshal.register_type(NDense)
     marshal.register_type(NAdd)
 
-    check_first = not (label_all and circular_references_only)
-
-    check_marshaling(marshal, output, check_first)
-    check_marshaling(marshal, layers, check_first)
+    check_first = not circular_references_only
+    layers.append(layers)
     for e in layers:
-        check_marshaling(marshal, e, check_first)
+        check_marshaling(marshal, e, check_first, True, False, False)
+
+    if not circular_references_only:
+        l = []
+        bar = []
+        e = {}
+        s = set()
+        x = [e, s, e, s]
+        x.append(x)
+        foo = [0, 1, 2, bar]
+        bar.extend([foo, l, bar, l])
+
+        t = (
+            None, True, False, 0, 1, -1.2, {}, [],
+            ['a', 'b', 'c'], {'a', 'b', 1}, {'a': 0, 'b': 'b', 'c': 'cee'},
+            {0: 'a', 2: 'two', None: 'three', 'four': None},
+            l, bar, e, s, x, foo)
+        l.extend([foo, t])
+
+        elements = [l, bar, e, s, x, foo, t]
+        elements.append(elements)
+        for e in elements:
+            check_marshaling(marshal, e, check_first, False, False, True)
 
 
-def check_marshaling(marshal, target, check_first):
+def check_marshaling(marshal, target, check_first, check_strings, check_equality, check_pickle):
     marshaled = marshal.marshal(target)
-    first = json.dumps(marshaled, sort_keys=True, separators=(',', ':'))
     demarshaled = marshal.demarshal(marshaled)
     remarshaled = marshal.marshal(demarshaled)
-    second = json.dumps(remarshaled, sort_keys=True, separators=(',', ':'))
-    if check_first:
-        assert first == second
-    demarshaled = marshal.demarshal(remarshaled)
-    marshaled = marshal.marshal(demarshaled)
-    third = json.dumps(marshaled, sort_keys=True, separators=(',', ':'))
-    assert second == third
+    demarshaled_again = marshal.demarshal(remarshaled)
+    marshaled_again = marshal.marshal(demarshaled_again)
+
+    if check_equality:
+        if check_first:
+            assert target == demarshaled
+        assert demarshaled_again == demarshaled
+
+    if check_strings:
+        second = json.dumps(remarshaled, sort_keys=True, separators=(',', ':'))
+        if check_first:
+            first = json.dumps(marshaled, sort_keys=True, separators=(',', ':'))
+            # print(f'first  {first}')
+            assert first == second
+        # print(f'second {second}')
+        third = json.dumps(marshaled_again, sort_keys=True, separators=(',', ':'))
+        # print(f'third  {third}')
+        assert second == third
+
+    if check_pickle:
+        if check_first:
+            assert pickle.dumps(target) == pickle.dumps(demarshaled)
+        assert pickle.dumps(demarshaled_again) == pickle.dumps(demarshaled)

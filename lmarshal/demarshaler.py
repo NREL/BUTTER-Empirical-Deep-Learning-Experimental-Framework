@@ -74,14 +74,14 @@ class Demarshaler(CommonMarshaler):
 
     def dict_demarshaling_generator(self, source: Mapping) -> Iterator[Tuple[any, any]]:
         if self._config.flat_dict_key in source:  # demarshal flattened key value pairs
-            items = source[self._config.flat_dict_key]
+            items = self.demarshal(source[self._config.flat_dict_key])
             if not isinstance(items, list):
                 raise ValueError(
                     f'Found a {type(items)} instead of a list while demarshaling a flattened dict.')
             for item in items:
                 if not isinstance(item, list) or len(item) != 2:
                     raise ValueError('Expected a list of length 2, but found something else.')
-                yield self.demarshal(item[0]), self.demarshal(item[1])
+                yield tuple(item)
 
         yield from ((self.demarshal_key(k), self.demarshal(v))
                     for k, v in sorted(source.items())

@@ -8,6 +8,7 @@ class MarshalConfig:
                  'escape_prefix',
                  'flat_dict_key',
                  'tuple_type_code',
+                 'set_type_code',
                  'label_all',
                  'label_referenced',
                  'circular_references_only',
@@ -17,12 +18,13 @@ class MarshalConfig:
                  ]
 
     def __init__(self,
-                 type_key: str = '%',
+                 type_key: str = '',
                  label_key: str = '&',
                  reference_prefix: str = '*',
                  escape_prefix: str = '!',
                  flat_dict_key: str = ':',
                  tuple_type_code: str = 't',
+                 set_type_code: str = 's',
                  reserved_prefixes_and_keys: Iterable[str] =
                  ('!', '@', '#', '$', '%', '^', '&', '*', '=', '|', '<', '>', '?', ';', ':'),
                  label_all: bool = False,
@@ -37,6 +39,7 @@ class MarshalConfig:
         self.escape_prefix: str = escape_prefix
         self.flat_dict_key: str = flat_dict_key
         self.tuple_type_code: str = tuple_type_code
+        self.set_type_code: str = set_type_code
 
         self.label_all: bool = label_all
         self.label_referenced: bool = label_referenced
