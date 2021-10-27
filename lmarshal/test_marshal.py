@@ -46,7 +46,6 @@ def test_network_json_serializer(
     layers[2].inputs = [layers[0], layers[1]]
     layers[3].inputs = [layers[2]]
     layers[4].inputs = [layers[2], layers[3]]
-    output = layers[-1]
 
     marshal.register_type(NInput)
     marshal.register_type(NDense)
@@ -57,7 +56,7 @@ def test_network_json_serializer(
     for e in layers:
         check_marshaling(marshal, e, check_first, True, False, False)
 
-    if not circular_references_only:
+    if check_first:
         l = []
         bar = []
         e = {}
