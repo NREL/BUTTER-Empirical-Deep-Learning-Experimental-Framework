@@ -53,6 +53,8 @@ class MarshalConfig:
         if len(self.control_key_set) != 3 or escape_prefix in self.control_key_set:
             raise ValueError('Control and escape keys are not distinct.')
         self.control_key_set.update(reserved_prefixes_and_keys)
+        if escape_prefix in self.control_key_set:
+            self.control_key_set.remove(escape_prefix)
 
         self.control_prefix_set = {reference_prefix, escape_prefix}
         if len(self.control_prefix_set) != 2:

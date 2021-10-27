@@ -69,6 +69,7 @@ def test_network_json_serializer(
         t = (
             None, True, False, 0, 1, -1.2, {}, [],
             ['a', 'b', 'c'], {'a', 'b', 1}, {'a': 0, 'b': 'b', 'c': 'cee'},
+            ['', '!', '%', '&', '*', ':'],
             {0: 'a', 2: 'two', None: 'three', 'four': None},
             l, bar, e, s, x, foo)
         l.extend([foo, t])
@@ -77,6 +78,10 @@ def test_network_json_serializer(
         elements.append(elements)
         for e in elements:
             check_marshaling(marshal, e, check_first, False, False, True)
+
+    t = {'': '', '!': '!', '%': '%', '&': '&', '*': '*', ':': ':'}
+    t['self'] = t
+    check_marshaling(marshal, t, check_first, True, False, False)
 
 
 def check_marshaling(marshal, target, check_first, check_strings, check_equality, check_pickle):
@@ -95,12 +100,12 @@ def check_marshaling(marshal, target, check_first, check_strings, check_equality
         second = json.dumps(remarshaled, sort_keys=True, separators=(',', ':'))
         if check_first:
             first = json.dumps(marshaled, sort_keys=True, separators=(',', ':'))
-            # print(f'first  {first}')
             assert first == second
-        # print(f'second {second}')
         third = json.dumps(marshaled_again, sort_keys=True, separators=(',', ':'))
-        # print(f'third  {third}')
         assert second == third
+    # print(f"first  {json.dumps(marshaled, sort_keys=True, separators=(',', ':'))}")
+    # print(f"second {json.dumps(remarshaled, sort_keys=True, separators=(',', ':'))}")
+    # print(f"third  {json.dumps(marshaled_again, sort_keys=True, separators=(',', ':'))}")
 
     if check_pickle:
         if check_first:

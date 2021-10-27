@@ -88,7 +88,9 @@ class Demarshaler(CommonMarshaler):
                     if k not in self._config.control_key_set)
 
     def demarshal_key(self, source: str) -> str:
-        return self._unescape_string(source) if source.startswith(self._config.escape_prefix) else source
+        if source.startswith(self._config.escape_prefix):
+            source = self._unescape_string(source)
+        return source
 
     @staticmethod
     def demarshal_typed(
