@@ -7,7 +7,7 @@ if __name__ == "__main__":
     subprocess_args = sys.argv[1:]
     print(f'Starting Worker Manager...')
     while True:
-        print(f'Launching subprocess command "{" ".join(subprocess_args)}"...')
+        print(f'Launching subprocess command "{subprocess_args}"...')
         print('asdf...')
         completed_process = subprocess.run(subprocess_args,
                                            capture_output=False,
