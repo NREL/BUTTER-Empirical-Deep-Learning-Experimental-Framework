@@ -26,7 +26,7 @@ if __name__ == "__main__":
     for rank, config in enumerate(configs):
         command = ['python', '-m', 'dmp.jq.jq_worker_manager',
                    'python', '-m', 'dmp.jq.jq_worker',
-                   *[str(e) for e in config]]
+                   *[str(e) for e in config], args.project, args.group]
         print(f'Creating subprocess with command: "{" ".join(command)}"')
         workers.append(subprocess.Popen(
             command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
