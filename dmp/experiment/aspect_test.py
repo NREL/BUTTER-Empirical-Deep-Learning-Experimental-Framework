@@ -310,12 +310,39 @@ def test_network(
         inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config[
             "validation_split"], shuffle=True)
 
-        if config["label_noise"] != "none":
+        label_noise = config["label_noise"]
+        if label_noise != "none":
             train_size = len(outputs_train)
-            num_to_perturb = int(train_size * config["label_noise"])
-            noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
-            noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
-            outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
+            run_task = dataset['Task']
+            print(f'run_task {run_task} output shape {outputs.shape}')
+            print(f'sample\n{outputs_train[0:20, :]}')
+            if run_task == 'classification':
+                num_to_perturb = int(train_size * label_noise)
+                noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
+
+                num_outputs = outputs.shape[1]
+                if num_outputs == 1:
+                    # binary response variable...
+                    outputs_train[noisy_labels_idx] ^= 1
+                else:
+                    # one-hot response variable...
+                    rolls = numpy.random.choice(numpy.arange(num_outputs - 1) + 1, noisy_labels_idx.size)
+                    for i, idx in enumerate(noisy_labels_idx):
+                        outputs_train[noisy_labels_idx] = numpy.roll(outputs_train[noisy_labels_idx], rolls[i])
+                # noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
+                # outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
+            elif run_task == 'regression':
+                # mean = numpy.mean(outputs, axis=0)
+                std_dev = numpy.std(outputs, axis=0)
+                print(f'std_dev {std_dev}')
+                noise_std = std_dev * label_noise
+                for i in range(outputs_train.shape[1]):
+                    outputs_train[:, i] += numpy.random.normal(
+                        loc=0, scale=noise_std[i], size=outputs_train[:, i].shape)
+            else:
+                raise ValueError(f'Do not know how to add label noise to dataset task {run_task}.')
+
+            print(f'sample\n{outputs_train[0:20, :]}')
 
         del run_config["validation_split"]
         run_config["validation_data"] = (inputs_val, outputs_val)
@@ -563,7 +590,7 @@ datasets = pmlb_loader.load_dataset_index()
 
 
 default_config = {
-    'mode': 'list',  # 'direct', 'list', 'enqueue', ?
+    'mode': 'direct',  # 'direct', 'list', 'enqueue', ?
     'seed': None,
     'log': './log',
     'dataset': '529_pollen',
@@ -572,7 +599,7 @@ default_config = {
         "class_name": "adam",
         "config": {"learning_rate": 0.001},
     },
-    'datasets': ['529_pollen'],
+    'datasets': ['wine_quality_white'],
     'learning_rates': [0.001],
     'topologies': ['wide_first'],
     'budgets': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
@@ -594,8 +621,10 @@ default_config = {
         'verbose': 0,
     },
     'validation_split_method': 'shuffled_train_test_split',
-    'label_noises': ['none'],
+    'label_noises': [.5],
+    # 'label_noises': ['none'],
     'label_noise': 'none',
+    # 'label_noise': 0.1,
 }
 
 
@@ -677,7 +706,7 @@ def generate_all_tests_from_config(config: {}):
                 config['topology'] = topology
                 for residual_mode in config['residual_modes']:
                     if residual_mode == 'full' and (topology != 'rectangular' or topology.startswith('wide_first')):
-                        continue # skip incompatible combinations
+                        continue  # skip incompatible combinations
                     config['residual_mode'] = residual_mode
                     for budget in config['budgets']:
                         config['budget'] = budget
