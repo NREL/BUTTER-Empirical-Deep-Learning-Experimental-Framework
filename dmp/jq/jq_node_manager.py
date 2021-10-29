@@ -27,7 +27,7 @@ if __name__ == "__main__":
         command = ['python', '-m', 'dmp.jq.jq_worker_manager',
                    'python', '-m', 'dmp.jq.jq_worker',
                    *[str(e) for e in config]]
-        print(f'Creating subprocess with command: "{command}"')
+        print(f'Creating subprocess with command: "{" ".join(command)}"')
         workers.append(subprocess.Popen(
             command, bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT))
     print(f'Waiting for worker processes to exit...')
