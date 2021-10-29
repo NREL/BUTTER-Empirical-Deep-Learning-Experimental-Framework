@@ -4,7 +4,6 @@ import platform
 import subprocess
 import sys
 from asyncio import Queue, QueueEmpty
-from queue import Empty
 from threading import Thread
 
 if __name__ == "__main__":
@@ -36,25 +35,26 @@ if __name__ == "__main__":
     if __name__ == '__main__':
         logfile = open('logfile.txt', 'w')
 
+        q = Queue()
+        threads = []
         workers = []
         for rank, config in enumerate(configs):
             command = ['python', '-m', 'dmp.jq.jq_worker_manager',
                        'python', '-m', 'dmp.jq.jq_worker',
                        *[str(e) for e in config], args.project, args.group]
             print(f'Creating subprocess with command: "{" ".join(command)}"')
-            workers.append(subprocess.Popen(
-                command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        q = Queue()
-        threads = []
-        for w in workers:
-            t = Thread(target=enqueue_output, args=(w.stdout, q))
+            worker = subprocess.Popen(
+                command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            workers.append(worker)
+            t = Thread(target=enqueue_output, args=(worker.stdout, q))
             threads.append(t)
-            
+
+        print('Starting listener threads...')
         for t in threads:
             t.daemon = True
             t.start()
 
+        print('Waiting on listener threads...')
         while True:
             try:
                 line = q.get_nowait()
@@ -62,8 +62,6 @@ if __name__ == "__main__":
                 pass
             else:
                 sys.stdout.write(line)
-                logfile.write(line)
-                logfile.flush()
 
             # break when all processes are done.
             if all(w.poll() is not None for w in workers):
