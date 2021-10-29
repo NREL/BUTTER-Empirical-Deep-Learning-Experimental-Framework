@@ -59,7 +59,7 @@ if __name__ == "__main__":
             possibly_done = all(w.poll() is not None for w in workers)
             # print(f'possibly_done {possibly_done}')
             try:
-                line = q.get_nowait()
+                line = q.get(timeout=1)
             except Empty:
                 if possibly_done:
                     break
