@@ -2,7 +2,6 @@ import argparse
 import json
 import platform
 import subprocess
-import sys
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -22,13 +21,15 @@ if __name__ == "__main__":
     print(f'Started Node Manager on host "{host}" for project "{args.project}" and group "{args.group}".')
     print(f'Launching worker processes...')
     print(json.dumps(configs))
-    workers = [subprocess.Popen(
-        ['python', '-m', 'dmp.jq.jq_worker_manager',
-         'python', '-m', 'dmp.jq.jq_worker',
-         *[str(e) for e in config],
-         args.project,
-         args.group], bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
-        for rank, config in enumerate(configs)]
+
+    workers = []
+    for rank, config in enumerate(configs):
+        command = ['python', '-m', 'dmp.jq.jq_worker_manager',
+                   'python', '-m', 'dmp.jq.jq_worker',
+                   *[str(e) for e in config]]
+        print(f'Creating subprocess with command: "{command}"')
+        workers.append(subprocess.Popen(
+            command, bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT))
     print(f'Waiting for worker processes to exit...')
     for worker in workers:
         worker.wait()
