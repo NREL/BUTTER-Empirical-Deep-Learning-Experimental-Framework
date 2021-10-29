@@ -3,7 +3,7 @@ import json
 import platform
 import subprocess
 import sys
-from asyncio import Queue
+from asyncio import Queue, QueueEmpty
 from queue import Empty
 from threading import Thread
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         while True:
             try:
                 line = q.get_nowait()
-            except Empty:
+            except QueueEmpty:
                 pass
             else:
                 sys.stdout.write(line)
