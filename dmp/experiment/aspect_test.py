@@ -515,6 +515,10 @@ def get_wide_first_layer_rectangular_other_layers_widths(
     return make_layout
 
 
+def get_wide_first_2x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
 def get_wide_first_5x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
 
@@ -530,10 +534,12 @@ def widths_factory(topology):
         return get_trapezoidal_widths
     elif topology == 'exponential':
         return get_exponential_widths
-    elif topology == 'wide_first':
-        return get_wide_first_layer_rectangular_other_layers_widths
+    elif topology == 'wide_first_2x':
+        return get_wide_first_2x
     elif topology == 'wide_first_5x':
         return get_wide_first_5x
+    elif topology in {'wide_first', 'wide_first_10x'}:
+        return get_wide_first_layer_rectangular_other_layers_widths
     elif topology == 'wide_first_20x':
         return get_wide_first_20x
     else:
@@ -670,6 +676,8 @@ def generate_all_tests_from_config(config: {}):
             for topology in config['topologies']:
                 config['topology'] = topology
                 for residual_mode in config['residual_modes']:
+                    if residual_mode == 'full' and (topology != 'rectangular' or topology.startswith('wide_first')):
+                        continue # skip incompatible combinations
                     config['residual_mode'] = residual_mode
                     for budget in config['budgets']:
                         config['budget'] = budget
