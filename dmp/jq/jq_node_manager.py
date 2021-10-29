@@ -56,13 +56,14 @@ if __name__ == "__main__":
         print('Waiting on listener threads...')
         while True:
             possibly_done = all(w.poll() is not None for w in workers)
+            print(f'possibly_done {possibly_done}')
             try:
                 line = q.get_nowait()
             except Empty:
                 if possibly_done:
                     break
             else:
-                sys.stdout.write(line)
+                print(line)
 
         print(f'Waiting for worker processes to exit...')
         for worker in workers:
