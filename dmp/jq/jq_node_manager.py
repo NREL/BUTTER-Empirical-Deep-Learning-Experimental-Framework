@@ -26,12 +26,13 @@ if __name__ == "__main__":
     print(json.dumps(configs))
 
 
-    def enqueue_output(out, err, queue):
+    def enqueue_output(out, queue):
         for line in iter(out.readline, b''):
             queue.put(line)
-        for line in iter(err.readline, b''):
+
+    def enqueue_output(out, queue):
+        for line in iter(out.readline, b''):
             queue.put(line)
-        out.close()
 
 
     if __name__ == '__main__':
@@ -48,7 +49,9 @@ if __name__ == "__main__":
             worker = subprocess.Popen(
                 command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             workers.append(worker)
-            t = Thread(target=enqueue_output, args=(worker.stdout, worker.stderr, q))
+            t = Thread(target=enqueue_output, args=(worker.stdout, q))
+            threads.append(t)
+            t = Thread(target=enqueue_output, args=(worker.stderr, q))
             threads.append(t)
 
         print('Starting listener threads...')
