@@ -26,8 +26,10 @@ if __name__ == "__main__":
     print(json.dumps(configs))
 
 
-    def enqueue_output(out, queue):
+    def enqueue_output(out, err, queue):
         for line in iter(out.readline, b''):
+            queue.put(line)
+        for line in iter(err.readline, b''):
             queue.put(line)
         out.close()
 
@@ -46,7 +48,7 @@ if __name__ == "__main__":
             worker = subprocess.Popen(
                 command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             workers.append(worker)
-            t = Thread(target=enqueue_output, args=(worker.stdout, q))
+            t = Thread(target=enqueue_output, args=(worker.stdout, worker.stderr, q))
             threads.append(t)
 
         print('Starting listener threads...')
@@ -56,16 +58,14 @@ if __name__ == "__main__":
 
         print('Waiting on listener threads...')
         while True:
+            possibly_done = all(w.poll() is not None for w in workers)
             try:
                 line = q.get_nowait()
             except Empty:
-                pass
+                if possibly_done:
+                    break
             else:
                 sys.stdout.write(line)
-
-            # break when all processes are done.
-            if all(w.poll() is not None for w in workers):
-                break
 
         print(f'Waiting for worker processes to exit...')
         for worker in workers:
