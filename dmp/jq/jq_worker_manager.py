@@ -10,7 +10,7 @@ if __name__ == "__main__":
         print(f'Launching subprocess command "{" ".join(subprocess_args)}"...')
         print('asdf...')
         completed_process = subprocess.run(subprocess_args,
-                                           capture_output=True,
+                                           capture_output=False,
                                            bufsize=1,
                                            universal_newlines=True,
                                            stdout=subprocess.STDOUT,
