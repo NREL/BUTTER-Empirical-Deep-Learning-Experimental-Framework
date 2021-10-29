@@ -54,7 +54,9 @@ if __name__ == "__main__":
 
         print('Starting output redirection...')
         while True:
+            print(f'select...')
             rstreams, _, _ = select.select(streams, [], [])
+            print(f'selected {len(rstreams)}')
             for stream in rstreams:
                 line = stream.readline()
                 if line != '':
