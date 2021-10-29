@@ -14,11 +14,12 @@ if __name__ == "__main__":
         #                                    # universal_newlines=True,
         #                                    stdout=subprocess.STDOUT,
         #                                    stderr=subprocess.STDOUT)
-        completed_process = subprocess.Popen(subprocess_args,
+        worker = subprocess.Popen(subprocess_args,
                                              bufsize=1, universal_newlines=True, stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE)
-        if completed_process.returncode != 1:
+        worker.wait()
+        if worker.returncode != 1:
             break
-        print(f'Subprocess failed with returncode {completed_process.returncode}.')
+        print(f'Subprocess failed with returncode {worker.returncode}.')
         time.sleep(5)
-    print(f'Subprocess completed with returncode {completed_process.returncode}, exiting Worker Manager...')
+    print(f'Subprocess completed with returncode {worker.returncode}, exiting Worker Manager...')
