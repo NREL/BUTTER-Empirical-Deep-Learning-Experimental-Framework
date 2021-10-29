@@ -1,4 +1,3 @@
-import platform
 import subprocess
 import sys
 import time
@@ -14,9 +13,20 @@ if __name__ == "__main__":
         #                                    # universal_newlines=True,
         #                                    stdout=subprocess.STDOUT,
         #                                    stderr=subprocess.STDOUT)
-        worker = subprocess.run(subprocess_args, stdout=subprocess.STDOUT)
-        if worker.returncode != 1:
+        worker = subprocess.Popen(subprocess_args,
+                                  bufsize=1, universal_newlines=True,
+                                  stdout=subprocess.STDOUT,
+                                  stderr=subprocess.STDOUT)
+        while True:
+            output = worker.stdout.readline()
+            if output == '' and worker.poll() is not None:
+                break
+            if output:
+                print(output.strip())
+        returncode = worker.poll()
+
+        if returncode != 1:
             break
-        print(f'Subprocess failed with returncode {worker.returncode}.')
-        time.sleep(5)
-    print(f'Subprocess completed with returncode {worker.returncode}, exiting Worker Manager...')
+        print(f'Subprocess failed with returncode {returncode}.')
+        time.sleep(10)
+    print(f'Subprocess completed with returncode {returncode}, exiting Worker Manager...')
