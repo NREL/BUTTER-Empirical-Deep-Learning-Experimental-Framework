@@ -26,13 +26,9 @@ if __name__ == "__main__":
     print(json.dumps(configs))
 
 
-    def enqueue_output(out, queue):
+    def enqueue_output(name, out, queue):
         for line in iter(out.readline, b''):
-            queue.put(line)
-
-    def enqueue_output(out, queue):
-        for line in iter(out.readline, b''):
-            queue.put(line)
+            queue.put(name + line)
 
 
     if __name__ == '__main__':
@@ -45,13 +41,11 @@ if __name__ == "__main__":
             command = ['python', '-m', 'dmp.jq.jq_worker_manager',
                        'python', '-m', 'dmp.jq.jq_worker',
                        *[str(e) for e in config], args.project, args.group]
-            print(f'Creating subprocess with command: "{" ".join(command)}"')
+            print(f'Creating subprocess {rank} with command: "{" ".join(command)}"')
             worker = subprocess.Popen(
-                command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             workers.append(worker)
-            t = Thread(target=enqueue_output, args=(worker.stdout, q))
-            threads.append(t)
-            t = Thread(target=enqueue_output, args=(worker.stderr, q))
+            t = Thread(target=enqueue_output, args=(f'{rank}:', worker.stdout, q))
             threads.append(t)
 
         print('Starting listener threads...')
