@@ -1,0 +1,1 @@
+python -u -m dmp.experiment.aspect_test $(cat regularization_01.json) > regularization_01.jobs

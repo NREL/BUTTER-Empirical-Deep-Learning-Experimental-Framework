@@ -1,0 +1,26 @@
+{
+    "mode":"direct",
+    "reps": 1,
+    "residual_mode": "none",
+    "log":"./log",
+    "activation":"relu",
+    "early_stopping":false,
+    "epoch_scale":"none",
+    "validation_split_method":"shuffled_train_test_split",
+    "run_config": {
+        "validation_split": 0.2,
+        "shuffle": true,
+        "epochs": 20,
+        "batch_size": 256,
+        "verbose": 1
+    },
+    "optimizer": {
+        "class_name": "adam",
+        "config": {"learning_rate": 0.001}
+    },
+    "label_noises": [0.1],
+    "datasets": ["mnist", "sleep"],
+    "topologies": ["rectangle"],
+    "budgets": [128, 512],
+    "depths": [3]
+}
