@@ -13,7 +13,7 @@ if __name__ == "__main__":
         #                                    # universal_newlines=True,
         #                                    stdout=subprocess.STDOUT,
         #                                    stderr=subprocess.STDOUT)
-        worker = subprocess.Popen(subprocess_args, stdout=subprocess.STDOUT)
+        worker = subprocess.Popen(subprocess_args, stdout=subprocess.PIPE)
         while True:
             output = worker.stdout.readline()
             if output == '' and worker.poll() is not None:
