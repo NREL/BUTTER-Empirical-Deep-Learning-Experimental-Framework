@@ -29,6 +29,7 @@ if __name__ == "__main__":
     def enqueue_output(name, out, queue):
         for line in iter(out.readline, b''):
             queue.put(name + line)
+        out.close()
 
 
     if __name__ == '__main__':
@@ -56,7 +57,7 @@ if __name__ == "__main__":
         print('Waiting on listener threads...')
         while True:
             possibly_done = all(w.poll() is not None for w in workers)
-            print(f'possibly_done {possibly_done}')
+            # print(f'possibly_done {possibly_done}')
             try:
                 line = q.get_nowait()
             except Empty:
