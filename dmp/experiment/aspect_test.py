@@ -12,9 +12,11 @@ from functools import singledispatchmethod
 from typing import Callable, Union, List, Optional
 
 import numpy
+import numpy as np
 import pandas
 import tensorflow
 from keras_buoy.models import ResumableModel
+from numpy import ndarray
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import (
     callbacks,
@@ -211,6 +213,12 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
     return output_activation, run_loss
 
 
+def shuffle_dataset(inputs: ndarray, outputs: ndarray) -> (ndarray, ndarray):
+    combined = np.hstack((inputs, outputs))
+    np.random.shuffle(combined)
+    return combined[:, 0:inputs.shape[1]], combined[:, inputs.shape[1]:]
+
+
 def test_network(
         config: {},
         dataset,
@@ -228,6 +236,9 @@ def test_network(
     Given a fully constructed Keras network, train and test it on a given dataset using hyperparameters in config
     This function also creates log events during and after training.
     """
+
+    inputs, outputs = shuffle_dataset(inputs, outputs)
+
     config = deepcopy(config)
 
     # wine_quality_white__wide_first__4194304__4__16106579275625
