@@ -12,11 +12,9 @@ from functools import singledispatchmethod
 from typing import Callable, Union, List, Optional
 
 import numpy
-import numpy as np
 import pandas
 import tensorflow
 from keras_buoy.models import ResumableModel
-from numpy import ndarray
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import (
     callbacks,
@@ -25,7 +23,6 @@ from tensorflow.keras import (
 )
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.python.keras import losses, Input
-from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
 
@@ -213,10 +210,10 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
     return output_activation, run_loss
 
 
-def shuffle_dataset(inputs: ndarray, outputs: ndarray) -> (ndarray, ndarray):
-    combined = np.hstack((inputs, outputs))
-    np.random.shuffle(combined)
-    return combined[:, 0:inputs.shape[1]], combined[:, inputs.shape[1]:]
+# def shuffle_dataset(inputs: ndarray, outputs: ndarray) -> (ndarray, ndarray):
+#     combined = np.hstack((inputs, outputs))
+#     np.random.shuffle(combined)
+#     return combined[:, 0:inputs.shape[1]], combined[:, inputs.shape[1]:]
 
 
 def test_network(
@@ -237,7 +234,7 @@ def test_network(
     This function also creates log events during and after training.
     """
 
-    inputs, outputs = shuffle_dataset(inputs, outputs)
+    # inputs, outputs = shuffle_dataset(inputs, outputs)
 
     config = deepcopy(config)
 
@@ -307,14 +304,15 @@ def test_network(
         run_callbacks.append(callbacks.EarlyStopping(**config['early_stopping']))
 
     run_config = config['run_config'].copy()
-    
+
     if config["validation_split_method"] == "shuffled_train_test_split":
 
-        inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config["validation_split"], shuffle=True)
+        inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config[
+            "validation_split"], shuffle=True)
 
         if config["label_noise"] != "none":
             train_size = len(outputs_train)
-            num_to_perturb = int(train_size*config["label_noise"])
+            num_to_perturb = int(train_size * config["label_noise"])
             noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
             noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
             outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
@@ -589,8 +587,9 @@ default_config = {
         'batch_size': 256,
         'verbose': 0,
     },
-    'validation_split_method':'old',
-    'label_noises':['none']
+    'validation_split_method': 'shuffled_train_test_split',
+    'label_noises': ['none'],
+    'label_noise': 'none',
 }
 
 
@@ -677,7 +676,7 @@ def generate_all_tests_from_config(config: {}):
                         for label_noise in config["label_noises"]:
                             config["label_noise"] = label_noise
 
-                            if 'epoch_scale' in config and config["epoch_scale"]!="none":
+                            if 'epoch_scale' in config and config["epoch_scale"] != "none":
                                 epoch_scale = config['epoch_scale']
                                 m = epoch_scale['m']
                                 b = epoch_scale['b']
@@ -720,7 +719,7 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
-    strategy = jq_worker.make_strategy(0, 6, 0, 0, 8192) # only used in mode=direct for local testing purposes
+    strategy = jq_worker.make_strategy(0, 6, 0, 0, 8192)  # only used in mode=direct for local testing purposes
 
     if mode == 'single':
         run_aspect_test_from_config(config)
