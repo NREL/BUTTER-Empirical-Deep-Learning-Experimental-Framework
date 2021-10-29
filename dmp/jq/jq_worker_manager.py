@@ -15,8 +15,8 @@ if __name__ == "__main__":
         #                                    stdout=subprocess.STDOUT,
         #                                    stderr=subprocess.STDOUT)
         completed_process = subprocess.Popen(subprocess_args,
-                                             bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT,
-                                             stderr=subprocess.STDOUT)
+                                             bufsize=1, universal_newlines=True, stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE)
         if completed_process.returncode != 1:
             break
         print(f'Subprocess failed with returncode {completed_process.returncode}.')
