@@ -546,6 +546,14 @@ def get_wide_first_2x(num_outputs: int, depth: int) -> Callable[[float], List[in
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
 
 
+def get_wide_first_4x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
+def get_wide_first_8x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
 def get_wide_first_5x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
 
@@ -563,6 +571,8 @@ def widths_factory(topology):
         return get_exponential_widths
     elif topology == 'wide_first_2x':
         return get_wide_first_2x
+    elif topology == 'wide_first_4x':
+        return get_wide_first_4x
     elif topology == 'wide_first_5x':
         return get_wide_first_5x
     elif topology in {'wide_first', 'wide_first_10x'}:
@@ -599,9 +609,9 @@ default_config = {
         "class_name": "adam",
         "config": {"learning_rate": 0.001},
     },
-    'datasets': ['wine_quality_white'],
+    'datasets': ['adult'],
     'learning_rates': [0.001],
-    'topologies': ['wide_first'],
+    'topologies': ['wide_first_2x'],
     'budgets': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                 8388608, 16777216, 33554432],
@@ -621,10 +631,8 @@ default_config = {
         'verbose': 0,
     },
     'validation_split_method': 'shuffled_train_test_split',
-    'label_noises': [.5],
-    # 'label_noises': ['none'],
+    'label_noises': ['none'],
     'label_noise': 'none',
-    # 'label_noise': 0.1,
 }
 
 
