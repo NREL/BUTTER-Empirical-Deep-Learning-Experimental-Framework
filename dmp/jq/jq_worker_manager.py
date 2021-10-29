@@ -14,10 +14,7 @@ if __name__ == "__main__":
         #                                    # universal_newlines=True,
         #                                    stdout=subprocess.STDOUT,
         #                                    stderr=subprocess.STDOUT)
-        worker = subprocess.Popen(subprocess_args,
-                                             bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT,
-                                             stderr=subprocess.STDOUT)
-        worker.wait()
+        worker = subprocess.run(subprocess_args, bufsize=1, universal_newlines=True, capture_output=True)
         if worker.returncode != 1:
             break
         print(f'Subprocess failed with returncode {worker.returncode}.')
