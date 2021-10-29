@@ -3,6 +3,7 @@ import json
 import platform
 import select
 import subprocess
+import sys
 from queue import Queue, Empty
 
 if __name__ == "__main__":
@@ -35,7 +36,7 @@ if __name__ == "__main__":
                        *[str(e) for e in config], args.project, args.group]
             print(f'Creating subprocess {rank} with command: "{" ".join(command)}"')
             worker = subprocess.Popen(
-                command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                command, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True,)
             workers.append(worker)
 
         streams = [w.stdout for w in workers]
@@ -43,23 +44,25 @@ if __name__ == "__main__":
 
 
         def output(stream, line):
-            if line == '':
+            if len(line) == 0:
                 return
             name = stream_name_map[id(stream)]
-            line = name + line
-            print(line)
+            line = name + line.decode("utf-8")
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            # print(line, flush=True)
             # sys.stdout.write(line)
             # sys.stdout.flush()
 
 
         print('Starting output redirection...')
         while True:
-            print(f'select...')
-            rstreams, _, _ = select.select(streams, [], [])
-            print(f'selected {len(rstreams)}')
+            # print(f'select...')
+            rstreams, _, _ = select.select(streams, [], [], 1)
+            # print(f'selected {len(rstreams)}')
             for stream in rstreams:
                 line = stream.readline()
-                if line != '':
+                if len(line) != 0:
                     output(stream, line)
             if all(w.poll() is not None for w in workers):
                 break
@@ -67,7 +70,7 @@ if __name__ == "__main__":
         for stream in streams:
             while True:
                 line = stream.readline()
-                if line == '':
+                if len(line) == 0:
                     break
                 output(stream, line)
 

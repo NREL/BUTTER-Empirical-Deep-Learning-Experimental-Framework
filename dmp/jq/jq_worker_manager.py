@@ -2,11 +2,13 @@ import subprocess
 import sys
 import time
 
+print('worker manager!\n')
+
 if __name__ == "__main__":
     subprocess_args = sys.argv[1:]
-    print(f'Starting Worker Manager...')
+    print(f'Starting Worker Manager...', flush=True)
     while True:
-        print(f'Launching subprocess command "{" ".join(subprocess_args)}"...')
+        print(f'Launching subprocess command "{" ".join(subprocess_args)}"...', flush=True)
         # completed_process = subprocess.run(subprocess_args,
         #                                    # capture_output=False,
         #                                    bufsize=0,
@@ -20,11 +22,13 @@ if __name__ == "__main__":
             if output == '' and worker.poll() is not None:
                 break
             if output:
-                print(output.strip())
+                sys.stdout.write(output)
+                sys.stdout.flush()
+                # print(output.strip(), flush=True)
         returncode = worker.poll()
 
         if returncode != 1:
             break
-        print(f'Subprocess failed with returncode {returncode}.')
+        print(f'Subprocess failed with returncode {returncode}.', flush=True)
         time.sleep(10)
-    print(f'Subprocess completed with returncode {returncode}, exiting Worker Manager...')
+    print(f'Subprocess completed with returncode {returncode}, exiting Worker Manager...', flush=True)
