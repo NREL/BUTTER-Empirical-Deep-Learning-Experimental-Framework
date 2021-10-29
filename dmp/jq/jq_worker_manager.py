@@ -8,7 +8,12 @@ if __name__ == "__main__":
     print(f'Starting Worker Manager...')
     while True:
         print(f'Launching subprocess command "{" ".join(subprocess_args)}"...')
-        completed_process = subprocess.run(subprocess_args)
+        completed_process = subprocess.run(subprocess_args,
+                                           capture_output=True,
+                                           bufsize=1,
+                                           universal_newlines=True,
+                                           stdout=subprocess.STDOUT,
+                                           stderr=subprocess.STDOUT)
         if completed_process.returncode != 1:
             break
         print(f'Subprocess failed with returncode {completed_process.returncode}.')

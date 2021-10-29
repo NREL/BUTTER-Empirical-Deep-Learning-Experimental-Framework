@@ -27,7 +27,7 @@ if __name__ == "__main__":
          'python', '-m', 'dmp.jq.jq_worker',
          *[str(e) for e in config],
          args.project,
-         args.group])
+         args.group], bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
         for rank, config in enumerate(configs)]
     print(f'Waiting for worker processes to exit...')
     for worker in workers:
