@@ -16,7 +16,7 @@ if __name__ == "__main__":
         #                                    stderr=subprocess.STDOUT)
         worker = subprocess.Popen(subprocess_args,
                                              bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT,
-                                             stderr=subprocess.STD_ERROR_HANDLE)
+                                             stderr=subprocess.STDOUT)
         worker.wait()
         if worker.returncode != 1:
             break

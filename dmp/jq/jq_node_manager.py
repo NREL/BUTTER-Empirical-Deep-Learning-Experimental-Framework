@@ -29,7 +29,7 @@ if __name__ == "__main__":
                    *[str(e) for e in config], args.project, args.group]
         print(f'Creating subprocess with command: "{" ".join(command)}"')
         workers.append(subprocess.Popen(
-            command, bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT, stderr=subprocess.STD_ERROR_HANDLE))
+            command, bufsize=1, universal_newlines=True, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT))
     print(f'Waiting for worker processes to exit...')
     for worker in workers:
         worker.wait()
