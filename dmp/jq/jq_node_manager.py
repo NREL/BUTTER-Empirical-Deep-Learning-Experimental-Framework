@@ -1,10 +1,9 @@
 import argparse
 import json
 import platform
+import select
 import subprocess
-import sys
 from queue import Queue, Empty
-from threading import Thread
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -25,18 +24,10 @@ if __name__ == "__main__":
     print(f'Launching worker processes...')
     print(json.dumps(configs))
 
-
-    def enqueue_output(name, out, queue):
-        for line in iter(out.readline, b''):
-            queue.put(name + line)
-        out.close()
-
-
     if __name__ == '__main__':
         logfile = open('logfile.txt', 'w')
 
         q = Queue()
-        threads = []
         workers = []
         for rank, config in enumerate(configs):
             command = ['python', '-m', 'dmp.jq.jq_worker_manager',
@@ -46,25 +37,37 @@ if __name__ == "__main__":
             worker = subprocess.Popen(
                 command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             workers.append(worker)
-            t = Thread(target=enqueue_output, args=(f'{rank}:', worker.stdout, q))
-            threads.append(t)
 
-        print('Starting listener threads...')
-        for t in threads:
-            t.daemon = True
-            t.start()
+        streams = [w.stdout for w in workers]
+        stream_name_map = {id(s): f'{i}:' for i, s in enumerate(streams)}
 
-        print('Waiting on listener threads...')
+
+        def output(stream, line):
+            if line == '':
+                return
+            name = stream_name_map[id(stream)]
+            line = name + line
+            print(line)
+            # sys.stdout.write(line)
+            # sys.stdout.flush()
+
+
+        print('Starting output redirection...')
         while True:
-            possibly_done = all(w.poll() is not None for w in workers)
-            # print(f'possibly_done {possibly_done}')
-            try:
-                line = q.get(timeout=1)
-            except Empty:
-                if possibly_done:
+            rstreams, _, _ = select.select(streams, [], [])
+            for stream in rstreams:
+                line = stream.readline()
+                if line != '':
+                    output(stream, line)
+            if all(w.poll() is not None for w in workers):
+                break
+
+        for stream in streams:
+            while True:
+                line = stream.readline()
+                if line == '':
                     break
-            else:
-                print(line)
+                output(stream, line)
 
         print(f'Waiting for worker processes to exit...')
         for worker in workers:
