@@ -50,6 +50,8 @@ if __name__ == "__main__":
         for w in workers:
             t = Thread(target=enqueue_output, args=(w.stdout, q))
             threads.append(t)
+            
+        for t in threads:
             t.daemon = True
             t.start()
 
