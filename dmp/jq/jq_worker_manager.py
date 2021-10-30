@@ -1,8 +1,8 @@
+import random
 import subprocess
 import sys
 import time
 
-print('worker manager!\n')
 
 if __name__ == "__main__":
     subprocess_args = sys.argv[1:]
@@ -30,5 +30,5 @@ if __name__ == "__main__":
         if returncode != 1:
             break
         print(f'Subprocess failed with returncode {returncode}.')
-        time.sleep(60)
+        time.sleep(random.uniform(60, 120))
     print(f'Subprocess completed with returncode {returncode}, exiting Worker Manager...')

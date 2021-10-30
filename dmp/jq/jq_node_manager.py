@@ -1,9 +1,11 @@
 import argparse
 import json
 import platform
+import random
 import select
 import subprocess
 import sys
+import time
 from queue import Queue
 
 if __name__ == "__main__":
@@ -39,6 +41,7 @@ if __name__ == "__main__":
                 command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 close_fds=True)
             workers.append(worker)
+            time.sleep(random.uniform(0.5, 2))  # wait a bit to avoid overwhelming the database, etc...
 
         streams = [w.stdout for w in workers]
         stream_name_map = {id(s): f'{i}:' for i, s in enumerate(streams)}
@@ -61,7 +64,7 @@ if __name__ == "__main__":
         print('Starting output redirection...')
         while True:
             # print(f'select...')
-            rstreams, _, _ = select.select(streams, [], [], 10)
+            rstreams, _, _ = select.select(streams, [], [], 30)
             # print(f'selected {len(rstreams)}')
             for stream in rstreams:
                 line = stream.readline()
