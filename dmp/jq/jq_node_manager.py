@@ -4,7 +4,7 @@ import platform
 import select
 import subprocess
 import sys
-from queue import Queue, Empty
+from queue import Queue
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -31,12 +31,13 @@ if __name__ == "__main__":
         q = Queue()
         workers = []
         for rank, config in enumerate(configs):
-            command = ['python', '-m', 'dmp.jq.jq_worker_manager',
-                       'python', '-m', 'dmp.jq.jq_worker',
+            command = ['python', '-u', '-m', 'dmp.jq.jq_worker_manager',
+                       'python', '-u', '-m', 'dmp.jq.jq_worker',
                        *[str(e) for e in config], args.project, args.group]
             print(f'Creating subprocess {rank} with command: "{" ".join(command)}"')
             worker = subprocess.Popen(
-                command, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True,)
+                command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                close_fds=True)
             workers.append(worker)
 
         streams = [w.stdout for w in workers]
@@ -47,7 +48,9 @@ if __name__ == "__main__":
             if len(line) == 0:
                 return
             name = stream_name_map[id(stream)]
-            line = name + line.decode("utf-8")
+            if not isinstance(line, str):
+                line = line.decode("utf-8")
+            line = name + line
             sys.stdout.write(line)
             sys.stdout.flush()
             # print(line, flush=True)
@@ -58,7 +61,7 @@ if __name__ == "__main__":
         print('Starting output redirection...')
         while True:
             # print(f'select...')
-            rstreams, _, _ = select.select(streams, [], [], 1)
+            rstreams, _, _ = select.select(streams, [], [], 10)
             # print(f'selected {len(rstreams)}')
             for stream in rstreams:
                 line = stream.readline()
