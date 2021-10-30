@@ -10,6 +10,18 @@ delete from jobqueue;
 
 SELECT version();
 
+drop index log_job_index;
+create index log_job_index_2
+	on log USING HASH (job);
+
+SELECT * FROM pg_stat_activity;
+
+drop index CONCURRENTLY jobqueue_uuid_index;
+drop index CONCURRENTLY materialized_experiments_0_job_index;
+
+create index materialized_experiments_0_job_index_2
+	on materialized_experiments_0 USING HASH (job);
+
 select doc from "log" where "groupname" IN ('exp00', 'exp01') AND "timestamp" > '2000-01-01 00:00:00' ORDER BY id DESC LIMIT 100;
 
 SELECT COUNT(*) FROM log;
@@ -23,12 +35,80 @@ UPDATE jobqueue
     FROM (SELECT job, jobid, groupname FROM log) as log
     WHERE log.job = jobqueue.uuid AND log.jobid IS NOT NULL;
 
-SELECT groupname, status, MIN(retry_count) as "min_retry", MAX(retry_count) as "max_retry",
-       COUNT(*), SUM((end_time - start_time)) as "time", AVG((config->>'budget')::int) AS budget, AVG((config->>'depth')::int) AS depth FROM jobqueue WHERE groupname = 'fixed_01' GROUP BY groupname, status;
+SELECT groupname, status, MIN(retry_count) as "min_retry", AVG(retry_count) as "avg_retry", MAX(retry_count) as "max_retry",
+       COUNT(*), SUM((end_time - start_time)) as "time", AVG((config->>'budget')::int) AS budget, AVG((config->>'depth')::int) AS depth FROM jobqueue WHERE groupname = 'fixed_3k_1' GROUP BY groupname, status;
+
+SELECT config->>'topology', config->>'residual_mode', COUNT(*) as count,
+       MIN((config->>'budget')::int) as min_budget, AVG((config->>'budget')::int) as avg_budget,  stddev((config->>'budget')::int) as sdev_budget, MAX((config->>'budget')::int) as max_budget,
+       MIN((config->>'depth')::int) as min_depth, AVG((config->>'depth')::int) as avg_depth,  stddev((config->>'depth')::int) as sdev_depth, MAX((config->>'depth')::int) as max_depth
+       from jobqueue where groupname = 'fixed_3k_1' AND status IN ('failed', 'running') AND retry_count >= 0 GROUP BY config->>'topology', config->>'residual_mode' ORDER BY config->>'topology', config->>'residual_mode';
+
+SELECT * from jobqueue where groupname = 'fixed_3k_0' AND status IN ('failed', 'running') AND retry_count >= 0 AND config->>'topology'::varchar = 'exponential' ORDER BY config->>'topology', config->>'residual_mode' LIMIT 100;
 
 
+select AVG(CURRENT_TIMESTAMP - update_time), COUNT(*)
+FROM
+    jobqueue
+where
+    groupname = 'fixed_3k_0' AND
+    status = 'running' AND
+    (CURRENT_TIMESTAMP - update_time) > INTERVAL '4 hours';
 
-SELECT COUNT(*) FROM log WHERE groupname = 'fixed_01';
+select (CURRENT_TIMESTAMP - update_time)
+FROM
+    jobqueue
+where
+    groupname = 'fixed_3k_0' AND
+    status = 'running' AND
+--     (CURRENT_TIMESTAMP - update_time) > INTERVAL '4 hours'
+    config->>'topology'::varchar <> 'exponential'
+ORDER BY (CURRENT_TIMESTAMP - update_time) ASC OFFSET (1020*9) LIMIT 100;
+
+UPDATE jobqueue
+    SET status = null,
+        start_time = null,
+        host = null,
+        retry_count = retry_count + 1
+    WHERE groupname = 'fixed_3k_0' AND
+        status = 'running' AND
+        (CURRENT_TIMESTAMP - update_time) > INTERVAL '12 hours';
+
+UPDATE jobqueue
+    SET status = null,
+        start_time = null,
+        host = null,
+        retry_count = retry_count + 1
+    WHERE groupname = 'fixed_3k_0'
+        AND (status = 'failed' OR
+             (status = 'running' AND
+              (CURRENT_TIMESTAMP - update_time) > INTERVAL '8 hours'));
+
+UPDATE jobqueue
+    SET status = 'failed'
+    WHERE groupname = 'fixed_3k_0'
+        AND (status = 'failed' OR
+             (status = 'running' AND
+              (CURRENT_TIMESTAMP - update_time) > INTERVAL '2 hours')) AND
+          config->>'topology'::varchar = 'exponential';
+
+UPDATE jobqueue
+    SET status = null,
+        start_time = null,
+        host = null,
+        retry_count = retry_count + 1
+    WHERE groupname = 'fixed_3k_0'
+        AND (status = 'failed' OR
+             (status = 'running' AND
+              (CURRENT_TIMESTAMP - update_time) > INTERVAL '4 hours' AND
+              (config->>'budget')::int < 524288 ));
+
+select *, (t.queue_count - t.log_count) as diff
+FROM
+     (select groupname, count(*) as log_count, (SELECT count(*) from jobqueue where log.groupname = jobqueue.groupname) as queue_count from log group by groupname) as t;
+
+SELECT COUNT(*), "config.dataset" from materialized_experiments_0 WHERE groupname = 'fixed_01' GROUP BY "config.dataset";
+
+SELECT COUNT(*) FROM log WHERE groupname = 'fixed_3k_0';
 
 
 SELECT groupname, status, MIN(retry_count) as "min_retry", MAX(retry_count) as "max_retry",
@@ -42,10 +122,10 @@ SELECT status, AVG((config->>'budget')::int) AS budget FROM jobqueue WHERE group
 
 SELECT status, AVG((config->>'budget')::int) AS budget FROM jobqueue WHERE groupname = 'fixed_01' AND
                                                                            status = 'running' AND
-                                                                           (CURRENT_TIMESTAMP - update_time) > '4 hours'
+                                                                           (CURRENT_TIMESTAMP - update_time) > '16 hours'
                                                                            GROUP BY status;
 
-
+alter table materialized_experiments_0 alter column depth type int using depth::int;
 
 SELECT AVG((config->>'budget')::int) AS budget FROM jobqueue WHERE groupname = 'exp00'
                                                                        AND status = 'running'
@@ -61,79 +141,97 @@ SELECT DISTINCT "config.dataset" FROM materialized_experiments_0;
 
 
 
--- CREATE TABLE materialized_experiments_0 AS
--- SELECT
---     *,
---     (doc->>'iterations')::bigint AS "iterations",
---     (doc->'loss')::float AS "loss",
---     CAST((doc->>'num_classes')::float AS BIGINT) AS "num_classes",
---     CAST((doc->>'num_features')::float AS BIGINT) AS "num_features",
---     (doc->>'num_inputs')::bigint AS "num_inputs",
---     (doc->>'num_observations')::bigint AS "num_observations",
---     (doc->>'num_outputs')::bigint AS "num_outputs",
---     (doc->>'num_weights')::bigint AS "num_weights",
---     (doc->>'run_name') AS "run_name",
---     (doc->>'task') AS "task",
---     (doc->'test_loss')::float AS "test_loss",
---     (doc->'val_loss')::float AS "val_loss",
---     (doc->'config'->>'activation') AS "config.activation",
---     (doc->'config'->>'budget')::bigint AS "config.budget",
---     (doc->'config'->>'dataset') AS "config.dataset",
---     (doc->'config'->>'depth') AS "config.depth",
---     (doc->'config'->'early_stopping'->'baseline')::text AS "config.early_stopping.baseline",
---     (doc->'config'->'early_stopping'->'min_delta')::float AS "config.early_stopping.min_delta",
---     (doc->'config'->'early_stopping'->'mode')::text AS "config.early_stopping.mode",
---     (doc->'config'->'early_stopping'->>'monitor') AS "config.early_stopping.monitor",
---     (doc->'config'->'early_stopping'->>'patience')::bigint AS "config.early_stopping.patience",
---     (doc->'config'->>'log') AS "config.log",
---     (doc->'config'->>'mode') AS "config.mode",
---     (doc->'config'->>'name') AS "config.name",
---     (doc->'config'->>'num_hidden')::bigint AS "config.num_hidden",
---     (doc->'config'->>'residual_mode') AS "config.residual_mode",
---     (doc->'config'->>'run_name') AS "config.run_name",
---     (doc->'config'->>'test_split')::float AS "config.test_split",
---     (doc->'config'->>'topology') AS "config.topology",
---     (doc->>'topology') AS "topology"
---     FROM log;
+create table materialized_experiments_0
+(
+    id                                         integer,
+    name                                       varchar,
+    timestamp                                  timestamp,
+    job                                        uuid,
+    groupname                                  varchar,
+    jobid                                      bigint,
+    iterations                                 bigint,
+    loss                                       double precision,
+    num_classes                                bigint,
+    num_features                               bigint,
+    num_inputs                                 bigint,
+    num_observations                           bigint,
+    num_outputs                                bigint,
+    num_weights                                bigint,
+    run_name                                   text,
+    task                                       text,
+    test_loss                                  double precision,
+    val_loss                                   double precision,
+    activation                                 text,
+    budget                                     bigint,
+    dataset                                    text,
+    depth                                      integer,
+    "early_stopping.baseline"                  text,
+    "early_stopping.min_delta"                 double precision,
+    "early_stopping.mode"                      text,
+    "early_stopping.monitor"                   text,
+    "early_stopping.patience"                  bigint,
+    log                                        text,
+    mode                                       text,
+    "config.name"                              text,
+    num_hidden                                 bigint,
+    residual_mode                              text,
+    test_split                                 double precision,
+    topology                                   text,
+    history_loss                               double precision[],
+    history_hinge                              double precision[],
+    history_accuracy                           double precision[],
+    history_val_loss                           double precision[],
+    history_val_hinge                          double precision[],
+    history_val_accuracy                       double precision[],
+    history_squared_hinge                      double precision[],
+    history_cosine_similarity                  double precision[],
+    history_val_squared_hinge                  double precision[],
+    history_mean_squared_error                 double precision[],
+    history_mean_absolute_error                double precision[],
+    history_val_cosine_similarity              double precision[],
+    history_val_mean_squared_error             double precision[],
+    history_root_mean_squared_error            double precision[],
+    history_val_mean_absolute_error            double precision[],
+    history_kullback_leibler_divergence        double precision[],
+    history_val_root_mean_squared_error        double precision[],
+    history_mean_squared_logarithmic_error     double precision[],
+    history_val_kullback_leibler_divergence    double precision[],
+    history_val_mean_squared_logarithmic_error double precision[],
+    job_length                                 interval,
+    learning_rate                              double precision,
+    label_noise                                double precision
+);
 
-CREATE INDEX materialized_experiments_0_id on materialized_experiments_0 (id);
--- CREATE INDEX materialized_experiments_0_name on materialized_experiments_0 (name);
-CREATE INDEX materialized_experiments_0_num_weights ON materialized_experiments_0 ("num_weights");
--- CREATE INDEX materialized_experiments_0_run_name ON materialized_experiments_0 ("run_name");
-CREATE INDEX materialized_experiments_0_task ON materialized_experiments_0 ("task");
-CREATE INDEX materialized_experiments_0_timestamp on materialized_experiments_0 (timestamp);
--- CREATE INDEX materialized_experiments_0_topology ON materialized_experiments_0 ("topology");
 
--- CREATE INDEX materialized_experiments_0_groupname on materialized_experiments_0 (groupname);
--- CREATE INDEX materialized_experiments_0_iterations ON materialized_experiments_0 ("iterations");
--- CREATE INDEX materialized_experiments_0_loss ON materialized_experiments_0 ("loss");
--- CREATE INDEX materialized_experiments_0_num_classes ON materialized_experiments_0 ("num_classes");
--- CREATE INDEX materialized_experiments_0_num_features ON materialized_experiments_0 ("num_features");
--- CREATE INDEX materialized_experiments_0_num_inputs ON materialized_experiments_0 ("num_inputs");
--- CREATE INDEX materialized_experiments_0_num_observations ON materialized_experiments_0 ("num_observations");
--- CREATE INDEX materialized_experiments_0_num_outputs ON materialized_experiments_0 ("num_outputs");
--- CREATE INDEX materialized_experiments_0_test_loss ON materialized_experiments_0 ("test_loss");
--- CREATE INDEX materialized_experiments_0_val_loss ON materialized_experiments_0 ("val_loss");
--- CREATE INDEX materialized_experiments_0_config_activation ON materialized_experiments_0 ("config.activation");
+create index materialized_experiments_0_task
+    on materialized_experiments_0 (task);
 
-CREATE INDEX materialized_experiments_0_config_budget ON materialized_experiments_0 ("config.budget");
-CREATE INDEX materialized_experiments_0_config_dataset ON materialized_experiments_0 ("config.dataset");
-CREATE INDEX materialized_experiments_0_config_depth ON materialized_experiments_0 ("config.depth");
--- CREATE INDEX materialized_experiments_0_config_early_stopping_baseline ON materialized_experiments_0 ("config.early_stopping.baseline");
--- CREATE INDEX materialized_experiments_0_config_early_stopping_min_delta ON materialized_experiments_0 ("config.early_stopping.min_delta");
--- CREATE INDEX materialized_experiments_0_config_early_stopping_mode ON materialized_experiments_0 ("config.early_stopping.mode");
-CREATE INDEX materialized_experiments_0_config_early_stopping_monitor ON materialized_experiments_0 ("config.early_stopping.monitor");
-CREATE INDEX materialized_experiments_0_config_early_stopping_patience ON materialized_experiments_0 ("config.early_stopping.patience");
--- CREATE INDEX materialized_experiments_0_config_log ON materialized_experiments_0 ("config.log");
--- CREATE INDEX materialized_experiments_0_config_mode ON materialized_experiments_0 ("config.mode");
--- CREATE INDEX materialized_experiments_0_config_name ON materialized_experiments_0 ("config.name");
-CREATE INDEX materialized_experiments_0_config_num_hidden ON materialized_experiments_0 ("config.num_hidden");
-CREATE INDEX materialized_experiments_0_config_residual_mode ON materialized_experiments_0 ("config.residual_mode");
--- CREATE INDEX materialized_experiments_0_config_run_name ON materialized_experiments_0 ("config.run_name");
--- CREATE INDEX materialized_experiments_0_config_test_split ON materialized_experiments_0 ("config.test_split");
-CREATE INDEX materialized_experiments_0_config_topology ON materialized_experiments_0 ("config.topology");
+create index materialized_experiments_0_id
+    on materialized_experiments_0 (id);
 
-SELECT COUNT(*), "config.topology", "config.budget"  from materialized_experiments_0 WHERE groupname='exp05' GROUP BY "config.topology", "config.budget";
+create index materialized_experiments_0_timestamp
+    on materialized_experiments_0 (timestamp);
+
+create index materialized_experiments_0_groupname
+    on materialized_experiments_0 (groupname);
+
+create index materialized_experiments_0_topology_residual_mode_depth
+    on materialized_experiments_0 (groupname, dataset, topology, residual_mode, depth);
+
+create index materialized_experiments_0_composite
+    on materialized_experiments_0 (groupname, dataset, learning_rate, label_noise, topology, residual_mode, depth);
+
+create index materialized_experiments_0_composite_1
+    on materialized_experiments_0 (groupname, dataset, topology, residual_mode, learning_rate, label_noise, depth);
+
+create index materialized_experiments_0_composite_2
+    on materialized_experiments_0 (groupname, dataset, topology, residual_mode, learning_rate, label_noise);
+
+create index materialized_experiments_0_composite_3
+    on materialized_experiments_0 (groupname, dataset, learning_rate, label_noise, topology, residual_mode);
+
+
+SELECT COUNT(*), "config.dataset", "config.topology", "config.residual_mode", "config.budget", "config.depth" from materialized_experiments_0 WHERE groupname='fixed_01' GROUP BY "config.dataset", "config.topology", "config.residual_mode", "config.budget", "config.depth" ORDER BY "config.dataset", "config.topology", "config.residual_mode", "config.budget", "config.depth";
 
 SELECT COUNT(*), doc->'config'->>'topology', doc->'config'->>'budget'  from log WHERE groupname='exp05' GROUP BY doc->'config'->>'topology', doc->'config'->>'budget';
 
@@ -143,68 +241,82 @@ SELECT COUNT(*), config->>'topology' FROM jobqueue where groupname='exp05' GROUP
 
 SELECT * from jobqueue WHERE uuid = '24f9e605-9edd-44bd-a491-294b12d85179';
 
+ALTER TABLE materialized_experiments_0 ADD COLUMN job_length INTERVAL;
+
+UPDATE materialized_experiments_0
+    SET job_length = jobqueue.end_time - jobqueue.start_time
+FROM
+     jobqueue
+WHERE jobqueue.uuid = materialized_experiments_0.job;
+
 INSERT INTO materialized_experiments_0
 SELECT
-    id,
-    name,
-    timestamp,
-    doc,
-    job,
-    groupname,
-    CAST("doc" -> 'environment' ->> 'SLURM_JOB_ID' AS BIGINT) AS jobid,
-    (doc->>'iterations')::bigint AS "iterations",
-    (doc->'loss')::float AS "loss",
-    CAST((doc->>'num_classes')::float AS BIGINT) AS "num_classes",
-    CAST((doc->>'num_features')::float AS BIGINT) AS "num_features",
-    (doc->>'num_inputs')::bigint AS "num_inputs",
-    (doc->>'num_observations')::bigint AS "num_observations",
-    (doc->>'num_outputs')::bigint AS "num_outputs",
-    (doc->>'num_weights')::bigint AS "num_weights",
-    (doc->>'run_name') AS "run_name",
-    (doc->>'task') AS "task",
-    (doc->'test_loss')::float AS "test_loss",
-    (doc->'val_loss')::float AS "val_loss",
-    (doc->'config'->>'activation') AS "config.activation",
-    (doc->'config'->>'budget')::bigint AS "config.budget",
-    (doc->'config'->>'dataset') AS "config.dataset",
-    (doc->'config'->>'depth') AS "config.depth",
-    (doc->'config'->'early_stopping'->'baseline')::text AS "config.early_stopping.baseline",
-    (doc->'config'->'early_stopping'->'min_delta')::float AS "config.early_stopping.min_delta",
-    (doc->'config'->'early_stopping'->'mode')::text AS "config.early_stopping.mode",
-    (doc->'config'->'early_stopping'->>'monitor') AS "config.early_stopping.monitor",
-    (doc->'config'->'early_stopping'->>'patience')::bigint AS "config.early_stopping.patience",
-    (doc->'config'->>'log') AS "config.log",
-    (doc->'config'->>'mode') AS "config.mode",
-    (doc->'config'->>'name') AS "config.name",
-    (doc->'config'->>'num_hidden')::bigint AS "config.num_hidden",
-    (doc->'config'->>'residual_mode') AS "config.residual_mode",
-    (doc->'config'->>'run_name') AS "config.run_name",
-    (doc->'config'->>'test_split')::float AS "config.test_split",
-    (doc->'config'->>'topology') AS "config.topology",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'loss') as v) AS "history_loss",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'hinge') as v) AS "history_hinge",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'accuracy') as v) AS "history_accuracy",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_loss') as v) AS "history_val_loss",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_hinge') as v) AS "history_val_hinge",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_accuracy') as v) AS "history_val_accuracy",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'squared_hinge') as v) AS "history_squared_hinge",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'cosine_similarity') as v) AS "history_cosine_similarity",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_squared_hinge') as v) AS "history_val_squared_hinge",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_squared_error') as v) AS "history_mean_squared_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_absolute_error') as v) AS "history_mean_absolute_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_cosine_similarity') as v) AS "history_val_cosine_similarity",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_mean_squared_error') as v) AS "history_val_mean_squared_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'root_mean_squared_error') as v) AS "history_root_mean_squared_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_mean_absolute_error') as v) AS "history_val_mean_absolute_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'kullback_leibler_divergence') as v) AS "history_kullback_leibler_divergence",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_root_mean_squared_error') as v) AS "history_val_root_mean_squared_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_squared_logarithmic_error') as v) AS "history_mean_squared_logarithmic_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_kullback_leibler_divergence') as v) AS "history_val_kullback_leibler_divergence",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_mean_squared_logarithmic_error') as v) AS "history_val_mean_squared_logarithmic_error"
-    FROM log
+    log.id AS id,
+    log.name AS name,
+    log.timestamp AS timestamp,
+    log.job AS job,
+    log.groupname AS groupname,
+    CAST(log."doc" -> 'environment' ->> 'SLURM_JOB_ID' AS BIGINT) AS jobid,
+    (log.doc->>'iterations')::bigint AS "iterations",
+    (log.doc->'loss')::float AS "loss",
+    CAST((log.doc->>'num_classes')::float AS BIGINT) AS "num_classes",
+    CAST((log.doc->>'num_features')::float AS BIGINT) AS "num_features",
+    (log.doc->>'num_inputs')::bigint AS "num_inputs",
+    (log.doc->>'num_observations')::bigint AS "num_observations",
+    (log.doc->>'num_outputs')::bigint AS "num_outputs",
+    (log.doc->>'num_weights')::bigint AS "num_weights",
+    (log.doc->>'run_name') AS "run_name",
+    (log.doc->>'task') AS "task",
+    (log.doc->'test_loss')::float AS "test_loss",
+    (log.doc->'val_loss')::float AS "val_loss",
+    (log.doc->'config'->>'activation') AS "activation",
+    (log.doc->'config'->>'budget')::bigint AS "budget",
+    (log.doc->'config'->>'dataset') AS "dataset",
+    (log.doc->'config'->>'depth')::int AS "depth",
+    (log.doc->'config'->'early_stopping'->'baseline')::text AS "early_stopping.baseline",
+    (log.doc->'config'->'early_stopping'->'min_delta')::float AS "early_stopping.min_delta",
+    (log.doc->'config'->'early_stopping'->'mode')::text AS "early_stopping.mode",
+    (log.doc->'config'->'early_stopping'->>'monitor') AS "early_stopping.monitor",
+    (log.doc->'config'->'early_stopping'->>'patience')::bigint AS "early_stopping.patience",
+    (log.doc->'config'->>'log') AS "log",
+    (log.doc->'config'->>'mode') AS "mode",
+    (log.doc->'config'->>'name') AS "name",
+    (log.doc->'config'->>'num_hidden')::bigint AS "num_hidden",
+    (log.doc->'config'->>'residual_mode') AS "residual_mode",
+    (log.doc->'config'->>'test_split')::float AS "test_split",
+    (log.doc->'config'->>'topology') AS "topology",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'loss') as v) AS "history_loss",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'hinge') as v) AS "history_hinge",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'accuracy') as v) AS "history_accuracy",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_loss') as v) AS "history_val_loss",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_hinge') as v) AS "history_val_hinge",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_accuracy') as v) AS "history_val_accuracy",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'squared_hinge') as v) AS "history_squared_hinge",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'cosine_similarity') as v) AS "history_cosine_similarity",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_squared_hinge') as v) AS "history_val_squared_hinge",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_error') as v) AS "history_mean_squared_error",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_absolute_error') as v) AS "history_mean_absolute_error",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_cosine_similarity') as v) AS "history_val_cosine_similarity",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_squared_error') as v) AS "history_val_mean_squared_error",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'root_mean_squared_error') as v) AS "history_root_mean_squared_error",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_absolute_error') as v) AS "history_val_mean_absolute_error",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'kullback_leibler_divergence') as v) AS "history_kullback_leibler_divergence",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_root_mean_squared_error') as v) AS "history_val_root_mean_squared_error",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_logarithmic_error') as v) AS "history_mean_squared_logarithmic_error",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_kullback_leibler_divergence') as v) AS "history_val_kullback_leibler_divergence",
+    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_squared_logarithmic_error') as v) AS "history_val_mean_squared_logarithmic_error",
+    (jobqueue.end_time - jobqueue.start_time) AS job_length,
+    (CASE WHEN jsonb_typeof(log.doc->'config'->'label_noise') = 'number' THEN (log.doc->'config'->>'label_noise')::float ELSE NULL END) AS "label_noise",
+    (log.doc->'config'->'optimizer'->'config'->>'learning_rate')::float AS "learning_rate"
+    FROM
+         log,
+         jobqueue
     WHERE
---     log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0) AND
-          NOT EXISTS (SELECT id from materialized_experiments_0 WHERE id = log.id);
+        jobqueue.uuid = log.job AND
+        log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0);
+--         AND NOT EXISTS (SELECT id from materialized_experiments_0 WHERE id = log.id);
+
+
 
 vacuum materialized_experiments_0;
 vacuum log;
@@ -351,19 +463,19 @@ UPDATE jobqueue
         start_time = null,
         host = null,
         retry_count = retry_count + 1
-    WHERE groupname = 'fixed_01'
+    WHERE groupname = 'fixed_3k_1'
         AND (status = 'running' AND
               update_time < CURRENT_TIMESTAMP - INTERVAL '4 hours');
+
 
 UPDATE jobqueue
     SET status = null,
         start_time = null,
         host = null,
         retry_count = retry_count + 1
-    WHERE groupname = 'fixed_01'
-        AND (status = 'failed' OR
-             (status = 'running' AND
-              update_time < CURRENT_TIMESTAMP - INTERVAL '4 hours'));
+    WHERE groupname = 'fixed_3k_1'
+        AND (status = 'running');
+
 
 
 UPDATE jobqueue
@@ -456,4 +568,123 @@ FROM
         "config.budget") AS foo
     GROUP BY
         foo."config.dataset",
-        foo."config.budget"
+        foo."config.budget";
+
+
+
+SELECT min_groups."config.budget", min_groups."config.depth", count(*), AVG(a.value) AS value, a.epoch as epoch
+FROM
+    (SELECT "config.budget", "config.depth"
+     FROM
+        (SELECT "config.budget", "config.depth",
+               ROW_NUMBER() OVER(PARTITION BY min_values."config.budget" ORDER BY AVG(min_value) ASC) AS rank
+        FROM
+            (SELECT "config.budget", "config.depth", t.id AS id, MIN(a.val) AS min_value
+            FROM
+                materialized_experiments_0 t,
+                unnest(history_val_loss) WITH ORDINALITY as a(val, epoch)
+            WHERE
+                "groupname" IN ('fixed_01') and
+                "config.dataset"='201_pol' and
+                "config.topology"='rectangle' and
+                "config.residual_mode"='none' and
+                "config.depth" BETWEEN 2 and 20
+            GROUP BY "config.budget", "config.depth", t.id) AS min_values
+        GROUP BY "config.budget", "config.depth") AS min_groups
+        WHERE rank = 1) as min_groups,
+    materialized_experiments_0 as t,
+    unnest(t.history_val_loss) WITH ORDINALITY as a(value, epoch)
+WHERE
+    min_groups."config.budget" = t.budget AND
+    min_groups."config.depth" = t.depth AND
+    t."groupname" IN ('fixed_01')and
+    t.dataset ='201_pol' and
+    t.topology='rectangle' and
+    t.residual_mode ='none' and
+    t.depth BETWEEN 2 and 20
+GROUP BY min_groups."config.budget", min_groups."config.depth", a.epoch;
+--     materialized_experiments_0 as t
+-- WHERE
+--     min_groups."config.depth" = t."config.depth" AND
+--     min_groups."config.budget" = t."config.budget" AND
+--     min_groups.rank = 1;
+
+-- SELECT "config.budget", "config.depth", AVG(min_value) AS min_value, AVG(a.value) AS value, a.epoch as epoch, count(*) AS count,
+--        ROW_NUMBER() OVER(PARTITION BY t."config.budget", t."config.depth", a.epoch ORDER BY AVG(min_value) ASC) AS rank
+-- FROM
+-- min_values,
+-- materialized_experiments_0 as t,
+-- unnest(t.history_val_loss) WITH ORDINALITY as a(value, epoch)
+-- WHERE
+--     min_values.id = t.id
+-- GROUP BY t."config.budget", t."config.depth", a.epoch)
+-- SELECT * FROM
+-- run_groups
+-- WHERE
+--     rank = 1
+-- SELECT "config.budget", "config.depth", AVG(min_value) AS min_value, AVG(a.value) AS value, a.epoch as epoch, count(*) AS count,
+--        ROW_NUMBER() OVER(PARTITION BY "config.budget", t."config.depth" ORDER BY AVG(min_value) ASC) AS rank
+-- FROM
+-- min_values,
+-- materialized_experiments_0 as t,
+-- unnest(t.history_val_loss) WITH ORDINALITY as a(value, epoch)
+-- WHERE
+--     min_values.id = t.id AND
+--     rank = 1
+-- GROUP BY t."config.budget", t."config.depth";
+
+
+WITH summary AS (
+    SELECT "config.budget", AVG(a.val) AS value, count(a.val), a.epoch, "config.depth",
+        ROW_NUMBER() OVER(PARTITION BY epoch, "config.budget", "config.depth" ORDER BY MIN(a.val) ASC) AS rank
+FROM
+    materialized_experiments_0 t,
+    unnest(history_val_loss) WITH ORDINALITY as a(val, epoch)
+WHERE
+    "groupname" IN ('fixed_01') and
+    "config.dataset"='201_pol' and
+    "config.topology"='rectangle' and
+    "config.residual_mode"='none' and
+    "config.depth" BETWEEN 2 and 20
+GROUP BY epoch, "config.budget", "config.depth"
+)
+SELECT * FROM summary
+    WHERE rank = 1;
+
+SELECT COUNT(*) FROM log;
+
+SELECT *, time_per_epoch * 1000 as time FROM (
+                               select t.dataset,t.budget,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1))) as stddev
+                               FROM jobqueue,
+                                    materialized_experiments_0 as t
+                               WHERE jobqueue.uuid = t.job
+                                 AND jobqueue.groupname IN ('fixed_3k_0')
+                               GROUP BY t.dataset,
+                                        t.budget
+                           ) AS source
+ORDER BY time_per_epoch;
+
+SELECT *, time_per_epoch * 1000 as time FROM (
+                               select t.dataset,t.budget,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1))) as stddev
+                               FROM jobqueue,
+                                    materialized_experiments_0 as t
+                               WHERE jobqueue.uuid = t.job
+                                 AND jobqueue.groupname IN ('fixed_3k_0')
+                               GROUP BY t.dataset,
+                                        t.budget
+                           ) AS source
+ORDER BY time_per_epoch;
+
+
+SELECT *, time_per_epoch * 1000 as time FROM (
+                               select t.dataset,t.budget,t.depth,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1))) as stddev
+                               FROM jobqueue,
+                                    materialized_experiments_0 as t
+                               WHERE jobqueue.uuid = t.job
+                                 AND jobqueue.groupname IN ('fixed_01')
+                               GROUP BY
+                                        t.dataset,
+                                        t.budget,
+                                        t.depth
+                           ) AS source
+ORDER BY time_per_epoch DESC;
