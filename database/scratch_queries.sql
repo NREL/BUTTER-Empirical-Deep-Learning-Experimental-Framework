@@ -257,57 +257,57 @@ SELECT
     log.job AS job,
     log.groupname AS groupname,
     CAST(log."doc" -> 'environment' ->> 'SLURM_JOB_ID' AS BIGINT) AS jobid,
-    (log.doc->>'iterations')::bigint AS "iterations",
-    (log.doc->'loss')::float AS "loss",
+    (log.doc->'iterations')::bigint AS "iterations",
+    (CASE WHEN jsonb_typeof(log.doc->'loss') = 'number' THEN (log.doc->'loss')::float END)  AS "loss",
     CAST((log.doc->>'num_classes')::float AS BIGINT) AS "num_classes",
     CAST((log.doc->>'num_features')::float AS BIGINT) AS "num_features",
-    (log.doc->>'num_inputs')::bigint AS "num_inputs",
-    (log.doc->>'num_observations')::bigint AS "num_observations",
-    (log.doc->>'num_outputs')::bigint AS "num_outputs",
-    (log.doc->>'num_weights')::bigint AS "num_weights",
+    (log.doc->'num_inputs')::bigint AS "num_inputs",
+    (log.doc->'num_observations')::bigint AS "num_observations",
+    (log.doc->'num_outputs')::bigint AS "num_outputs",
+    (log.doc->'num_weights')::bigint AS "num_weights",
     (log.doc->>'run_name') AS "run_name",
     (log.doc->>'task') AS "task",
-    (log.doc->'test_loss')::float AS "test_loss",
-    (log.doc->'val_loss')::float AS "val_loss",
+    (CASE WHEN jsonb_typeof(log.doc->'test_loss') = 'number' THEN (log.doc->'test_loss')::float END) AS "test_loss",
+    (CASE WHEN jsonb_typeof(log.doc->'val_loss') = 'number' THEN (log.doc->'val_loss')::float END) AS "val_loss",
     (log.doc->'config'->>'activation') AS "activation",
-    (log.doc->'config'->>'budget')::bigint AS "budget",
+    (log.doc->'config'->'budget')::bigint AS "budget",
     (log.doc->'config'->>'dataset') AS "dataset",
-    (log.doc->'config'->>'depth')::int AS "depth",
-    (log.doc->'config'->'early_stopping'->'baseline')::text AS "early_stopping.baseline",
-    (log.doc->'config'->'early_stopping'->'min_delta')::float AS "early_stopping.min_delta",
-    (log.doc->'config'->'early_stopping'->'mode')::text AS "early_stopping.mode",
+    (log.doc->'config'->'depth')::int AS "depth",
+    (log.doc->'config'->'early_stopping'->>'baseline') AS "early_stopping.baseline",
+    (CASE WHEN jsonb_typeof(log.doc->'config'->'early_stopping'->'min_delta') = 'number' THEN (log.doc->'config'->'early_stopping'->'min_delta')::float END) AS "early_stopping.min_delta",
+    (log.doc->'config'->'early_stopping'->>'mode') AS "early_stopping.mode",
     (log.doc->'config'->'early_stopping'->>'monitor') AS "early_stopping.monitor",
-    (log.doc->'config'->'early_stopping'->>'patience')::bigint AS "early_stopping.patience",
+    (log.doc->'config'->'early_stopping'->'patience')::bigint AS "early_stopping.patience",
     (log.doc->'config'->>'log') AS "log",
     (log.doc->'config'->>'mode') AS "mode",
     (log.doc->'config'->>'name') AS "name",
-    (log.doc->'config'->>'num_hidden')::bigint AS "num_hidden",
+    (log.doc->'config'->'num_hidden')::bigint AS "num_hidden",
     (log.doc->'config'->>'residual_mode') AS "residual_mode",
-    (log.doc->'config'->>'test_split')::float AS "test_split",
+    (CASE WHEN jsonb_typeof(log.doc->'config'->'test_split') = 'number' THEN (log.doc->'config'->'test_split')::float END) AS "test_split",
     (log.doc->'config'->>'topology') AS "topology",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'loss') as v) AS "history_loss",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'hinge') as v) AS "history_hinge",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'accuracy') as v) AS "history_accuracy",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_loss') as v) AS "history_val_loss",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_hinge') as v) AS "history_val_hinge",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_accuracy') as v) AS "history_val_accuracy",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'squared_hinge') as v) AS "history_squared_hinge",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'cosine_similarity') as v) AS "history_cosine_similarity",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_squared_hinge') as v) AS "history_val_squared_hinge",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_error') as v) AS "history_mean_squared_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_absolute_error') as v) AS "history_mean_absolute_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_cosine_similarity') as v) AS "history_val_cosine_similarity",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_squared_error') as v) AS "history_val_mean_squared_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'root_mean_squared_error') as v) AS "history_root_mean_squared_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_absolute_error') as v) AS "history_val_mean_absolute_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'kullback_leibler_divergence') as v) AS "history_kullback_leibler_divergence",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_root_mean_squared_error') as v) AS "history_val_root_mean_squared_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_logarithmic_error') as v) AS "history_mean_squared_logarithmic_error",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_kullback_leibler_divergence') as v) AS "history_val_kullback_leibler_divergence",
-    (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_squared_logarithmic_error') as v) AS "history_val_mean_squared_logarithmic_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'loss') as v) AS "history_loss",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'hinge') as v) AS "history_hinge",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'accuracy') as v) AS "history_accuracy",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_loss') as v) AS "history_val_loss",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_hinge') as v) AS "history_val_hinge",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_accuracy') as v) AS "history_val_accuracy",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'squared_hinge') as v) AS "history_squared_hinge",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'cosine_similarity') as v) AS "history_cosine_similarity",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_squared_hinge') as v) AS "history_val_squared_hinge",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_error') as v) AS "history_mean_squared_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_absolute_error') as v) AS "history_mean_absolute_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_cosine_similarity') as v) AS "history_val_cosine_similarity",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_squared_error') as v) AS "history_val_mean_squared_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'root_mean_squared_error') as v) AS "history_root_mean_squared_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_absolute_error') as v) AS "history_val_mean_absolute_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'kullback_leibler_divergence') as v) AS "history_kullback_leibler_divergence",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_root_mean_squared_error') as v) AS "history_val_root_mean_squared_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_logarithmic_error') as v) AS "history_mean_squared_logarithmic_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_kullback_leibler_divergence') as v) AS "history_val_kullback_leibler_divergence",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_squared_logarithmic_error') as v) AS "history_val_mean_squared_logarithmic_error",
     (jobqueue.end_time - jobqueue.start_time) AS job_length,
-    (CASE WHEN jsonb_typeof(log.doc->'config'->'label_noise') = 'number' THEN (log.doc->'config'->>'label_noise')::float ELSE NULL END) AS "label_noise",
-    (log.doc->'config'->'optimizer'->'config'->>'learning_rate')::float AS "learning_rate"
+    (CASE WHEN jsonb_typeof(log.doc->'config'->'label_noise') = 'number' THEN (log.doc->'config'->'label_noise')::float END) AS "label_noise",
+    (CASE WHEN jsonb_typeof(log.doc->'config'->'optimizer'->'config'->'learning_rate') = 'number' THEN (log.doc->'config'->'optimizer'->'config'->'learning_rate')::float END) AS "learning_rate"
     FROM
          log,
          jobqueue
@@ -317,6 +317,48 @@ SELECT
 --         AND NOT EXISTS (SELECT id from materialized_experiments_0 WHERE id = log.id);
 
 
+SELECT
+    (log.doc->>'loss')::float AS "loss",
+    (log.doc->>'test_loss')::float AS "test_loss",
+    (log.doc->>'val_loss')::float AS "val_loss",
+    (log.doc->'config'->'early_stopping'->>'min_delta')::float AS "early_stopping.min_delta",
+    (log.doc->'config'->>'test_split')::float AS "test_split"
+    FROM
+         log,
+         jobqueue
+    WHERE
+        jobqueue.uuid = log.job AND
+        log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0) AND log.groupname = 'fixed_3k_1';
+
+SELECT
+   (jsonb_typeof(log.doc->'loss') = 'null'),
+    (CASE WHEN jsonb_typeof(log.doc->'loss') = 'number' THEN (log.doc->'loss')::float END) AS "loss",
+    (jsonb_typeof(log.doc->'test_loss') = 'null'),
+    (jsonb_typeof(log.doc->'val_loss') = 'null'),
+    (jsonb_typeof(log.doc->'config'->'early_stopping'->'min_delta') = 'null'),
+    (jsonb_typeof(log.doc->'config'->'test_split') = 'null'),
+    (jsonb_typeof(log.doc->'config'->'label_noise') = 'null'),
+    (jsonb_typeof(log.doc->'config'->'optimizer'->'config'->'learning_rate') = 'null'),
+    log.doc
+    FROM
+         log,
+         jobqueue
+    WHERE
+        jobqueue.uuid = log.job AND
+        log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0) AND log.groupname = 'fixed_3k_1';
+--         AND (
+--             (jsonb_typeof(log.doc->'loss') = 'null') OR
+--             (jsonb_typeof(log.doc->'test_loss') = 'null') OR
+--             (jsonb_typeof(log.doc->'val_loss') = 'null') OR
+--             (jsonb_typeof(log.doc->'config'->'early_stopping'->'min_delta') = 'null') OR
+--             (jsonb_typeof(log.doc->'config'->'test_split') = 'null') OR
+--             (jsonb_typeof(log.doc->'config'->'label_noise') = 'null') OR
+--             (jsonb_typeof(log.doc->'config'->'optimizer'->'config'->'learning_rate') = 'null')
+--         );
+
+
+(CASE WHEN log.doc->'config'->'label_noise' IS NOT NULL AND jsonb_typeof(log.doc->'config'->'label_noise') = 'number' THEN (log.doc->'config'->>'label_noise')::float END) AS "label_noise",
+    (CASE WHEN log.doc->'config'->'optimizer'->'config'->'learning_rate' IS NOT NULL AND jsonb_typeof(log.doc->'config'->'optimizer'->'config'->'learning_rate') = 'number' THEN (log.doc->'config'->'optimizer'->'config'->>'learning_rate')::float END) AS "learning_rate"
 
 vacuum materialized_experiments_0;
 vacuum log;
