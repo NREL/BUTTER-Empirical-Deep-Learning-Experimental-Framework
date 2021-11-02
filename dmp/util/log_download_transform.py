@@ -212,12 +212,12 @@ def func():
     engine.close()
 
     loaded = 0
-    chunk_size = 128
-    max_buffered_chunks = 256
+    chunk_size = 32
+    max_buffered_chunks = 32
     print(f'Loading {count} records from database...')
 
     # num_readers = min(12, int(math.ceil(count / chunk_size)))
-    num_readers = min(128, int(math.ceil((count/chunk_size))))
+    num_readers = min(57, int(math.ceil((count/chunk_size))))
     read_size = int(math.ceil(count / num_readers))
 
     print(f'Reading {count} records with read_size {read_size} and {num_readers} readers...')
