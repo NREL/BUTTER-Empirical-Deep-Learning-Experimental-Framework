@@ -212,7 +212,7 @@ def func():
     engine.close()
 
     loaded = 0
-    chunk_size = 16
+    chunk_size = 128
     max_buffered_chunks = 256
     print(f'Loading {count} records from database...')
 
