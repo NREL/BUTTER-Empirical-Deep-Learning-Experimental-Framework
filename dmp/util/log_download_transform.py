@@ -212,8 +212,8 @@ def func():
     engine.close()
 
     loaded = 0
-    chunk_size = 32
-    max_buffered_chunks = 32
+    chunk_size = 16
+    max_buffered_chunks = 4
     print(f'Loading {count} records from database...')
 
     # num_readers = min(12, int(math.ceil(count / chunk_size)))
@@ -256,6 +256,7 @@ def func():
             chunk = postprocess_dataframe(chunk)
             chunks.append(chunk)
             if len(chunks) >= max_buffered_chunks:
+                print(f'Read #{read_number}: concatenating {len(chunks)} chunks...')
                 chunks = [pd.concat(chunks)]
                 gc.collect()
 
