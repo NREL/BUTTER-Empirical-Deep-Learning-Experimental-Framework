@@ -7,6 +7,11 @@ class TrainingTask:
     # all common settings for training tasks
     pass
 
+    @abstractmethod
+    def run(self):
+        # does the thing
+        pass
+
 @dataclass
 class SimpleTrainingTask(TrainingTask):
     seed: int
@@ -19,6 +24,26 @@ class SimpleTrainingTask(TrainingTask):
     def run(self):
         # does the thing
         pass
+
+task = SimpleTrainingTask(123, 'asdf', 'dataset', 'relu')
+task_json = marshal.marshal(task)
+# queue in database
+task_json = {
+    '%': 'SimpleTrainingTask',
+    'seed': 123,
+    'log' : 'asdf',
+    'dataset': 'dataset',
+    'activation': 'relu',
+    'my_set' : {
+        '%':'tuple',
+        ':': [1, 2, 3, 4]
+    }
+}
+
+
+
+
+
 
 
 @dataclass
