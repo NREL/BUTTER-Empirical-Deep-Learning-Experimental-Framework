@@ -80,7 +80,8 @@ drop_list = [
     'environment.hostname', 'environment.platform',
     'environment.SLURM_JOB_ID', 'environment.python_version',
     'environment.tensorflow_version',
-    'config.num_hidden'
+    'config.num_hidden',
+    'config.test_split'
 ]
 
 rename_map = {
@@ -192,6 +193,46 @@ array_cols = [
     'val_mean_squared_logarithmic_error',
 ]
 
+dest_cols = {
+    'depth',
+    'budget',
+    'dataset',
+    'topology',
+    'learning_rate',
+    'optimizer',
+    'activation',
+    'epochs',
+    'batch_size',
+    'validation_split',
+    'label_noise',
+    'residual_mode',
+    'loss',
+    'hinge',
+    'accuracy',
+    'val_loss',
+    'val_hinge',
+    'val_accuracy',
+    'squared_hinge',
+    'cosine_similarity',
+    'val_squared_hinge',
+    'mean_squared_error',
+    'mean_absolute_error',
+    'val_cosine_similarity',
+    'val_mean_squared_error',
+    'root_mean_squared_error',
+    'val_mean_absolute_error',
+    'kullback_leibler_divergence',
+    'val_root_mean_squared_error',
+    'mean_squared_logarithmic_error',
+    'val_kullback_leibler_divergence',
+    'val_mean_squared_logarithmic_error',
+    'id',
+    'job',
+    'timestamp',
+    'groupname',
+    'job_length',
+}
+
 
 def postprocess_dataframe(data_log):
     # print(f'{len(data_log)} records retrieved. Parsing json...')
@@ -202,16 +243,19 @@ def postprocess_dataframe(data_log):
 
     if 'config.validation_split_method' not in datasets.columns:
         datasets['config.validation_split_method'] = 'old'
-    datasets['config.label_noises'].fillna(value='old', inplace=True)
+    datasets['config.validation_split_method'].fillna(value='old', inplace=True)
 
-    if 'config.label_noises' not in datasets.columns:
-        datasets['config.label_noises'] = 0.0
-    datasets['config.label_noises'].fillna(value=0.0, inplace=True)
+    if 'config.label_noise' not in datasets.columns:
+        datasets['config.label_noise'] = 0.0
+    datasets['config.label_noise'].fillna(value=0.0, inplace=True)
 
-    datasets.drop(columns=drop_list, inplace=True)
+    col_set = set(datasets.columns)
+    datasets.drop(columns=[c for c in drop_list if c in col_set], inplace=True)
+
 
     # print(datasets.columns)
-    datasets.rename(columns=rename_map, inplace=True)
+    col_set = set(datasets.columns)
+    datasets.rename(columns={k : v for k, v  in rename_map.items() if k in col_set}, inplace=True)
     # print(datasets.columns)
     # print(f'Joining with original dataframe...')
     datasets = datasets.join(data_log)
@@ -230,6 +274,7 @@ def postprocess_dataframe(data_log):
 
     datasets['label_noise'] = datasets['label_noise'].apply(convert_label_noise)
 
+    datasets.drop(columns=[c for c in datasets.columns if c not in dest_cols], inplace=True)
     #
     # datasets['id'] = datasets.astype({'id': 'str'}).dtypes
     # datasets['job'] = datasets.astype({'job': 'str'}).dtypes
@@ -247,7 +292,7 @@ def func():
     groupnames = ('fixed_3k_1', 'fixed_3k_0')
     source_table = 'log'
     dest_table = 'materialized_experiments_2'
-    num_threads = 48
+    num_threads = 1
     # num_threads = 6
     # engine, session = log._connect()
 
