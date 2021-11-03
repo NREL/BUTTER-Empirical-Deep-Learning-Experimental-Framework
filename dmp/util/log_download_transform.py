@@ -211,8 +211,10 @@ def postprocess_dataframe(data_log):
     datasets = datasets.astype(type_map)
 
     def convert_label_noise(v):
+        if v is None:
+            return 0.0
         try:
-            float_value = float(v)
+            return float(v)
         except ValueError:
             return 0.0
 
