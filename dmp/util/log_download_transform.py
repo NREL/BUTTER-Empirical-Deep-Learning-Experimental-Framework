@@ -199,7 +199,17 @@ def postprocess_dataframe(data_log):
     data_log.drop(columns=['doc'], inplace=True)
     #     datasets = pd.json_normalize(data_log['doc'].map(orjson.loads))
     # print(datasets.columns)
+
+    if 'config.validation_split_method' not in datasets.columns:
+        datasets['config.validation_split_method'] = 'old'
+    datasets['config.label_noises'].fillna(value='old', inplace=True)
+
+    if 'config.label_noises' not in datasets.columns:
+        datasets['config.label_noises'] = 0.0
+    datasets['config.label_noises'].fillna(value=0.0, inplace=True)
+
     datasets.drop(columns=drop_list, inplace=True)
+
     # print(datasets.columns)
     datasets.rename(columns=rename_map, inplace=True)
     # print(datasets.columns)
