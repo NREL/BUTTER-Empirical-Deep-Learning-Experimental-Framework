@@ -292,7 +292,7 @@ def func():
     groupnames = ('fixed_3k_1', 'fixed_3k_0')
     source_table = 'log'
     dest_table = 'materialized_experiments_2'
-    num_threads = 1
+    num_threads = 64
     # num_threads = 6
     # engine, session = log._connect()
 
