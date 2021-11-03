@@ -234,7 +234,7 @@ def postprocess_dataframe(data_log):
 def func():
     # log_filename = 'aspect_analysis_datasets.feather'
     log_filename = 'fixed_3k_1.parquet'
-    groupname = 'fixed_3k_1'
+    groupnames = ('fixed_3k_1', 'fixed_3k_0')
     source_table = 'log'
     dest_table = 'materialized_experiments_2'
     num_threads = 48
@@ -250,7 +250,7 @@ def func():
     #     except:
     #         print(f'Error reading dataset file, {log_filename}.')
 
-    conditions = f'log.groupname = \'{groupname}\''
+    conditions = f'log.groupname IN {groupnames}'
     q = f'''
     select log.id from {source_table} AS log 
     where {conditions} AND NOT EXISTS (SELECT id FROM {dest_table} AS d WHERE d.id = log.id)'''
