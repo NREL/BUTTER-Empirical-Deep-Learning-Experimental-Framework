@@ -1,3 +1,4 @@
+import gc
 import sys
 
 import numpy
@@ -5,7 +6,6 @@ import numpy
 sys.path.append("../../")
 
 import pandas as pd
-import gc
 import time
 import os
 import json
@@ -235,6 +235,10 @@ def func():
     # log_filename = 'aspect_analysis_datasets.feather'
     log_filename = 'fixed_3k_1.parquet'
     groupname = 'fixed_3k_1'
+    source_table = 'log'
+    dest_table = 'materialized_experiments_2'
+    num_threads = 48
+    # num_threads = 6
     # engine, session = log._connect()
 
     #     datasets = None
@@ -247,12 +251,21 @@ def func():
     #         print(f'Error reading dataset file, {log_filename}.')
 
     conditions = f'log.groupname = \'{groupname}\''
-    q = f'select count(*) from "log" where {conditions}'
+    q = f'''
+    select log.id from {source_table} AS log 
+    where {conditions} AND NOT EXISTS (SELECT id FROM {dest_table} AS d WHERE d.id = log.id)'''
 
     db = sqlalchemy.create_engine(connection_string)
     engine = db.connect()
-    count = db.engine.execute(q).scalar()
+    # count = db.engine.execute(q).scalar()
+    ids = pd.read_sql(
+        q,
+        engine.execution_options(stream_results=True, postgresql_with_hold=True), coerce_float=False,
+        params=())
     engine.close()
+
+    ids = ids['id'].to_numpy()
+    count = ids.size
 
     loaded = 0
     chunk_size = 32
@@ -261,9 +274,8 @@ def func():
 
     # num_readers = min(12, int(math.ceil(count / chunk_size)))
     # num_readers = min(57, int(math.ceil((count/chunk_size))))
-    num_readers = min(48, int(math.ceil((count / chunk_size))))
+    num_readers = min(num_threads, int(math.ceil((count / chunk_size))))
     read_size = int(math.ceil(count / num_readers))
-    chunks_per_reader = int(math.ceil(read_size / chunk_size))
 
     print(f'Reading {count} records with read_size {read_size} and {num_readers} readers...')
 
@@ -273,7 +285,14 @@ def func():
         engine = db.connect()
         print(f'Read #{read_number}: connected')
 
-        for i in range(chunks_per_reader):
+        start_index = read_number * num_readers
+        end_index = min(start_index + read_size, count)
+        num_to_read = end_index - start_index
+        num_chunks = int(math.ceil(num_to_read / chunk_size))
+        for i in range(num_chunks):
+            from_index = start_index + i * chunk_size
+            to_index = from_index + chunk_size
+            ids_for_this_chunk = tuple(ids[from_index:to_index])
             q = f'''
             SELECT
             log.id as id,
@@ -283,57 +302,28 @@ def func():
             (jobqueue.end_time - jobqueue.start_time) AS job_length,
             log.doc as doc
             FROM
-                 log,
+                 {source_table} AS log,
                  jobqueue
             WHERE
-                {conditions} AND
-                jobqueue.uuid = log.job
-            ORDER BY id ASC
-            LIMIT {chunk_size} OFFSET {read_size * read_number + chunk_size * i}
+                jobqueue.uuid = log.job AND
+                log.id IN {ids_for_this_chunk}
             '''
             chunk = pd.read_sql(
-                    q,
-                    engine.execution_options(stream_results=True, postgresql_with_hold=True), coerce_float=False,
-                    params=())
+                q,
+                engine.execution_options(stream_results=True, postgresql_with_hold=True), coerce_float=False,
+                params=())
 
             num_entries = len(chunk)
             print(
-                f'Read #{read_number}: processing chunk {i} / {chunks_per_reader} size {num_entries} from database...')
+                f'Read #{read_number}: processing chunk {i} / {num_chunks} size {num_entries} from database...')
             if num_entries == 0:
                 break
             chunk = postprocess_dataframe(chunk)
             print(f'Read #{read_number}: writing chunk to database...')
-            chunk.to_sql('materialized_experiments_2', engine, method='multi', if_exists='append', index=False)
+            chunk.to_sql(dest_table, engine, method='multi', if_exists='append', index=False)
             print(f'Read #{read_number}: done writing...')
-            # chunks.append(chunk)
-            # if len(chunks) >= max_buffered_chunks:
-            #     print(f'Read #{read_number}: concatenating {len(chunks)} chunks...')
-            #     chunks = [pd.concat(chunks)]
-            #     gc.collect()
+            gc.collect()
 
-
-        # data_generator = pd.read_sql(
-        #     q,
-        #     engine.execution_options(stream_results=True, postgresql_with_hold=True), coerce_float=False, chunksize=chunk_size,
-        #     params=())
-        #
-        # print(f'Read #{read_number}: begin read')
-        # # chunks = []
-        # for i, chunk in enumerate(data_generator):
-        #     num_entries = len(chunk)
-        #     print(
-        #         f'Read #{read_number}: processing chunk {i} / {chunks_per_reader} size {num_entries} from database...')
-        #     chunk = postprocess_dataframe(chunk)
-        #     print(f'Read #{read_number}: writing chunk to database...')
-        #     chunk.to_sql('materialized_experiments_2', engine, method='multi', if_exists='append', index=False)
-        #     print(f'Read #{read_number}: done writing...')
-        #     # chunks.append(chunk)
-        #     # if len(chunks) >= max_buffered_chunks:
-        #     #     print(f'Read #{read_number}: concatenating {len(chunks)} chunks...')
-        #     #     chunks = [pd.concat(chunks)]
-        #     #     gc.collect()
-
-        # results = pd.concat(chunks)
         print(f'Read #{read_number}: complete.')
         return None
 
@@ -346,25 +336,8 @@ def func():
     # data_load = Parallel(n_jobs=num_readers, batch_size=1, backend='multiprocessing')(
     #     delayed(read_chunk(i)) for i in range(num_readers))
 
-    gc.collect()
-    datasets = pd.concat(data_load)
     delta_t = time.perf_counter() - start_time
-    num_entries = len(datasets)
-    print(f'Processed {num_entries} entries in {delta_t}s at a rate of {num_entries / delta_t} entries / second.')
-
-    if loaded > 0:
-        print(f'Loaded {len(datasets)} entries from the database. Saving dataframe to disk...')
-        datasets.to_parquet(log_filename)
-        print(f'Write complete.')
-
-    #     print(f'A total of {len(datasets)} records loaded.')
-
-    data_log = None
-    additional_datasets = None
-    additional_data_log = None
-    # log._close(engine, session)
-
-    gc.collect()
+    print(f'Processed {count} entries in {delta_t}s at a rate of {count / delta_t} entries / second.')
 
 
 func()
