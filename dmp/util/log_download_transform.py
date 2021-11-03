@@ -340,7 +340,7 @@ def func():
         engine = db.connect()
         print(f'Read #{read_number}: connected')
 
-        start_index = read_number * num_readers
+        start_index = read_number * read_size
         end_index = min(start_index + read_size, count)
         num_to_read = end_index - start_index
         num_chunks = int(math.ceil(num_to_read / chunk_size))
