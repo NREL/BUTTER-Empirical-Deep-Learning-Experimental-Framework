@@ -222,10 +222,36 @@ base_cols = [
     'job_length',
 ]
 
-history_cols = [record_key]
-history_cols.extend(array_cols)
+loss_cols = [
+    record_key,
+    'loss',
+    'val_loss',
+]
+
+history_cols = [
+    record_key,
+    'hinge',
+    'accuracy',
+    'val_hinge',
+    'val_accuracy',
+    'squared_hinge',
+    'cosine_similarity',
+    'val_squared_hinge',
+    'mean_squared_error',
+    'mean_absolute_error',
+    'val_cosine_similarity',
+    'val_mean_squared_error',
+    'root_mean_squared_error',
+    'val_mean_absolute_error',
+    'kullback_leibler_divergence',
+    'val_root_mean_squared_error',
+    'mean_squared_logarithmic_error',
+    'val_kullback_leibler_divergence',
+    'val_mean_squared_logarithmic_error',
+]
 
 dest_cols = set(base_cols)
+dest_cols.update(loss_cols)
 dest_cols.update(history_cols)
 
 string_map = {}
@@ -291,6 +317,7 @@ def postprocess_dataframe(data_log, engine):
 
     datasets.drop(columns=[c for c in datasets.columns if c not in dest_cols], inplace=True)
     base = datasets.filter(base_cols, axis=1)
+    loss = datasets.filter(loss_cols, axis=1)
     history = datasets.filter(history_cols, axis=1)
     # print(base)
     # print(base.columns)
@@ -304,7 +331,7 @@ def postprocess_dataframe(data_log, engine):
     #     datasets[col] = datasets[col].apply(lambda e: numpy.array(e, dtype=numpy.single))
 
     # print(datasets.dtypes)
-    return base, history
+    return base, loss, history
 
 
 from sqlalchemy.dialects.postgresql import insert
@@ -322,6 +349,7 @@ def func():
     groupnames = ('fixed_3k_1', 'fixed_3k_0')
     source_table = 'log'
     dest_table_base = 'materialized_experiments_3_base'
+    dest_table_loss = 'materialized_experiments_3_loss'
     dest_table_history = 'materialized_experiments_3_history'
     num_threads = 64
     # num_threads = 1
@@ -352,8 +380,11 @@ def func():
     q = f'''
     select log.id from {source_table} AS log 
     where {conditions} AND 
-    (NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
-    NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id))
+    (
+    NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
+    NOT EXISTS (SELECT id FROM {dest_table_loss} AS d WHERE d.id = log.id) OR
+    NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id)
+    )
     ORDER BY id ASC
     '''
 
@@ -418,9 +449,10 @@ def func():
                 f'Read #{read_number}: processing chunk {i} / {num_chunks} size {num_entries} from database...')
             if num_entries == 0:
                 break
-            base_chunk, history_chunk = postprocess_dataframe(chunk, engine)
+            base_chunk, loss_chunk, history_chunk = postprocess_dataframe(chunk, engine)
             print(f'Read #{read_number}: writing chunk to database...')
             base_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
+            loss_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
             history_chunk.to_sql(dest_table_history, engine, method=insert_on_duplicate, if_exists='append',
                                  index=False)
             print(f'Read #{read_number}: done writing...')
