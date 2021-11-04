@@ -307,7 +307,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 def insert_on_duplicate(table, conn, keys, data_iter):
     insert_stmt = insert(table.table).values(list(data_iter))
-    insert_stmt.on_conflict_do_nothing()
+    insert_stmt = insert_stmt.on_conflict_do_nothing('id')
     conn.execute(insert_stmt)
 
 
