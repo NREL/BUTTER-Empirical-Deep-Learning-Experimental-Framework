@@ -60,6 +60,7 @@ register_adapter(numpy.ndarray, addapt_numpy_array)
 #     data = await stmt.fetch(*args)
 #     return pandas.DataFrame(data, columns=columns)
 
+record_key = 'id'
 
 drop_list = [
     'loss', 'task', 'endpoint', 'run_name', 'config.run_name', 'val_loss', 'iterations',
@@ -202,7 +203,7 @@ array_cols = [
 ]
 
 base_cols = [
-    'id',
+    record_key,
     'job',
     'timestamp',
     'budget',
@@ -221,7 +222,7 @@ base_cols = [
     'job_length',
 ]
 
-history_cols = ['id']
+history_cols = [record_key]
 history_cols.extend(array_cols)
 
 dest_cols = set(base_cols)
@@ -307,7 +308,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 def insert_on_duplicate(table, conn, keys, data_iter):
     insert_stmt = insert(table.table).values(list(data_iter))
-    insert_stmt = insert_stmt.on_conflict_do_nothing('id')
+    insert_stmt = insert_stmt.on_conflict_do_nothing(index_elements=[record_key])
     conn.execute(insert_stmt)
 
 
