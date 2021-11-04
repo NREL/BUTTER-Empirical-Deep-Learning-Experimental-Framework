@@ -346,7 +346,10 @@ def func():
     conditions = f'log.groupname IN {groupnames}'
     q = f'''
     select log.id from {source_table} AS log 
-    where {conditions} AND NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id)'''
+    where {conditions} AND 
+    (NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
+    NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id))
+    '''
 
 
     # count = db.engine.execute(q).scalar()
