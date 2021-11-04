@@ -256,9 +256,7 @@ def postprocess_dataframe(data_log, engine):
     # print(datasets.columns)
     # print(f'Joining with original dataframe...')
     datasets = datasets.join(data_log)
-    new_job_length = datasets['job_length'].copy()
-    new_job_length[datasets['job_length'].isnull()] = None
-    datasets['job_length'] = new_job_length
+    datasets['job_length'].replace({pd.NaT: None}, inplace=True)
     # print(datasets.columns)
     # print(datasets.dtypes)
     # print(f'converting...')
@@ -273,15 +271,15 @@ def postprocess_dataframe(data_log, engine):
             return 0.0
 
     datasets['label_noise'] = datasets['label_noise'].apply(convert_label_noise)
-    # print(datasets.columns)
 
+    # print(datasets.columns)
 
     def canonicalize_string(s):
         if s in string_map:
             return string_map[s]
         print(f'String miss on {s}.')
         engine.execute('INSERT INTO strings(value) VALUES(%s) ON CONFLICT(value) DO NOTHING', (s,))
-        str_id = engine.execute('SELECT id from strings WHERE value = %s', (s, )).scalar()
+        str_id = engine.execute('SELECT id from strings WHERE value = %s', (s,)).scalar()
         string_map[s] = str_id
         return str_id
 
@@ -338,7 +336,7 @@ def func():
     db = sqlalchemy.create_engine(connection_string)
     engine = db.connect()
 
-    string_map_df =  pd.read_sql(
+    string_map_df = pd.read_sql(
         f'''SELECT id, value from strings''',
         engine.execution_options(stream_results=True, postgresql_with_hold=True), coerce_float=False,
         params=())
@@ -354,7 +352,6 @@ def func():
     (NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
     NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id))
     '''
-
 
     # count = db.engine.execute(q).scalar()
     ids = pd.read_sql(
