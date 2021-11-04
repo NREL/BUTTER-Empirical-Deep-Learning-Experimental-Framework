@@ -256,7 +256,9 @@ def postprocess_dataframe(data_log, engine):
     # print(datasets.columns)
     # print(f'Joining with original dataframe...')
     datasets = datasets.join(data_log)
-    datasets['job_length'][datasets['job_length'].isnull()] = None
+    new_job_length = datasets['job_length'].copy()
+    new_job_length[datasets['job_length'].isnull()] = None
+    datasets['job_length'] = new_job_length
     # print(datasets.columns)
     # print(datasets.dtypes)
     # print(f'converting...')
