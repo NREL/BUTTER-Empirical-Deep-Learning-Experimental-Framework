@@ -353,6 +353,7 @@ def func():
     where {conditions} AND 
     (NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
     NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id))
+    ORDER BY id ASC
     '''
 
     # count = db.engine.execute(q).scalar()
