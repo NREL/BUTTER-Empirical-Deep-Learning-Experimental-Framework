@@ -169,6 +169,15 @@ type_map = {
     'job': 'str',
 }
 
+canonical_cols = [
+    'groupname',
+    'dataset',
+    'topology',
+    'residual_mode',
+    'optimizer',
+    'activation',
+]
+
 array_cols = [
     'loss',
     'hinge',
@@ -196,19 +205,20 @@ base_cols = [
     'id',
     'job',
     'timestamp',
-    'groupname',
-    'depth',
     'budget',
-    'dataset',
-    'topology',
+    'depth',
     'learning_rate',
-    'optimizer',
-    'activation',
     'epochs',
     'batch_size',
     'validation_split',
     'label_noise',
+    'groupname',
+    'dataset',
+    'topology',
     'residual_mode',
+    'optimizer',
+    'activation',
+    'job_length',
 ]
 
 history_cols = ['id']
@@ -217,8 +227,10 @@ history_cols.extend(array_cols)
 dest_cols = set(base_cols)
 dest_cols.update(history_cols)
 
+string_map = {}
 
-def postprocess_dataframe(data_log):
+
+def postprocess_dataframe(data_log, engine):
     # print(f'{len(data_log)} records retrieved. Parsing json...')
     datasets = pd.json_normalize(data_log["doc"])
     data_log.drop(columns=['doc'], inplace=True)
@@ -259,9 +271,23 @@ def postprocess_dataframe(data_log):
     datasets['label_noise'] = datasets['label_noise'].apply(convert_label_noise)
     # print(datasets.columns)
 
+
+    def canonicalize_string(s):
+        if s in string_map:
+            return string_map[s]
+        print(f'String miss on {s}.')
+        engine.execute('INSERT INTO strings(value) VALUES(%s) ON CONFLICT(value) DO NOTHING', (s,))
+        str_id = engine.execute('SELECT id from strings WHERE value = %s', (s, )).scalar()
+        string_map[s] = str_id
+        return str_id
+
+    for col in canonical_cols:
+        datasets[col] = datasets[col].apply(canonicalize_string)
+
     datasets.drop(columns=[c for c in datasets.columns if c not in dest_cols], inplace=True)
     base = datasets.filter(base_cols, axis=1)
     history = datasets.filter(history_cols, axis=1)
+    print(base)
     # print(base.columns)
     # print(history.columns)
     # print(datasets.columns)
@@ -293,7 +319,7 @@ def func():
     dest_table_base = 'materialized_experiments_3_base'
     dest_table_history = 'materialized_experiments_3_history'
     num_threads = 64
-    # num_threads = 6
+    # num_threads = 1
     # engine, session = log._connect()
 
     #     datasets = None
@@ -305,13 +331,24 @@ def func():
     #     except:
     #         print(f'Error reading dataset file, {log_filename}.')
 
+    db = sqlalchemy.create_engine(connection_string)
+    engine = db.connect()
+
+    string_map_df =  pd.read_sql(
+        f'''SELECT id, value from strings''',
+        engine.execution_options(stream_results=True, postgresql_with_hold=True), coerce_float=False,
+        params=())
+
+    values = string_map_df['value'].to_list()
+    for i, str_id in enumerate(string_map_df['id'].to_list()):
+        string_map[values[i]] = str_id
+
     conditions = f'log.groupname IN {groupnames}'
     q = f'''
     select log.id from {source_table} AS log 
     where {conditions} AND NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id)'''
 
-    db = sqlalchemy.create_engine(connection_string)
-    engine = db.connect()
+
     # count = db.engine.execute(q).scalar()
     ids = pd.read_sql(
         q,
@@ -373,7 +410,7 @@ def func():
                 f'Read #{read_number}: processing chunk {i} / {num_chunks} size {num_entries} from database...')
             if num_entries == 0:
                 break
-            base_chunk, history_chunk = postprocess_dataframe(chunk)
+            base_chunk, history_chunk = postprocess_dataframe(chunk, engine)
             print(f'Read #{read_number}: writing chunk to database...')
             base_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
             history_chunk.to_sql(dest_table_history, engine, method=insert_on_duplicate, if_exists='append',
