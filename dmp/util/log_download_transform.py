@@ -250,14 +250,13 @@ def postprocess_dataframe(data_log, engine):
     col_set = set(datasets.columns)
     datasets.drop(columns=[c for c in drop_list if c in col_set], inplace=True)
 
-    datasets[datasets['job_length'] == 'NaT'] = None
-
     # print(datasets.columns)
     col_set = set(datasets.columns)
     datasets.rename(columns={k: v for k, v in rename_map.items() if k in col_set}, inplace=True)
     # print(datasets.columns)
     # print(f'Joining with original dataframe...')
     datasets = datasets.join(data_log)
+    datasets[datasets['job_length'] == 'NaT'] = None
     # print(datasets.columns)
     # print(datasets.dtypes)
     # print(f'converting...')
