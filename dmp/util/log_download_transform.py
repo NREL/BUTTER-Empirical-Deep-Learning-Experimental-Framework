@@ -360,7 +360,7 @@ def func():
     count = ids.size
 
     loaded = 0
-    chunk_size = 8
+    chunk_size = 16
     # max_buffered_chunks = 4
     print(f'Loading {count} records from database...')
 
