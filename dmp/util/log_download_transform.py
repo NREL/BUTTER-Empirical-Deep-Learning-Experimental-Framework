@@ -126,7 +126,7 @@ rename_map.update({
     'config.run_config.validation_split': 'validation_split'
 
 })
-print(rename_map)
+# print(rename_map)
 
 for k in drop_list:
     rename_map.pop(k, None)
@@ -287,7 +287,7 @@ def postprocess_dataframe(data_log, engine):
     datasets.drop(columns=[c for c in datasets.columns if c not in dest_cols], inplace=True)
     base = datasets.filter(base_cols, axis=1)
     history = datasets.filter(history_cols, axis=1)
-    print(base)
+    # print(base)
     # print(base.columns)
     # print(history.columns)
     # print(datasets.columns)
