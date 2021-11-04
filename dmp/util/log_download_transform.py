@@ -256,7 +256,7 @@ def postprocess_dataframe(data_log, engine):
     # print(datasets.columns)
     # print(f'Joining with original dataframe...')
     datasets = datasets.join(data_log)
-    datasets[datasets['job_length'] == 'NaT'] = None
+    datasets[datasets['job_length'].isnull()] = None
     # print(datasets.columns)
     # print(datasets.dtypes)
     # print(f'converting...')
