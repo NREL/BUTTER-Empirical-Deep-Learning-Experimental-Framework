@@ -1,4 +1,3 @@
-import gc
 import sys
 
 import numpy
@@ -193,7 +192,11 @@ array_cols = [
     'val_mean_squared_logarithmic_error',
 ]
 
-dest_cols = {
+base_cols = [
+    'id',
+    'job',
+    'timestamp',
+    'groupname',
     'depth',
     'budget',
     'dataset',
@@ -206,32 +209,13 @@ dest_cols = {
     'validation_split',
     'label_noise',
     'residual_mode',
-    'loss',
-    'hinge',
-    'accuracy',
-    'val_loss',
-    'val_hinge',
-    'val_accuracy',
-    'squared_hinge',
-    'cosine_similarity',
-    'val_squared_hinge',
-    'mean_squared_error',
-    'mean_absolute_error',
-    'val_cosine_similarity',
-    'val_mean_squared_error',
-    'root_mean_squared_error',
-    'val_mean_absolute_error',
-    'kullback_leibler_divergence',
-    'val_root_mean_squared_error',
-    'mean_squared_logarithmic_error',
-    'val_kullback_leibler_divergence',
-    'val_mean_squared_logarithmic_error',
-    'id',
-    'job',
-    'timestamp',
-    'groupname',
-    'job_length',
-}
+]
+
+history_cols = ['id']
+history_cols.extend(array_cols)
+
+dest_cols = set(base_cols)
+dest_cols.update(history_cols)
 
 
 def postprocess_dataframe(data_log):
@@ -249,13 +233,13 @@ def postprocess_dataframe(data_log):
         datasets['config.label_noise'] = 0.0
     datasets['config.label_noise'].fillna(value=0.0, inplace=True)
 
+    # print(datasets.columns)
     col_set = set(datasets.columns)
     datasets.drop(columns=[c for c in drop_list if c in col_set], inplace=True)
 
-
     # print(datasets.columns)
     col_set = set(datasets.columns)
-    datasets.rename(columns={k : v for k, v  in rename_map.items() if k in col_set}, inplace=True)
+    datasets.rename(columns={k: v for k, v in rename_map.items() if k in col_set}, inplace=True)
     # print(datasets.columns)
     # print(f'Joining with original dataframe...')
     datasets = datasets.join(data_log)
@@ -273,8 +257,14 @@ def postprocess_dataframe(data_log):
             return 0.0
 
     datasets['label_noise'] = datasets['label_noise'].apply(convert_label_noise)
+    # print(datasets.columns)
 
     datasets.drop(columns=[c for c in datasets.columns if c not in dest_cols], inplace=True)
+    base = datasets.filter(base_cols, axis=1)
+    history = datasets.filter(history_cols, axis=1)
+    # print(base.columns)
+    # print(history.columns)
+    # print(datasets.columns)
     #
     # datasets['id'] = datasets.astype({'id': 'str'}).dtypes
     # datasets['job'] = datasets.astype({'job': 'str'}).dtypes
@@ -283,7 +273,16 @@ def postprocess_dataframe(data_log):
     #     datasets[col] = datasets[col].apply(lambda e: numpy.array(e, dtype=numpy.single))
 
     # print(datasets.dtypes)
-    return datasets
+    return base, history
+
+
+from sqlalchemy.dialects.postgresql import insert
+
+
+def insert_on_duplicate(table, conn, keys, data_iter):
+    insert_stmt = insert(table.table).values(list(data_iter))
+    insert_stmt.on_conflict_do_nothing()
+    conn.execute(insert_stmt)
 
 
 def func():
@@ -291,7 +290,8 @@ def func():
     log_filename = 'fixed_3k_1.parquet'
     groupnames = ('fixed_3k_1', 'fixed_3k_0')
     source_table = 'log'
-    dest_table = 'materialized_experiments_2'
+    dest_table_base = 'materialized_experiments_3_base'
+    dest_table_history = 'materialized_experiments_3_history'
     num_threads = 64
     # num_threads = 6
     # engine, session = log._connect()
@@ -308,7 +308,7 @@ def func():
     conditions = f'log.groupname IN {groupnames}'
     q = f'''
     select log.id from {source_table} AS log 
-    where {conditions} AND NOT EXISTS (SELECT id FROM {dest_table} AS d WHERE d.id = log.id)'''
+    where {conditions} AND NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id)'''
 
     db = sqlalchemy.create_engine(connection_string)
     engine = db.connect()
@@ -323,7 +323,7 @@ def func():
     count = ids.size
 
     loaded = 0
-    chunk_size = 16
+    chunk_size = 8
     # max_buffered_chunks = 4
     print(f'Loading {count} records from database...')
 
@@ -373,11 +373,15 @@ def func():
                 f'Read #{read_number}: processing chunk {i} / {num_chunks} size {num_entries} from database...')
             if num_entries == 0:
                 break
-            chunk = postprocess_dataframe(chunk)
+            base_chunk, history_chunk = postprocess_dataframe(chunk)
             print(f'Read #{read_number}: writing chunk to database...')
-            chunk.to_sql(dest_table, engine, method='multi', if_exists='append', index=False)
+            base_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
+            history_chunk.to_sql(dest_table_history, engine, method=insert_on_duplicate, if_exists='append',
+                                 index=False)
             print(f'Read #{read_number}: done writing...')
-            gc.collect()
+            del base_chunk
+            del history_chunk
+            del chunk
 
         print(f'Read #{read_number}: complete.')
         return None
