@@ -452,7 +452,7 @@ def func():
             base_chunk, loss_chunk, history_chunk = postprocess_dataframe(chunk, engine)
             print(f'Read #{read_number}: writing chunk to database...')
             base_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
-            loss_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
+            loss_chunk.to_sql(dest_table_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
             history_chunk.to_sql(dest_table_history, engine, method=insert_on_duplicate, if_exists='append',
                                  index=False)
             print(f'Read #{read_number}: done writing...')
