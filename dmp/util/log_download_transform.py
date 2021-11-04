@@ -145,7 +145,7 @@ type_map = {
     'validation_split': 'float32',
     # 'label_noise' : 'float32',
     'residual_mode': 'str',
-    'job_length': 'str',
+    # 'job_length': 'str',
     # 'loss' : 'float32[]',
     # 'hinge' : 'float32[]',
     # 'accuracy' : 'float32[]',
@@ -262,7 +262,8 @@ def postprocess_dataframe(data_log, engine):
     # print(datasets.dtypes)
     # print(f'converting...')
     datasets = datasets.astype(type_map)
-    datasets['job_length'].replace({"NaT": None, pd.NaT: None}, inplace=True)
+    datasets['job_length'] = datasets['job_length'].apply(lambda s : None if pd.isna(s) else str(s))
+    # datasets['job_length'].replace({"NaT": None, pd.NaT: None}, inplace=True)
 
     def convert_label_noise(v):
         if v is None:
