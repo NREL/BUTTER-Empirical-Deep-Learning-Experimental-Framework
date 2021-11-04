@@ -145,7 +145,7 @@ type_map = {
     'validation_split': 'float32',
     # 'label_noise' : 'float32',
     'residual_mode': 'str',
-    'job_length': 'str',
+    # 'job_length': 'str',
     # 'loss' : 'float32[]',
     # 'hinge' : 'float32[]',
     # 'accuracy' : 'float32[]',
