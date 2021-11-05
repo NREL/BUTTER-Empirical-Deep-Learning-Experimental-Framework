@@ -346,7 +346,7 @@ def insert_on_duplicate(table, conn, keys, data_iter):
 def func():
     # log_filename = 'aspect_analysis_datasets.feather'
     log_filename = 'fixed_3k_1.parquet'
-    groupnames = ('fixed_3k_1', 'fixed_3k_0')
+    groupnames = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
     source_table = 'log'
     dest_table_base = 'materialized_experiments_3_base'
     dest_table_loss = 'materialized_experiments_3_loss'
