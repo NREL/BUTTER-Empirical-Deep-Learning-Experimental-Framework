@@ -314,8 +314,8 @@ def test_network(
         if label_noise != "none":
             train_size = len(outputs_train)
             run_task = dataset['Task']
-            print(f'run_task {run_task} output shape {outputs.shape}')
-            print(f'sample\n{outputs_train[0:20, :]}')
+            # print(f'run_task {run_task} output shape {outputs.shape}')
+            # print(f'sample\n{outputs_train[0:20, :]}')
             if run_task == 'classification':
                 num_to_perturb = int(train_size * label_noise)
                 noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
