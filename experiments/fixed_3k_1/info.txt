@@ -7,17 +7,17 @@ How to run helper jobs:
 4) run some of these commands:
 
 CPU workers:
-for i in {1..100}; do sbatch -J q0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..200}; do sbatch -J q1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..300}; do sbatch -J q0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..300}; do sbatch -J q1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
 for i in {1..500}; do sbatch -J q2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
 for i in {1..500}; do sbatch -J q3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
 for i in {1..500}; do sbatch -J q4 -N1 -t510 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
 
 GPU workers:
-for i in {1..100}; do sbatch -J gs0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,18,0,0,0], [18,22,1,2,15000], [22,36,0,0,0]]"; done
-for i in {1..100}; do sbatch -J gs1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,18,0,0,0], [18,22,1,2,15000], [22,36,0,0,0]]"; done
-for i in {1..100}; do sbatch -J gs2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,18,0,0,0], [18,22,1,2,15000], [22,36,0,0,0]]"; done
-for i in {1..100}; do sbatch -J gs3 -N1 -t719 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,18,0,0,0], [18,22,1,2,15000], [22,36,0,0,0]]"; done
+for i in {1..80}; do sbatch -J gs0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,34,0,0,0], [34,36,1,2,15000]]"; done
+for i in {1..80}; do sbatch -J gs1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,34,0,0,0], [34,36,1,2,15000]]"; done
+for i in {1..80}; do sbatch -J gs2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,34,0,0,0], [34,36,1,2,15000]]"; done
+for i in {1..80}; do sbatch -J gs3 -N1 -t719 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,34,0,0,0], [34,36,1,2,15000]]"; done
 
 
 To materialize log data:
@@ -25,7 +25,9 @@ python -m dmp.util.log_download_transform
 
 To bulk cancel jobs:
 squeue -u ctripp -h | grep -P "\s+t\d.*AssocMaxJobs" | awk '{print $1}' | xargs scancel
-
+squeue -u ctripp -h | grep -P "\s+gs\d.*AssocMaxJobs" | awk '{print $1}' | xargs scancel
+squeue -u ctripp -h | grep -P "\s+t\d.*\(\w+\)" |
+squeue -u ctripp -h | grep -P "gpu" | awk '{print $1}' | xargs scancel
 
 ------- executed:
 
