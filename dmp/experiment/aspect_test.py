@@ -334,7 +334,7 @@ def test_network(
             elif run_task == 'regression':
                 # mean = numpy.mean(outputs, axis=0)
                 std_dev = numpy.std(outputs, axis=0)
-                print(f'std_dev {std_dev}')
+                # print(f'std_dev {std_dev}')
                 noise_std = std_dev * label_noise
                 for i in range(outputs_train.shape[1]):
                     outputs_train[:, i] += numpy.random.normal(
@@ -342,7 +342,7 @@ def test_network(
             else:
                 raise ValueError(f'Do not know how to add label noise to dataset task {run_task}.')
 
-            print(f'sample\n{outputs_train[0:20, :]}')
+            # print(f'sample\n{outputs_train[0:20, :]}')
 
         del run_config["validation_split"]
         run_config["validation_data"] = (inputs_val, outputs_val)
