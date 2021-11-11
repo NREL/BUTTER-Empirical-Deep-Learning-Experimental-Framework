@@ -27,6 +27,11 @@ for i in {1..1000}; do sbatch -J z1 -N1 -t1439 slurm_job_runner.sh python -m dmp
 for i in {1..1000}; do sbatch -J z2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 for i in {1..1000}; do sbatch -J z3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
+for i in {1..10}; do sbatch -J x0 -N8 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..10}; do sbatch -J x1 -N16 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..10}; do sbatch -J x2 -N32 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..10}; do sbatch -J x3 -N64 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
 
 GPU workers:
 for i in {1..160}; do sbatch -J gs0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
@@ -43,6 +48,10 @@ squeue -u ctripp -h | grep -P "\s+t\d.*AssocMaxJobs" | awk '{print $1}' | xargs 
 squeue -u ctripp -h | grep -P "\s+gs\d.*AssocMaxJobs" | awk '{print $1}' | xargs scancel
 squeue -u ctripp -h | grep -P "\s+gs\d\s+ctripp\s+.*\(\w+\)" | awk '{print $1}' | xargs scancel
 
+squeue -u ctripp -h | grep -P "\s+z3\d\s+ctripp\s+.*\(\w+\)" | awk '{print $1}' | xargs scancel
+
+squeue -u ctripp -h | grep -P "\s+gs\d\s+ctripp\s+.*\(\w+\)" | awk '{print $1}' | xargs scancel
+
 squeue -u ctripp -h | grep -P "\ss0\s+.*\" | less
 
 squeue -u ctripp -h | grep -P "gpu" | awk '{print $1}' | xargs scancel
@@ -56,7 +65,6 @@ squeue -u ctripp -h | grep -P '\s+s\d\s+ctripp\s+R\s+'
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'exponential', 'trapezoid'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_1.jobs
 cat ../fixed_3k_1.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
-
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.0001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'exponential', 'trapezoid'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_2.jobs
 cat ../fixed_3k_2.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
@@ -76,7 +84,7 @@ cat ../fixed_3k_6.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['wide_first_8x', 'wide_first_16x'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_7.jobs
 cat ../fixed_3k_7.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x'], 'residual_modes': [full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_8.jobs
+python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x'], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_8.jobs
 cat ../fixed_3k_8.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.01, 0.00001], 'label_noises':['none'], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'wide_first_8x', 'wide_first_16x', 'exponential', 'trapezoid'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_9.jobs
@@ -213,3 +221,7 @@ for i in {1..20}; do sbatch -J gl03 -N1 -t5760 --gres=gpu:2 slurm_job_runner.sh 
 
 
 {"mode":"single","seed":1088901488,"log":"postgres","dataset":"wine_quality_white","activation":"relu","optimizer":{"class_name":"adam","config":{"learning_rate":0.0001}},"epoch_scale":{"m":0,"b":8.006700845440367},"early_stopping":false,"run_config":{"validation_split":0.2,"shuffle":true,"epochs":3001,"batch_size":256,"verbose":0},"validation_split_method":"shuffled_train_test_split","label_noise":0.2,"topology":"wide_first_16x","residual_mode":"full","budget":16777216,"depth":20,"rep":29,"jq_module":"dmp.experiment.aspect_test"}
+
+grep -n 1088901488 ../fixed_3k_5.jobs
+
+1092000
