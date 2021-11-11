@@ -553,6 +553,9 @@ def get_wide_first_4x(num_outputs: int, depth: int) -> Callable[[float], List[in
 def get_wide_first_8x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
 
+def get_wide_first_16x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
 
 def get_wide_first_5x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
@@ -577,6 +580,8 @@ def widths_factory(topology):
         return get_wide_first_5x
     elif topology in {'wide_first', 'wide_first_10x'}:
         return get_wide_first_layer_rectangular_other_layers_widths
+    elif topology == 'wide_first_16x':
+        return get_wide_first_16x
     elif topology == 'wide_first_20x':
         return get_wide_first_20x
     else:
@@ -722,7 +727,7 @@ def generate_all_tests_from_config(config: {}):
     del config['depths']
     reps = config['reps']
     del config['reps']
-        
+
     for dataset in datasets:
         config['dataset'] = dataset
         for learning_rate in learning_rates:
