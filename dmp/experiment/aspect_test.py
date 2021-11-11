@@ -258,7 +258,6 @@ def test_network(
 
     log_data = {'config': config}
 
-    run_optimizer = optimizers.get(config['optimizer'])
     run_metrics = [
         # metrics.CategoricalAccuracy(),
         'accuracy',
@@ -279,7 +278,7 @@ def test_network(
         # loss='binary_crossentropy', # binary classification
         # loss='categorical_crossentropy', # categorical classification (one hot)
         loss=run_loss,  # regression
-        optimizer=run_optimizer,
+        optimizer=config['optimizer'],
         # optimizer='rmsprop',
         # metrics=['accuracy'],
         metrics=run_metrics,
