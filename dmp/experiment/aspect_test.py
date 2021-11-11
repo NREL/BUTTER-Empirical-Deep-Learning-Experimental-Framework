@@ -798,7 +798,7 @@ if __name__ == "__main__":
         for this_config in generate_all_tests_from_config(config):
             this_config[
                 "jq_module"] = "dmp.experiment.aspect_test"  # Full path to this module. Used by the job queue runner
-            json.dump(this_config, sys.stdout)
+            json.dump(this_config, sys.stdout,  separators=(',', ':'))
             print("")  ## newline
     else:
         assert (False), f"Invalid mode {mode}"
