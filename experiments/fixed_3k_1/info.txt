@@ -225,3 +225,7 @@ for i in {1..20}; do sbatch -J gl03 -N1 -t5760 --gres=gpu:2 slurm_job_runner.sh 
 grep -n 1088901488 ../fixed_3k_5.jobs
 
 1092000
+
+
+
+mamba remove tensorboard tensorboard-data-server tensorboard-plugin-wit tensorflow tensorflow-base tensorflow-datasets tensorflow-estimator tensorflow-gpu tensorflow-metadata

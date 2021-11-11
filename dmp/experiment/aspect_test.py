@@ -19,7 +19,6 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras import (
     callbacks,
     metrics,
-    optimizers,
 )
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.python.keras import losses, Input
@@ -258,6 +257,26 @@ def test_network(
 
     log_data = {'config': config}
 
+    run_optimizer = tensorflow.keras.optimizers.get(config['optimizer'])
+    # run_optimizer = tensorflow.optimizers.get(config['optimizer'])
+    optimizer_config = config['optimizer']
+    optimizer_name = optimizer_config['class_name']
+    # run_optimizer = None
+    # if optimizer_name == 'adam':
+    #     subconfig = optimizer_config['config']
+    #     # run_optimizer = tensorflow.python.keras.optimizer_v2.adam(learning_rate=subconfig['learning_rate'])
+    #     from tensorflow.keras.optimizers import Adam
+    #     from tensorflow.python.keras.optimizer_v1 import Optimizer
+    #     from tensorflow.python.keras.optimizer_v2 import optimizer_v2
+    #     from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
+    #
+    #     run_optimizer = Adam(learning_rate=subconfig['learning_rate'])
+    #     import inspect
+    #     print(inspect.getmro(type(run_optimizer)))
+    #     print(f'created... {isinstance(run_optimizer, (Optimizer, optimizer_v2.OptimizerV2))}' +
+    #           f'{isinstance(run_optimizer, OptimizerV2)}')
+    # else:
+    #     raise ValueError(f'Unknown optimizer {optimizer_name}.')
     run_metrics = [
         # metrics.CategoricalAccuracy(),
         'accuracy',
@@ -278,7 +297,7 @@ def test_network(
         # loss='binary_crossentropy', # binary classification
         # loss='categorical_crossentropy', # categorical classification (one hot)
         loss=run_loss,  # regression
-        optimizer=config['optimizer'],
+        optimizer=run_optimizer,
         # optimizer='rmsprop',
         # metrics=['accuracy'],
         metrics=run_metrics,
@@ -551,6 +570,7 @@ def get_wide_first_4x(num_outputs: int, depth: int) -> Callable[[float], List[in
 
 def get_wide_first_8x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
 
 def get_wide_first_16x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
