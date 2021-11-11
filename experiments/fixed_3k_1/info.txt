@@ -14,17 +14,25 @@ for i in {1..500}; do sbatch -J f2 -N1 -t959 slurm_job_runner.sh python -m dmp.j
 for i in {1..500}; do sbatch -J f3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
 for i in {1..500}; do sbatch -J f4 -N1 -t510 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
 
+
+for i in {1..20}; do sbatch -J sf5 -N1 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+
 for i in {1..1000}; do sbatch -J s0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
 for i in {1..1000}; do sbatch -J s1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
 for i in {1..500}; do sbatch -J s2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
 for i in {1..500}; do sbatch -J s3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
 
+for i in {1..1000}; do sbatch -J z0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..1000}; do sbatch -J z1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..1000}; do sbatch -J z2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..1000}; do sbatch -J z3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
 
 GPU workers:
-for i in {1..160}; do sbatch -J gs0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..160}; do sbatch -J gs1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..160}; do sbatch -J gs2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..160}; do sbatch -J gs3 -N1 -t719 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..160}; do sbatch -J gs0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..160}; do sbatch -J gs1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..160}; do sbatch -J gs2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..160}; do sbatch -J gs3 -N1 -t719 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
 
 To materialize log data:
