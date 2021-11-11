@@ -706,19 +706,36 @@ def generate_all_tests_from_config(config: {}):
     """
     Generator yielding all test configs specified by a seed config
     """
-    for dataset in config['datasets']:
+    datasets = config['datasets']
+    del config['datasets']
+    learning_rates = config['learning_rates']
+    del config['learning_rates']
+    topologies = config['topologies']
+    del config['topologies']
+    residual_modes = config['residual_modes']
+    del config['residual_modes']
+    budgets = config['budgets']
+    del config['budgets']
+    label_noises = config['label_noises']
+    del config['label_noises']
+    depths = config['depths']
+    del config['depths']
+    reps = config['reps']
+    del config['reps']
+        
+    for dataset in datasets:
         config['dataset'] = dataset
-        for learning_rate in config['learning_rates']:
+        for learning_rate in learning_rates:
             config['optimizer']['config']['learning_rate'] = float(learning_rate)
-            for topology in config['topologies']:
+            for topology in topologies:
                 config['topology'] = topology
-                for residual_mode in config['residual_modes']:
-                    if residual_mode == 'full' and (topology != 'rectangular' or topology.startswith('wide_first')):
+                for residual_mode in residual_modes:
+                    if residual_mode == 'full' and not (topology == 'rectangular' or topology.startswith('wide_first')):
                         continue  # skip incompatible combinations
                     config['residual_mode'] = residual_mode
-                    for budget in config['budgets']:
+                    for budget in budgets:
                         config['budget'] = budget
-                        for label_noise in config["label_noises"]:
+                        for label_noise in label_noises:
                             config["label_noise"] = label_noise
 
                             if 'epoch_scale' in config and config["epoch_scale"] != "none":
@@ -729,9 +746,9 @@ def generate_all_tests_from_config(config: {}):
                                 config['run_config']['epochs'] = epochs
                                 # print(f"budget: {budget}, epochs {epochs}, log {numpy.log(epochs)} m {m} b {b}")
 
-                            for depth in config['depths']:
+                            for depth in depths:
                                 config['depth'] = depth
-                                for rep in range(config['reps']):
+                                for rep in range(reps):
                                     this_config = deepcopy(config)
                                     this_config['rep'] = rep
                                     this_config['mode'] = 'single'
