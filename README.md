@@ -13,6 +13,8 @@ If you're using the job queue:
 
     pip install --editable=git+https://github.nrel.gov/mlunacek/jobqueue-pg@master#egg=jobqueue
 
+Be sure you do not have keras installed in this environment, as it will cause runners to fail due to a namespace conflict when instantiating the DNN optimizer.
+
 ## Test
 
     pytest -s -v tests
@@ -66,7 +68,22 @@ DMP supports training of residual networks by using the 'residual_mode' configur
 
 ## Extra Eagle Setup Steps
 
-This uses the optimized tensorflow build for Eagle CPUs and GPUs:
+Tensorflow 2.6 from the conda channel now has most important Eagle CPU optimizations compiled in, but you must set:
+```
+export TF_ENABLE_ONEDNN_OPTS=1
+```
+in order to activate the optimizations. Intel calls these "oneDNN", and you will see a message logged when they are activated on worker startup. I would set it either in your .bashrc or in your environment (admp) script as discussed below. 
+
+You can check if all is well with the tensorflow configuration by running:
+
+```
+python -m dmp.util.check_tensorflow
+```
+
+This will print out diagnostic tensorflow information, including if oneDNN optimizations are enabled.
+
+
+Previously, we used this optimized tensorflow build for Eagle CPUs and GPUs:
     
     pip install --upgrade --force-reinstall /nopt/nrel/apps/wheels/tensorflow-2.4.0-cp38-cp38-linux_x86_64.whl
 
@@ -75,6 +92,7 @@ This uses the optimized tensorflow build for Eagle CPUs and GPUs:
 
 An example script that sets up the right modules and environment variables to use the optimized tenseorflow build and appropriate directories. 
 
+```
     #!/bin/bash
     source ~/.bashrc
     conda deactivate
@@ -96,7 +114,8 @@ An example script that sets up the right modules and environment variables to us
     
     cd /projects/dmpapps/ctripp/src
     conda activate /projects/dmpapps/ctripp/env/dmp
-
+    export TF_ENABLE_ONEDNN_OPTS=1
+```
 
 ## Running experiments on Eagle with Sbatch
 
