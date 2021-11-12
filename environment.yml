@@ -13,7 +13,7 @@ dependencies:
 - sqlalchemy
 - psycopg2
 - pyarrow
-- tensorflow>2.4
+- tensorflow>=2.6
 - pip:
   - pytest
   - tensorflow_datasets
