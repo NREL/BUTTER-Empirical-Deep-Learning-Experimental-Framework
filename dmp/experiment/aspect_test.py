@@ -19,11 +19,9 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras import (
     callbacks,
     metrics,
-    optimizers,
 )
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.python.keras import losses, Input
-from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
 
@@ -211,6 +209,12 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
     return output_activation, run_loss
 
 
+# def shuffle_dataset(inputs: ndarray, outputs: ndarray) -> (ndarray, ndarray):
+#     combined = np.hstack((inputs, outputs))
+#     np.random.shuffle(combined)
+#     return combined[:, 0:inputs.shape[1]], combined[:, inputs.shape[1]:]
+
+
 def test_network(
         config: {},
         dataset,
@@ -228,6 +232,9 @@ def test_network(
     Given a fully constructed Keras network, train and test it on a given dataset using hyperparameters in config
     This function also creates log events during and after training.
     """
+
+    # inputs, outputs = shuffle_dataset(inputs, outputs)
+
     config = deepcopy(config)
 
     # wine_quality_white__wide_first__4194304__4__16106579275625
@@ -250,7 +257,26 @@ def test_network(
 
     log_data = {'config': config}
 
-    run_optimizer = optimizers.get(config['optimizer'])
+    run_optimizer = tensorflow.keras.optimizers.get(config['optimizer'])
+    # run_optimizer = tensorflow.optimizers.get(config['optimizer'])
+    optimizer_config = config['optimizer']
+    optimizer_name = optimizer_config['class_name']
+    # run_optimizer = None
+    # if optimizer_name == 'adam':
+    #     subconfig = optimizer_config['config']
+    #     # run_optimizer = tensorflow.python.keras.optimizer_v2.adam(learning_rate=subconfig['learning_rate'])
+    #     from tensorflow.keras.optimizers import Adam
+    #     from tensorflow.python.keras.optimizer_v1 import Optimizer
+    #     from tensorflow.python.keras.optimizer_v2 import optimizer_v2
+    #     from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
+    #
+    #     run_optimizer = Adam(learning_rate=subconfig['learning_rate'])
+    #     import inspect
+    #     print(inspect.getmro(type(run_optimizer)))
+    #     print(f'created... {isinstance(run_optimizer, (Optimizer, optimizer_v2.OptimizerV2))}' +
+    #           f'{isinstance(run_optimizer, OptimizerV2)}')
+    # else:
+    #     raise ValueError(f'Unknown optimizer {optimizer_name}.')
     run_metrics = [
         # metrics.CategoricalAccuracy(),
         'accuracy',
@@ -297,33 +323,52 @@ def test_network(
 
     run_config = config['run_config'].copy()
 
-    if config["test_split"] > 0:
-        ## train/test/val split
-        inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs,
-                                                                                  test_size=config["test_split"])
-        run_config["validation_split"] = run_config["validation_split"] / (1 - config["test_split"])
+    if config["validation_split_method"] == "shuffled_train_test_split":
 
-        ## Set up a custom callback to record test loss at each epoch
-        ## This could potentially cause performance issues with large datasets on GPU
-        class TestHistory(Callback):
-            def __init__(self, x_test, y_test):
-                self.x_test = x_test
-                self.y_test = y_test
+        inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config[
+            "validation_split"], shuffle=True)
 
-            def on_train_begin(self, logs={}):
-                self.history = {}
+        label_noise = config["label_noise"]
+        if label_noise != "none":
+            train_size = len(outputs_train)
+            run_task = dataset['Task']
+            # print(f'run_task {run_task} output shape {outputs.shape}')
+            # print(f'sample\n{outputs_train[0:20, :]}')
+            if run_task == 'classification':
+                num_to_perturb = int(train_size * label_noise)
+                noisy_labels_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=False)
 
-            def on_epoch_end(self, epoch, logs=None):
-                eval_log = self.model.evaluate(x=self.x_test, y=self.y_test, return_dict=True)
-                for k, v in eval_log.items():
-                    k = "test_" + k
-                    self.history.setdefault(k, []).append(v)
+                num_outputs = outputs.shape[1]
+                if num_outputs == 1:
+                    # binary response variable...
+                    outputs_train[noisy_labels_idx] ^= 1
+                else:
+                    # one-hot response variable...
+                    rolls = numpy.random.choice(numpy.arange(num_outputs - 1) + 1, noisy_labels_idx.size)
+                    for i, idx in enumerate(noisy_labels_idx):
+                        outputs_train[noisy_labels_idx] = numpy.roll(outputs_train[noisy_labels_idx], rolls[i])
+                # noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
+                # outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
+            elif run_task == 'regression':
+                # mean = numpy.mean(outputs, axis=0)
+                std_dev = numpy.std(outputs, axis=0)
+                # print(f'std_dev {std_dev}')
+                noise_std = std_dev * label_noise
+                for i in range(outputs_train.shape[1]):
+                    outputs_train[:, i] += numpy.random.normal(
+                        loc=0, scale=noise_std[i], size=outputs_train[:, i].shape)
+            else:
+                raise ValueError(f'Do not know how to add label noise to dataset task {run_task}.')
 
-        test_history_callback = TestHistory(inputs_test, outputs_test)
-        run_callbacks.append(test_history_callback)
+            # print(f'sample\n{outputs_train[0:20, :]}')
+
+        del run_config["validation_split"]
+        run_config["validation_data"] = (inputs_val, outputs_val)
+        run_config["x"] = inputs_train
+        run_config["y"] = outputs_train
     else:
-        ## Just train/val split
-        inputs_train, outputs_train = inputs, outputs
+        run_config["x"] = inputs
+        run_config["y"] = outputs
 
     if "tensorboard" in config.keys():
         run_callbacks.append(TensorBoard(
@@ -370,8 +415,6 @@ def test_network(
                                to_path=os.path.join(DMP_CHECKPOINT_DIR, checkpoint_name + ".h5"))
 
     history = model.fit(
-        x=inputs_train,
-        y=outputs_train,
         callbacks=run_callbacks,
         **run_config,
     )
@@ -393,12 +436,6 @@ def test_network(
     log_data['iterations'] = best_index + 1
     log_data['val_loss'] = validation_losses[best_index]
     log_data['loss'] = history['loss'][best_index]
-
-    if config["test_split"] > 0:
-        ## Record the history of test evals from the callback
-        log_data['history'].update(test_history_callback.history)
-        test_losses = numpy.array(history['test_loss'])
-        log_data['test_loss'] = test_losses[best_index]
 
     log_data['run_name'] = run_name
 
@@ -523,6 +560,22 @@ def get_wide_first_layer_rectangular_other_layers_widths(
     return make_layout
 
 
+def get_wide_first_2x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
+def get_wide_first_4x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
+def get_wide_first_8x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
+def get_wide_first_16x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
 def get_wide_first_5x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
 
@@ -538,10 +591,16 @@ def widths_factory(topology):
         return get_trapezoidal_widths
     elif topology == 'exponential':
         return get_exponential_widths
-    elif topology == 'wide_first':
-        return get_wide_first_layer_rectangular_other_layers_widths
+    elif topology == 'wide_first_2x':
+        return get_wide_first_2x
+    elif topology == 'wide_first_4x':
+        return get_wide_first_4x
     elif topology == 'wide_first_5x':
         return get_wide_first_5x
+    elif topology in {'wide_first', 'wide_first_10x'}:
+        return get_wide_first_layer_rectangular_other_layers_widths
+    elif topology == 'wide_first_16x':
+        return get_wide_first_16x
     elif topology == 'wide_first_20x':
         return get_wide_first_20x
     else:
@@ -565,19 +624,18 @@ datasets = pmlb_loader.load_dataset_index()
 
 
 default_config = {
-    'mode': 'list',  # 'direct', 'list', 'enqueue', ?
+    'mode': 'direct',  # 'direct', 'list', 'enqueue', ?
     'seed': None,
     'log': './log',
     'dataset': '529_pollen',
-    'test_split': 0,
     'activation': 'relu',
     'optimizer': {
         "class_name": "adam",
         "config": {"learning_rate": 0.001},
     },
-    'datasets': ['529_pollen'],
+    'datasets': ['adult'],
     'learning_rates': [0.001],
-    'topologies': ['wide_first'],
+    'topologies': ['wide_first_2x'],
     'budgets': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                 8388608, 16777216, 33554432],
@@ -596,6 +654,9 @@ default_config = {
         'batch_size': 256,
         'verbose': 0,
     },
+    'validation_split_method': 'shuffled_train_test_split',
+    'label_noises': ['none'],
+    'label_noise': 'none',
 }
 
 
@@ -669,34 +730,55 @@ def generate_all_tests_from_config(config: {}):
     """
     Generator yielding all test configs specified by a seed config
     """
-    for dataset in config['datasets']:
+    datasets = config['datasets']
+    del config['datasets']
+    learning_rates = config['learning_rates']
+    del config['learning_rates']
+    topologies = config['topologies']
+    del config['topologies']
+    residual_modes = config['residual_modes']
+    del config['residual_modes']
+    budgets = config['budgets']
+    del config['budgets']
+    label_noises = config['label_noises']
+    del config['label_noises']
+    depths = config['depths']
+    del config['depths']
+    reps = config['reps']
+    del config['reps']
+
+    for dataset in datasets:
         config['dataset'] = dataset
-        for learning_rate in config['learning_rates']:
+        for learning_rate in learning_rates:
             config['optimizer']['config']['learning_rate'] = float(learning_rate)
-            for topology in config['topologies']:
+            for topology in topologies:
                 config['topology'] = topology
-                for residual_mode in config['residual_modes']:
+                for residual_mode in residual_modes:
+                    if residual_mode == 'full' and not (topology == 'rectangular' or topology.startswith('wide_first')):
+                        continue  # skip incompatible combinations
                     config['residual_mode'] = residual_mode
-                    for budget in config['budgets']:
+                    for budget in budgets:
                         config['budget'] = budget
+                        for label_noise in label_noises:
+                            config["label_noise"] = label_noise
 
-                        if 'epoch_scale' in config:
-                            epoch_scale = config['epoch_scale']
-                            m = epoch_scale['m']
-                            b = epoch_scale['b']
-                            epochs = int(numpy.ceil(numpy.exp(m * numpy.log(budget) + b)))
-                            config['run_config']['epochs'] = epochs
-                            # print(f"budget: {budget}, epochs {epochs}, log {numpy.log(epochs)} m {m} b {b}")
+                            if 'epoch_scale' in config and config["epoch_scale"] != "none":
+                                epoch_scale = config['epoch_scale']
+                                m = epoch_scale['m']
+                                b = epoch_scale['b']
+                                epochs = int(numpy.ceil(numpy.exp(m * numpy.log(budget) + b)))
+                                config['run_config']['epochs'] = epochs
+                                # print(f"budget: {budget}, epochs {epochs}, log {numpy.log(epochs)} m {m} b {b}")
 
-                        for depth in config['depths']:
-                            config['depth'] = depth
-                            for rep in range(config['reps']):
-                                this_config = deepcopy(config)
-                                this_config['rep'] = rep
-                                this_config['mode'] = 'single'
-                                if this_config['seed'] is None:
-                                    this_config['seed'] = random.getrandbits(31)
-                                yield this_config
+                            for depth in depths:
+                                config['depth'] = depth
+                                for rep in range(reps):
+                                    this_config = deepcopy(config)
+                                    this_config['rep'] = rep
+                                    this_config['mode'] = 'single'
+                                    if this_config['seed'] is None:
+                                        this_config['seed'] = random.getrandbits(31)
+                                    yield this_config
 
 
 def run_aspect_test_from_config(config: {}, strategy=None):
@@ -723,7 +805,7 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
-    strategy = jq_worker.make_strategy(0, 6, 0, 1, 8192)
+    strategy = jq_worker.make_strategy(0, 6, 0, 0, 8192)  # only used in mode=direct for local testing purposes
 
     if mode == 'single':
         run_aspect_test_from_config(config)
@@ -735,7 +817,7 @@ if __name__ == "__main__":
         for this_config in generate_all_tests_from_config(config):
             this_config[
                 "jq_module"] = "dmp.experiment.aspect_test"  # Full path to this module. Used by the job queue runner
-            json.dump(this_config, sys.stdout)
+            json.dump(this_config, sys.stdout, separators=(',', ':'))
             print("")  ## newline
     else:
         assert (False), f"Invalid mode {mode}"

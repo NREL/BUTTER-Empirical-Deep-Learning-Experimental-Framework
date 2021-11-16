@@ -1,8 +1,12 @@
 import argparse
 import json
 import platform
+import random
+import select
 import subprocess
 import sys
+import time
+from queue import Queue
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -22,14 +26,61 @@ if __name__ == "__main__":
     print(f'Started Node Manager on host "{host}" for project "{args.project}" and group "{args.group}".')
     print(f'Launching worker processes...')
     print(json.dumps(configs))
-    workers = [subprocess.Popen(
-        ['python', '-m', 'dmp.jq.jq_worker_manager',
-         'python', '-m', 'dmp.jq.jq_worker',
-         *[str(e) for e in config],
-         args.project,
-         args.group])
-        for rank, config in enumerate(configs)]
-    print(f'Waiting for worker processes to exit...')
-    for worker in workers:
-        worker.wait()
-    print('Exiting Worker Manager...')
+
+    if __name__ == '__main__':
+        logfile = open('logfile.txt', 'w')
+
+        q = Queue()
+        workers = []
+        for rank, config in enumerate(configs):
+            command = ['python', '-u', '-m', 'dmp.jq.jq_worker_manager',
+                       'python', '-u', '-m', 'dmp.jq.jq_worker',
+                       *[str(e) for e in config], args.project, args.group]
+            print(f'Creating subprocess {rank} with command: "{" ".join(command)}"')
+            worker = subprocess.Popen(
+                command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                close_fds=True)
+            workers.append(worker)
+            time.sleep(random.uniform(0.5, 2))  # wait a bit to avoid overwhelming the database, etc...
+
+        streams = [w.stdout for w in workers]
+        stream_name_map = {id(s): f'{i}:' for i, s in enumerate(streams)}
+
+
+        def output(stream, line):
+            if len(line) == 0:
+                return
+            name = stream_name_map[id(stream)]
+            if not isinstance(line, str):
+                line = line.decode("utf-8")
+            line = name + line
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            # print(line, flush=True)
+            # sys.stdout.write(line)
+            # sys.stdout.flush()
+
+
+        print('Starting output redirection...')
+        while True:
+            # print(f'select...')
+            rstreams, _, _ = select.select(streams, [], [], 30)
+            # print(f'selected {len(rstreams)}')
+            for stream in rstreams:
+                line = stream.readline()
+                if len(line) != 0:
+                    output(stream, line)
+            if all(w.poll() is not None for w in workers):
+                break
+
+        for stream in streams:
+            while True:
+                line = stream.readline()
+                if len(line) == 0:
+                    break
+                output(stream, line)
+
+        print(f'Waiting for worker processes to exit...')
+        for worker in workers:
+            worker.wait()
+        print('Exiting Worker Manager...')

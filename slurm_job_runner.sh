@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=3
 #SBATCH --tasks-per-node=1
 #SBATCH --time=59
-#SBATCH --account=dmpapps
+#SBATCH --account=dmpscale
 #SBATCH --cpu-freq=high-high:Performance
 
 # Eagle Modules

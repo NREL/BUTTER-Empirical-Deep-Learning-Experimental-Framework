@@ -1,0 +1,34 @@
+{
+    "mode":"list",
+    "reps": 10,
+    "residual_mode": "none",
+    "log":"postgres",
+    "test_split":0.0,
+    "activation":"relu",
+    "early_stopping":false,
+    "run_config": {
+        "validation_split": 0.2,
+        "shuffle": true,
+        "epochs": 3000,
+        "batch_size": 256,
+        "verbose": 0
+    },
+    "optimizer": {
+        "class_name": "adam",
+        "config": {"learning_rate": 0.001}
+    },
+    "data_augmentation": [
+        {"type":"none"},
+        {}
+    ],
+    "regularizers": [
+        {"type":"label_noise", "pct":0.1},
+        {"type":"feature_noise", "var_pct":0.1},
+        {"type":"l1", "b":0.1},
+        {"type":"l2", "b":0.1}
+    ],
+    "datasets": ["mnist", "sleep"],
+    "topologies": ["rectangle"],
+    "budgets": [16384, 65536, 262144, 1048576],
+    "depths": [10]
+}
