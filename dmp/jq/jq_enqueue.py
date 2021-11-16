@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser.add_argument('group', help='group name or tag')
     args = parser.parse_args()
 
-    jq = jobqueue.JobQueue(args.project, args.group)
+    jq = jobqueue.JobQueue(args.project, args.group, pooling=True)
 
     for line in sys.stdin.readlines():
         print(line)

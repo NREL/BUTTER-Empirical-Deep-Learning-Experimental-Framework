@@ -30,7 +30,7 @@ def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> (pandas.Serie
     matching_datasets = datasets[datasets['Dataset'] == dataset_name]
     if len(matching_datasets) <= 0:
         raise Exception('No matching dataset "{}".'.format(dataset_name))
-    dataset = matching_datasets.iloc[0]
+    dataset = matching_datasets.iloc[0].copy()
 
     # check cache first for raw inputs and outputs in the working directory
     cache_directory = os.path.join(os.getcwd(), ".pmlb_cache", dataset_name)

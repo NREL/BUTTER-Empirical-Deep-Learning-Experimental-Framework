@@ -13,12 +13,11 @@ dependencies:
 - sqlalchemy
 - psycopg2
 - pyarrow
+- tensorflow>=2.6
 - pip:
   - pytest
-  - tensorflow==2.4.0
   - tensorflow_datasets
   - pmlb
-  - keras
   - keras_buoy
   - orjson
   - connectorx
