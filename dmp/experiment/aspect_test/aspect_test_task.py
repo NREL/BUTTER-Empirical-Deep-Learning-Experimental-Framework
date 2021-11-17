@@ -130,7 +130,7 @@ class AspectTestTask(Task):
             record_element = self.make_dataclass_from_dict(record, record_class)
             session.add(record_element)
         session.commit()
-
+        # TODO: finish this guy
 
     def make_dataclass_from_dict(self, source: {}, cls: Type) -> any:
         keys = {f.name for f in dataclasses.fields(BaseRecord) if not f.name.startswith('__')}

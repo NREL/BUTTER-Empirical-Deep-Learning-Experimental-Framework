@@ -5,7 +5,7 @@ class_registry = {}
 metadata_obj = MetaData()
 mapper_registry = registry(metadata=metadata_obj, class_registry=class_registry)
 
-
+# TODO: finish this guy for sqlalchemy
 def connect(credentials : {}):
     max_wait_time = 60 * 60
     max_attempts = 10000
