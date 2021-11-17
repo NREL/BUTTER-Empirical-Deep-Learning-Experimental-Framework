@@ -171,7 +171,7 @@ type_map = {
 }
 
 canonical_cols = [
-    'groupname',
+    'group',
     'dataset',
     'topology',
     'residual_mode',
@@ -213,7 +213,7 @@ base_cols = [
     'batch_size',
     'validation_split',
     'label_noise',
-    'groupname',
+    'group',
     'dataset',
     'topology',
     'residual_mode',
@@ -224,7 +224,6 @@ base_cols = [
 
 loss_cols = [
     record_key,
-    'loss',
     'val_loss',
 ]
 
@@ -248,6 +247,8 @@ history_cols = [
     'mean_squared_logarithmic_error',
     'val_kullback_leibler_divergence',
     'val_mean_squared_logarithmic_error',
+    'loss',
+    'val_loss',
 ]
 
 dest_cols = set(base_cols)
@@ -346,10 +347,10 @@ def insert_on_duplicate(table, conn, keys, data_iter):
 def func():
     # log_filename = 'aspect_analysis_datasets.feather'
     log_filename = 'fixed_3k_1.parquet'
-    groupnames = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
+    groups = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
     source_table = 'log'
     dest_table_base = 'materialized_experiments_3_base'
-    dest_table_loss = 'materialized_experiments_3_loss'
+    dest_table_val_loss = 'materialized_experiments_3_val_loss'
     dest_table_history = 'materialized_experiments_3_history'
     num_threads = 64
     # num_threads = 1
@@ -376,13 +377,13 @@ def func():
     for i, str_id in enumerate(string_map_df['id'].to_list()):
         string_map[values[i]] = str_id
 
-    conditions = f'log.groupname IN {groupnames}'
+    conditions = f'log.groupname IN {groups}'
     q = f'''
     select log.id from {source_table} AS log 
     where {conditions} AND 
     (
     NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
-    NOT EXISTS (SELECT id FROM {dest_table_loss} AS d WHERE d.id = log.id) OR
+    NOT EXISTS (SELECT id FROM {dest_table_val_loss} AS d WHERE d.id = log.id) OR
     NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id)
     )
     ORDER BY id ASC
@@ -429,8 +430,8 @@ def func():
             log.id as id,
             log.job as job,
             log.timestamp as timestamp,
-            log.groupname as groupname,
-            (jobqueue.end_time - jobqueue.start_time) AS job_length,
+            log.groupname as group,
+            COALESCE((EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time)) * 1000)::int, -1) AS job_length,
             log.doc as doc
             FROM
                  {source_table} AS log,
@@ -452,7 +453,7 @@ def func():
             base_chunk, loss_chunk, history_chunk = postprocess_dataframe(chunk, engine)
             print(f'Read #{read_number}: writing chunk to database...')
             base_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
-            loss_chunk.to_sql(dest_table_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
+            loss_chunk.to_sql(dest_table_val_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
             history_chunk.to_sql(dest_table_history, engine, method=insert_on_duplicate, if_exists='append',
                                  index=False)
             print(f'Read #{read_number}: done writing...')

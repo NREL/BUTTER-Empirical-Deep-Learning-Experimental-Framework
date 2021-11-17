@@ -1,56 +1,21 @@
-from abc import abstractmethod
+import dataclasses
+import time
+from typing import Type
 
 from attr import dataclass
-from task import TrainingTask
-
-import gc
-import json
-import math
-import os
-import random
-import sys
-from copy import deepcopy
-from functools import singledispatchmethod
-from typing import Callable, Union, List, Optional
-
-import numpy
-import pandas
-import tensorflow
-import itertools
-from keras_buoy.models import ResumableModel
-from sklearn.model_selection import train_test_split
-from tensorflow.keras import (
-    callbacks,
-    metrics,
-    optimizers,
-)
-from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.python.keras import losses, Input
-from tensorflow.python.keras.callbacks import Callback
-from tensorflow.python.keras.layers import Dense
-from tensorflow.python.keras.models import Model
-
-from command_line_tools import (
-    command_line_config,
-    run_tools,
-)
-from dmp.data.logging import write_log
-from dmp.data.pmlb import pmlb_loader
-from dmp.data.pmlb.pmlb_loader import load_dataset
-from dmp.experiment.structure.algorithm.network_json_serializer import NetworkJSONSerializer
-from dmp.experiment.structure.n_add import NAdd
-from dmp.experiment.structure.n_dense import NDense
-from dmp.experiment.structure.n_input import NInput
-from dmp.experiment.structure.network_module import NetworkModule
-from dmp.jq import jq_worker
 
 from aspect_test_utils import *
-
 from dmp.experiment.batch.batch import CartesianBatch
+from dmp.experiment.task.task import Task
+from dmp.record.base_record import BaseRecord
+from dmp.record.history_record import HistoryRecord
+from dmp.record.val_loss_record import ValLossRecord
+
 
 @dataclass
 class AspectTestTaskResult():
     pass
+
 
 @dataclass
 class AspectTestTaskCartesianBatch(CartesianBatch):
@@ -61,27 +26,30 @@ class AspectTestTaskCartesianBatch(CartesianBatch):
     learning_rate: list[float] = [0.001],
     topology: list[str] = ['wide_first'],
     budget: list[int] = [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
-            32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
-            8388608, 16777216, 33554432],
+                         32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
+                         8388608, 16777216, 33554432],
     depth: list[int] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20]
 
     def __task_class():
         return AspectTestTask
 
 
+datasets = pmlb_loader.load_dataset_index()
+
+
 @dataclass
-class AspectTestTask(TrainingTask):
+class AspectTestTask(Task):
     ### Parameters
     seed: int = None
     log: str = './log'
     dataset: str = '529_pollen'
     test_split: int = 0
-    activation: str = 'relu'
+    input_activation: str = 'relu'
+    internal_activation: str = 'relu'
     optimizer: dict = {
         "class_name": "adam",
         "config": {"learning_rate": 0.001},
-        }
-    dataset: str = '529_pollen'
+    }
     learning_rate: float = 0.001
     topology: str = 'wide_first'
     budget: int = 32
@@ -91,7 +59,7 @@ class AspectTestTask(TrainingTask):
         'b': numpy.log(3001),
     }
     residual_mode: str = 'none'
-    rep: 0
+    rep: int = 0
     early_stopping: bool = False,
     run_config: dict = {
         'validation_split': .2,  # This is relative to the training set size.
@@ -99,12 +67,12 @@ class AspectTestTask(TrainingTask):
         'epochs': 3000,
         'batch_size': 256,
         'verbose': 0
-        }
-    
-    ### Instance Vars
-    __strategy: tensorflow.distribute.Strategy
+    }
 
-    def run(self):
+    ### Instance Vars
+    __strategy: tensorflow.distribute.Strategy = None
+
+    def __call__(self):
         """
         Execute this task and return the result
         """
@@ -113,6 +81,9 @@ class AspectTestTask(TrainingTask):
 
         if self.__strategy is None:
             self.__strategy = tensorflow.distribute.get_strategy()
+
+        if self.seed is None:
+            self.seed = time.time_ns()
 
         numpy.random.seed(self.seed)
         tensorflow.random.set_seed(self.seed)
@@ -130,8 +101,8 @@ class AspectTestTask(TrainingTask):
         delta, widths, network = find_best_layout_for_budget_and_depth(
             inputs,
             self.residual_mode,
-            'relu',
-            'relu',
+            self.input_activation,
+            self.internal_activation,
             output_activation,
             self.budget,
             widths_factory(self.topology)(num_outputs, self.depth),
@@ -139,32 +110,42 @@ class AspectTestTask(TrainingTask):
             self.topology
         )
 
-        network_structure = NetworkJSONSerializer(network)()
+        # network_structure = NetworkJSONSerializer(network)()
 
-        print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(self.budget, self.depth, self.widths, self.rep))
+        print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(self.budget, self.depth, self.widths,
+                                                                              self.rep))
 
         ## Create Keras model from NetworkModule
         with self.__strategy.scope():
             keras_inputs, keras_output = make_model_from_network(network)
-
             assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
-            keras_input = keras_inputs[0]
-
             ## Run Keras model on dataset
-            run_log = self.test_network(dataset, inputs, outputs, keras_input, keras_output, network, run_loss, widths)
+            record = self.test_network(dataset, inputs, outputs, keras_inputs[0], keras_output, network, run_loss,
+                                       widths)
+            self.log_record(record)
 
-        return run_log
+    def log_record(self, record: {}) -> None:
+        engine, session = _connect()
+        for record_class in [BaseRecord, ValLossRecord, HistoryRecord]:
+            record_element = self.make_dataclass_from_dict(record, record_class)
+            session.add(record_element)
+        session.commit()
+
+
+    def make_dataclass_from_dict(self, source: {}, cls: Type) -> any:
+        keys = {f.name for f in dataclasses.fields(BaseRecord) if not f.name.startswith('__')}
+        return cls(**{k: v for k, v in source if k in keys})
 
     def test_network(self,
-        dataset,
-        inputs: numpy.ndarray,
-        outputs: numpy.ndarray,
-        keras_input,
-        keras_output,
-        network: NetworkModule,
-        run_loss,
-        widths
-    ) -> dict:
+                     dataset,
+                     inputs: numpy.ndarray,
+                     outputs: numpy.ndarray,
+                     keras_input,
+                     keras_output,
+                     network: NetworkModule,
+                     run_loss,
+                     widths
+                     ) -> dict:
         """
         test_network
 
@@ -172,18 +153,18 @@ class AspectTestTask(TrainingTask):
         This function also creates log events during and after training.
         """
 
-        # wine_quality_white__wide_first__4194304__4__16106579275625
-        name = '{}__{}__{}__{}'.format(
-            self.dataset,
-            self.topology,
-            self.budget,
-            self.depth,
-        )
+        # # wine_quality_white__wide_first__4194304__4__16106579275625
+        # name = '{}__{}__{}__{}'.format(
+        #     self.dataset,
+        #     self.topology,
+        #     self.budget,
+        #     self.depth,
+        # )
+        #
+        # self.name = name
 
-        self.name = name
-
-        run_name = run_tools.get_run_name(config)
-        self.run_name = run_name
+        # run_name = run_tools.get_run_name(config)
+        # self.run_name = run_name
 
         depth = len(widths)
         self.depth = depth
@@ -241,11 +222,12 @@ class AspectTestTask(TrainingTask):
         if self.test_split > 0:
             ## train/test/val split
             inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs,
-                                                                                    test_size=self.test_split])
-            run_config["validation_split"] = run_config["validation_split"] / (1 -self.test_split)
+                                                                                      test_size=self.test_split])
+            run_config["validation_split"] = run_config["validation_split"] / (1 - self.test_split)
 
             ## Set up a custom callback to record test loss at each epoch
             ## This could potentially cause performance issues with large datasets on GPU
+
             class TestHistory(Callback):
                 def __init__(self, x_test, y_test):
                     self.x_test = x_test
@@ -297,18 +279,18 @@ class AspectTestTask(TrainingTask):
 
             DMP_CHECKPOINT_DIR = os.getenv("DMP_CHECKPOINT_DIR", default="checkpoints")
             if "checkpoint_dir" in config.keys():
-                DMP_CHECKPOINT_DIR =self.checkpoint_dir
+                DMP_CHECKPOINT_DIR = self.checkpoint_dir
             if not os.path.exists(DMP_CHECKPOINT_DIR):
                 os.makedirs(DMP_CHECKPOINT_DIR)
 
             if "jq_uuid" in config.keys():
-                checkpoint_name =self.jq_uuid
+                checkpoint_name = self.jq_uuid
             else:
                 checkpoint_name = run_name
 
             model = ResumableModel(model,
-                                save_every_epochs=config["checkpoint_epochs"],
-                                to_path=os.path.join(DMP_CHECKPOINT_DIR, checkpoint_name + ".h5"))
+                                   save_every_epochs=config["checkpoint_epochs"],
+                                   to_path=os.path.join(DMP_CHECKPOINT_DIR, checkpoint_name + ".h5"))
 
         history = model.fit(
             x=inputs_train,
@@ -336,17 +318,15 @@ class AspectTestTask(TrainingTask):
         log_data['loss'] = history['loss'][best_index]
 
         ifself.test_split > 0:
-            ## Record the history of test evals from the callback
-            log_data['history'].update(test_history_callback.history)
-            test_losses = numpy.array(history['test_loss'])
-            log_data['test_loss'] = test_losses[best_index]
+        ## Record the history of test evals from the callback
+        log_data['history'].update(test_history_callback.history)
+        test_losses = numpy.array(history['test_loss'])
+        log_data['test_loss'] = test_losses[best_index]
 
-        log_data['run_name'] = run_name
+    log_data['run_name'] = run_name
 
-        log_data['environment'] = {
-            "tensorflow_version": tensorflow.__version__,
-        }
+    log_data['environment'] = {
+        "tensorflow_version": tensorflow.__version__,
+    }
 
-        return log_data
-
-
+    return log_data

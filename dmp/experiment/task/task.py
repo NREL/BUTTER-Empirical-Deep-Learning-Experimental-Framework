@@ -1,24 +1,8 @@
-from abc import abstractmethod
-from dataclasses import dataclass
+from abc import abstractmethod, ABC
 
-from numpy.testing._private.utils import integer_repr
-from dmp.experiment.structure.network_module import NetworkModule
 
-class Task:
+class Task(ABC):
 
-    @property
     @abstractmethod
-    def type(self) -> TaskType:
-
-
-@dataclass
-class TrainNeuralNetWithKerasTask(Task):
-    seed: int
-    network: NetworkModule
-    dataset: str
-
-
-class DenseNeuralNetFromParameters(Task):
-    seed: int
-    width: int
-    dataset: str
+    def __call__(self) -> None:
+        pass
