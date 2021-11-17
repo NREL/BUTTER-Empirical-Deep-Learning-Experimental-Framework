@@ -93,6 +93,12 @@ for i in {1..20}; do sbatch -J gs8 -N20 -t959 --gres=gpu:2 slurm_job_runner.sh p
 
 
 
+for i in {1..5}; do sbatch -J ga4 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,4,1,2,15000], [4,11,0,0,0], [11,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+
+for i in {1..10}; do sbatch -J ga5 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,10,0,0,0], [10,18,0,0,0], [18,26,0,0,0], [26,34,0,0,0], [34,36,1,2,15000]]"; done
+
+for i in {1..10}; do sbatch -J ga6 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,10,0,0,0], [10,18,0,0,0], [18,26,0,0,0], [26,34,0,0,0], [34,36,1,2,15000]]"; done
+
 for i in {1..5}; do sbatch -J ga0 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
 for i in {1..5}; do sbatch -J ga1 -N1 -t1439 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,13,0,0,0], [13,18,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 for i in {1..5}; do sbatch -J ga3 -N1 -t959 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,13,0,0,0], [13,18,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done

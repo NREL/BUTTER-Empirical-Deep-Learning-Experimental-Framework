@@ -5,6 +5,20 @@ class_registry = {}
 metadata_obj = MetaData()
 mapper_registry = registry(metadata=metadata_obj, class_registry=class_registry)
 
+
+def _get_sql_engine():
+    global _credentials
+    if _credentials is None:
+        try:
+            filename = os.path.join(os.environ['HOME'], ".jobqueue.json")
+            _data = json.loads(open(filename).read())
+            _credentials = _data[_database]
+            user = _credentials["user"]
+        except KeyError as e:
+            raise Exception("No credetials for {} found in {}".format(_database, filename))
+    connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
+    return sqlalchemy.create_engine(connection_string)
+
 # TODO: finish this guy for sqlalchemy
 def connect(credentials : {}):
     max_wait_time = 60 * 60
