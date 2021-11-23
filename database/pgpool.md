@@ -5,6 +5,7 @@ Host: screech.hpc.nrel.gov
 - 10GB networking to Eagle
 - 263Gb RAM
 - To manage docker on screech, you have to be in the dockerroot group.
+- Andy Archer has been my POC to get this installed and running
 
 ## Set up bitnami image
 
