@@ -1,0 +1,30 @@
+## Notes for PGPool installation.
+
+screech.hpc.nrel.gov
+
+- 32 CPUS
+- 10GB networking to Eagle
+- 263Gb RAM
+
+
+## Use Bitnami image
+
+Pulling docker images requires admin priveleges.
+
+docker pull bitnami/pgpool:4.2.6
+
+export DMP_DB_USER=dmpappsops
+export DMP_DB_PASSWORD=
+export PGPOOL_ADMIN_USERNAME= # You can make this up
+export PGPOOL_ADMIN_PASSWORD= # You can make this up
+
+docker run -p 5432:5432 --detach --rm --name pgpool \
+  --env PGPOOL_BACKEND_NODES=0:yuma.hpc.nrel.gov:5432 \
+  --env PGPOOL_SR_CHECK_USER=$DMP_DB_USER \
+  --env PGPOOL_SR_CHECK_PASSWORD=$DMP_DB_PASSWORD \
+  --env PGPOOL_ENABLE_LDAP=no \
+  --env PGPOOL_POSTGRES_USERNAME=$DMP_DB_USER \
+  --env PGPOOL_POSTGRES_PASSWORD=$DMP_DB_PASSWORD \
+  --env PGPOOL_ADMIN_USERNAME=$PGPOOL_ADMIN_USERNAME \
+  --env PGPOOL_ADMIN_PASSWORD=$PGPOOL_ADMIN_PASSWORD \
+  bitnami/pgpool:4.2.6
