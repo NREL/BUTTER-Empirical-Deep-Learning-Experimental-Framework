@@ -12,6 +12,8 @@ from dmp.record.base_record import BaseRecord
 from dmp.record.history_record import HistoryRecord
 from dmp.record.val_loss_record import ValLossRecord
 
+import pandas
+import numpy
 import uuid
 
 
@@ -59,7 +61,12 @@ class AspectTestTaskRunVariables():
     """
     tf_strategy: tensorflow.distribute.Strategy = None
     keras_model: tensorflow.keras.Model
+    keras_loss: tensorflow.keras.losses
     result: AspectTestTaskResult = AspectTestTaskResult()
+    network_module: NetworkModule
+    dataset: pandas.Series
+    dataset_inputs: numpy.ndarray
+    dataset_outputs: numpy.ndarray
 
 
 @dataclass
@@ -86,9 +93,9 @@ class AspectTestTask(Task):
     }
     residual_mode: str = 'none'
     rep: int = 0
-    early_stopping: bool = False,
+    early_stopping: bool = False
+    validation_split = 0.2
     run_config: dict = {
-        'validation_split': .2,  # This is relative to the training set size.
         'shuffle': True,
         'epochs': 3000,
         'batch_size': 256,
@@ -122,7 +129,7 @@ class AspectTestTask(Task):
         ## Step 1. Load dataset
 
         datasets = pmlb_loader.load_dataset_index()
-        dataset, inputs, outputs = load_dataset(datasets, self.dataset)
+        self._run.dataset, self._run.dataset_inputs, self._run.dataset_outputs = load_dataset(datasets, self.dataset)
 
         ## Step 2. Configure hardware and set random seed
 
@@ -138,12 +145,11 @@ class AspectTestTask(Task):
 
         ## Step 3. Generate neural network architecture
 
-        num_outputs = outputs.shape[1]
+        num_outputs = self._run.dataset_outputs.shape[1]
+        output_activation, self._run.keras_loss = compute_network_configuration(num_outputs, self._run.dataset)
 
-        output_activation, run_loss = compute_network_configuration(num_outputs, self.dataset)
-
-        delta, widths, network = find_best_layout_for_budget_and_depth(
-            inputs,
+        delta, widths, self._run.network_module = find_best_layout_for_budget_and_depth(
+            self._run.dataset_inputs,
             self.residual_mode,
             self.input_activation,
             self.internal_activation,
@@ -164,13 +170,14 @@ class AspectTestTask(Task):
         with self._run.tf_strategy.scope():
 
             ### Build Keras model
-            self._run.keras_model = build_keras_network(network)
+            self._run.keras_model = build_keras_network(self._run.network_module)
             assert len(self._run.keras_model.inputs) == 1, 'Wrong number of keras inputs generated'
             
             ### Execute Keras model
             self._run.result = self.test_keras_network()
 
     def log_result(self) -> None:
+        pass
         engine, session = _connect()
         for record_class in [BaseRecord, ValLossRecord, HistoryRecord]:
             record_element = self.make_dataclass_from_dict(self._run.result, record_class)
@@ -182,7 +189,7 @@ class AspectTestTask(Task):
         keys = {f.name for f in dataclasses.fields(BaseRecord) if not f.name.startswith('__')}
         return cls(**{k: v for k, v in source if k in keys})
 
-    def test_keras_network(self) -> None:
+    def test_keras_network(self, tensorboard=False, plot_model=False) -> None:
         """
         test_keras_network
 
@@ -190,7 +197,8 @@ class AspectTestTask(Task):
         This function also creates log events during and after training.
         """
 
-        run_optimizer = optimizers.get(self.optimizer)
+        ## Compile Keras Model
+
         run_metrics = [
             # metrics.CategoricalAccuracy(),
             'accuracy',
@@ -204,14 +212,11 @@ class AspectTestTask(Task):
             metrics.SquaredHinge(),
         ]
 
-        model = self._run.keras_model
-
-        ## TODO: Would holding off on this step obviate the need for NetworkModule?
-        model.compile(
+        self._run.keras_model.compile(
             # loss='binary_crossentropy', # binary classification
             # loss='categorical_crossentropy', # categorical classification (one hot)
-            loss=run_loss,  # regression
-            optimizer=run_optimizer,
+            loss=self._run.keras_loss,  # regression
+            optimizer=optimizers.get(self.optimizer),
             # optimizer='rmsprop',
             # metrics=['accuracy'],
             metrics=run_metrics,
@@ -219,57 +224,30 @@ class AspectTestTask(Task):
 
         gc.collect()
 
-        assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(model), \
+        assert count_num_free_parameters(self._run.network_module) == count_trainable_parameters_in_keras_model(self._run.keras_model), \
             "Wrong number of trainable parameters"
 
+
+        ## Configure Keras Callbacks 
+
         run_callbacks = []
+        
         if self.early_stopping != False:
             run_callbacks.append(callbacks.EarlyStopping(**self.early_stopping))
 
-        run_config = self.run_config.copy()
-
-        if self.test_split > 0:
-            ## train/test/val split
-            inputs_train, inputs_test, outputs_train, outputs_test = train_test_split(inputs, outputs,
-                                                                                      test_size=self.test_split])
-            run_config["validation_split"] = run_config["validation_split"] / (1 - self.test_split)
-
-            ## Set up a custom callback to record test loss at each epoch
-            ## This could potentially cause performance issues with large datasets on GPU
-
-            class TestHistory(Callback):
-                def __init__(self, x_test, y_test):
-                    self.x_test = x_test
-                    self.y_test = y_test
-
-                def on_train_begin(self, logs={}):
-                    self.history = {}
-
-                def on_epoch_end(self, epoch, logs=None):
-                    eval_log = self.model.evaluate(x=self.x_test, y=self.y_test, return_dict=True)
-                    for k, v in eval_log.items():
-                        k = "test_" + k
-                        self.history.setdefault(k, []).append(v)
-
-            test_history_callback = TestHistory(inputs_test, outputs_test)
-            run_callbacks.append(test_history_callback)
-        else:
-            ## Just train/val split
-            inputs_train, outputs_train = inputs, outputs
-
-        if "tensorboard" in config.keys():
+        if tensorboard:
             run_callbacks.append(TensorBoard(
-                log_dir=os.path.join(config["tensorboard"], run_name),
+                log_dir=os.path.join(tensorboard, self.uuid),
                 # append ",self.residual_mode" to add resisual to tensorboard path
                 histogram_freq=1
             ))
 
-        if "plot_model" in config.keys():
-            if not os.path.exists(config["plot_model"]):
-                os.makedirs(config["plot_model"])
+        if plot_model:
+            if not os.path.exists(plot_model):
+                os.makedirs(plot_model)
             tensorflow.keras.utils.plot_model(
-                model,
-                to_file=os.path.join(config["plot_model"], run_name + ".png"),
+                self._run.keras_model,
+                to_file=os.path.join(plot_model, self.uuid + ".png"),
                 show_shapes=False,
                 show_dtype=False,
                 show_layer_names=True,
@@ -290,19 +268,26 @@ class AspectTestTask(Task):
             save_path = os.path.join(DMP_CHECKPOINT_DIR,
                                      self.uuid + ".h5")
 
-            model = ResumableModel(model,
+            self._run.keras_model = ResumableModel(self._run.keras_model,
                                    save_every_epochs=self.checkpoint_epochs,
                                    to_path=save_path)
 
-        history = model.fit(
-            x=inputs_train,
-            y=outputs_train,
+        ## Split data into train and validation sets manually. Keras does not shuffle the validation set by default
+        x_train, x_val, y_train, y_val = train_test_split(self._run.dataset_inputs,
+                                                            self._run.dataset_outputs,
+                                                            shuffle=True,
+                                                            test_size=self.validation_split)
+        ## Enter Keras training loop
+        history = self._run.keras_model.fit(
+            x=x_train,
+            y=y_train,
+            validation_data=(x_val, y_val),
             callbacks=run_callbacks,
-            **run_config,
+            **self.run_config,
         )
 
-        if not "checkpoint_epochs" in config.keys():
-            # Tensorflow models return a History object from their fit function, but ResumableModel objects returns History.history. This smooths out that incompatibility.
+        # Tensorflow models return a History object from their fit function, but ResumableModel objects returns History.history. This smooths out that incompatibility.
+        if self.checkpoint_epochs == 0:
             history = history.history
 
         # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
@@ -312,15 +297,14 @@ class AspectTestTask(Task):
 
         result = self._run.result
 
-        result.num_weights = count_trainable_parameters_in_keras_model(model)
-        result.num_inputs = inputs.shape[1]
-        result.num_features = dataset['n_features']
-        result.num_classes = dataset['n_classes']
-        result.num_outputs = outputs.shape[1]
-        result.num_observations = inputs.shape[0]
-        result.task = dataset['Task']
-        result.endpoint = dataset['Endpoint']
-
+        result.num_weights = count_trainable_parameters_in_keras_model(self._run.keras_model)
+        result.num_inputs = self._run.dataset_inputs.shape[1]
+        result.num_outputs = self._run.dataset_outputs.shape[1]
+        result.num_features = self._run.dataset['n_features']
+        result.num_classes = self._run.dataset['n_classes']
+        result.num_observations = self._run.dataset_inputs.shape[0]
+        result.task = self._run.dataset['Task']
+        result.endpoint = self._run.dataset['Endpoint']
         result.history = history
 
         validation_losses = numpy.array(history['val_loss'])
@@ -329,12 +313,6 @@ class AspectTestTask(Task):
         result.iterations = best_index + 1
         result.val_loss = validation_losses[best_index]
         result.loss = history['loss'][best_index]
-
-        if self.test_split > 0:
-            ## Record the history of test evals from the callback
-            result.history.update(test_history_callback.history)
-            test_losses = numpy.array(history['test_loss'])
-            result.test_loss = test_losses[best_index]
 
         result.environment = {
             "tensorflow_version": tensorflow.__version__,
