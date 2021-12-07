@@ -5,7 +5,7 @@ from typing import Type
 
 from attr import dataclass
 
-from aspect_test_utils import *
+from .aspect_test_utils import *
 from dmp.experiment.batch.batch import CartesianBatch
 from dmp.experiment.task.task import Task
 from dmp.record.base_record import BaseRecord

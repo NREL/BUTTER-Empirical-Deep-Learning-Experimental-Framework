@@ -6,6 +6,8 @@ import random
 import tensorflow as tf
 import numpy.testing as npt
 
+from lmarshal.marshal import Demarshaler
+
 from dmp.data.logging import read_file
 from dmp.experiment.aspect_test.aspect_test_task import AspectTestTask
 
@@ -44,7 +46,7 @@ def test_aspect_test_historical():
         "config": {"learning_rate": 0.001},
     }
 
-    result = aspect_test(data["config"])
+    result = Demarshaler(data["config"])()
     npt.assert_almost_equal(data["loss"], result["loss"], decimal=2)
     npt.assert_almost_equal(data["val_loss"], result["val_loss"], decimal=1)
 
