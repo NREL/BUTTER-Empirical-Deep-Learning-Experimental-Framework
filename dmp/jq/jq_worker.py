@@ -5,7 +5,7 @@ import random
 
 import jobqueue
 import tensorflow
-from jobqueue.message import Message
+from jobqueue.job import Job
 
 import dmp.experiment.aspect_test as exp
 from dmp.data.logging import write_log
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     strategy = make_strategy(args.cpu_low, args.cpu_high, args.gpu_low, args.gpu_high, args.gpu_mem)
 
 
-    def handle_job(worker_id: uuid.UUID, message: Message):
+    def handle_job(worker_id: uuid.UUID, message: Job):
         gc.collect()
 
         # Run the experiment
