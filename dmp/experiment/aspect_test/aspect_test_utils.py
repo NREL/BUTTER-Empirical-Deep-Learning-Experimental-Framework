@@ -135,7 +135,7 @@ def make_network(
     return current
 
 
-def make_model_from_network(target: NetworkModule, model_cache: dict = {}) -> ([any], any):
+def build_keras_network(target: NetworkModule, model_cache: dict = {}) -> (tensorflow.keras.Model):
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
@@ -172,7 +172,7 @@ def make_model_from_network(target: NetworkModule, model_cache: dict = {}) -> ([
 
     for i in target.inputs:
         if i not in model_cache.keys():
-            model_cache[i] = make_model_from_network(i, model_cache)
+            model_cache[i] = build_keras_network(i, model_cache)
         i_network_inputs, i_keras_module = model_cache[i]
         for new_input in i_network_inputs:
             network_inputs[new_input.ref()] = new_input
@@ -183,7 +183,9 @@ def make_model_from_network(target: NetworkModule, model_cache: dict = {}) -> ([
     if is_input:
         network_inputs[keras_module.ref()] = keras_module
 
-    return list(network_inputs.values()), keras_module
+    keras_input = list(network_inputs.values())
+
+    return Model(inputs=keras_input, outputs=keras_module)
 
 
 def compute_network_configuration(num_outputs, dataset) -> (any, any):

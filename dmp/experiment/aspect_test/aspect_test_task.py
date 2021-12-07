@@ -1,4 +1,5 @@
 import dataclasses
+from os import environ
 import time
 from typing import Type
 
@@ -11,10 +12,7 @@ from dmp.record.base_record import BaseRecord
 from dmp.record.history_record import HistoryRecord
 from dmp.record.val_loss_record import ValLossRecord
 
-
-@dataclass
-class AspectTestTaskResult():
-    pass
+import uuid
 
 
 @dataclass
@@ -34,12 +32,40 @@ class AspectTestTaskCartesianBatch(CartesianBatch):
         return AspectTestTask
 
 
-datasets = pmlb_loader.load_dataset_index()
+@dataclass
+class AspectTestTaskResult():
+    num_weights: int
+    num_inputs: int
+    num_features: int
+    num_classes: int
+    num_outputs: int
+    num_observations: int
+    task: str
+    endpoint: str
+    history: list
+    iterations: int
+    val_loss: float
+    loss: float
+    test_loss: float
+    environment: dict
+    run_name: str
+
+
+@dataclass
+class AspectTestTaskRunVariables():
+    """
+    Namespace which is created when a task is run and contains state variables needed to run the task.
+    This class is not, in general, logged to the database.
+    """
+    tf_strategy: tensorflow.distribute.Strategy = None
+    keras_model: tensorflow.keras.Model
+    result: AspectTestTaskResult = AspectTestTaskResult()
 
 
 @dataclass
 class AspectTestTask(Task):
     ### Parameters
+    uuid: str = None
     seed: int = None
     log: str = './log'
     dataset: str = '529_pollen'
@@ -68,19 +94,40 @@ class AspectTestTask(Task):
         'batch_size': 256,
         'verbose': 0
     }
+    checkpoint_epochs: int = 0
 
     ### Instance Vars
-    __strategy: tensorflow.distribute.Strategy = None
+    _run: AspectTestTaskRunVariables = AspectTestTaskRunVariables()
 
     def __call__(self):
+        
+        if self.uuid is None:
+            # wine_quality_white__wide_first__4194304__4__16106579275625
+            self.uuid = '{}__{}__{}__{}__{}'.format(
+                self.dataset,
+                self.topology,
+                self.budget,
+                self.depth,
+                uuid.uuid4()
+            )
+
+        self.run()
+        self.log_result()
+
+    def run(self):
         """
         Execute this task and return the result
         """
 
-        datasets = pmlb_loader.load_dataset_index()
+        ## Step 1. Load dataset
 
-        if self.__strategy is None:
-            self.__strategy = tensorflow.distribute.get_strategy()
+        datasets = pmlb_loader.load_dataset_index()
+        dataset, inputs, outputs = load_dataset(datasets, self.dataset)
+
+        ## Step 2. Configure hardware and set random seed
+
+        if self._run.tf_strategy is None:
+            self._run.tf_strategy = tensorflow.distribute.get_strategy()
 
         if self.seed is None:
             self.seed = time.time_ns()
@@ -89,15 +136,12 @@ class AspectTestTask(Task):
         tensorflow.random.set_seed(self.seed)
         random.seed(self.seed)
 
-        ## Load dataset
-        dataset, inputs, outputs = load_dataset(datasets, self.dataset)
+        ## Step 3. Generate neural network architecture
 
         num_outputs = outputs.shape[1]
 
-        ## Network configuration
         output_activation, run_loss = compute_network_configuration(num_outputs, self.dataset)
 
-        ## Build NetworkModule network
         delta, widths, network = find_best_layout_for_budget_and_depth(
             inputs,
             self.residual_mode,
@@ -115,19 +159,21 @@ class AspectTestTask(Task):
         print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(self.budget, self.depth, self.widths,
                                                                               self.rep))
 
-        ## Create Keras model from NetworkModule
-        with self.__strategy.scope():
-            keras_inputs, keras_output = make_model_from_network(network)
-            assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
-            ## Run Keras model on dataset
-            record = self.test_network(dataset, inputs, outputs, keras_inputs[0], keras_output, network, run_loss,
-                                       widths)
-            self.log_record(record)
+        ## Step 4: Create and execute network using Keras
 
-    def log_record(self, record: {}) -> None:
+        with self._run.tf_strategy.scope():
+
+            ### Build Keras model
+            self._run.keras_model = build_keras_network(network)
+            assert len(self._run.keras_model.inputs) == 1, 'Wrong number of keras inputs generated'
+            
+            ### Execute Keras model
+            self._run.result = self.test_keras_network()
+
+    def log_result(self) -> None:
         engine, session = _connect()
         for record_class in [BaseRecord, ValLossRecord, HistoryRecord]:
-            record_element = self.make_dataclass_from_dict(record, record_class)
+            record_element = self.make_dataclass_from_dict(self._run.result, record_class)
             session.add(record_element)
         session.commit()
         # TODO: finish this guy
@@ -136,40 +182,13 @@ class AspectTestTask(Task):
         keys = {f.name for f in dataclasses.fields(BaseRecord) if not f.name.startswith('__')}
         return cls(**{k: v for k, v in source if k in keys})
 
-    def test_network(self,
-                     dataset,
-                     inputs: numpy.ndarray,
-                     outputs: numpy.ndarray,
-                     keras_input,
-                     keras_output,
-                     network: NetworkModule,
-                     run_loss,
-                     widths
-                     ) -> dict:
+    def test_keras_network(self) -> None:
         """
-        test_network
+        test_keras_network
 
         Given a fully constructed Keras network, train and test it on a given dataset using hyperparameters in config
         This function also creates log events during and after training.
         """
-
-        # # wine_quality_white__wide_first__4194304__4__16106579275625
-        # name = '{}__{}__{}__{}'.format(
-        #     self.dataset,
-        #     self.topology,
-        #     self.budget,
-        #     self.depth,
-        # )
-        #
-        # self.name = name
-
-        # run_name = run_tools.get_run_name(config)
-        # self.run_name = run_name
-
-        depth = len(widths)
-        self.depth = depth
-        self.num_hidden = max(0, depth - 2)
-        self.widths = widths
 
         run_optimizer = optimizers.get(self.optimizer)
         run_metrics = [
@@ -185,7 +204,7 @@ class AspectTestTask(Task):
             metrics.SquaredHinge(),
         ]
 
-        model = Model(inputs=keras_input, outputs=keras_output)
+        model = self._run.keras_model
 
         ## TODO: Would holding off on this step obviate the need for NetworkModule?
         model.compile(
@@ -202,16 +221,6 @@ class AspectTestTask(Task):
 
         assert count_num_free_parameters(network) == count_trainable_parameters_in_keras_model(model), \
             "Wrong number of trainable parameters"
-
-        log_data = {}
-        log_data['num_weights'] = count_trainable_parameters_in_keras_model(model)
-        log_data['num_inputs'] = inputs.shape[1]
-        log_data['num_features'] = dataset['n_features']
-        log_data['num_classes'] = dataset['n_classes']
-        log_data['num_outputs'] = outputs.shape[1]
-        log_data['num_observations'] = inputs.shape[0]
-        log_data['task'] = dataset['Task']
-        log_data['endpoint'] = dataset['Endpoint']
 
         run_callbacks = []
         if self.early_stopping != False:
@@ -269,28 +278,21 @@ class AspectTestTask(Task):
                 dpi=96,
             )
 
-        # TRAINING
-        # run_config["verbose"] = 0  # This overrides verbose logging.
-
         ## Checkpoint Code
-        if "checkpoint_epochs" in config.keys():
+        if self.checkpoint_epochs > 0:
 
-            assertself.test_split == 0, "Checkpointing is not compatible with test_split."
+            assert self.test_split == 0, "Checkpointing is not compatible with test_split."
 
             DMP_CHECKPOINT_DIR = os.getenv("DMP_CHECKPOINT_DIR", default="checkpoints")
-            if "checkpoint_dir" in config.keys():
-                DMP_CHECKPOINT_DIR = self.checkpoint_dir
             if not os.path.exists(DMP_CHECKPOINT_DIR):
                 os.makedirs(DMP_CHECKPOINT_DIR)
 
-            if "jq_uuid" in config.keys():
-                checkpoint_name = self.jq_uuid
-            else:
-                checkpoint_name = run_name
+            save_path = os.path.join(DMP_CHECKPOINT_DIR,
+                                     self.uuid + ".h5")
 
             model = ResumableModel(model,
-                                   save_every_epochs=config["checkpoint_epochs"],
-                                   to_path=os.path.join(DMP_CHECKPOINT_DIR, checkpoint_name + ".h5"))
+                                   save_every_epochs=self.checkpoint_epochs,
+                                   to_path=save_path)
 
         history = model.fit(
             x=inputs_train,
@@ -308,25 +310,36 @@ class AspectTestTask(Task):
         # model.save_weights(f"./log/weights/{run_name}.h5", save_format="h5")
         # model.save(f"./log/models/{run_name}.h5", save_format="h5")
 
-        log_data['history'] = history
+        result = self._run.result
+
+        result.num_weights = count_trainable_parameters_in_keras_model(model)
+        result.num_inputs = inputs.shape[1]
+        result.num_features = dataset['n_features']
+        result.num_classes = dataset['n_classes']
+        result.num_outputs = outputs.shape[1]
+        result.num_observations = inputs.shape[0]
+        result.task = dataset['Task']
+        result.endpoint = dataset['Endpoint']
+
+        result.history = history
 
         validation_losses = numpy.array(history['val_loss'])
         best_index = numpy.argmin(validation_losses)
 
-        log_data['iterations'] = best_index + 1
-        log_data['val_loss'] = validation_losses[best_index]
-        log_data['loss'] = history['loss'][best_index]
+        result.iterations = best_index + 1
+        result.val_loss = validation_losses[best_index]
+        result.loss = history['loss'][best_index]
 
-        ifself.test_split > 0:
-        ## Record the history of test evals from the callback
-        log_data['history'].update(test_history_callback.history)
-        test_losses = numpy.array(history['test_loss'])
-        log_data['test_loss'] = test_losses[best_index]
+        if self.test_split > 0:
+            ## Record the history of test evals from the callback
+            result.history.update(test_history_callback.history)
+            test_losses = numpy.array(history['test_loss'])
+            result.test_loss = test_losses[best_index]
 
-    log_data['run_name'] = run_name
+        result.environment = {
+            "tensorflow_version": tensorflow.__version__,
+        }
 
-    log_data['environment'] = {
-        "tensorflow_version": tensorflow.__version__,
-    }
+        #result.run_name = run_name # I think this is deprecated
 
-    return log_data
+        return
