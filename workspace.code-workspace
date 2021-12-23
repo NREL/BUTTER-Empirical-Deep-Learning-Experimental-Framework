@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "src/jobqueue"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {}
+}

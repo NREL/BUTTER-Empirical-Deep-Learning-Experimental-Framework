@@ -107,6 +107,18 @@ for i in {1..5}; do sbatch -J ga2 -N1 -t2879 --gres=gpu:2 --account=dmpapps slur
 
 for i in {1..20}; do sbatch -J gs7 -N5 -t4000 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
+for i in {1..100}; do sbatch -J gs7 -N8 -t2880 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..10}; do sbatch -J gs8_8 -N9 -t2880 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,4077], [4,8,0,1,4077], [8,12,0,1,4077], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4077],[30,33,1,2,4077],[33,36,1,2,4077]]"; done
+
+for i in {1..10}; do sbatch -J gs8_1a -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,4077], [4,8,0,1,4077], [8,12,0,1,4077], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4077],[30,33,1,2,4077],[33,36,1,2,4077]]"; done
+
+
+for i in {1..16}; do sbatch -J c0_128 -N128 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_64 -N64 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_32 -N32 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+
 squeue -o %.18i %.9P %.8j %.8u %.2t %.10M %.6D %R -u ctripp
 
 To materialize log data:
@@ -129,6 +141,11 @@ squeue -u ctripp -h | grep -P '\s+s\d\s+ctripp\s+R\s+'
 
 
 squeue -u ctripp -h | grep -P "standard\s+\w+\s.*AssocMaxJobs" | awk '{print $1}' | xargs scancel
+
+squeue -u ctripp -h | grep -P "\(JobHeldUser\)" | awk '{print $1}' | xargs scontrol release
+hold
+
+
 
 ------- executed:
 
