@@ -293,7 +293,7 @@ def postprocess_dataframe(data_log, engine):
     # print(datasets.dtypes)
     # print(f'converting...')
     datasets = datasets.astype(type_map)
-    datasets['runtime'] = datasets['runtime'].apply(lambda s : None if pd.isna(s) else str(s))
+    datasets['runtime'] = datasets['runtime'].apply(lambda s : None if pd.isna(s) else str(int(s)))
     # datasets['runtime'].replace({"NaT": None, pd.NaT: None}, inplace=True)
 
     def convert_label_noise(v):
