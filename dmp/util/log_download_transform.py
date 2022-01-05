@@ -124,7 +124,8 @@ rename_map.update({
     'config.optimizer.class_name': 'optimizer',
     'config.run_config.epochs': 'epochs',
     'config.run_config.batch_size': 'batch_size',
-    'config.run_config.validation_split': 'validation_split'
+    'config.run_config.validation_split': 'validation_split',
+    'groupname' : 'group'
 
 })
 # print(rename_map)
@@ -171,7 +172,7 @@ type_map = {
 }
 
 canonical_cols = [
-    'groupname',
+    'group',
     'dataset',
     'topology',
     'residual_mode',
@@ -213,7 +214,7 @@ base_cols = [
     'batch_size',
     'validation_split',
     'label_noise',
-    'groupname',
+    'group',
     'dataset',
     'topology',
     'residual_mode',
