@@ -197,3 +197,59 @@ Monitor SLURM jobs
 squeue -u username
 scancel jobid
 ```
+
+
+
+# Vermillion (LDRD Cluster) Notes
+
+DMP has been successfully run on vermillion.hpc.nrel.gov. These notes should help you get started with Vermillion.
+
+## 1. Activate Anaconda in your shell
+```
+module use /projects/dmpapps/module/
+```
+
+Initialize Anaconda
+```
+module load conda/mini_py39_4.9.2
+conda init
+source ~/.bashrc
+```
+
+Load cuda module
+```
+module load cuda
+```
+
+## 2. Ensure you have the correct files in your account
+
+Install DMP
+```
+cd $DMP_HOME
+git clone git@github.nrel.gov:ctripp/DMP.git
+cd DMP
+conda env create
+pip install -e .
+```
+
+Install Jobqueue
+```
+cd $DMP_HOME
+git clone git@github.nrel.gov:mlunacek/jobqueue-pg.git
+cd jobqueue-pg
+pip install -e .
+```
+
+Copy Job Queue Config File from Eagle into your Vermillion home directory
+```
+scp eagle:.jobqueue.json ~/.jobqueue.json
+```
+
+## 3. Test installation on an interactive node
+```
+srun --time=30 --account=dmpapps --ntasks=36 --pty $SHELL
+python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"
+```
+
+## 4. TODO: Modify ADMP and slurm_job_runner.sh to submit batch jobs to Vemrillion.
+
