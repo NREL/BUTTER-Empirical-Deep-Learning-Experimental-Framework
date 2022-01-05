@@ -95,6 +95,14 @@ UPDATE jobqueue
     WHERE
           groupname = 'fixed_3k_1' AND status <> 'done';
 
+
+UPDATE jobqueue
+    SET
+        priority = GREATEST(0, FLOOR(LOG(1000, GREATEST(1, (jobqueue.config->>'budget')::int / 1000))))::text || (jobqueue.config->>'seed')::text
+    WHERE
+          groupname = 'fixed_3k_1' AND status <> 'done';
+
+          
 SELECT * from jobqueue
     WHERE
           groupname = 'fixed_3k_1' AND
