@@ -16,3 +16,4 @@ log
 *.ipynb_checkpoints
 admp
 *slurm-*.out
+workspace.code*
