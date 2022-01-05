@@ -349,7 +349,7 @@ def func():
     groupnames = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
     source_table = 'log'
     dest_table_base = 'materialized_experiments_3_base'
-    dest_table_loss = 'materialized_experiments_3_loss'
+    dest_table_loss = 'materialized_experiments_3_val_loss'
     dest_table_history = 'materialized_experiments_3_history'
     num_threads = 64
     # num_threads = 1
