@@ -37,7 +37,7 @@ from dmp.experiment.structure.n_add import NAdd
 from dmp.experiment.structure.n_dense import NDense
 from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
-from dmp.jq import jq_worker
+from dmp.jobqueue_interface import worker
 
 
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
@@ -136,7 +136,7 @@ def make_network(
     return current
 
 
-def make_model_from_network(target: NetworkModule, model_cache: dict = {}) -> ([any], any):
+def make_keras_network_from_network_module(target: NetworkModule, model_cache: dict = {}) -> ([any], any):
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
@@ -173,7 +173,7 @@ def make_model_from_network(target: NetworkModule, model_cache: dict = {}) -> ([
 
     for i in target.inputs:
         if i not in model_cache.keys():
-            model_cache[i] = make_model_from_network(i, model_cache)
+            model_cache[i] = make_keras_network_from_network_module(i, model_cache)
         i_network_inputs, i_keras_module = model_cache[i]
         for new_input in i_network_inputs:
             network_inputs[new_input.ref()] = new_input
@@ -325,7 +325,8 @@ def test_network(
 
     if config["validation_split_method"] == "shuffled_train_test_split":
 
-        inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(inputs, outputs, test_size=run_config[
+        inputs_train, inputs_val, outputs_train, outputs_val = train_test_split(
+            inputs, outputs, test_size=run_config[
             "validation_split"], shuffle=True)
 
         label_noise = config["label_noise"]
@@ -715,7 +716,7 @@ def aspect_test(config: dict, strategy: Optional[tensorflow.distribute.Strategy]
 
     ## Create Keras model from NetworkModule
     with strategy.scope():
-        keras_inputs, keras_output = make_model_from_network(network)
+        keras_inputs, keras_output = make_keras_network_from_network_module(network)
 
         assert len(keras_inputs) == 1, 'Wrong number of keras inputs generated'
         keras_input = keras_inputs[0]
@@ -805,7 +806,7 @@ if __name__ == "__main__":
     config = command_line_config.parse_config_from_args(sys.argv[1:], default_config)
     mode = config['mode']
 
-    strategy = jq_worker.make_strategy(0, 6, 0, 0, 8192)  # only used in mode=direct for local testing purposes
+    strategy = worker.make_strategy(0, 6, 0, 0, 8192)  # only used in mode=direct for local testing purposes
 
     if mode == 'single':
         run_aspect_test_from_config(config)

@@ -3,11 +3,13 @@ import gc
 import uuid
 import random
 
+
 import jobqueue
 import tensorflow
 
 import dmp.experiment.aspect_test as exp
 from dmp.data.logging import write_log
+from .common import jobqueue_marshal
 
 
 def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
@@ -67,19 +69,10 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     return strategy
 
 
-def handle_job(worker_id: uuid.UUID, message: Job):
+def handle_job(worker_id: uuid.UUID, job: jobqueue.Job):
     gc.collect()
-
-    # Run the experiment
-    result = exp.aspect_test(message.config, strategy=strategy)
-
-    # Write the log
-    write_log(result,
-              message.groupname,
-              message.config["log"],
-              name=result["run_name"],
-              job=message.uuid,
-              )
+    task = jobqueue_marshal.demarshal(job.command)
+    task(job.id)
 
 
 if __name__ == "__main__":
@@ -100,5 +93,5 @@ if __name__ == "__main__":
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     credentials = jobqueue.connect.load_credentials(args.database)
-    jq = jobqueue.JobQueue(credentials, queue=args.queue)
-    jq.run_worker(handle_job, worker_id=worker_id)
+    job_queue = jobqueue.JobQueue(credentials, queue=args.queue)
+    job_queue.run_worker(handle_job, worker_id=worker_id)

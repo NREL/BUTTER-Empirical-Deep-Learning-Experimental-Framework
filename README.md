@@ -132,7 +132,7 @@ Pipe the output of aspect_test.py list into jq_enqueue, with a tag name as the a
 
 ```
 python -u -m dmp.experiment.aspect_test "{'mode':'list', 'dataset': 'nursery','budgets':[500, 1000], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 2}, 'test_split': 0.1, 'reps': 1, 'log':'postgres'}" \
- | python -u -m dmp.jq.jq_enqueue dmp test_tag
+ | python -u -m dmp.jobqueue_interface.enqueue dmp test_tag
 ```
 
 Note, this allows you to first save the output of aspect_test to a local file for reproducibility purposes.
@@ -172,7 +172,7 @@ python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['201_pol', '529
 
 Push this log file to the queue
 ```
-cat log/jordan_eagle_1.jobs | python -u -m dmp.jq.jq_enqueue dmp jordan_eagle_1
+cat log/jordan_eagle_1.jobs | python -u -m dmp.jobqueue_interface.enqueue dmp jordan_eagle_1
 ```
 
 Queue runner in sbatch

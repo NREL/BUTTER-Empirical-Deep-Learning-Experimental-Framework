@@ -1,4 +1,4 @@
-from lmarshal.marshal_config import MarshalConfig
+from lmarshal import MarshalConfig
 
 
 class CommonMarshaler:

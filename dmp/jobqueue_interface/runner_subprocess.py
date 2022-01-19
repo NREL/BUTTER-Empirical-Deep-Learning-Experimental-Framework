@@ -12,10 +12,10 @@ import json
 
 if __name__ == "__main__":
 
-    jq = jobqueue.JobQueue(sys.argv[1], sys.argv[2])
+    job_queue = jobqueue.JobQueue(sys.argv[1], sys.argv[2])
 
     while True:
-        message = jq.get_message()
+        message = job_queue.get_message()
         if message is None:
             time.sleep(5)
             continue

@@ -33,8 +33,8 @@ if __name__ == "__main__":
         q = Queue()
         workers = []
         for rank, config in enumerate(configs):
-            command = ['python', '-u', '-m', 'dmp.jq.jq_worker_manager',
-                       'python', '-u', '-m', 'dmp.jq.jq_worker',
+            command = ['python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
+                       'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
                        *[str(e) for e in config], args.project, args.group]
             print(f'Creating subprocess {rank} with command: "{" ".join(command)}"')
             worker = subprocess.Popen(

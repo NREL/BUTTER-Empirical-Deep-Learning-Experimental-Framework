@@ -6,8 +6,8 @@ import pytest
 from dmp.experiment.structure.n_add import NAdd
 from dmp.experiment.structure.n_dense import NDense
 from dmp.experiment.structure.n_input import NInput
-from lmarshal.marshal import Marshal
-from lmarshal.marshal_config import MarshalConfig
+from .marshal import Marshal
+from .marshal_config import MarshalConfig
 
 
 @pytest.mark.parametrize("type_key", ['', '%', 'type code'])

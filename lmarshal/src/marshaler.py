@@ -1,8 +1,8 @@
-from typing import Type, Mapping, Iterable
+from typing import Dict, Optional, Set, Type, Mapping, Iterable
 
-from lmarshal.common_marshaler import CommonMarshaler
-from lmarshal.marshal_config import MarshalConfig
-from lmarshal.types import ObjectMarshaler, TypeCode
+from .common_marshaler import CommonMarshaler
+from .marshal_config import MarshalConfig
+from .types import ObjectMarshaler, TypeCode
 
 
 class Marshaler(CommonMarshaler):
@@ -10,13 +10,14 @@ class Marshaler(CommonMarshaler):
 
     def __init__(self,
                  config: MarshalConfig,
-                 type_map: {Type: ObjectMarshaler},
+                 type_map: Dict[Type, ObjectMarshaler],
                  source: any,
                  ) -> None:
         super().__init__(config)
-        self._type_map: {Type: ObjectMarshaler} = type_map
-        self._vertex_index: {int: (str, any, any)} = {}
-        self._referenced: {int} = set()
+        self._type_map: Dict[Type, ObjectMarshaler] = type_map
+        self._vertex_index: Dict[int, (str, any, any)] = {}
+        self._string_index: Dict[str, str] = {}
+        self._referenced: Set[int] = set()
         self._result: any = self.marshal(source)
         if self._config.label_referenced and not self._config.label_all:
             for element_id in self._referenced:
@@ -39,15 +40,19 @@ class Marshaler(CommonMarshaler):
         return source
 
     @staticmethod
-    def marshal_untyped(marshaler: 'Marshaler', source: any, object_marshaler: ObjectMarshaler) -> any:
+    def marshal_untyped(
+        marshaler: 'Marshaler', 
+        source: any, 
+        object_marshaler: ObjectMarshaler,
+        ) -> any:
         vertex_index = marshaler._vertex_index
         source_id = id(source)
         if source_id in vertex_index:  # if source is already indexed, return its reference index
             label, _, dest = vertex_index[source_id]
-            if marshaler._config.circular_references_only and dest is not None:
-                return dest
             if marshaler._config.label_referenced:
                 marshaler._referenced.add(source_id)
+            if marshaler._config.circular_references_only and dest is not None:
+                return dest
             return marshaler._config.reference_prefix + label
 
         label = marshaler._make_label(len(vertex_index))
@@ -64,6 +69,14 @@ class Marshaler(CommonMarshaler):
         if len(source) > 0 and source[0] in marshaler._config.control_prefix_set:
             source = marshaler._escape_string(source)
         return source
+
+    @staticmethod
+    def canonicalize_and_marshal_string(m : 'Marshaler', s : str):
+        if s in m._string_index:
+            s = m._string_index[s]
+        else:
+            m._string_index[s] = s
+        return Marshaler.marshal_untyped(m, s, Marshaler.marshal_string)
 
     @staticmethod
     def marshal_list(marshaler: 'Marshaler', source: Iterable) -> list:
@@ -109,18 +122,18 @@ class Marshaler(CommonMarshaler):
         return marshaler.marshal_untyped(marshaler, source, type_checked_object_marshaler)
 
     @staticmethod
-    def default_object_marshaler(marshaler: 'Marshaler', source: any) -> {}:
+    def default_object_marshaler(marshaler: 'Marshaler', source: any) -> Dict:
         return {marshaler.marshal_key(k): marshaler.marshal(v) for k, v in sorted(vars(source).items())}
 
     @staticmethod
-    def initialize_type_map(type_map: {Type: ObjectMarshaler}, config: MarshalConfig) -> None:
+    def initialize_type_map(type_map: Dict[Type, ObjectMarshaler], config: MarshalConfig) -> None:
         type_map[type(None)] = Marshaler.marshal_passthrough
         type_map[bool] = Marshaler.marshal_passthrough
         type_map[int] = Marshaler.marshal_passthrough
         type_map[float] = Marshaler.marshal_passthrough
 
         if config.reference_strings:
-            type_map[str] = lambda m, s: Marshaler.marshal_untyped(m, s, Marshaler.marshal_string)
+            type_map[str] = Marshaler.canonicalize_and_marshal_string
         else:
             type_map[str] = Marshaler.marshal_string
 

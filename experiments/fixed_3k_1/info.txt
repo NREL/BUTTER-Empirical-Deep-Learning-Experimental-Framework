@@ -12,157 +12,157 @@ How to run helper jobs:
 
 CPU workers:
 
-for i in {1..1000}; do sbatch -J f0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..1000}; do sbatch -J f1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J f2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J f3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..200}; do sbatch -J f4 -N1 -t510 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..1000}; do sbatch -J f0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..1000}; do sbatch -J f1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J f2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J f3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J f4 -N1 -t510 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
 
 
-for i in {1..20}; do sbatch -J sf5 -N1 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J sf5 -N1 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
 
-for i in {1..500}; do sbatch -J s0 -N1 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..1000}; do sbatch -J s1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J s2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J s3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J s0 -N1 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..1000}; do sbatch -J s1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J s2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J s3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
 
-for i in {1..200}; do sbatch -J z0 -N1 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..200}; do sbatch -J z1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..200}; do sbatch -J z2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..1000}; do sbatch -J z3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-
-for i in {1..2}; do sbatch -J zs0 -N1 -t2879 --tmp 1500001 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..2}; do sbatch -J zm0 -N1 -t2879 --mem 180225 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J z0 -N1 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J z1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J z2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..1000}; do sbatch -J z3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
 
-
-for i in {1..10}; do sbatch -J x0 -N8 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..10}; do sbatch -J x12 -N128 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..10}; do sbatch -J x3 -N64 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J x2 -N32 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J x1 -N16 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-
-
-for i in {1..4}; do sbatch -J xl0 -N128 -t4000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..6}; do sbatch -J xl1 -N64 -t4000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..10}; do sbatch -J xl2 -N32 -t4000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J xl3 -N16 -t4000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J xl4 -N8 -t4000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J xl5 -N4 -t4000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J xl6 -N2 -t4000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J xl7 -N1 -t4000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-
-for i in {1..50}; do sbatch -J x4 -N4 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..50}; do sbatch -J x5 -N2 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..25}; do sbatch -J x6 -N5 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..25}; do sbatch -J x7 -N3 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J x8 -N6 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J x9 -N7 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..10}; do sbatch -J x10 -N32 -t3000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..10}; do sbatch -J x11 -N8 -t3000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..6}; do sbatch -J x12 -N128 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..4}; do sbatch -J x13 -N128 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..6}; do sbatch -J x14 -N256 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..2}; do sbatch -J zs0 -N1 -t2879 --tmp 1500001 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..2}; do sbatch -J zm0 -N1 -t2879 --mem 180225 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
 
 
-for i in {1..30}; do sbatch -J sh0 -N4 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J sh1 -N3 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J sh2 -N2 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J sh3 -N1 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J sh4 -N1 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J sh5 -N16 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..10}; do sbatch -J x0 -N8 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..10}; do sbatch -J x12 -N128 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..10}; do sbatch -J x3 -N64 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J x2 -N32 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J x1 -N16 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
 
 
-for i in {1..10}; do sbatch -J x10 -N32 -t3000 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..4}; do sbatch -J xl0 -N128 -t4000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..6}; do sbatch -J xl1 -N64 -t4000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..10}; do sbatch -J xl2 -N32 -t4000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J xl3 -N16 -t4000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J xl4 -N8 -t4000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J xl5 -N4 -t4000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J xl6 -N2 -t4000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J xl7 -N1 -t4000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+
+for i in {1..50}; do sbatch -J x4 -N4 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..50}; do sbatch -J x5 -N2 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..25}; do sbatch -J x6 -N5 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..25}; do sbatch -J x7 -N3 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J x8 -N6 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J x9 -N7 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..10}; do sbatch -J x10 -N32 -t3000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..10}; do sbatch -J x11 -N8 -t3000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..6}; do sbatch -J x12 -N128 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..4}; do sbatch -J x13 -N128 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..6}; do sbatch -J x14 -N256 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+
+
+for i in {1..30}; do sbatch -J sh0 -N4 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J sh1 -N3 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J sh2 -N2 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J sh3 -N1 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J sh4 -N1 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J sh5 -N16 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+
+
+for i in {1..10}; do sbatch -J x10 -N32 -t3000 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
 
 GPU workers:
-for i in {1..160}; do sbatch -J gs0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..160}; do sbatch -J gs1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..160}; do sbatch -J gs2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..160}; do sbatch -J gs3 -N1 -t719 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..160}; do sbatch -J gs0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..160}; do sbatch -J gs1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..160}; do sbatch -J gs2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..160}; do sbatch -J gs3 -N1 -t719 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
-for i in {1..20}; do sbatch -J gs4 -N2 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J gs5 -N3 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J gs6 -N4 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J gs7 -N5 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J gs8 -N20 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-
-
-for i in {1..5}; do sbatch -J ga4 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,4,1,2,15000], [4,11,0,0,0], [11,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-
-for i in {1..10}; do sbatch -J ga5 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,10,0,0,0], [10,18,0,0,0], [18,26,0,0,0], [26,34,0,0,0], [34,36,1,2,15000]]"; done
-
-for i in {1..10}; do sbatch -J ga6 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,10,0,0,0], [10,18,0,0,0], [18,26,0,0,0], [26,34,0,0,0], [34,36,1,2,15000]]"; done
-
-for i in {1..5}; do sbatch -J ga0 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..5}; do sbatch -J ga1 -N1 -t1439 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,13,0,0,0], [13,18,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..5}; do sbatch -J ga3 -N1 -t959 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,13,0,0,0], [13,18,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-
-for i in {1..5}; do sbatch -J ga2 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..20}; do sbatch -J gs7 -N5 -t4000 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..100}; do sbatch -J gs7 -N8 -t2880 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..10}; do sbatch -J gs8_8 -N9 -t2880 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,4077], [4,8,0,1,4077], [8,12,0,1,4077], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4077],[30,33,1,2,4077],[33,36,1,2,4077]]"; done
-
-for i in {1..10}; do sbatch -J gs8_1a -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,4077], [4,8,0,1,4077], [8,12,0,1,4077], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4077],[30,33,1,2,4077],[33,36,1,2,4077]]"; done
-
-
-for i in {1..10}; do sbatch -J gs8_1a -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,4077], [4,8,0,1,4077], [8,12,0,1,4077], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4077],[30,33,1,2,4077],[33,36,1,2,4077]]"; done
-for i in {1..40}; do sbatch -J gs9_1a -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,4650], [4,8,0,1,4650], [8,12,0,1,4650], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4650],[30,33,1,2,4650],[33,36,1,2,4650]]"; done
-for i in {1..10}; do sbatch -J gs9_2a -N2 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,4650], [4,8,0,1,4650], [8,12,0,1,4650], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4650],[30,33,1,2,4650],[33,36,1,2,4650]]"; done
-
-
-for i in {1..50}; do sbatch -J gs10_1 -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,4650], [2,4,0,1,4650], [4,8,0,1,4650], [8,10,1,2,4650], [10,12,1,2,4650], [12,14,1,2,4650], [14,18,0,0,0], [18,22,0,0,0], [22,26,0,0,0], [26,30,0,0,0], [30,33,0,0,0], [33,36,0,0,0]]"; done
-for i in {1..1}; do sbatch -J gs10_1 -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,4650], [2,4,0,1,4650], [4,8,0,1,4650], [8,10,1,2,4650], [10,12,1,2,4650], [12,14,1,2,4650], [14,18,0,0,0], [18,22,0,0,0], [22,26,0,0,0], [26,30,0,0,0], [30,33,0,0,0], [33,36,0,0,0]]"; done
-for i in {1..50}; do sbatch -J gs11_1 -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,4650], [2,4,0,1,4650], [4,6,0,1,4650], [6,8,1,2,4650], [8,10,1,2,4650], [10,12,1,2,4650], [12,15,0,0,0], [15,18,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0], [30,33,0,0,0], [33,36,0,0,0]]"; done
-
-for i in {1..50}; do sbatch -J gs11_1 -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,2,0,1,4650], [2,4,0,1,4650], [4,6,0,1,4650], [6,8,1,2,4650], [8,10,1,2,4650], [10,12,1,2,4650], [12,15,0,0,0], [15,18,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0], [30,33,0,0,0], [33,36,0,0,0]]"; done
-
-for i in {1..30}; do sbatch -J c0_1 -N1 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..10}; do sbatch -J cs0_1 -N1 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..10}; do sbatch -J cs0_16 -N16 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..100}; do sbatch -J cs0_16 -N16 -t240 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..10}; do sbatch -J c0_8 -N8 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J gs4 -N2 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J gs5 -N3 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J gs6 -N4 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J gs7 -N5 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J gs8 -N20 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
 
 
-for i in {1..2}; do sbatch -J dc_0 -N8 -t2880 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+for i in {1..5}; do sbatch -J ga4 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,4,1,2,15000], [4,11,0,0,0], [11,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
 
-for i in {1..256}; do sbatch -J c0_2 -N2 -t1440 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
-for i in {1..256}; do sbatch -J c0_3 -N2 -t720 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+for i in {1..10}; do sbatch -J ga5 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,10,0,0,0], [10,18,0,0,0], [18,26,0,0,0], [26,34,0,0,0], [34,36,1,2,15000]]"; done
 
-for i in {1..3}; do sbatch -J c0_4 -N256 -t1440 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
-for i in {1..3}; do sbatch -J c0_4 -N256 -t720 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
-for i in {1..1}; do sbatch -J c0_5 -N232 -t720 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
-for i in {1..1}; do sbatch -J c0_5 -N232 -t1440 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+for i in {1..10}; do sbatch -J ga6 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,2,0,1,15000], [2,10,0,0,0], [10,18,0,0,0], [18,26,0,0,0], [26,34,0,0,0], [34,36,1,2,15000]]"; done
 
+for i in {1..5}; do sbatch -J ga0 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..5}; do sbatch -J ga1 -N1 -t1439 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,13,0,0,0], [13,18,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..5}; do sbatch -J ga3 -N1 -t959 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,13,0,0,0], [13,18,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..4}; do sbatch -J c0_950 -N950 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..4}; do sbatch -J c0_512 -N512 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..16}; do sbatch -J c0_256 -N256 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..16}; do sbatch -J c0_128 -N128 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..16}; do sbatch -J c0_64 -N64 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..16}; do sbatch -J c0_32 -N32 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..16}; do sbatch -J c0_16 -N16 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..16}; do sbatch -J c0_8 -N8 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..16}; do sbatch -J c0_4 -N4 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..4}; do sbatch -J c0_2 -N2 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..30}; do sbatch -J c0_1 -N1 -t2880 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..5}; do sbatch -J ga2 -N1 -t2879 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..20}; do sbatch -J gs7 -N5 -t4000 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..100}; do sbatch -J gs7 -N8 -t2880 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..10}; do sbatch -J gs8_8 -N9 -t2880 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,4077], [4,8,0,1,4077], [8,12,0,1,4077], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4077],[30,33,1,2,4077],[33,36,1,2,4077]]"; done
+
+for i in {1..10}; do sbatch -J gs8_1a -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,4077], [4,8,0,1,4077], [8,12,0,1,4077], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4077],[30,33,1,2,4077],[33,36,1,2,4077]]"; done
 
 
+for i in {1..10}; do sbatch -J gs8_1a -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,4077], [4,8,0,1,4077], [8,12,0,1,4077], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4077],[30,33,1,2,4077],[33,36,1,2,4077]]"; done
+for i in {1..40}; do sbatch -J gs9_1a -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,4650], [4,8,0,1,4650], [8,12,0,1,4650], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4650],[30,33,1,2,4650],[33,36,1,2,4650]]"; done
+for i in {1..10}; do sbatch -J gs9_2a -N2 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,4650], [4,8,0,1,4650], [8,12,0,1,4650], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,1,2,4650],[30,33,1,2,4650],[33,36,1,2,4650]]"; done
 
-for i in {1..1}; do sbatch -J sc0_8 -N4 -t1440 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..50}; do sbatch -J gs10_1 -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,2,0,1,4650], [2,4,0,1,4650], [4,8,0,1,4650], [8,10,1,2,4650], [10,12,1,2,4650], [12,14,1,2,4650], [14,18,0,0,0], [18,22,0,0,0], [22,26,0,0,0], [26,30,0,0,0], [30,33,0,0,0], [33,36,0,0,0]]"; done
+for i in {1..1}; do sbatch -J gs10_1 -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,2,0,1,4650], [2,4,0,1,4650], [4,8,0,1,4650], [8,10,1,2,4650], [10,12,1,2,4650], [12,14,1,2,4650], [14,18,0,0,0], [18,22,0,0,0], [22,26,0,0,0], [26,30,0,0,0], [30,33,0,0,0], [33,36,0,0,0]]"; done
+for i in {1..50}; do sbatch -J gs11_1 -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,2,0,1,4650], [2,4,0,1,4650], [4,6,0,1,4650], [6,8,1,2,4650], [8,10,1,2,4650], [10,12,1,2,4650], [12,15,0,0,0], [15,18,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0], [30,33,0,0,0], [33,36,0,0,0]]"; done
+
+for i in {1..50}; do sbatch -J gs11_1 -N1 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,2,0,1,4650], [2,4,0,1,4650], [4,6,0,1,4650], [6,8,1,2,4650], [8,10,1,2,4650], [10,12,1,2,4650], [12,15,0,0,0], [15,18,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0], [30,33,0,0,0], [33,36,0,0,0]]"; done
+
+for i in {1..30}; do sbatch -J c0_1 -N1 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..10}; do sbatch -J cs0_1 -N1 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..10}; do sbatch -J cs0_16 -N16 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..100}; do sbatch -J cs0_16 -N16 -t240 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+for i in {1..10}; do sbatch -J c0_8 -N8 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+
+
+for i in {1..2}; do sbatch -J dc_0 -N8 -t2880 --account=dmpapps slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+
+for i in {1..256}; do sbatch -J c0_2 -N2 -t1440 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+for i in {1..256}; do sbatch -J c0_3 -N2 -t720 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+
+for i in {1..3}; do sbatch -J c0_4 -N256 -t1440 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+for i in {1..3}; do sbatch -J c0_4 -N256 -t720 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+for i in {1..1}; do sbatch -J c0_5 -N232 -t720 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+for i in {1..1}; do sbatch -J c0_5 -N232 -t1440 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 3, 0, 0], [3, 6, 0, 0], [6, 9, 0, 0], [9, 12, 0, 0], [12, 15, 0, 0], [15, 18, 0, 0], [18, 21, 0, 0], [21, 24, 0, 0], [24, 27, 0, 0], [27, 30, 0, 0], [30, 33, 0, 0], [33, 36, 0, 0]]"; done
+
+
+for i in {1..4}; do sbatch -J c0_950 -N950 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..4}; do sbatch -J c0_512 -N512 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_256 -N256 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_128 -N128 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_64 -N64 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_32 -N32 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_16 -N16 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_8 -N8 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..16}; do sbatch -J c0_4 -N4 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..4}; do sbatch -J c0_2 -N2 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..30}; do sbatch -J c0_1 -N1 -t2880 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+
+
+
+for i in {1..1}; do sbatch -J sc0_8 -N4 -t1440 --account=dmpapps slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
 squeue -o %.18i %.9P %.8j %.8u %.2t %.10M %.6D %R -u ctripp
 
@@ -202,109 +202,109 @@ hold
 
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'exponential', 'trapezoid'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_1.jobs
-cat ../fixed_3k_1.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_1.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.0001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'exponential', 'trapezoid'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_2.jobs
-cat ../fixed_3k_2.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_2.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.0001], 'label_noises':[0.10, 0.15, 0.20], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'exponential', 'trapezoid'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_3.jobs
-cat ../fixed_3k_3.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_3.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 20, learning_rates:[0.0001], 'label_noises':['none', 0.05, 0.10, 0.15, 0.20], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'exponential', 'trapezoid'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_4.jobs
-cat ../fixed_3k_4.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_4.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 30, learning_rates:[0.0001], 'label_noises':['none', 0.05, 0.10, 0.15, 0.20], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'wide_first_8x', 'wide_first_16x'], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_5.jobs
-cat ../fixed_3k_5.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_5.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 30, learning_rates:[0.0001], 'label_noises':['none', 0.05, 0.10, 0.15, 0.20], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['wide_first_8x', 'wide_first_16x'], 'residual_modes': ['none'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_6.jobs
-cat ../fixed_3k_6.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_6.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['wide_first_8x', 'wide_first_16x'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_7.jobs
-cat ../fixed_3k_7.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_7.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.001], 'label_noises':['none', 0.05], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x'], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_8.jobs
-cat ../fixed_3k_8.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_8.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
 python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates:[0.01, 0.00001], 'label_noises':['none'], 'early_stopping': False, 'run_config' : { 'epochs' : 3000 }, datasets: ['201_pol', '529_pollen', '537_houses', 'connect_4', 'mnist', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first_2x', 'wide_first_4x', 'wide_first_8x', 'wide_first_16x', 'exponential', 'trapezoid'], 'residual_modes': ['none', 'full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" >> ../fixed_3k_9.jobs
-cat ../fixed_3k_9.jobs | python -u -m dmp.jq.jq_enqueue dmp fixed_3k_1
+cat ../fixed_3k_9.jobs | python -u -m dmp.job_queue_interface.enqueue dmp fixed_3k_1
 
-for i in {1..300}; do sbatch -J q0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..300}; do sbatch -J q1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J q2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J q3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J q4 -N1 -t510 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
-
-
-
-for i in {1..40}; do sbatch -J t0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-
-for i in {1..200}; do sbatch -J d0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 2, 0, 0, 0], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 0, 0, 0], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
-for i in {1..200}; do sbatch -J d1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 2, 0, 0, 0], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 0, 0, 0], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
-for i in {1..200}; do sbatch -J d2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 2, 0, 0, 0], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 0, 0, 0], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
-for i in {1..100}; do sbatch -J gd0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 2, 0, 1,15000], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 1, 2, 15000], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
-for i in {1..100}; do sbatch -J gd1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 2, 0, 1,15000], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 1, 2, 15000], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
-for i in {1..200}; do sbatch -J gd2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0, 2, 0, 1,15000], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 1, 2, 15000], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+for i in {1..300}; do sbatch -J q0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..300}; do sbatch -J q1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J q2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J q3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J q4 -N1 -t510 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,18,0,0,0], [18,36,0,0,0]]"; done
 
 
 
-for i in {1..40}; do sbatch -J gt0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,1,15000], [3,6,1,2,15000], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
-for i in {1..40}; do sbatch -J gt1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,3,0,1,15000], [3,6,1,2,15000], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..40}; do sbatch -J t0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,0,0], [3,6,0,0,0], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
-
-for i in {1..40}; do sbatch -J c0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..1000}; do sbatch -J c0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..1000}; do sbatch -J c1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..1000}; do sbatch -J c2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..1600}; do sbatch -J c3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-
-for i in {1..100}; do sbatch -J g0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..100}; do sbatch -J g1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..100}; do sbatch -J g2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..200}; do sbatch -J d0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 2, 0, 0, 0], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 0, 0, 0], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+for i in {1..200}; do sbatch -J d1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 2, 0, 0, 0], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 0, 0, 0], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+for i in {1..200}; do sbatch -J d2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 2, 0, 0, 0], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 0, 0, 0], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+for i in {1..100}; do sbatch -J gd0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 2, 0, 1,15000], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 1, 2, 15000], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+for i in {1..100}; do sbatch -J gd1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 2, 0, 1,15000], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 1, 2, 15000], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
+for i in {1..200}; do sbatch -J gd2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0, 2, 0, 1,15000], [2, 4, 0, 0, 0], [4, 6, 0, 0, 0], [6, 8, 0, 0, 0], [8, 10, 0, 0, 0], [10, 12, 0, 0, 0], [12, 14, 0, 0, 0], [14, 16, 0, 0, 0], [16, 18, 0, 0, 0], [18, 20, 1, 2, 15000], [20, 22, 0, 0, 0], [22, 24, 0, 0, 0], [24, 26, 0, 0, 0], [26, 28, 0, 0, 0], [28, 30, 0, 0, 0], [30, 32, 0, 0, 0], [32, 34, 0, 0, 0], [34, 36, 0, 0, 0]]"; done
 
 
 
-for i in {1..1000}; do sbatch -J c0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..1000}; do sbatch -J c1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
-for i in {1..1000}; do sbatch -J c2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..40}; do sbatch -J gt0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,1,15000], [3,6,1,2,15000], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
+for i in {1..40}; do sbatch -J gt1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,3,0,1,15000], [3,6,1,2,15000], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,30,0,0,0],[30,33,0,0,0],[33,36,0,0,0]]"; done
 
 
-for i in {1..500}; do sbatch -J s0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J s1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J s2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J s3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..40}; do sbatch -J c0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..1000}; do sbatch -J c0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..1000}; do sbatch -J c1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..1000}; do sbatch -J c2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..1600}; do sbatch -J c3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-
-
-for i in {1..200}; do sbatch -J t0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
-for i in {1..200}; do sbatch -J t1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
-for i in {1..200}; do sbatch -J t2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
-for i in {1..200}; do sbatch -J t3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
-for i in {1..200}; do sbatch -J t4 -N1 -t510 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
-
-for i in {1..50}; do sbatch -J gt0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
-for i in {1..50}; do sbatch -J gt1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
-for i in {1..50}; do sbatch -J gt2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
-for i in {1..50}; do sbatch -J gt3 -N1 -t719 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
-for i in {1..50}; do sbatch -J gt4 -N1 -t510 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
-
-
-for i in {1..20}; do sbatch -J f0 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J f1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J f2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J f3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
-for i in {1..500}; do sbatch -J f4 -N1 -t510 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..100}; do sbatch -J g0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..100}; do sbatch -J g1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..100}; do sbatch -J g2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
 
 
+for i in {1..1000}; do sbatch -J c0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..1000}; do sbatch -J c1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..1000}; do sbatch -J c2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0]]"
+
+for i in {1..500}; do sbatch -J s0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J s1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J s2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J s3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
 
 
-for i in {1..20}; do sbatch -J e1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,5,0,0,0], [5,10,0,0,0], [10,15,0,0,0], [15,20,0,0,0], [20,25,0,0,0], [25,30,0,0,0], [30,36,0,0,0]]"; done
 
-for i in {1..20}; do sbatch -J d1 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J d2 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
-for i in {1..20}; do sbatch -J d3 -N1 -t719 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J t0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J t1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J t2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J t3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
+for i in {1..200}; do sbatch -J t4 -N1 -t510 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,12,0,0,0], [12,24,0,0,0], [24,36,0,0,0]]"; done
+
+for i in {1..50}; do sbatch -J gt0 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
+for i in {1..50}; do sbatch -J gt1 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
+for i in {1..50}; do sbatch -J gt2 -N1 -t959 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
+for i in {1..50}; do sbatch -J gt3 -N1 -t719 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
+for i in {1..50}; do sbatch -J gt4 -N1 -t510 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,1,15000], [6,12,1,2,15000], [12,24,0,0,0], [24,36,0,0,0]]"; done
+
+
+for i in {1..20}; do sbatch -J f0 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J f1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J f2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J f3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+for i in {1..500}; do sbatch -J f4 -N1 -t510 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,9,0,0,0], [9,18,0,0,0], [18,27,0,0,0], [27,36,0,0,0]]"; done
+
+
+
+
+python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0]]"
+
+
+for i in {1..20}; do sbatch -J e1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,5,0,0,0], [5,10,0,0,0], [10,15,0,0,0], [15,20,0,0,0], [20,25,0,0,0], [25,30,0,0,0], [30,36,0,0,0]]"; done
+
+for i in {1..20}; do sbatch -J d1 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J d2 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
+for i in {1..20}; do sbatch -J d3 -N1 -t719 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,6,0,0,0], [6,12,0,0,0], [12,18,0,0,0], [18,24,0,0,0], [24,30,0,0,0], [30,36,0,0,0]]"; done
 
 
 ---- not executed:
@@ -324,36 +324,36 @@ python -u -m dmp.experiment.aspect_test "{ mode:list, 'reps': 10, learning_rates
 
 
 
-for i in {1..200}; do sbatch -J cf02 -N1 -t2879 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..200}; do sbatch -J cf02 -N1 -t2879 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..300}; do sbatch -J cf02s -N1 -t2879 --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..300}; do sbatch -J cf02s -N1 -t2879 --qos=standby slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..120}; do sbatch -J cf03 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..120}; do sbatch -J cf03 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..60}; do sbatch -J cf04 -N1 -t959 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..60}; do sbatch -J cf04 -N1 -t959 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..60}; do sbatch -J cf04 -N1 -t600 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..60}; do sbatch -J cf04 -N1 -t600 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..1000}; do sbatch -J cx500 -N1 -t500 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..1000}; do sbatch -J cx500 -N1 -t500 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..90}; do sbatch -J gx500 -N1 -t500 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..90}; do sbatch -J gx500 -N1 -t500 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..90}; do sbatch -J gx400 -N1 -t400 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..90}; do sbatch -J gx400 -N1 -t400 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..200}; do sbatch -J cx400 -N1 -t500 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..200}; do sbatch -J cx400 -N1 -t500 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..60}; do sbatch -J cf05 -N1 -t1079 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..60}; do sbatch -J cf05 -N1 -t1079 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..30}; do sbatch -A aces -J cf01 -N1 -t1439 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..30}; do sbatch -A aces -J cf01 -N1 -t1439 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,0,0], [4,8,0,0,0], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..90}; do sbatch -J gf01 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..90}; do sbatch -J gf01 -N1 -t1439 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
 
-for i in {1..120}; do sbatch -J gl01 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..120}; do sbatch -J gl01 -N1 -t2879 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..120}; do sbatch -J gl02 -N1 -t2879 --qos=standby --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..120}; do sbatch -J gl02 -N1 -t2879 --qos=standby --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
-for i in {1..20}; do sbatch -J gl03 -N1 -t5760 --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
+for i in {1..20}; do sbatch -J gl03 -N1 -t5760 --gres=gpu:2 slurm_job_runner.sh python -m dmp.job_queue_interface.node_manager dmp fixed_3k_1 "[[0,4,0,1,15000], [4,8,1,2,15000], [8,12,0,0,0], [12,16,0,0,0], [16,20,0,0,0], [20,24,0,0,0], [24, 28, 0, 0, 0], [28, 32, 0, 0, 0], [32, 36, 0, 0, 0]]"; done
 
 
 

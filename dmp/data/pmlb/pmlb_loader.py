@@ -21,14 +21,11 @@ dataset_path = os.path.join(os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__))), 'pmlb.csv')
 
 
-
-
 def load_dataset_index(filePath: str = dataset_path) -> pandas.DataFrame:
-    if __datasets is None:
-        __datasets = pandas.read_csv(filePath)
-        __datasets.set_index('Dataset', inplace=True, drop=False)
-    return __datasets
-__datasets = None # lazy loaded
+    datasets = pandas.read_csv(filePath)
+    datasets.set_index('Dataset', inplace=True, drop=False)
+    return datasets
+
 
 def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> Tuple[pandas.Series, ndarray, ndarray]:
     matching_datasets = datasets[datasets['Dataset'] == dataset_name]

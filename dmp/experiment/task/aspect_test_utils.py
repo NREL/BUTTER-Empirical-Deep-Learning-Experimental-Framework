@@ -6,7 +6,7 @@ import random
 import sys
 from copy import deepcopy
 from functools import singledispatchmethod
-from typing import Callable, Union, List, Optional
+from typing import Callable, Tuple, Union, List, Optional
 
 import numpy
 import pandas
@@ -36,7 +36,7 @@ from dmp.experiment.structure.n_add import NAdd
 from dmp.experiment.structure.n_dense import NDense
 from dmp.experiment.structure.n_input import NInput
 from dmp.experiment.structure.network_module import NetworkModule
-from dmp.jq import jq_worker
+from dmp.jobqueue_interface import worker
 
 
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
@@ -135,7 +135,7 @@ def make_network(
     return current
 
 
-def build_keras_network(target: NetworkModule, model_cache: dict = {}) -> (tensorflow.keras.Model):
+def make_keras_network_from_network_module(target: NetworkModule, model_cache: dict = {}) -> (tensorflow.keras.Model):
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
@@ -149,22 +149,22 @@ def build_keras_network(target: NetworkModule, model_cache: dict = {}) -> (tenso
         """
 
         @singledispatchmethod
-        def visit(self, target, inputs: []) -> any:
+        def visit(self, target, inputs: list) -> any:
             raise Exception('Unsupported module of type "{}".'.format(type(target)))
 
         @visit.register
-        def _(self, target: NInput, inputs: []) -> any:
+        def _(self, target: NInput, inputs: list) -> any:
             return Input(shape=target.shape), True
 
         @visit.register
-        def _(self, target: NDense, inputs: []) -> any:
+        def _(self, target: NDense, inputs: list) -> any:
             return Dense(
                 target.shape[0],
                 activation=target.activation,
             )(*inputs), False
 
         @visit.register
-        def _(self, target: NAdd, inputs: []) -> any:
+        def _(self, target: NAdd, inputs: list) -> any:
             return tensorflow.keras.layers.add(inputs), False
 
     network_inputs = {}
@@ -172,7 +172,7 @@ def build_keras_network(target: NetworkModule, model_cache: dict = {}) -> (tenso
 
     for i in target.inputs:
         if i not in model_cache.keys():
-            model_cache[i] = build_keras_network(i, model_cache)
+            model_cache[i] = make_keras_network_from_network_module(i, model_cache)
         i_network_inputs, i_keras_module = model_cache[i]
         for new_input in i_network_inputs:
             network_inputs[new_input.ref()] = new_input
@@ -188,7 +188,7 @@ def build_keras_network(target: NetworkModule, model_cache: dict = {}) -> (tenso
     return Model(inputs=keras_input, outputs=keras_module)
 
 
-def compute_network_configuration(num_outputs, dataset) -> (any, any):
+def compute_network_configuration(num_outputs, dataset) -> Tuple[any, any]:
     output_activation = 'relu'
     run_task = dataset['Task']
     if run_task == 'regression':
@@ -213,7 +213,7 @@ def compute_network_configuration(num_outputs, dataset) -> (any, any):
 def binary_search_int(objective: Callable[[int], Union[int, float]],
                       minimum: int,
                       maximum: int,
-                      ) -> (int, bool):
+                      ) -> Tuple[int, bool]:
     """
     :param objective: function for which to find fixed point
     :param minimum: min value of search
@@ -255,7 +255,7 @@ def find_best_layout_for_budget_and_depth(
         make_widths: Callable[[int], List[int]],
         depth,
         topology
-) -> (int, [int], NetworkModule):
+) -> Tuple[int, List[int], NetworkModule]:
     best = (math.inf, None, None)
 
     def search_objective(w0):

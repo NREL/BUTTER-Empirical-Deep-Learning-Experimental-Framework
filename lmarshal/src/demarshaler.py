@@ -1,9 +1,9 @@
 from functools import singledispatchmethod
-from typing import Mapping, Iterator, Union, Tuple, Type
+from typing import Dict, Mapping, Iterator, Union, Tuple, Type
 
-from lmarshal.common_marshaler import CommonMarshaler
-from lmarshal.marshal_config import MarshalConfig
-from lmarshal.types import TypeCode, ObjectDemarshaler, DemarshalingFactory, \
+from .common_marshaler import CommonMarshaler
+from .marshal_config import MarshalConfig
+from .types import TypeCode, ObjectDemarshaler, DemarshalingFactory, \
     DemarshalingInitializer
 
 
@@ -12,12 +12,12 @@ class Demarshaler(CommonMarshaler):
 
     def __init__(self,
                  config: MarshalConfig,
-                 type_map: {TypeCode: ObjectDemarshaler},
+                 type_map: Dict[TypeCode, ObjectDemarshaler],
                  source: any,
                  ) -> None:
         super().__init__(config)
-        self._type_map: {TypeCode: ObjectDemarshaler} = type_map
-        self._reference_index: {str: any} = {}
+        self._type_map: Dict[TypeCode, ObjectDemarshaler] = type_map
+        self._reference_index: Dict[str, any] = {}
         self._result: any = self.demarshal(source)
 
     def __call__(self) -> any:
@@ -58,6 +58,13 @@ class Demarshaler(CommonMarshaler):
 
     @demarshal.register
     def _(self, source: dict):
+        # check for implicit references
+        label_key = self._config.label_key
+        if label_key in source:
+            label = source[label_key]
+            if label in self._reference_index:
+                return self._reference_index[label]
+
         # demarshal typed dicts
         if self._config.type_key in source:
             type_code = source[self._config.type_key]
@@ -114,7 +121,12 @@ class Demarshaler(CommonMarshaler):
             setattr(result, k, v)
 
     @staticmethod
-    def initialize_type_map(type_map: {TypeCode: ObjectDemarshaler}, config: MarshalConfig) -> None:
+    def default_dataclass_initializer(demarshaler: 'Demarshaler', source: any, result: any) -> None:
+        kwargs = dict(demarshaler.dict_demarshaling_generator(source))
+        result.__init__(**kwargs)
+
+    @staticmethod
+    def initialize_type_map(type_map: Dict[TypeCode, ObjectDemarshaler], config: MarshalConfig) -> None:
         pass
 
     def _register_label(self, element: any) -> any:
