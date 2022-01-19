@@ -6,6 +6,7 @@ import random
 import sys
 from copy import deepcopy
 from functools import singledispatchmethod
+import time
 from typing import Callable, Tuple, Union, List, Optional
 
 import numpy
@@ -39,6 +40,75 @@ from dmp.experiment.structure.network_module import NetworkModule
 from dmp.jobqueue_interface import worker
 
 
+def set_random_seeds(seed: Optional[int]) -> int:
+    if seed is None:
+        seed = time.time_ns()
+
+    numpy.random.seed(seed)
+    tensorflow.random.set_seed(seed)
+    random.seed(seed)
+    return seed
+
+
+def add_label_noise(label_noise, run_task, train_outputs):
+    if label_noise is not None and label_noise != 'none':
+        train_size = len(train_outputs)
+        # print(f'run_task {run_task} output shape {outputs.shape}')
+        # print(f'sample\n{outputs_train[0:20, :]}')
+        if run_task == 'classification':
+            num_to_perturb = int(train_size * label_noise)
+            noisy_labels_idx = numpy.random.choice(
+                train_size, size=num_to_perturb, replace=False)
+
+            num_outputs = train_outputs.shape[1]
+            if num_outputs == 1:
+                # binary response variable...
+                train_outputs[noisy_labels_idx] ^= 1
+            else:
+                # one-hot response variable...
+                rolls = numpy.random.choice(numpy.arange(
+                    num_outputs - 1) + 1, noisy_labels_idx.size)
+                for i, idx in enumerate(noisy_labels_idx):
+                    train_outputs[noisy_labels_idx] = numpy.roll(
+                        train_outputs[noisy_labels_idx], rolls[i])
+                # noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
+                # outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
+        elif run_task == 'regression':
+            # mean = numpy.mean(outputs, axis=0)
+            std_dev = numpy.std(train_outputs, axis=0)
+            # print(f'std_dev {std_dev}')
+            noise_std = std_dev * label_noise
+            for i in range(train_outputs.shape[1]):
+                train_outputs[:, i] += numpy.random.normal(
+                    loc=0, scale=noise_std[i], size=train_outputs[:, i].shape)
+        else:
+            raise ValueError(
+                f'Do not know how to add label noise to dataset task {run_task}.')
+
+
+def prepare_dataset(test_split_method, label_noise, run_config, run_task, inputs, outputs):
+
+    if test_split_method == 'shuffled_train_test_split':
+        test_split = run_config['validation_split']
+        del run_config['validation_split']
+
+        train_inputs, test_inputs, train_outputs, test_outputs = \
+            train_test_split(
+                inputs,
+                outputs,
+                test_size=test_split,
+                shuffle=True,
+            )
+        add_label_noise(label_noise, run_task, train_outputs)
+
+        run_config['validation_data'] = (test_inputs, test_outputs)
+        run_config['x'] = train_inputs
+        run_config['y'] = train_outputs
+    else:
+        run_config['x'] = inputs
+        run_config['y'] = outputs
+
+
 def count_trainable_parameters_in_keras_model(model: Model) -> int:
     count = 0
     for var in model.trainable_variables:
@@ -65,7 +135,8 @@ def count_num_free_parameters(target: NetworkModule) -> int:
 
         @singledispatchmethod
         def visit(self, target) -> any:
-            raise Exception('Unsupported module of type "{}".'.format(type(target)))
+            raise Exception(
+                'Unsupported module of type "{}".'.format(type(target)))
 
         @visit.register
         def _(self, target: NInput) -> int:
@@ -84,7 +155,7 @@ def count_num_free_parameters(target: NetworkModule) -> int:
 
 def make_network(
         inputs: numpy.ndarray,
-        widths: [int],
+        widths: List[int],
         residual_mode: any,
         input_activation,
         internal_activation,
@@ -116,7 +187,8 @@ def make_network(
                        activation=activation)
 
         # Skip connections for residual modes
-        assert residual_mode in ['full', 'none'], f"Invalid residual mode {residual_mode}"
+        assert residual_mode in [
+            'full', 'none'], f"Invalid residual mode {residual_mode}"
         if residual_mode == 'full':
             assert topology in ['rectangle',
                                 'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
@@ -128,7 +200,7 @@ def make_network(
             if d > first_residual_layer and d < last_residual_layer:
                 layer = NAdd(label=0,
                              inputs=[layer, current],
-                             shape=layer.shape.copy())  ## TODO JP: Only works for rectangle
+                             shape=layer.shape.copy())  # TODO JP: Only works for rectangle
 
         current = layer
 
@@ -150,7 +222,8 @@ def make_keras_network_from_network_module(target: NetworkModule, model_cache: d
 
         @singledispatchmethod
         def visit(self, target, inputs: list) -> any:
-            raise Exception('Unsupported module of type "{}".'.format(type(target)))
+            raise Exception(
+                'Unsupported module of type "{}".'.format(type(target)))
 
         @visit.register
         def _(self, target: NInput, inputs: list) -> any:
@@ -172,7 +245,8 @@ def make_keras_network_from_network_module(target: NetworkModule, model_cache: d
 
     for i in target.inputs:
         if i not in model_cache.keys():
-            model_cache[i] = make_keras_network_from_network_module(i, model_cache)
+            model_cache[i] = make_keras_network_from_network_module(
+                i, model_cache)
         i_network_inputs, i_keras_module = model_cache[i]
         for new_input in i_network_inputs:
             network_inputs[new_input.ref()] = new_input
@@ -324,6 +398,22 @@ def get_wide_first_layer_rectangular_other_layers_widths(
     return make_layout
 
 
+def get_wide_first_2x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
+def get_wide_first_4x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
+def get_wide_first_8x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
+def get_wide_first_16x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+
+
 def get_wide_first_5x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
 
@@ -339,12 +429,17 @@ def widths_factory(topology):
         return get_trapezoidal_widths
     elif topology == 'exponential':
         return get_exponential_widths
-    elif topology == 'wide_first':
-        return get_wide_first_layer_rectangular_other_layers_widths
+    elif topology == 'wide_first_2x':
+        return get_wide_first_2x
+    elif topology == 'wide_first_4x':
+        return get_wide_first_4x
     elif topology == 'wide_first_5x':
         return get_wide_first_5x
+    elif topology in {'wide_first', 'wide_first_10x'}:
+        return get_wide_first_layer_rectangular_other_layers_widths
+    elif topology == 'wide_first_16x':
+        return get_wide_first_16x
     elif topology == 'wide_first_20x':
         return get_wide_first_20x
     else:
         assert False, 'Topology "{}" not recognized.'.format(topology)
-

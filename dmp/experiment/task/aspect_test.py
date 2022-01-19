@@ -58,93 +58,33 @@ class AspectTest():
     dataset: Optional[pandas.Series] = None
     inputs: Optional[numpy.ndarray] = None
     outputs: Optional[numpy.ndarray] = None
-    run_config: dict = None
 
     def __init__(self, task: AspectTestTask, job_id: uuid.UUID) -> None:
         self.task.task = task
         self.task.job_id = job_id
-        self.run_config = deepcopy(self.task.run_config)
 
         # Configure hardware
         if self.tensorflow_strategy is None:
             self.tensorflow_strategy = tensorflow.distribute.get_strategy()
 
         # Set random seeds
-        if self.task.seed is None:
-            self.task.seed = time.time_ns()
-
-        numpy.random.seed(self.task.seed)
-        tensorflow.random.set_seed(self.task.seed)
-        random.seed(self.task.seed)
+        self.task.seed = set_random_seeds(self.task.seed)
 
         # Load dataset
         self.dataset, self.inputs, self.outputs =  \
             load_dataset(_datasets, self.task.dataset)
 
-# # Split data into train and validation sets manually. Keras does not shuffle the validation set by default
-#             x_train, x_val, y_train, y_val = train_test_split(self.dataset_inputs,
-#                                                               self.dataset_outputs,
-#                                                               shuffle=True,
-#                                                               test_size=self.task.validation_split)
         # prepare dataset shuffle, split, and label noise:
-        if self.task.validation_split_method == 'shuffled_train_test_split':
-            inputs_train, inputs_val, outputs_train, outputs_val = \
-                train_test_split(
-                    self.inputs,
-                    self.outputs,
-                    test_size=self.run_config['validation_split'],
-                    shuffle=True,
-                )
-
-            label_noise = self.task.label_noise
-            # for backward compatibility...
-            if label_noise is not None and label_noise != 'none':
-                train_size = len(outputs_train)
-                run_task = self.dataset['Task']
-                # print(f'run_task {run_task} output shape {outputs.shape}')
-                # print(f'sample\n{outputs_train[0:20, :]}')
-                if run_task == 'classification':
-                    num_to_perturb = int(train_size * label_noise)
-                    noisy_labels_idx = numpy.random.choice(
-                        train_size, size=num_to_perturb, replace=False)
-
-                    num_outputs = self.outputs.shape[1]
-                    if num_outputs == 1:
-                        # binary response variable...
-                        outputs_train[noisy_labels_idx] ^= 1
-                    else:
-                        # one-hot response variable...
-                        rolls = numpy.random.choice(numpy.arange(
-                            num_outputs - 1) + 1, noisy_labels_idx.size)
-                        for i, idx in enumerate(noisy_labels_idx):
-                            outputs_train[noisy_labels_idx] = numpy.roll(
-                                outputs_train[noisy_labels_idx], rolls[i])
-                    # noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
-                    # outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
-                elif run_task == 'regression':
-                    # mean = numpy.mean(outputs, axis=0)
-                    std_dev = numpy.std(self.outputs, axis=0)
-                    # print(f'std_dev {std_dev}')
-                    noise_std = std_dev * label_noise
-                    for i in range(outputs_train.shape[1]):
-                        outputs_train[:, i] += numpy.random.normal(
-                            loc=0, scale=noise_std[i], size=outputs_train[:, i].shape)
-                else:
-                    raise ValueError(
-                        f'Do not know how to add label noise to dataset task {run_task}.')
-
-                # print(f'sample\n{outputs_train[0:20, :]}')
-
-                del self.run_config['validation_split']
-                self.run_config['validation_data'] = (inputs_val, outputs_val)
-                self.run_config['x'] = inputs_train
-                self.run_config['y'] = outputs_train
-            else:
-                self.run_config['x'] = self.inputs
-                self.run_config['y'] = self.outputs
+        prepare_dataset(
+            self.task.validation_split_method,
+            self.task.label_noise,
+            self.task.run_config,
+            self.dataset['Task'],
+            self.inputs,
+            self.outputs,
+        )
 
         # Generate neural network architecture
-
         num_outputs = self.outputs.shape[1]
         output_activation, self.run_loss = \
             compute_network_configuration(num_outputs, self.dataset)
@@ -162,14 +102,10 @@ class AspectTest():
             self.task.topology
         )
 
-        # config['widths'] = widths
-        # config['network_structure'] = NetworkJSONSerializer(network)()
-        # network_structure = NetworkJSONSerializer(network)()
-
         print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(self.task.budget, self.task.depth, self.task.widths,
                                                                               self.task.rep))
-        # Create and execute network using Keras
 
+        # Create and execute network using Keras
         with self.tensorflow_strategy.scope():
             # Build Keras model
             self.keras_model = make_keras_network_from_network_module(
@@ -177,9 +113,7 @@ class AspectTest():
             assert len(
                 self.keras_model.inputs) == 1, 'Wrong number of keras inputs generated'
 
-            # Execute Keras model
             # Compile Keras Model
-
             run_metrics = [
                 # metrics.CategoricalAccuracy(),
                 'accuracy',
@@ -214,11 +148,8 @@ class AspectTest():
                 run_callbacks.append(
                     callbacks.EarlyStopping(**self.task.early_stopping))
 
-            # Checkpoint Code
+            # optionally enable checkpoints
             if self.task.checkpoint_epochs is not None and self.task.checkpoint_epochs > 0:
-
-                # assert self.task.test_split == 0, 'Checkpointing is not compatible with test_split.'
-
                 DMP_CHECKPOINT_DIR = os.getenv(
                     'DMP_CHECKPOINT_DIR', default='checkpoints')
                 if not os.path.exists(DMP_CHECKPOINT_DIR):
@@ -232,10 +163,10 @@ class AspectTest():
                     save_every_epochs=self.task.checkpoint_epochs,
                     to_path=save_path)
 
-            # Enter Keras training loop
+            # fit / train model
             history = self.keras_model.fit(
                 callbacks=run_callbacks,
-                **self.run_config,
+                **self.task.run_config,
             )
 
             # Tensorflow models return a History object from their fit function, but ResumableModel objects returns History.history. This smooths out that incompatibility.
@@ -270,40 +201,47 @@ class AspectTest():
             result.environment = {
                 'tensorflow_version': tensorflow.__version__,
             }
+            
 
-    def log_result(self) -> None:
-        '''
-        config['name'] = name
+    # def log_result(self) -> None:
+    #     '''
 
-        run_name = run_tools.get_run_name(config)
-        config['run_name'] = run_name
+    #     config['name'] = name
 
-        depth = len(widths)
-        config['depth'] = depth
-        config['num_hidden'] = max(0, depth - 2)
-        config['widths'] = widths
+    #     run_name = run_tools.get_run_name(config)
+    #     config['run_name'] = run_name
 
-        log_data = {'config': config}
+    #     depth = len(widths)
+    #     config['depth'] = depth
+    #     config['num_hidden'] = max(0, depth - 2)
+    #     config['widths'] = widths
 
-        log_data['num_weights'] = count_trainable_parameters_in_keras_model(model)
-        log_data['num_inputs'] = inputs.shape[1]
-        log_data['num_features'] = dataset['n_features']
-        log_data['num_classes'] = dataset['n_classes']
-        log_data['num_outputs'] = outputs.shape[1]
-        log_data['num_observations'] = inputs.shape[0]
-        log_data['task'] = dataset['Task']
-        log_data['endpoint'] = dataset['Endpoint']
-        '''
-        pass
-        engine, session = _connect()
-        for record_class in [BaseRecord, ValLossRecord, HistoryRecord]:
-            record_element = self.task.make_dataclass_from_dict(
-                self.result, record_class)
-            session.add(record_element)
-        session.commit()
-        # TODO: finish this guy
 
-    def make_dataclass_from_dict(self, source: {}, cls: Type) -> any:
-        keys = {f.name for f in dataclasses.fields(
-            BaseRecord) if not f.name.startswith('__')}
-        return cls(**{k: v for k, v in source if k in keys})
+    #     # config['widths'] = widths
+    #     # config['network_structure'] = NetworkJSONSerializer(network)()
+    #     # network_structure = NetworkJSONSerializer(network)()
+
+    #     log_data = {'config': config}
+
+    #     log_data['num_weights'] = count_trainable_parameters_in_keras_model(model)
+    #     log_data['num_inputs'] = inputs.shape[1]
+    #     log_data['num_features'] = dataset['n_features']
+    #     log_data['num_classes'] = dataset['n_classes']
+    #     log_data['num_outputs'] = outputs.shape[1]
+    #     log_data['num_observations'] = inputs.shape[0]
+    #     log_data['task'] = dataset['Task']
+    #     log_data['endpoint'] = dataset['Endpoint']
+    #     '''
+    #     pass
+    #     engine, session = _connect()
+    #     for record_class in [BaseRecord, ValLossRecord, HistoryRecord]:
+    #         record_element = self.task.make_dataclass_from_dict(
+    #             self.result, record_class)
+    #         session.add(record_element)
+    #     session.commit()
+    #     # TODO: finish this guy
+
+    # def make_dataclass_from_dict(self, source: {}, cls: Type) -> any:
+    #     keys = {f.name for f in dataclasses.fields(
+    #         BaseRecord) if not f.name.startswith('__')}
+    #     return cls(**{k: v for k, v in source if k in keys})
