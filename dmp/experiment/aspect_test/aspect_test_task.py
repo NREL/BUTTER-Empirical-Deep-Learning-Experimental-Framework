@@ -1,4 +1,5 @@
 import dataclasses
+from dataclasses import field
 from os import environ
 import time
 from typing import Type
@@ -15,23 +16,6 @@ from dmp.record.val_loss_record import ValLossRecord
 import pandas
 import numpy
 import uuid
-
-
-@dataclass
-class AspectTestTaskCartesianBatch(CartesianBatch):
-    """
-    for task in AspectTestTaskCartesianBatch(**config)...
-    """
-    dataset: list[str] = ['529_pollen'],
-    learning_rate: list[float] = [0.001],
-    topology: list[str] = ['wide_first'],
-    budget: list[int] = [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
-                         32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
-                         8388608, 16777216, 33554432],
-    depth: list[int] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20]
-
-    def __task_class():
-        return AspectTestTask
 
 
 @dataclass
@@ -69,69 +53,50 @@ class AspectTestTaskRunVariables():
     dataset_outputs: numpy.ndarray
 
 
+
+
 @dataclass
 class AspectTestTask(Task):
-    ### Parameters
-    uuid: str = None
-    seed: int = None
-    log: str = './log'
-    dataset: str = '529_pollen'
-    test_split: int = 0
-    input_activation: str = 'relu'
-    internal_activation: str = 'relu'
-    optimizer: dict = {
-        "class_name": "adam",
-        "config": {"learning_rate": 0.001},
-    }
-    learning_rate: float = 0.001
-    topology: str = 'wide_first'
-    budget: int = 32
-    depth: int = 10
-    epoch_scale: dict = {
-        'm': 0,
-        'b': numpy.log(3001),
-    }
-    residual_mode: str = 'none'
-    rep: int = 0
-    early_stopping: bool = False
-    validation_split = 0.2
-    run_config: dict = {
-        'shuffle': True,
-        'epochs': 3000,
-        'batch_size': 256,
-        'verbose': 0
-    }
-    checkpoint_epochs: int = 0
+    # Parameters
+    seed: int
+    # log: str = './log'
+    dataset: str
+    # test_split: int = 0
+    input_activation: str
+    internal_activation: str
+    optimizer: dict
+    # learning_rate: float = None
+    topology: str
+    residual_mode: str
+    budget: int
+    depth: int
+    # epoch_scale: dict
+    # rep: int
+    early_stopping: Optional[dict]
+    validation_split: float
+    run_config: dict
+    checkpoint_epochs: Optional[int]
 
-    ### Instance Vars
-    _run: AspectTestTaskRunVariables = AspectTestTaskRunVariables()
+    id: Optional[uuid.UUID] = None
+
+    # Instance Vars (initialized on execution)
+    tf_strategy: Optional[tensorflow.distribute.Strategy] = None
+    keras_model: Optional[tensorflow.keras.Model] = None
+    keras_loss: Optional[tensorflow.keras.losses] = None
+    result: Optional[AspectTestTaskResult] = AspectTestTaskResult()
+    network_module: Optional[NetworkModule] = None
+    dataset: Optional[pandas.Series] = None
+    dataset_inputs: Optional[numpy.ndarray] = None
+    dataset_outputs: Optional[numpy.ndarray] = None
 
     def __call__(self):
-        
-        if self.uuid is None:
-            # wine_quality_white__wide_first__4194304__4__16106579275625
-            self.uuid = '{}__{}__{}__{}__{}'.format(
-                self.dataset,
-                self.topology,
-                self.budget,
-                self.depth,
-                uuid.uuid4()
-            )
-
-        self.run()
-        self.log_result()
-
-    def run(self):
-        """
-        Execute this task and return the result
-        """
-
-        ## Step 1. Load dataset
+        # Step 1. Load dataset
 
         datasets = pmlb_loader.load_dataset_index()
-        self._run.dataset, self._run.dataset_inputs, self._run.dataset_outputs = load_dataset(datasets, self.dataset)
+        self._run.dataset, self._run.dataset_inputs, self._run.dataset_outputs = load_dataset(
+            datasets, self.dataset)
 
-        ## Step 2. Configure hardware and set random seed
+        # Step 2. Configure hardware and set random seed
 
         if self._run.tf_strategy is None:
             self._run.tf_strategy = tensorflow.distribute.get_strategy()
@@ -143,10 +108,11 @@ class AspectTestTask(Task):
         tensorflow.random.set_seed(self.seed)
         random.seed(self.seed)
 
-        ## Step 3. Generate neural network architecture
+        # Step 3. Generate neural network architecture
 
         num_outputs = self._run.dataset_outputs.shape[1]
-        output_activation, self._run.keras_loss = compute_network_configuration(num_outputs, self._run.dataset)
+        output_activation, self._run.keras_loss = compute_network_configuration(
+            num_outputs, self._run.dataset)
 
         delta, widths, self._run.network_module = find_best_layout_for_budget_and_depth(
             self._run.dataset_inputs,
@@ -165,28 +131,32 @@ class AspectTestTask(Task):
         print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(self.budget, self.depth, self.widths,
                                                                               self.rep))
 
-        ## Step 4: Create and execute network using Keras
+        # Step 4: Create and execute network using Keras
 
         with self._run.tf_strategy.scope():
 
-            ### Build Keras model
-            self._run.keras_model = build_keras_network(self._run.network_module)
-            assert len(self._run.keras_model.inputs) == 1, 'Wrong number of keras inputs generated'
-            
-            ### Execute Keras model
+            # Build Keras model
+            self._run.keras_model = build_keras_network(
+                self._run.network_module)
+            assert len(
+                self._run.keras_model.inputs) == 1, 'Wrong number of keras inputs generated'
+
+            # Execute Keras model
             self._run.result = self.test_keras_network()
 
     def log_result(self) -> None:
         pass
         engine, session = _connect()
         for record_class in [BaseRecord, ValLossRecord, HistoryRecord]:
-            record_element = self.make_dataclass_from_dict(self._run.result, record_class)
+            record_element = self.make_dataclass_from_dict(
+                self._run.result, record_class)
             session.add(record_element)
         session.commit()
         # TODO: finish this guy
 
     def make_dataclass_from_dict(self, source: {}, cls: Type) -> any:
-        keys = {f.name for f in dataclasses.fields(BaseRecord) if not f.name.startswith('__')}
+        keys = {f.name for f in dataclasses.fields(
+            BaseRecord) if not f.name.startswith('__')}
         return cls(**{k: v for k, v in source if k in keys})
 
     def test_keras_network(self, tensorboard=False, plot_model=False) -> None:
@@ -197,7 +167,7 @@ class AspectTestTask(Task):
         This function also creates log events during and after training.
         """
 
-        ## Compile Keras Model
+        # Compile Keras Model
 
         run_metrics = [
             # metrics.CategoricalAccuracy(),
@@ -227,13 +197,13 @@ class AspectTestTask(Task):
         assert count_num_free_parameters(self._run.network_module) == count_trainable_parameters_in_keras_model(self._run.keras_model), \
             "Wrong number of trainable parameters"
 
-
-        ## Configure Keras Callbacks 
+        # Configure Keras Callbacks
 
         run_callbacks = []
-        
-        if self.early_stopping != False:
-            run_callbacks.append(callbacks.EarlyStopping(**self.early_stopping))
+
+        if self.early_stopping is not None:
+            run_callbacks.append(
+                callbacks.EarlyStopping(**self.early_stopping))
 
         if tensorboard:
             run_callbacks.append(TensorBoard(
@@ -256,12 +226,13 @@ class AspectTestTask(Task):
                 dpi=96,
             )
 
-        ## Checkpoint Code
-        if self.checkpoint_epochs > 0:
+        # Checkpoint Code
+        if self.checkpoint_epochs is not None and self.checkpoint_epochs > 0:
 
-            assert self.test_split == 0, "Checkpointing is not compatible with test_split."
+            # assert self.test_split == 0, "Checkpointing is not compatible with test_split."
 
-            DMP_CHECKPOINT_DIR = os.getenv("DMP_CHECKPOINT_DIR", default="checkpoints")
+            DMP_CHECKPOINT_DIR = os.getenv(
+                "DMP_CHECKPOINT_DIR", default="checkpoints")
             if not os.path.exists(DMP_CHECKPOINT_DIR):
                 os.makedirs(DMP_CHECKPOINT_DIR)
 
@@ -269,15 +240,15 @@ class AspectTestTask(Task):
                                      self.uuid + ".h5")
 
             self._run.keras_model = ResumableModel(self._run.keras_model,
-                                   save_every_epochs=self.checkpoint_epochs,
-                                   to_path=save_path)
+                                                   save_every_epochs=self.checkpoint_epochs,
+                                                   to_path=save_path)
 
-        ## Split data into train and validation sets manually. Keras does not shuffle the validation set by default
+        # Split data into train and validation sets manually. Keras does not shuffle the validation set by default
         x_train, x_val, y_train, y_val = train_test_split(self._run.dataset_inputs,
-                                                            self._run.dataset_outputs,
-                                                            shuffle=True,
-                                                            test_size=self.validation_split)
-        ## Enter Keras training loop
+                                                          self._run.dataset_outputs,
+                                                          shuffle=True,
+                                                          test_size=self.validation_split)
+        # Enter Keras training loop
         history = self._run.keras_model.fit(
             x=x_train,
             y=y_train,
@@ -287,7 +258,7 @@ class AspectTestTask(Task):
         )
 
         # Tensorflow models return a History object from their fit function, but ResumableModel objects returns History.history. This smooths out that incompatibility.
-        if self.checkpoint_epochs == 0:
+        if self.checkpoint_epochs is None or self.checkpoint_epochs == 0:
             history = history.history
 
         # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
@@ -297,7 +268,8 @@ class AspectTestTask(Task):
 
         result = self._run.result
 
-        result.num_weights = count_trainable_parameters_in_keras_model(self._run.keras_model)
+        result.num_weights = count_trainable_parameters_in_keras_model(
+            self._run.keras_model)
         result.num_inputs = self._run.dataset_inputs.shape[1]
         result.num_outputs = self._run.dataset_outputs.shape[1]
         result.num_features = self._run.dataset['n_features']
@@ -318,6 +290,6 @@ class AspectTestTask(Task):
             "tensorflow_version": tensorflow.__version__,
         }
 
-        #result.run_name = run_name # I think this is deprecated
+        # result.run_name = run_name # I think this is deprecated
 
         return
