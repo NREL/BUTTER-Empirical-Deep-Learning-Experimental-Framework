@@ -1,8 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=dmp
+#SBATCH --job-name=dmp_test
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=3
 #SBATCH --tasks-per-node=1
 #SBATCH --time=59
 #SBATCH --account=dmpscale

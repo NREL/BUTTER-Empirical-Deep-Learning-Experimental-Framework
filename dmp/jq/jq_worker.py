@@ -5,13 +5,9 @@ import random
 
 import jobqueue
 import tensorflow
-from jobqueue.job import Job
 
 import dmp.experiment.aspect_test as exp
 from dmp.data.logging import write_log
-
-
-
 
 
 def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
@@ -25,7 +21,8 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     if num_cpu > num_gpu * 2:  # no CPU device if 2 or fewer CPUs per GPU
         devices.append('/CPU:0')  # TF batches all CPU's into one device
 
-    num_threads = max(1, num_cpu)  # make sure we have one thread even if not using any CPUs
+    # make sure we have one thread even if not using any CPUs
+    num_threads = max(1, num_cpu)
 
     # gpus = tensorflow.config.experimental.list_physical_devices('GPU')  # Get GPU list
     # tensorflow.config.experimental.set_memory_growth(True)
@@ -70,6 +67,21 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     return strategy
 
 
+def handle_job(worker_id: uuid.UUID, message: Job):
+    gc.collect()
+
+    # Run the experiment
+    result = exp.aspect_test(message.config, strategy=strategy)
+
+    # Write the log
+    write_log(result,
+              message.groupname,
+              message.config["log"],
+              name=result["run_name"],
+              job=message.uuid,
+              )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('cpu_low', type=int, help='minimum CPU id to use')
@@ -77,26 +89,16 @@ if __name__ == "__main__":
     parser.add_argument('gpu_low', type=int, help='minimum GPU id to use')
     parser.add_argument('gpu_high', type=int, help='1 + maximum GPU id to use')
     parser.add_argument('gpu_mem', type=int, help='Per-GPU RAM to allocate')
-    parser.add_argument('project', help='project identifier in your jobqueue.json file')
-    parser.add_argument('group', help='group name or tag')
+    parser.add_argument(
+        'database', help='database/project identifier in your jobqueue.json file')
+    parser.add_argument('queue', help='queue id to use (smallint)')
     args = parser.parse_args()
 
-    strategy = make_strategy(args.cpu_low, args.cpu_high, args.gpu_low, args.gpu_high, args.gpu_mem)
+    strategy = make_strategy(args.cpu_low, args.cpu_high,
+                             args.gpu_low, args.gpu_high, args.gpu_mem)
 
-
-    def handle_job(worker_id: uuid.UUID, message: Job):
-        gc.collect()
-
-        # Run the experiment
-        result = exp.aspect_test(message.config, strategy=strategy)
-
-        # Write the log
-        write_log(result,
-                  message.groupname,
-                  message.config["log"],
-                  name=result["run_name"],
-                  job=message.uuid,
-                  )
-
-    jq = jobqueue.JobQueue(args.project, args.group)
-    jq.run_worker(handle_job)
+    worker_id = uuid.uuid4()
+    print(f'Worker id {worker_id} starting...')
+    credentials = jobqueue.connect.load_credentials(args.database)
+    jq = jobqueue.JobQueue(credentials, queue=args.queue)
+    jq.run_worker(handle_job, worker_id=worker_id)
