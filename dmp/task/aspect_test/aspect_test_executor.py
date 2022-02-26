@@ -20,8 +20,6 @@ import pandas
 import numpy
 import uuid
 
-from dmp.logging.result_logger import ResultLogger
-
 
 _datasets = pmlb_loader.load_dataset_index()
 
@@ -31,9 +29,7 @@ class AspectTestExecutor(AspectTestTask):
     '''
     '''
 
-    parent: AspectTestTask = None
     output_activation: Optional[str] = None
-    job_id: Optional[uuid.UUID] = None
     tensorflow_strategy: Optional[tensorflow.distribute.Strategy] = None
     keras_model: Optional[tensorflow.keras.Model] = None
     run_loss: Optional[tensorflow.keras.losses] = None

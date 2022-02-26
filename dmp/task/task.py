@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Iterable, Mapping
+import uuid
 
 
 @dataclass
 class Task(ABC):
 
-    id: int
+    id : uuid.UUID
     seed: int
 
     @abstractmethod

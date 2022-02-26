@@ -5,7 +5,6 @@ import time
 from typing import Type
 
 from dataclasses import dataclass
-from dmp.logging.result_logger import ResultLogger
 
 
 from .aspect_test_utils import *
@@ -53,12 +52,9 @@ class AspectTestTask(Task):
     early_stopping: Optional[dict] = None
     save_every_epochs: Optional[int] = None
     
-    def __call__(self, job_id: uuid.UUID, result_logger: ResultLogger) -> None:
+    def __call__(self) -> None:
         from .aspect_test_executor import AspectTestExecutor
         return AspectTestExecutor(
-            **dataclasses.asdict(self),
-            parent = self,
-            job_id=job_id,
-            result_logger=result_logger,
+            **dataclasses.asdict(self)
         )()
 
