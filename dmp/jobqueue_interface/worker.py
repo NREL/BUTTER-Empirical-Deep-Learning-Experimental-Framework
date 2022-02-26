@@ -7,7 +7,7 @@ import random
 import jobqueue
 import tensorflow
 
-import dmp.experiment.aspect_test as exp
+import dmp.aspect_test as exp
 from dmp.data.logging import write_log
 from .common import jobqueue_marshal
 

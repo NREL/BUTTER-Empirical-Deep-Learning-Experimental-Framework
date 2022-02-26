@@ -11,16 +11,16 @@ One Nvidia A100 GPU
 
 srun -A dmpapps -N1 -t240 --gres=gpu:2 --pty $SHELL
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'], 'budgets': [32, 64, 128, 256, 512], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp01_01.jobs
+python -u -m dmp.aspect_test "{ mode:list, datasets: ['529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'], 'budgets': [32, 64, 128, 256, 512], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp01_01.jobs
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first'], 'budgets': [32, 64, 128, 256, 512], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'residual_modes': ['full'], 'log':'postgres' }" > ../exp01_02.jobs
+python -u -m dmp.aspect_test "{ mode:list, datasets: ['529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first'], 'budgets': [32, 64, 128, 256, 512], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'residual_modes': ['full'], 'log':'postgres' }" > ../exp01_02.jobs
 
 cat ../exp01_01.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp01
 cat ../exp01_02.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp01
 
 
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['mnist'], 'topologies': ['rectangle', 'wide_first'], 'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'residual_modes': ['full'], 'log':'postgres', 'early_stopping': {'patience': 200}}" > ../exp01_03.jobs
+python -u -m dmp.aspect_test "{ mode:list, datasets: ['mnist'], 'topologies': ['rectangle', 'wide_first'], 'budgets': [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'residual_modes': ['full'], 'log':'postgres', 'early_stopping': {'patience': 200}}" > ../exp01_03.jobs
 
 cat ../exp01_03.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp01
 
@@ -388,7 +388,7 @@ for i in {1..12}; do sbatch -J dmp_gpu3 -N1 -t240 --gres=gpu:2 slurm_job_runner.
 
 ------
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['201_pol'], 'topologies': ['rectangle'], 'residual_modes':['none','full'], 'budgets': [64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp02.jobs
+python -u -m dmp.aspect_test "{ mode:list, datasets: ['201_pol'], 'topologies': ['rectangle'], 'residual_modes':['none','full'], 'budgets': [64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp02.jobs
 cat ../exp02.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp02
 
 
@@ -421,16 +421,16 @@ Submitted batch job 7111166
 
 Patience = 500, epochs = 1000, monitor = loss, lr = .001
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['mnist', '529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first, 'wide_first_5x', 'wide_first_20x'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp04.jobs
+python -u -m dmp.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['mnist', '529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first, 'wide_first_5x', 'wide_first_20x'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp04.jobs
 
 cat ../exp04.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp04
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['mnist', '529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first, 'wide_first_5x', 'wide_first_20x'], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp04r.jobs
+python -u -m dmp.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['mnist', '529_pollen', '537_houses', 'adult',  'connect_4', '201_pol', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'wide_first, 'wide_first_5x', 'wide_first_20x'], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp04r.jobs
 
 cat ../exp04r.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp04
 
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.01, 0.0075, 0.005, 0.0025, 0.001, 0.00075, 0.0005, 0.00025, 0.0001, 0.000075, 0.00005, 0.000025], datasets: ['537_houses'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp05lr.jobs
+python -u -m dmp.aspect_test "{ mode:list, learning_rates:[0.01, 0.0075, 0.005, 0.0025, 0.001, 0.00075, 0.0005, 0.00025, 0.0001, 0.000075, 0.00005, 0.000025], datasets: ['537_houses'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp05lr.jobs
 
 cat ../exp05lr.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp05
 
@@ -479,9 +479,9 @@ for i in {1..12}; do sbatch -J exp05 -N1 -t480 --gres=gpu:2 slurm_job_runner.sh 
 
 wide_first learning rate sweep:
 
-python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.01, 0.0001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06.jobs
-python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.01, 0.0001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06r.jobs
-python -u -m dmp.experiment.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'residual_modes': ['none', ''full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06m.jobs
+python -u -m dmp.aspect_test "{ mode:list, learning_rates:[0.01, 0.0001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06.jobs
+python -u -m dmp.aspect_test "{ mode:list, learning_rates:[0.01, 0.0001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'residual_modes': ['full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06r.jobs
+python -u -m dmp.aspect_test "{ mode:list, learning_rates:[0.001], datasets: ['537_houses'], 'topologies': [ 'wide_first' ], 'residual_modes': ['none', ''full'], 'budgets': [32, 64, 128, 256, 512, 1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > ../exp06m.jobs
 
 cat ../exp06.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp06
 cat ../exp06r.jobs | python -u -m dmp.job_queue_interface.enqueue dmp exp06

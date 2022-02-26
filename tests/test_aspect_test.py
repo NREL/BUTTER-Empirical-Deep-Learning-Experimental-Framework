@@ -9,7 +9,7 @@ import numpy.testing as npt
 from lmarshal.marshal import Demarshaler
 
 from dmp.data.logging import read_file
-from dmp.experiment.task.aspect_test_task import AspectTestTask
+from dmp.tasksaspect_test.aspect_test_task import AspectTestTask
 
 """
 SQL query to grab results for the test

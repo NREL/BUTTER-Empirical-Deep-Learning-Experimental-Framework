@@ -1,11 +1,11 @@
 
 
 
-from dmp.experiment.structure.n_add import NAdd
-from dmp.experiment.structure.n_dense import NDense
-from dmp.experiment.structure.n_input import NInput
+from dmp.structure.n_add import NAdd
+from dmp.structure.n_dense import NDense
+from dmp.structure.n_input import NInput
 from lmarshal import Marshal, MarshalConfig
-from dmp.experiment.task.aspect_test_task import AspectTestTask
+from dmp.tasksaspect_test.aspect_test_task import AspectTestTask
 from lmarshal.src.demarshaler import Demarshaler
 
 jobqueue_marshal =  Marshal(MarshalConfig(

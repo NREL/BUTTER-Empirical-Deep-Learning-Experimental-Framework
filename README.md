@@ -21,7 +21,7 @@ Be sure you do not have keras installed in this environment, as it will cause ru
 
 ## Running experiments locally
 
-    python -u -m dmp.experiment.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'test_split': 0.1, 'reps': 1, 'mode':'direct' }"
+    python -u -m dmp.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'test_split': 0.1, 'reps': 1, 'mode':'direct' }"
 
 ## Checkpointing
 
@@ -34,7 +34,7 @@ Note:
 - This feature is not compatible with test_split configuration due to the way Keras stores historical losses in callback objects.
 - This feature does not restore the random state, so a result from a session which has been checkpointed and resumed may not be reproducible.
 
-    python -u -m dmp.experiment.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'reps': 1, 'mode':'direct', 'checkpoint_epochs':1, 'jq_uuid':'nursery_500_widefirst_4' }"
+    python -u -m dmp.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'reps': 1, 'mode':'direct', 'checkpoint_epochs':1, 'jq_uuid':'nursery_500_widefirst_4' }"
 
 ## Tensorboard Logging
 
@@ -120,7 +120,7 @@ An example script that sets up the right modules and environment variables to us
 ## Running experiments on Eagle with Sbatch
 
     Create ~/admp file that contains env setup script like above.
-    sbatch -n1 -t18:00:00 --gres=gpu:1 ./srundmp.sh dmp.experiment.aspect_test.py "{'dataset': 'nursery','budgets':[262144, 524288, 1048576, 2097152, 4194304, 8388608], 'topologies' : [ 'wide_first' ] }"
+    sbatch -n1 -t18:00:00 --gres=gpu:1 ./srundmp.sh dmp.aspect_test.py "{'dataset': 'nursery','budgets':[262144, 524288, 1048576, 2097152, 4194304, 8388608], 'topologies' : [ 'wide_first' ] }"
 
 # Job Queue
 
@@ -131,7 +131,7 @@ Create the .jobqueue.json file in your home directory
 Pipe the output of aspect_test.py list into jq_enqueue, with a tag name as the argument
 
 ```
-python -u -m dmp.experiment.aspect_test "{'mode':'list', 'dataset': 'nursery','budgets':[500, 1000], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 2}, 'test_split': 0.1, 'reps': 1, 'log':'postgres'}" \
+python -u -m dmp.aspect_test "{'mode':'list', 'dataset': 'nursery','budgets':[500, 1000], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 2}, 'test_split': 0.1, 'reps': 1, 'log':'postgres'}" \
  | python -u -m dmp.jobqueue_interface.enqueue dmp test_tag
 ```
 
@@ -150,7 +150,7 @@ python -u -m dmp.jq_runner dmp test_tag
 
 ## Aspect Test
 
-Python Module: dmp.experiment.aspect_test
+Python Module: dmp.aspect_test
 
 Full Config:
 ```
@@ -167,7 +167,7 @@ Residuals:
 
 Save small test config to a log file:
 ```
-python -u -m dmp.experiment.aspect_test "{ mode:list, datasets: ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'], 'budgets': [1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > log/jordan_eagle_1.jobs
+python -u -m dmp.aspect_test "{ mode:list, datasets: ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white'], 'topologies': ['rectangle', 'trapezoid', 'exponential', 'wide_first'], 'budgets': [1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432], 'depths': [2,3,4,5,7,8,9,10,12,14,16,18,20], 'log':'postgres' }" > log/jordan_eagle_1.jobs
 ```
 
 Push this log file to the queue

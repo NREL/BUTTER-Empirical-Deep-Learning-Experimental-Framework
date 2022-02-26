@@ -3,14 +3,14 @@ import pickle
 
 import pytest
 
-from dmp.experiment.structure.n_add import NAdd
-from dmp.experiment.structure.n_dense import NDense
-from dmp.experiment.structure.n_input import NInput
+from dmp.structure.n_add import NAdd
+from dmp.structure.n_dense import NDense
+from dmp.structure.n_input import NInput
 from .marshal import Marshal
 from .marshal_config import MarshalConfig
 
 
-@pytest.mark.parametrize("type_key", ['', '%', 'type code'])
+@pytest.mark.parametrize("type_key", ['', '%', 'type code', 'type'])
 @pytest.mark.parametrize("label_key", ['&', '*', 'label'])
 @pytest.mark.parametrize("reference_prefix", ['*', '&', 'ref-', ])
 @pytest.mark.parametrize("escape_prefix", ['!', '__', '\\'])

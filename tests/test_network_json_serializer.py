@@ -1,7 +1,7 @@
 import pytest
 
-from dmp.experiment.structure.algorithm.network_json_deserializer import NetworkJSONDeserializer
-from dmp.experiment.structure.algorithm.network_json_serializer import NetworkJSONSerializer
+from dmp.structure.algorithm.network_json_deserializer import NetworkJSONDeserializer
+from dmp.structure.algorithm.network_json_serializer import NetworkJSONSerializer
 
 
 @pytest.mark.parametrize("serialized", [

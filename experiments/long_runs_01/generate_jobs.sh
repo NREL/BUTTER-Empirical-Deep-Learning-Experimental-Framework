@@ -1,1 +1,1 @@
-python -u -m dmp.experiment.aspect_test $(cat long_runs_01.json) > long_runs_01.jobs
+python -u -m dmp.aspect_test $(cat long_runs_01.json) > long_runs_01.jobs
