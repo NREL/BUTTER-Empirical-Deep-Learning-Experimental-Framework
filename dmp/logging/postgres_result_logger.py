@@ -14,8 +14,8 @@ from psycopg2 import sql
 class PostgresResultLogger(ResultLogger):
     _credentials: Dict[str, any]
     _parameter_map: PostgresParameterMap
-    _experiment_table: sql.SQL
-    _run_table: sql.SQL
+    _experiment_table: sql.Identifier
+    _run_table: sql.Identifier
 
     def __init__(self,
                  credentials: Dict[str, any],
@@ -24,8 +24,8 @@ class PostgresResultLogger(ResultLogger):
                  ) -> None:
         super().__init__()
         self._credentials = credentials
-        self._experiment_table = sql.SQL(experiment_table)
-        self._run_table = sql.SQL(run_table)
+        self._experiment_table = sql.Identifier(experiment_table)
+        self._run_table = sql.Identifier(run_table)
 
         # initialize parameter map
         with CursorManager(self._credentials) as cursor:
@@ -67,11 +67,11 @@ WITH v as (
         )
 ),
 i as (
-    INSERT INTO experiment (parameters)
+    INSERT INTO {experiment_table} (parameters)
     SELECT parameters from v
     ON CONFLICT DO NOTHING
 )
-INSERT INTO run (experiment_id, parameters, {columns})
+INSERT INTO {run_table} (experiment_id, parameters, {columns})
 SELECT 
     e.experiment_id,
     v.*
@@ -82,7 +82,11 @@ WHERE
     e.parameters = v.parameters
 ON CONFLICT DO NOTHING
 ;"""
-                        ).format(columns=columns),
+                        ).format(
+                            columns=columns,
+                            experiment_table=self._experiment_table,
+                            run_table=self._run_table,
+                ),
                 ([
                     parameter_ids,
                     *(run_parameters[c]
