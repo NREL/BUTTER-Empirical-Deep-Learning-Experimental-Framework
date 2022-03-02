@@ -1,21 +1,26 @@
 from typing import Dict
 
+from psycopg2 import sql
+
 
 class PostgresParameterMap:
 
     _parameter_to_id_map: Dict[any, int]
     _id_to_parameter_map: Dict[int, any]
 
-    key_columns = """kind, 
-bool_value, 
-integer_value, 
-real_value, 
-string_value"""
+    key_columns = sql.SQL(',').join(
+        map(sql.Identifier, [
+            'kind',
+            'bool_value',
+            'integer_value',
+            'real_value',
+            'string_value',
+        ]))
 
-    select_parameter = f"""
-SELECT id, {key_columns}
+    select_parameter = sql.SQL("""
+SELECT id, {}
 FROM 
-    parameter """
+    parameter""").format(key_columns)
 
     def __init__(self,
                  cursor,
@@ -35,27 +40,30 @@ FROM
         except KeyError:
             if cursor is not None:
                 typed_values = self._make_typed_values(kind, value)
-                result = cursor.execute(f"""
+                result = cursor.execute(sql.SQL("""
 WITH i as (
     INSERT INTO parameter (
-        {self.key_columns}
+        {}
         )
         VALUES(%s)
     ON CONFLICT DO NOTHING
 )
-{self.select_parameter}
+{}
 WHERE
     kind = %s and
     bool_value IS NOT DISTINCT FROM %s and
     integer_value IS NOT DISTINCT FROM %s and
     real_value IS NOT DISTINCT FROM (%s)::real and
     string_value IS NOT DISTINCT FROM %s
-;""", (
-                    ((kind, *typed_values),),
-                    kind,
-                    *typed_values,
-                )
-                ).fetchone()
+;"""
+                    ).format(
+                        self.key_columns, 
+                        self.select_parameter,
+                        ), (
+                        ((kind, *typed_values),),
+                        kind,
+                        *typed_values,
+                    )).fetchone()
 
                 if result is not None:
                     self._register_parameter(result)
@@ -76,10 +84,11 @@ WHERE
             return self.parameter_value_from_id[parameter_id]
         except KeyError:
             if cursor is not None:
-                result = cursor.execute(f"""
-{self.select_parameter}
+                result = cursor.execute(sql.SQL("""
+{}
 WHERE id = %s
-;""", (id,)).fetchone()
+;"""
+                    ).format(self.select_parameter), (id,)).fetchone()
                 if result is not None:
                     self._register_parameter(result)
                     return self.parameter_value_from_id(parameter_id, None)

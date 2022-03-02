@@ -28,31 +28,31 @@ import math
 from psycopg2.extensions import register_adapter, AsIs
 
 
-def addapt_numpy_float64(numpy_float64):
+def adapt_numpy_float64(numpy_float64):
     return AsIs(numpy_float64)
 
 
-def addapt_numpy_int64(numpy_int64):
+def adapt_numpy_int64(numpy_int64):
     return AsIs(numpy_int64)
 
 
-def addapt_numpy_float32(numpy_float32):
+def adapt_numpy_float32(numpy_float32):
     return AsIs(numpy_float32)
 
 
-def addapt_numpy_int32(numpy_int32):
+def adapt_numpy_int32(numpy_int32):
     return AsIs(numpy_int32)
 
 
-def addapt_numpy_array(numpy_array):
+def adapt_numpy_array(numpy_array):
     return AsIs(numpy_array.tolist())
 
 
-register_adapter(numpy.float64, addapt_numpy_float64)
-register_adapter(numpy.int64, addapt_numpy_int64)
-register_adapter(numpy.float32, addapt_numpy_float32)
-register_adapter(numpy.int32, addapt_numpy_int32)
-register_adapter(numpy.ndarray, addapt_numpy_array)
+register_adapter(numpy.float64, adapt_numpy_float64)
+register_adapter(numpy.int64, adapt_numpy_int64)
+register_adapter(numpy.float32, adapt_numpy_float32)
+register_adapter(numpy.int32, adapt_numpy_int32)
+register_adapter(numpy.ndarray, adapt_numpy_array)
 
 # async def fetch_as_dataframe(con: asyncpg.Connection, query: str, *args):
 #     stmt = await con.prepare(query)

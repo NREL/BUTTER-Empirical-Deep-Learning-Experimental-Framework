@@ -34,6 +34,7 @@ class Worker:
         
         # log task run
         experiment_parameters, run_parameters = task.parameters
+        run_parameters['job_id'] = job.id
         experiment_parameters.union(runtime_parameters)
         self.logger.log(experiment_parameters, run_parameters, history)
         

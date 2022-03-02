@@ -7,7 +7,6 @@ import uuid
 @dataclass
 class Task(ABC):
 
-    id : uuid.UUID
     seed: int
 
     @abstractmethod
@@ -28,7 +27,7 @@ class Task(ABC):
 
     @property
     def _run_parameters(self):
-        return ['seed', 'id']
+        return ['seed']
 
     @staticmethod
     def extract_parameters(target, exclude={}, connector='.'):

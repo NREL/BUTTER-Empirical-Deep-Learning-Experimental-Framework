@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Iterable, Mapping, Union
+from dmp.logging.postgres_parameter_map import PostgresParameterMap
 from dmp.logging.result_logger import ResultLogger
 
 from dmp.task.task import Task
@@ -12,15 +13,17 @@ from psycopg2 import sql
 
 class PostgresResultLogger(ResultLogger):
     _credentials: Dict[str, any]
-    _parameter_map: Dict[any, int]
+    _parameter_map: PostgresParameterMap
 
     def __init__(self,
                  credentials: Dict[str, any],
                  ) -> None:
         super().__init__()
         self._credentials = credentials
-        self._parameter_to_id_map, self._id_to_parameter_map = \
-            self._make_parameter_maps()
+
+        # initialize parameter map
+        with CursorManager(self._credentials) as cursor:
+            self._parameter_map = PostgresParameterMap(cursor)
 
     def log(
         self,
@@ -29,66 +32,54 @@ class PostgresResultLogger(ResultLogger):
         result: Dict,
     ) -> None:
         with CursorManager(self._credentials) as cursor:
-            experiment_parameter_ids = \
-                self.get_parameter_ids(experiment_parameters)
+            # get sorted parameter ids list
+            parameter_ids = sorted(
+                self._parameter_map.to_parameter_ids(experiment_parameters))
 
             # get experiment_id
-            # if experiment doesn't exist, create it using experiment_parameters
-            pass
+            run_columns = sorted(list(run_parameters.keys()))
+            result_columns = sorted(list(result.keys()))
+            columns = \
+                self._make_identifier_list([
+                    *run_columns,
+                    *result_columns,
+                ])
 
-            # insert run_parameters and result into run table
+            result = cursor.execute(
+                sql.SQL("""
+WITH v as (
+    SELECT
+        parameters::smallint[] parameters,
+        {columns}
+    FROM
+        (VALUES (%s), )  AS t (
+            parameters, 
+            {columns}
+        )
+),
+i as (
+    INSERT INTO experiment (parameters)
+    SELECT parameters from v
+    ON CONFLICT DO NOTHING
+)
+INSERT INTO run (experiment_id, parameters, {columns})
+SELECT 
+    e.experiment_id,
+    v.*
+FROM
+    v,
+    experiment e
+WHERE
+    e.parameters = v.parameters
+ON CONFLICT DO NOTHING
+;"""
+                        ).format(columns=columns),
+                ([
+                    parameter_ids,
+                    *(run_parameters[c]
+                      for c in run_columns),
+                    *(result[c] for c in result_columns),
+                ],))
 
-        pass
-
-    def get_parameter_ids(self, cursor, parameters):
-        return [self.get_parameter_id(k, v) for k, v in parameters.items()]
-
-    def get_parameter_id(self, cursor, key, value):
-        # get parameter id from table
-        # if it doesn't exist, create it
-        cursor.execute(sql.SQL("""
-INSERT INTO parameter (kind, value) VALUES(%s) ON CONFLICT(value) DO NOTHING;
-"""), [(key, value)])
-
-        parameter_id = cursor.execute(sql.SQL("""
-SELECT id FROM parameter WHERE 
-    int_value = %s AND
-    real_value = %s AND
-    string_value = %s;""")).fetchone()
-
-        return parameter_id
-
-    def _make_parameter_maps(self):
-        df = pd.read_sql(
-            f'''SELECT id, kind, real_value, integer_value, string_value from parameter''',
-            db.execution_options(stream_results=True, postgresql_with_hold=True), coerce_float=False,
-            params=())
-        df['value'] = df.real_value.combine_first(df.integer_value).\
-            combine_first(df.string_value)
-        print(df)
-
-        parameter_to_id_map = {kind : {} for kind in df['kind'].unique().tolist()}
-        id_to_parameter_map = {}
-        for index, row in df.iterrows():
-            i = row['id']
-            k = row['kind']
-            v = row['value'] 
-            
-            parameter_to_id_map[k][v] = i
-            id_to_parameter_map[i] = (k, v)
-        return parameter_to_id_map, id_to_parameter_map
-        
-    def _to_parameter_id(self, kind, value):
-        return self.parameter_to_id_map[kind][value]
-
-    def _to_parameter_ids(self, kvl):
-        return [self._to_parameter_id(kind, value) for kind, value in kvl]
-
-    def _parameter_from_id(self, i):
-        if isinstance(i, list):
-            return [self._parameter_from_id(e) for e in i]
-        return self.id_to_parameter_map[i]
-
-    def _parameter_value_from_id(self, i):
-        return self._parameter_from_id[1]
-
+    def _make_identifier_list(self, identifiers):
+        return sql.SQL(',').join(map(sql.Identifier, identifiers))
