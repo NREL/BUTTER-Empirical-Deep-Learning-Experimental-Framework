@@ -14,12 +14,18 @@ from psycopg2 import sql
 class PostgresResultLogger(ResultLogger):
     _credentials: Dict[str, any]
     _parameter_map: PostgresParameterMap
+    _experiment_table: sql.SQL
+    _run_table: sql.SQL
 
     def __init__(self,
                  credentials: Dict[str, any],
+                 experiment_table: str = 'experiment',
+                 run_table: str = 'run'
                  ) -> None:
         super().__init__()
         self._credentials = credentials
+        self._experiment_table = sql.SQL(experiment_table)
+        self._run_table = sql.SQL(run_table)
 
         # initialize parameter map
         with CursorManager(self._credentials) as cursor:
@@ -34,16 +40,19 @@ class PostgresResultLogger(ResultLogger):
         with CursorManager(self._credentials) as cursor:
             # get sorted parameter ids list
             parameter_ids = sorted(
-                self._parameter_map.to_parameter_ids(experiment_parameters))
+                self._parameter_map.to_parameter_ids(
+                    experiment_parameters,
+                    cursor
+                ))
 
             # get experiment_id
             run_columns = sorted(list(run_parameters.keys()))
             result_columns = sorted(list(result.keys()))
-            columns = \
-                self._make_identifier_list([
+            columns = sql.SQL(',').join(
+                map(sql.Identifier, [
                     *run_columns,
                     *result_columns,
-                ])
+                ]))
 
             result = cursor.execute(
                 sql.SQL("""
@@ -80,6 +89,3 @@ ON CONFLICT DO NOTHING
                       for c in run_columns),
                     *(result[c] for c in result_columns),
                 ],))
-
-    def _make_identifier_list(self, identifiers):
-        return sql.SQL(',').join(map(sql.Identifier, identifiers))
