@@ -34,8 +34,8 @@ FROM {}"""
         self._parameter_to_id_map = {}
         self._id_to_parameter_map = {}
 
-        result = cursor.execute(self.select_parameter)
-        for row in result.fetchall():
+        cursor.execute(self._select_parameter)
+        for row in cursor.fetchall():
             self._register_parameter(row)
 
     def to_parameter_id(self, kind, value, cursor=None):
@@ -44,7 +44,7 @@ FROM {}"""
         except KeyError:
             if cursor is not None:
                 typed_values = self._make_typed_values(kind, value)
-                result = cursor.execute(sql.SQL("""
+                cursor.execute(sql.SQL("""
 WITH i as (
     INSERT INTO {} (
         {}
@@ -68,7 +68,8 @@ WHERE
                     ((kind, *typed_values),),
                     kind,
                     *typed_values,
-                )).fetchone()
+                ))
+                result = cursor.fetchone()
 
                 if result is not None:
                     self._register_parameter(result)
@@ -89,14 +90,14 @@ WHERE
             return self.parameter_value_from_id[parameter_id]
         except KeyError:
             if cursor is not None:
-                result = \
-                    cursor.execute(
+                cursor.execute(
                         sql.SQL("""
 {}
 WHERE id = %s
 ;"""
-                                ).format(self._select_parameter),
-                        (id,)).fetchone()
+                            ).format(self._select_parameter),
+                    (id,))
+                result = cursor.fetchone()
                 if result is not None:
                     self._register_parameter(result)
                     return self.parameter_value_from_id(parameter_id, None)

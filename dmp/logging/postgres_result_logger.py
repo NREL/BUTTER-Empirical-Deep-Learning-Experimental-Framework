@@ -54,7 +54,7 @@ class PostgresResultLogger(ResultLogger):
                     *result_columns,
                 ]))
 
-            result = cursor.execute(
+            cursor.execute(
                 sql.SQL("""
 WITH v as (
     SELECT
