@@ -13,8 +13,8 @@ def _get_sql_engine():
             filename = os.path.join(os.environ['HOME'], ".jobqueue.json")
             _data = json.loads(open(filename).read())
             _credentials = _data[_database]
-            user = _credentials["user"]
-        except KeyError as e:
+            _credentials["user"]
+        except KeyError:
             raise Exception("No credetials for {} found in {}".format(_database, filename))
     connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
     return sqlalchemy.create_engine(connection_string)
@@ -28,7 +28,7 @@ def connect(credentials : {}):
         wait_time = 60.0
 
         try:
-            connection = psycopg2.connect(**credentials)
+            psycopg2.connect(**credentials)
         except psycopg2.OperationalError as e:
             print(f'OperationalError while connecting to database: {e}', flush=True)
 

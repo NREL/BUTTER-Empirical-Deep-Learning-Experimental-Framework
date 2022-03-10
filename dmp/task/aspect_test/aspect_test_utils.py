@@ -1,44 +1,21 @@
-import gc
-import json
 import math
-from multiprocessing.sharedctypes import Value
-import os
 import random
-import sys
 from copy import deepcopy
 from functools import singledispatchmethod
 import time
 from typing import Callable, Dict, Tuple, Union, List, Optional
 
 import numpy
-import pandas
 import tensorflow
-from keras_buoy.models import ResumableModel
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import (
-    callbacks,
-    metrics,
-    optimizers,
-)
-from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.python.keras import losses, Input
-from tensorflow.python.keras.callbacks import Callback
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
 
-from command_line_tools import (
-    command_line_config,
-    run_tools,
-)
-from dmp.data.logging import write_log
-from dmp.data.pmlb import pmlb_loader
-from dmp.data.pmlb.pmlb_loader import load_dataset
-from dmp.structure.algorithm.network_json_serializer import NetworkJSONSerializer
 from dmp.structure.n_add import NAdd
 from dmp.structure.n_dense import NDense
 from dmp.structure.n_input import NInput
 from dmp.structure.network_module import NetworkModule
-from dmp.jobqueue_interface import worker
 
 
 def set_random_seeds(seed: Optional[int]) -> int:
@@ -172,7 +149,7 @@ def make_network(
         internal_activation,
         output_activation,
         depth,
-        topology
+        shape
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
@@ -201,11 +178,11 @@ def make_network(
         assert residual_mode in [
             'full', 'none'], f"Invalid residual mode {residual_mode}"
         if residual_mode == 'full':
-            assert topology in ['rectangle',
-                                'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {topology}"
+            assert shape in ['rectangle',
+                                'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {shape}"
 
             # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
-            first_residual_layer = 1 if topology == "wide_first" else 0
+            first_residual_layer = 1 if shape == "wide_first" else 0
             # Output layer is assumed to be of a different dimension, and will therefore not directly receive skip connections
             last_residual_layer = depth - 1
             if d > first_residual_layer and d < last_residual_layer:
@@ -218,7 +195,7 @@ def make_network(
     return current
 
 
-def make_keras_network_from_network_module(target: NetworkModule, model_cache: dict = {}) -> (tensorflow.keras.Model):
+def make_keras_network_from_network_module(target: NetworkModule, model_cache: dict = {}):
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
@@ -336,10 +313,10 @@ def find_best_layout_for_budget_and_depth(
         input_activation,
         internal_activation,
         output_activation,
-        budget,
+        size,
         make_widths: Callable[[int], List[int]],
         depth,
-        topology
+        shape
 ) -> Tuple[int, List[int], NetworkModule]:
     best = (math.inf, None, None)
 
@@ -353,9 +330,9 @@ def find_best_layout_for_budget_and_depth(
                                internal_activation,
                                output_activation,
                                depth,
-                               topology
+                               shape
                                )
-        delta = count_num_free_parameters(network) - budget
+        delta = count_num_free_parameters(network) - size
 
         if abs(delta) < abs(best[0]):
             best = (delta, widths, network)
@@ -433,24 +410,24 @@ def get_wide_first_20x(num_outputs: int, depth: int) -> Callable[[float], List[i
     return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 20)
 
 
-def widths_factory(topology):
-    if topology == 'rectangle':
+def widths_factory(shape):
+    if shape == 'rectangle':
         return get_rectangular_widths
-    elif topology == 'trapezoid':
+    elif shape == 'trapezoid':
         return get_trapezoidal_widths
-    elif topology == 'exponential':
+    elif shape == 'exponential':
         return get_exponential_widths
-    elif topology == 'wide_first_2x':
+    elif shape == 'wide_first_2x':
         return get_wide_first_2x
-    elif topology == 'wide_first_4x':
+    elif shape == 'wide_first_4x':
         return get_wide_first_4x
-    elif topology == 'wide_first_5x':
+    elif shape == 'wide_first_5x':
         return get_wide_first_5x
-    elif topology in {'wide_first', 'wide_first_10x'}:
+    elif shape in {'wide_first', 'wide_first_10x'}:
         return get_wide_first_layer_rectangular_other_layers_widths
-    elif topology == 'wide_first_16x':
+    elif shape == 'wide_first_16x':
         return get_wide_first_16x
-    elif topology == 'wide_first_20x':
+    elif shape == 'wide_first_20x':
         return get_wide_first_20x
     else:
-        assert False, 'Topology "{}" not recognized.'.format(topology)
+        assert False, 'Shape "{}" not recognized.'.format(shape)

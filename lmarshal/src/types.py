@@ -1,4 +1,4 @@
-from typing import Callable, Union, Optional
+from typing import Callable, Union
 
 
 TypeCode = Union[int, str]

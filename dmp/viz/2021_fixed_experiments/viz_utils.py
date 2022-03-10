@@ -1,7 +1,5 @@
-import sys
 import datetime
 from joblib import Memory
-from ipywidgets import interact, interact_manual
 import inspect
 
 from dmp.data.logging import _get_sql_engine
@@ -10,7 +8,6 @@ from dmp.data.logging import get_environment
 import pandas as pd
 import numpy as np
 
-import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -186,7 +183,7 @@ def partitioned_interpolation(df, partition_keys, interpolation_key, value_key, 
 
     interpolation_series = df[interpolation_key]
     interpolation_index = np.linspace(np.min(interpolation_series), np.max(interpolation_series), resolution)
-    partition_indexes = [np.linspace(0, len(p), len(p)) for p in partitions]
+    [np.linspace(0, len(p), len(p)) for p in partitions]
     
     def do_interpolation(a):
         if type(a) is list:

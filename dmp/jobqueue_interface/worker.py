@@ -1,14 +1,11 @@
 import argparse
 import gc
 import uuid
-import random
 
 
 import jobqueue
 import tensorflow
 
-import dmp.aspect_test as exp
-from dmp.data.logging import write_log
 from .common import jobqueue_marshal
 
 

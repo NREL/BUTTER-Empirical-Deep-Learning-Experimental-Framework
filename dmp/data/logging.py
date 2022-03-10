@@ -23,10 +23,8 @@ TODO:
 - Separate file based and postgres based logging into separate modules / classes so sqlalchemy becomes an optional installation
 
 """
-import numpy as np
 
 from command_line_tools import (
-    command_line_config,
     run_tools,
 )
 import os
@@ -51,10 +49,9 @@ class NpEncoder(SafeJSONEncoder):
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.schema import FetchedValue
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, Text, TIMESTAMP, String, Index
-from sqlalchemy.dialects.postgresql import UUID, JSON, JSONB
+from sqlalchemy import Column, Index, Integer, String, TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 import sqlalchemy
 
 _credentials = None
@@ -81,8 +78,8 @@ def _get_sql_engine():
             filename = os.path.join(os.environ['HOME'], ".jobqueue.json")
             _data = json.loads(open(filename).read())
             _credentials = _data[_database]
-            user = _credentials["user"]
-        except KeyError as e:
+            _credentials["user"]
+        except KeyError:
             raise Exception("No credetials for {} found in {}".format(_database, filename))
     connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
     return sqlalchemy.create_engine(connection_string)
@@ -139,7 +136,9 @@ def write_log(log_data, groupname, path="./log", log_environment=True, name=None
         write_file(name, _log_data, path)
 
 
-import subprocess, os, platform, datetime
+import os
+import platform
+import subprocess
 
 
 def get_environment():

@@ -1,25 +1,19 @@
-import dataclasses
-from dataclasses import dataclass, field
-from os import environ
-import time
-from typing import Type
+from dataclasses import dataclass
+import os
+
+from dmp.data.pmlb import pmlb_loader
 
 
 from .aspect_test_task import AspectTestTask
-from .aspect_test_result import AspectTestResult
-from sklearn.model_selection import train_test_split
-
+import tensorflow.keras.metrics as metrics
+import tensorflow.keras.callbacks as callbacks
 from .aspect_test_utils import *
-from dmp.batch.batch import CartesianBatch
-from dmp.task.task import Task
-from dmp.record.base_record import BaseRecord
-from dmp.record.history_record import HistoryRecord
-from dmp.record.val_loss_record import ValLossRecord
+from dmp.task.task import Parameter
 
 import pandas
 import numpy
-import uuid
 
+# from keras_buoy.models import ResumableModel
 
 _datasets = pmlb_loader.load_dataset_index()
 
@@ -38,7 +32,7 @@ class AspectTestExecutor(AspectTestTask):
     inputs: Optional[numpy.ndarray] = None
     outputs: Optional[numpy.ndarray] = None
 
-    def __call__(self) -> None:
+    def __call__(self) -> Tuple[Dict[str, Parameter], Dict[str, any]]:
         # Configure hardware
         if self.tensorflow_strategy is None:
             self.tensorflow_strategy = tensorflow.distribute.get_strategy()
@@ -48,7 +42,7 @@ class AspectTestExecutor(AspectTestTask):
 
         # Load dataset
         self.dataset, self.inputs, self.outputs =  \
-            load_dataset(_datasets, self.dataset)
+            pmlb_loader.load_dataset(_datasets, self.dataset)
 
         # prepare dataset shuffle, split, and label noise:
         prepared_config = prepare_dataset(
@@ -65,21 +59,29 @@ class AspectTestExecutor(AspectTestTask):
         self.output_activation, self.run_loss = \
             compute_network_configuration(num_outputs, self.dataset)
 
+        # TODO: make it so we don't need this hack
+        shape = self.shape
+        residual_mode = None
+        residual_suffix = '_residual'
+        if shape.endswith(residual_suffix):
+            residual_mode = 'full'
+            shape = shape[0:-len(residual_suffix)]
+
         # Build NetworkModule network
         delta, widths, self.network_module = find_best_layout_for_budget_and_depth(
             self.inputs,
-            self.residual_mode,
+            residual_mode,
             self.input_activation,
             self.activation,
             self.output_activation,
-            self.budget,
-            widths_factory(self.topology)(num_outputs, self.depth),
+            self.size,
+            widths_factory(shape)(num_outputs, self.depth),
             self.depth,
-            self.topology
+            shape
         )
 
-        print('begin reps: budget: {}, depth: {}, widths: {}, rep: {}'.format(self.budget, self.depth, self.widths,
-                                                                              self.rep))
+        print('begin reps: size: {}, depth: {}, widths: {}, rep: {}'.format(self.size, self.depth, self.widths,
+                                                                            self.rep))
 
         # Create and execute network using Keras
         with self.tensorflow_strategy.scope():
@@ -124,20 +126,20 @@ class AspectTestExecutor(AspectTestTask):
                 run_callbacks.append(
                     callbacks.EarlyStopping(**self.early_stopping))
 
-            # optionally enable checkpoints
-            if self.save_every_epochs is not None and self.save_every_epochs > 0:
-                DMP_CHECKPOINT_DIR = os.getenv(
-                    'DMP_CHECKPOINT_DIR', default='checkpoints')
-                if not os.path.exists(DMP_CHECKPOINT_DIR):
-                    os.makedirs(DMP_CHECKPOINT_DIR)
+            # # optionally enable checkpoints
+            # if self.save_every_epochs is not None and self.save_every_epochs > 0:
+            #     DMP_CHECKPOINT_DIR = os.getenv(
+            #         'DMP_CHECKPOINT_DIR', default='checkpoints')
+            #     if not os.path.exists(DMP_CHECKPOINT_DIR):
+            #         os.makedirs(DMP_CHECKPOINT_DIR)
 
-                save_path = os.path.join(
-                    DMP_CHECKPOINT_DIR, self.job_id + '.h5')
+            #     save_path = os.path.join(
+            #         DMP_CHECKPOINT_DIR, self.job_id + '.h5')
 
-                self.keras_model = ResumableModel(
-                    self.keras_model,
-                    save_every_epochs=self.save_every_epochs,
-                    to_path=save_path)
+            #     self.keras_model = ResumableModel(
+            #         self.keras_model,
+            #         save_every_epochs=self.save_every_epochs,
+            #         to_path=save_path)
 
             # fit / train model
             history = self.keras_model.fit(
@@ -156,9 +158,9 @@ class AspectTestExecutor(AspectTestTask):
             # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
             # model.save(f'./log/models/{run_name}.h5', save_format='h5')
 
-            runtime_parameters = {
+            run_parameters = {
                 'tensorflow_version': tensorflow.__version__,
             }
 
             # return the result record
-            return runtime_parameters, history
+            return run_parameters, history

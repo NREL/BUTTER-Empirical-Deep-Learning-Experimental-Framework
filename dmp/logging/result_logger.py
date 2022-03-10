@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, Mapping, Union
-
-from dmp.task.task import Task
+from typing import Dict
+from uuid import UUID
 
 
 class ResultLogger(ABC):
@@ -16,10 +15,10 @@ class ResultLogger(ABC):
     @abstractmethod
     def log(
         self,
+        run_id: UUID,
         experiment_parameters: Dict,
         run_parameters: Dict,
-        result : Dict,
+        run_values: Dict,
+        result: Dict,
     ) -> None:
         pass
-
-

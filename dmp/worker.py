@@ -30,11 +30,19 @@ class Worker:
         task : Task = task_marshal.demarshal(job.command)
 
         # run task
-        runtime_parameters, history = task()
+        run_parameters, history = task()
         
         # log task run
-        experiment_parameters, run_parameters = task.parameters
-        run_parameters['job_id'] = job.id
-        experiment_parameters.union(runtime_parameters)
-        self.logger.log(experiment_parameters, run_parameters, history)
+        experiment_parameters, run_parameters, run_values = task.parameters
+        # run_values['queue_id'] = self._job_queue._queue_id
+        
+        run_values['job_id'] = job.id
+        
+
+        self.logger.log(
+            experiment_parameters, 
+            run_parameters, 
+            specific_parameters, # logged to columns
+            history,
+            )
         

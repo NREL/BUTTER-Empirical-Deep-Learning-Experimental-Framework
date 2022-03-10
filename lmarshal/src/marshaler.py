@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Set, Type, Mapping, Iterable
+from typing import Dict, Iterable, Mapping, Set, Type
 
 from .common_marshaler import CommonMarshaler
 from .marshal_config import MarshalConfig

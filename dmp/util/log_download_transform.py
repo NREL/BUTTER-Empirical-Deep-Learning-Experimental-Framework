@@ -16,7 +16,7 @@ try:
     _data = json.loads(open(filename).read())
     _credentials = _data[_database]
     user = _credentials["user"]
-except KeyError as e:
+except KeyError:
     raise Exception("No credetials for {} found in {}".format(_database, filename))
 connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
 # connection_string = 'postgresql+asyncpg://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
@@ -346,7 +346,6 @@ def insert_on_duplicate(table, conn, keys, data_iter):
 
 def func():
     # log_filename = 'aspect_analysis_datasets.feather'
-    log_filename = 'fixed_3k_1.parquet'
     groups = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
     source_table = 'log'
     dest_table_base = 'materialized_experiments_3_base'
@@ -399,7 +398,6 @@ def func():
     ids = ids['id'].to_numpy()
     count = ids.size
 
-    loaded = 0
     chunk_size = 16
     # max_buffered_chunks = 4
     print(f'Loading {count} records from database...')
@@ -469,7 +467,7 @@ def func():
     # for i in range(0, num_readers):
     #     read_chunk(i)
     with Pool(num_readers) as p:
-        data_load = p.map(read_chunk, range(0, num_readers))
+        p.map(read_chunk, range(0, num_readers))
     # data_load = Parallel(n_jobs=num_readers, batch_size=1, backend='multiprocessing')(
     #     delayed(read_chunk(i)) for i in range(num_readers))
 
@@ -477,4 +475,5 @@ def func():
     print(f'Processed {count} entries in {delta_t}s at a rate of {count / delta_t} entries / second.')
 
 
-func()
+if __name__ == "__main__":
+    func()

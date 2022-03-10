@@ -1,15 +1,9 @@
-import pytest
-import json
-import sys
-import random
 
-import tensorflow as tf
 import numpy.testing as npt
 
 from lmarshal.marshal import Demarshaler
 
 from dmp.data.logging import read_file
-from dmp.tasksaspect_test.aspect_test_task import AspectTestTask
 
 """
 SQL query to grab results for the test
@@ -57,7 +51,6 @@ def test_fixed_regression():
     """
     Run the test against a matrix of data for which we know the random seed. Therefore, results can be exact.
     """
-    pass
 
 
 

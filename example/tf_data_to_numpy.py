@@ -11,11 +11,9 @@ Example from: https://www.tensorflow.org/datasets/keras_example
 """
 
 # !pip install tensorflow-datasets
-from pprint import pprint
 
 import numpy
 import tensorflow_datasets
-import tensorflow
 
 # Load MNIST
 (ds_train, ds_test), ds_info = tensorflow_datasets.load(

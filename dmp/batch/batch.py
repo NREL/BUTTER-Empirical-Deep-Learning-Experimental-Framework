@@ -10,7 +10,6 @@ class CartesianBatch():
         """
         Return the class for which tasks will be instantiated.
         """
-        pass
 
     def __iter__(self):
         """
