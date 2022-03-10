@@ -14,6 +14,7 @@ from dmp.logging.postgres_parameter_map import PostgresParameterMap
 
 sys.path.append("../../")
 
+psycopg2.extras.register_uuid()
 
 class ParameterUpdate:
 
@@ -72,8 +73,8 @@ class ParameterUpdate:
     FROM jobqueue j, run r
     WHERE 
         r.job_id = j.uuid
-        AND j.uuid IN (%s)
-;"""), ids)
+        AND j.uuid IN %s
+;"""), (ids,))
             rows = list(cursor.fetchall())
             values = [self.convert_row(row) for row in rows]
 
@@ -220,14 +221,12 @@ if __name__ == "__main__":
     print(f'loaded {len(ids)}.')
 
     from pathos.multiprocessing import Pool
-    num_readers = 16
+    num_readers = 1
     chunk_size = 8192
     chunks = [
         tuple(ids[c*chunk_size: min(len(ids), (c+1)*chunk_size)])
-        for c in range(int(ceil(len(ids/chunk_size))))]
+        for c in range(int(ceil(len(ids)/chunk_size)))]
     print(f'created {len(chunks)} chunks')
+    # ParameterUpdate(credentials, chunks[0])
     with Pool(num_readers) as p:
-        p.map(lambda c : ParameterUpdate(c), chunks)
-
-    # for
-    # ParameterUpdate(credentials, ids)
+        p.map(lambda c : ParameterUpdate(credentials, c), chunks)
