@@ -253,5 +253,9 @@ if __name__ == "__main__":
         for c in range(int(ceil(len(ids)/chunk_size)))]
     print(f'created {len(chunks)} chunks')
     # ParameterUpdate(credentials, chunks[0])
+    def func(c):
+        ParameterUpdate(credentials, c)
+        return None
+
     with Pool(num_readers) as p:
-        p.apply(lambda c : ParameterUpdate(credentials, c), chunks)
+        p.map(func, chunks)
