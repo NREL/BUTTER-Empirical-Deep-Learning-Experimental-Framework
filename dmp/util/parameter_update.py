@@ -84,7 +84,6 @@ class ParameterUpdate:
                 for e in values))
             cursor.execute(
                 sql.SQL("""
-    set lock_timeout = 100;
     WITH v as (
         SELECT
             job_id::uuid job_id,
@@ -101,6 +100,11 @@ class ParameterUpdate:
                 run_parameters,
                 {run_columns}
                 )
+    ),
+    x AS (
+        SELECT experiment_id FROM {experiment_table} e
+        WHERE e.experiment_id IN (SELECT distinct experiment_id from v)
+        FOR UPDATE SKIP LOCKED
     )
     UPDATE {experiment_table} e SET
         parameters = v.experiment_parameters
@@ -108,8 +112,8 @@ class ParameterUpdate:
         v
     WHERE
         e.experiment_id = v.experiment_id
+        AND e.experiment_id IN (SELECT experiment_id from x)
     ;
-    set lock_timeout = 0;
     """
                         ).format(
                     run_columns=sql.SQL(',').join(
@@ -201,6 +205,7 @@ class ParameterUpdate:
             task.parameters
 
         run_parameters['tensorflow_version'] = '2.6.0'
+        run_parameters.update(experiment_parameters)
 
         job_id = row[0]
 
