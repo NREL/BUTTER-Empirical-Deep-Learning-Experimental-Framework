@@ -84,6 +84,7 @@ class ParameterUpdate:
                 for e in values))
             cursor.execute(
                 sql.SQL("""
+    set lock_timeout = 100;
     WITH v as (
         SELECT
             job_id::uuid job_id,
@@ -107,7 +108,9 @@ class ParameterUpdate:
         v
     WHERE
         e.experiment_id = v.experiment_id
-    ;"""
+    ;
+    set lock_timeout = 0;
+    """
                         ).format(
                     run_columns=sql.SQL(',').join(
                         map(sql.Identifier, self._run_columns)),
@@ -186,6 +189,10 @@ class ParameterUpdate:
 
         if kwargs.get('residual_mode', None) == 'full':
             kwargs['shape'] = kwargs['shape'] + '_' + 'residual'
+        
+        if kwargs['label_noise'] == 'none':
+            kwargs['label_noise'] = 0.0
+
         task = AspectTestTask(**kwargs)
 
         # pprint(task.extract_parameters())
