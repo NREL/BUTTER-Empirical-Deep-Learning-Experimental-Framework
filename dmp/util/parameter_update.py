@@ -100,15 +100,40 @@ class ParameterUpdate:
                 run_parameters,
                 {run_columns}
                 )
-    ),
-    ei AS (
-        UPDATE {experiment_table} e SET
-            parameters = v.experiment_parameters
-        FROM 
-            v
-        WHERE
-            e.experiment_id = v.experiment_id AND
-            e.parameters <> v.experiment_parameters
+    )
+    UPDATE {experiment_table} e SET
+        parameters = v.experiment_parameters
+    FROM 
+        v
+    WHERE
+        e.experiment_id = v.experiment_id
+    ;"""
+                        ).format(
+                    run_columns=sql.SQL(',').join(
+                        map(sql.Identifier, self._run_columns)),
+                    experiment_table=self._experiment_table,
+                    run_table=self._run_table,
+                    run_settings_table=self._run_settings_table,
+                ))
+                
+            cursor.execute(
+                sql.SQL("""
+    WITH v as (
+        SELECT
+            job_id::uuid job_id,
+            experiment_id,
+            experiment_parameters::smallint[] experiment_parameters,
+            run_parameters::smallint[] run_parameters,
+            seed::bigint seed,
+            save_every_epochs::smallint save_every_epochs
+        FROM
+            (VALUES """ + values_sql + """ ) AS t (
+                job_id,
+                experiment_id,
+                experiment_parameters, 
+                run_parameters,
+                {run_columns}
+                )
     )
     INSERT INTO {run_settings_table} (
         job_id,
@@ -221,7 +246,7 @@ if __name__ == "__main__":
     print(f'loaded {len(ids)}.')
 
     from pathos.multiprocessing import Pool
-    num_readers = 1
+    num_readers = 32
     chunk_size = 8192
     chunks = [
         tuple(ids[c*chunk_size: min(len(ids), (c+1)*chunk_size)])
