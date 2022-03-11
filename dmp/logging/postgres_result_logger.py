@@ -108,18 +108,19 @@ WITH v as (
             {run_columns}
             )
 ),
-ir as (
-    INSERT INTO {experiment_table} (
-        experiment_parameters,
-        {experiment_columns}
-    )
-    SELECT * FROM
-    (
+exp_to_insert as (
     SELECT 
         experiment_parameters,
         {experiment_columns}
     FROM v
     WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)) a
+),
+ir as (
+    INSERT INTO {experiment_table} (
+        experiment_parameters,
+        {experiment_columns}
+    )
+    SELECT * FROM exp_to_insert
     ON CONFLICT DO NOTHING
     RETURNING 
         experiment_id, 
