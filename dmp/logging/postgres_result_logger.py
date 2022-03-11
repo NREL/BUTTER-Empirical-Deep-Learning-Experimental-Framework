@@ -113,11 +113,13 @@ ir as (
         experiment_parameters,
         {experiment_columns}
     )
+    SELECT * FROM
+    (
     SELECT 
         experiment_parameters,
         {experiment_columns}
     FROM v
-    WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
+    WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)) a
     ON CONFLICT DO NOTHING
     RETURNING 
         experiment_id, 
