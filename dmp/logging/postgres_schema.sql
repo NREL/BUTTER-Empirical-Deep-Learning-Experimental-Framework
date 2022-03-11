@@ -1,3 +1,4 @@
+
 CREATE TABLE IF NOT EXISTS experiment_
 (
     experiment_id serial NOT NULL,
@@ -77,7 +78,7 @@ create index on run_ using hash(job_id);
 
 CREATE TABLE IF NOT EXISTS parameter_
 (
-    id smallserial NOT NULL PRIMARY KEY,
+    id smallserial NOT NULL primary key,
     bool_value boolean,
     real_value real,
     integer_value bigint,
@@ -89,3 +90,4 @@ CREATE UNIQUE INDEX on parameter_ (kind, bool_value) include (id) where bool_val
 CREATE UNIQUE INDEX on parameter_ (kind, real_value) include (id) where real_value is not null;
 CREATE UNIQUE INDEX on parameter_ (kind, integer_value) include (id) where integer_value is not null;
 CREATE UNIQUE INDEX on parameter_ (kind, string_value) include (id) where string_value is not null;
+CREATE UNIQUE INDEX on parameter_ (kind) include (id) where bool_value is null and real_value is null and integer_value is null and string_value is null;
