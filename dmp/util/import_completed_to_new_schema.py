@@ -193,7 +193,7 @@ if __name__ == "__main__":
     print(f'loaded {len(ids)}.')
 
     num_readers = 64
-    chunk_size = 16
+    chunk_size = 4
     chunks = [
         tuple(ids[c*chunk_size: min(len(ids), (c+1)*chunk_size)])
         for c in range(int(ceil(len(ids)/chunk_size)))]

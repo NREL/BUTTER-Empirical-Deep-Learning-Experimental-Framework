@@ -117,6 +117,7 @@ ir as (
         experiment_parameters,
         {experiment_columns}
     FROM v
+    WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
     ON CONFLICT DO NOTHING
     RETURNING 
         experiment_id, 

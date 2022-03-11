@@ -91,3 +91,46 @@ CREATE UNIQUE INDEX on parameter_ (kind, real_value) include (id) where real_val
 CREATE UNIQUE INDEX on parameter_ (kind, integer_value) include (id) where integer_value is not null;
 CREATE UNIQUE INDEX on parameter_ (kind, string_value) include (id) where string_value is not null;
 CREATE UNIQUE INDEX on parameter_ (kind) include (id) where bool_value is null and real_value is null and integer_value is null and string_value is null;
+
+
+
+CREATE TABLE IF NOT EXISTS experiment_summary_
+(
+    experiment_id integer NOT NULL primary key,
+    update_timestamp integer NOT NULL DEFAULT ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer,
+    experiment_parameters smallint[] NOT NULL,
+    num_runs smallint NOT NULL,
+    num_free_parameters integer,
+    num smallint[],
+    val_loss_num_finite smallint[],
+    val_loss_avg real[],
+    val_loss_stddev real[],
+    val_loss_min real[],
+    val_loss_max real[],
+    val_loss_percentile real[],
+    loss_num_finite smallint[],
+    loss_avg real[],
+    loss_stddev real[],
+    loss_min real[],
+    loss_max real[],
+    loss_percentile real[],
+    val_accuracy_avg real[],
+    val_accuracy_stddev real[],
+    accuracy_avg real[],
+    accuracy_stddev real[],
+    val_mean_squared_error_avg real[],
+    val_mean_squared_error_stddev real[],
+    mean_squared_error_avg real[],
+    mean_squared_error_stddev real[],
+    val_kullback_leibler_divergence_avg real[],
+    val_kullback_leibler_divergence_stddev real[],
+    kullback_leibler_divergence_avg real[],
+    kullback_leibler_divergence_stddev real[],
+    network_structure jsonb,
+    widths integer[]
+);
+
+
+CREATE INDEX ON experiment_summary_ USING hash (experiment_id);
+CREATE INDEX ON experiment_summary_ USING gin (experiment_parameters);
+create index on experiment_summary_ (update_timestamp, experiment_id);
