@@ -9,7 +9,7 @@ dependencies:
 - seaborn
 - pip
 - scipy=1.4.1
-- numpy<1.19.0
+- numpy
 - sqlalchemy
 - psycopg2
 - pyarrow

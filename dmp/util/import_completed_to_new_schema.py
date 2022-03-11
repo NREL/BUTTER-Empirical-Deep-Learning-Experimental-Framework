@@ -163,9 +163,14 @@ class SchemaUpdate:
 if __name__ == "__main__":
     credentials = connect.load_credentials('dmp')
 
-    extras.register_default_json(loads=ujson.loads, globally=True)
-    extras.register_default_jsonb(loads=ujson.loads, globally=True)
+    import simplejson
+    # extras.register_default_json(loads=ujson.loads, globally=True)
+    # extras.register_default_jsonb(loads=ujson.loads, globally=True)
+    extras.register_default_json(loads=simplejson.loads, globally=True)
+    extras.register_default_jsonb(loads=simplejson.loads, globally=True)
     psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
+    
+    # pd.io.json._json.loads = lambda s, *a, **kw: simplejson.loads(s)
 
     # parameter_map = None
     logger = PostgresResultLogger(credentials)
@@ -187,7 +192,7 @@ if __name__ == "__main__":
 
     print(f'loaded {len(ids)}.')
 
-    num_readers = 40
+    num_readers = 64
     chunk_size = 16
     chunks = [
         tuple(ids[c*chunk_size: min(len(ids), (c+1)*chunk_size)])
