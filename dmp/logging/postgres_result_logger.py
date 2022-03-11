@@ -38,7 +38,7 @@ class PostgresResultLogger(ResultLogger):
 
         self._experiment_columns = sorted([
             ('num_free_parameters', 'bigint'),
-            ('widths', 'smallint[]'),
+            ('widths', 'integer[]'),
             ('network_structure', 'jsonb'),
             
         ] if experiment_columns is None else experiment_columns)
