@@ -6,7 +6,7 @@ from .types import ObjectMarshaler, TypeCode
 
 
 class Marshaler(CommonMarshaler):
-    __slots__ = ['_reference_index', '_type_map', '_vertex_index', '_referenced', '_result']
+    __slots__ = ['_reference_index', '_type_map', '_vertex_index', '_string_index', '_referenced', '_result']
 
     def __init__(self,
                  config: MarshalConfig,

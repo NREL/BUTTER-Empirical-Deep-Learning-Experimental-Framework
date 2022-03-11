@@ -1,19 +1,24 @@
 from abc import ABC, abstractmethod
 import collections as collections
 from dataclasses import dataclass
+import os
+import platform
+import subprocess
 from typing import Dict, List, Tuple, Union
 
+import tensorflow
 
 ParameterValue = Union[bool, int, float, str]
 ParameterDict = Dict[str, "Parameter"]
 Parameter = Union[ParameterValue, ParameterDict]
 FlatParameterDict = Dict[str, ParameterValue]
 
+
 @dataclass
 class Task(ABC):
 
     seed: int
-    batch : str
+    batch: str
 
     @abstractmethod
     def __call__(self, *args, **kwargs
@@ -22,32 +27,45 @@ class Task(ABC):
         pass
 
     @property
+    def version(self) -> int:
+        return -1
+
+    @property
     def parameters(self) -> ParameterDict:
-        experiment_parameters = self.extract_parameters()
-        experiment_parameters['task'] = type(self).__name__
+        parameters = self.extract_parameters()
+        parameters['task'] = type(self).__name__
 
-        def extract_keys(src, keys):
-            dest = {}
-            for k in keys:
-                if k in src:
-                    dest[k] = src[k]
-                    del src[k]
-            return dest
+        # def extract_keys(src, keys):
+        #     dest = {}
+        #     for k in keys:
+        #         if k in src:
+        #             dest[k] = src[k]
+        #             del src[k]
+        #     return dest
 
-        run_parameters = extract_keys(
-            experiment_parameters, self._run_parameter_keys)
-        run_values = extract_keys(
-            experiment_parameters, self._run_value_keys)
-        
-        return experiment_parameters, run_parameters, run_values
+        # run_parameters = extract_keys(
+        #     experiment_parameters, self._run_parameter_keys)
+        # run_values = extract_keys(
+        #     experiment_parameters, self._run_value_keys)
 
-    @property
-    def _run_parameter_keys(self) -> List[str]:
-        return []
+        parameters['task_version'] = self.version # new
+        parameters['tensorflow_version'] = str(tensorflow.__version__) # new
+        parameters['python_version'] = str(platform.python_version())  # new
+        parameters['platform'] = str(platform.platform())  # new
 
-    @property
-    def _run_value_keys(self) -> List[str]:
-        return ['seed']
+        git_hash = None
+        try:
+            git_hash = subprocess.check_output(
+                ["git", "describe", "--always"],
+                cwd=os.path.dirname(__file__)).strip().decode()
+        except:
+            pass
+        parameters['git_hash'] = git_hash # new
+
+        parameters['hostname'] = str(platform.node()) # new
+        parameters['slurm_job_id'] = os.getenv("SLURM_JOB_ID") # new
+ 
+        return parameters
 
     def extract_parameters(
         self,

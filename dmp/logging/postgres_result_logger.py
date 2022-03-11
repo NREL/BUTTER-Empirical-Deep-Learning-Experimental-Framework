@@ -1,4 +1,5 @@
-from typing import Dict
+
+from pprint import pprint
 from uuid import UUID
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
 from dmp.logging.result_logger import ResultLogger
@@ -8,99 +9,133 @@ from jobqueue.cursor_manager import CursorManager
 
 from psycopg2 import sql
 
+from typing import Dict, Iterable, Optional, Tuple, List
+
+import ujson
+import psycopg2
+
+psycopg2.extras.register_default_json(loads=ujson.loads, globally=True)
+psycopg2.extras.register_default_jsonb(loads=ujson.loads, globally=True)
+psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
 
 class PostgresResultLogger(ResultLogger):
     _credentials: Dict[str, any]
-
+    _run_columns: List[Tuple[str, str]]
+    _log_query_prefix: sql.SQL
+    _log_query_suffix: sql.SQL
     _parameter_map: PostgresParameterMap
-    _experiment_table: sql.Identifier
-    _run_table: sql.Identifier
-    _run_settings_table: sql.Identifier
 
     def __init__(self,
                  credentials: Dict[str, any],
-                 experiment_table: str = 'experiment',
-                 run_table: str = 'run',
-                 run_settings_table: str = 'run_settings',
+                 experiment_table: str = 'experiment_',
+                 run_table: str = 'run_',
+                 experiment_columns: Optional[List[Tuple[str, str]]] = None,
+                 run_columns: Optional[List[Tuple[str, str]]] = None,
+                 result_columns: Optional[List[Tuple[str, str]]] = None,
                  ) -> None:
         super().__init__()
         self._credentials = credentials
-        self._experiment_table = sql.Identifier(experiment_table)
-        self._run_table = sql.Identifier(run_table)
-        self._run_settings_table = sql.Identifier(run_settings_table)
 
-        # initialize parameter map
-        with CursorManager(self._credentials) as cursor:
-            self._parameter_map = PostgresParameterMap(cursor)
+        self._experiment_columns = sorted([
+            ('num_free_parameters', 'bigint'),
+            ('widths', 'smallint[]'),
+            ('network_structure', 'jsonb'),
+            
+        ] if experiment_columns is None else experiment_columns)
 
-    def log(
-        self,
-        run_id: UUID,
-        experiment_parameters: Dict,
-        run_parameters: Dict,
-        run_values: Dict,
-        result: Dict,
-    ) -> None:
-        with CursorManager(self._credentials) as cursor:
-            # get sorted parameter ids
-            run_parameter_ids = \
-                self._parameter_map.to_sorted_parameter_ids(
-                    run_parameters,
-                    cursor
-                )
+        self._run_only_parameters = sorted([
+            'task_version',
+            'tensorflow_version',
+            'python_version',
+        ])
 
-            experiment_parameter_ids = \
-                self._parameter_map.to_sorted_parameter_ids(
-                    experiment_parameters,
-                    cursor
-                )
+        self._run_columns = [
+            ('platform', 'text'),
+            ('git_hash', 'text'),
+            ('hostname', 'text'),
+            ('slurm_job_id', 'text'),
 
-            # get experiment_id
-            run_columns = sorted(list(run_values.keys()))
-            result_columns = sorted(list(result.keys()))
+            ('seed', 'bigint'),
+            ('save_every_epochs', 'smallint'),
+            ('val_loss', 'real[]'),
+            ('loss', 'real[]'),
+            ('val_accuracy', 'real[]'),
+            ('accuracy', 'real[]'),
+            ('val_mean_squared_error', 'real[]'),
+            ('mean_squared_error', 'real[]'),
+            ('val_mean_absolute_error', 'real[]'),
+            ('mean_absolute_error', 'real[]'),
+            ('val_root_mean_squared_error', 'real[]'),
+            ('root_mean_squared_error', 'real[]'),
+            ('val_mean_squared_logarithmic_error', 'real[]'),
+            ('mean_squared_logarithmic_error', 'real[]'),
+            ('val_hinge', 'real[]'),
+            ('hinge', 'real[]'),
+            ('val_squared_hinge', 'real[]'),
+            ('squared_hinge', 'real[]'),
+            ('val_cosine_similarity', 'real[]'),
+            ('cosine_similarity', 'real[]'),
+            ('val_kullback_leibler_divergence', 'real[]'),
+            ('kullback_leibler_divergence', 'real[]'),
+        ] if run_columns is None else run_columns
 
-            # create table run_settings
-            # (
-            #     run_id uuid NOT NULL PRIMARY KEY,
-            #     experiment_id integer,
-            #     record_timestamp integer DEFAULT ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer,
-            #     parameters smallint[],
-            #     seed bigint,
-            #     save_every_epochs smallint
-            # );
+        experiment_columns, cast_experiment_columns = \
+            self.make_column_sql(self._experiment_columns)
+        run_columns, cast_run_columns = \
+            self.make_column_sql(self._run_columns)
 
-            cursor.execute(
-                sql.SQL("""
+        self._log_query_prefix = sql.SQL("""
 WITH v as (
     SELECT
         job_id::uuid,
+        run_id::uuid,
         experiment_parameters::smallint[] experiment_parameters,
         run_parameters::smallint[] run_parameters,
-        {run_columns},
-        {result_columns}
+        {cast_experiment_columns},
+        {cast_run_columns}
     FROM
-        (VALUES %s ) AS t (
+        (VALUES """).format(
+            cast_experiment_columns=cast_experiment_columns,
+            cast_run_columns=cast_run_columns,
+        )
+
+        self._log_query_suffix = sql.SQL(""" ) AS t (
             job_id,
-            experiment_parameters, 
+            run_id,
+            experiment_parameters,
             run_parameters,
-            {run_columns},
-            {result_columns})
+            {experiment_columns},
+            {run_columns}
+            )
+),
+ir as (
+    INSERT INTO {experiment_table} (
+        experiment_parameters,
+        {experiment_columns}
+    )
+    SELECT 
+        experiment_parameters,
+        {experiment_columns}
+    FROM v
+    ON CONFLICT DO NOTHING
+    RETURNING 
+        experiment_id, 
+        experiment_parameters
 ),
 i as (
-    INSERT INTO {experiment_table} (experiment_parameters)
-    SELECT experiment_parameters from v
-    ON CONFLICT DO NOTHING
-    RETURNING experiment_id, experiment_parameters
+    SELECT * FROM ir
     UNION ALL
-    SELECT experiment_id, experiment_parameters 
+    SELECT 
+        e.experiment_id, 
+        v.experiment_parameters
     FROM
         v,
-        experiment e
+        {experiment_table} e
     WHERE
         e.experiment_parameters = v.experiment_parameters
 ),
 x as (
-    SELECT 
+    SELECT
         v.*,
         i.experiment_id experiment_id
     FROM
@@ -108,50 +143,98 @@ x as (
         i
     WHERE
         i.experiment_parameters = v.experiment_parameters
-),
-s as (
-    INSERT INTO {run_settings_table} (
-        job_id,
-        experiment_id,
-        run_parameters,
-        {run_columns})
-    SELECT 
-        job_id,
-        experiment_id,
-        run_parameters,
-        {run_columns}
-    FROM
-        x
-    ON CONFLICT DO NOTHING
 )
 INSERT INTO {run_table} (
-    job_id,
-    experiment_id, 
-    parameters, 
-    {result_columns}
-    )
-SELECT 
-    job_id,
     experiment_id,
+    run_id,
+    job_id,
     run_parameters,
-    {result_columns}
+    {run_columns}
+    )
+SELECT
+    experiment_id,
+    run_id,
+    job_id,
+    run_parameters,
+    {run_columns}
 FROM
     x
 ON CONFLICT DO NOTHING
-;"""
-                        ).format(
-                            run_columns=sql.SQL(',').join(
-                                map(sql.Identifier, run_columns)),
-                            result_columns=sql.SQL(',').join(
-                                map(sql.Identifier, result_columns)),
-                            experiment_table=self._experiment_table,
-                            run_table=self._run_table,
-                            run_settings_table=self._run_settings_table,
-                ),
-                ((
-                    run_id,
-                    experiment_parameter_ids,
-                    run_parameter_ids,
-                    *(run_values[c] for c in run_columns),
-                    *(result[c] for c in result_columns),
-                ),))
+;""").format(
+            experiment_columns=experiment_columns,
+            run_columns=run_columns,
+            experiment_table=sql.Identifier(experiment_table),
+            run_table=sql.Identifier(run_table),
+        )
+
+        # initialize parameter map
+        with CursorManager(self._credentials) as cursor:
+            self._parameter_map = PostgresParameterMap(cursor)
+        pass
+
+    def log(
+        self,
+        results: List[Tuple[UUID, UUID, Dict]],
+    ) -> None:
+        with CursorManager(self._credentials) as cursor:
+            log_entries = [
+                self.transform_row(cursor, *result)
+                for result in results]
+            values = self.make_values_array(cursor, log_entries)
+            # print(cursor.mogrify(self._log_query_prefix + values + self._log_query_suffix))
+            cursor.execute(
+                self._log_query_prefix + values + self._log_query_suffix)
+
+    def transform_row(
+        self,
+        cursor,
+        job_id: UUID,
+        run_id: UUID,
+        result: Dict[str, any],
+    ):
+        def extract_values(columns):
+            return [result.pop(c[0], None) for c in columns]
+
+        experiment_column_values = extract_values(self._experiment_columns)
+        run_column_values = extract_values(self._run_columns)
+
+        experiment_parameters = result.copy()
+        for k in self._run_only_parameters:
+            experiment_parameters.pop(k, None)
+        run_parameters = result
+
+        # get sorted parameter ids
+        run_parameter_ids = \
+            self._parameter_map.to_sorted_parameter_ids(
+                run_parameters, cursor)
+
+        experiment_parameter_ids = \
+            self._parameter_map.to_sorted_parameter_ids(
+                experiment_parameters, cursor)
+
+        return (
+            job_id,
+            run_id,
+            experiment_parameter_ids,
+            run_parameter_ids,
+            *experiment_column_values,
+            *run_column_values,
+        )
+
+    def make_column_sql(
+        self,
+        columns: List[Tuple[str, str]],
+    ) -> Tuple[sql.SQL, sql.SQL]:
+        columns_sql = sql.SQL(',').join(
+            [sql.Identifier(x[0]) for x in columns])
+        cast_columns_sql = sql.SQL(',').join(
+            [sql.SQL('{}::{}').format(
+                sql.Identifier(x[0]), sql.SQL(x[1]))
+                for x in columns])
+        return columns_sql, cast_columns_sql
+
+    def make_values_array(self, cursor, values: Iterable[Tuple]) -> sql.SQL:
+        return sql.SQL(','.join((
+            cursor.mogrify(
+                '(' + (','.join(['%s' for _ in e])) + ')', e).decode("utf-8")
+            for e in values)))

@@ -21,7 +21,7 @@ class PostgresParameterMap:
 
     def __init__(self,
                  cursor,
-                 parameter_table='parameter',
+                 parameter_table='parameter_',
                  ) -> None:
         super().__init__()
 

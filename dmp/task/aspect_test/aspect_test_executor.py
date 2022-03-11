@@ -1,8 +1,12 @@
 from dataclasses import dataclass
 import os
+import platform
+import subprocess
+
+from pytest import param
 
 from dmp.data.pmlb import pmlb_loader
-
+from dmp.jobqueue_interface.common import jobqueue_marshal
 
 from .aspect_test_task import AspectTestTask
 import tensorflow.keras.metrics as metrics
@@ -27,7 +31,7 @@ class AspectTestExecutor(AspectTestTask):
     tensorflow_strategy: Optional[tensorflow.distribute.Strategy] = None
     keras_model: Optional[tensorflow.keras.Model] = None
     run_loss: Optional[tensorflow.keras.losses] = None
-    network_module: Optional[NetworkModule] = None
+    network_structure: Optional[NetworkModule] = None
     dataset: Optional[pandas.Series] = None
     inputs: Optional[numpy.ndarray] = None
     outputs: Optional[numpy.ndarray] = None
@@ -68,7 +72,7 @@ class AspectTestExecutor(AspectTestTask):
             shape = shape[0:-len(residual_suffix)]
 
         # Build NetworkModule network
-        delta, widths, self.network_module = find_best_layout_for_budget_and_depth(
+        delta, widths, self.network_structure = find_best_layout_for_budget_and_depth(
             self.inputs,
             residual_mode,
             self.input_activation,
@@ -87,7 +91,7 @@ class AspectTestExecutor(AspectTestTask):
         with self.tensorflow_strategy.scope():
             # Build Keras model
             self.keras_model = make_keras_network_from_network_module(
-                self.network_module)
+                self.network_structure)
             assert len(
                 self.keras_model.inputs) == 1, 'Wrong number of keras inputs generated'
 
@@ -117,7 +121,9 @@ class AspectTestExecutor(AspectTestTask):
                 metrics=run_metrics,
             )
 
-            assert count_num_free_parameters(self.network_module) == count_trainable_parameters_in_keras_model(self.keras_model), \
+            num_free_parameters = count_trainable_parameters_in_keras_model(
+                self.keras_model)
+            assert count_num_free_parameters(self.network_structure) == num_free_parameters, \
                 'Wrong number of trainable parameters'
 
             # Configure Keras Callbacks
@@ -158,9 +164,14 @@ class AspectTestExecutor(AspectTestTask):
             # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
             # model.save(f'./log/models/{run_name}.h5', save_format='h5')
 
-            run_parameters = {
-                'tensorflow_version': tensorflow.__version__,
-            }
+            parameters: Dict[str, any] = self.parameters
+            parameters['widths'] = widths
+            parameters['num_free_parameters'] = num_free_parameters
+            parameters['output_activation'] = self.output_activation
+            parameters['network_structure'] = \
+                jobqueue_marshal.marshal(self.network_structure)
+
+            parameters.update(history)
 
             # return the result record
-            return run_parameters, history
+            return parameters

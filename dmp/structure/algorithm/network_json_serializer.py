@@ -1,4 +1,5 @@
 import json
+from typing import Dict, List
 
 from dmp.structure.n_add import NAdd
 from dmp.structure.n_dense import NDense
@@ -14,7 +15,7 @@ class NetworkJSONSerializer:
     type_field_name: str = 'type'
     inputs_field_name: str = 'inputs'
 
-    string_to_type_map: {str: type} = {
+    string_to_type_map: Dict[str, type] = {
         n_cls.__name__: n_cls for n_cls in [
             NInput,
             NDense,
@@ -23,8 +24,8 @@ class NetworkJSONSerializer:
     }
 
     def __init__(self, vertex: NetworkModule) -> None:
-        self._vertices: [] = []
-        self._module_index: {NetworkModule: int} = {}
+        self._vertices: List = []
+        self._module_index: Dict[NetworkModule, int] = {}
         self._prepare_serializable(vertex)
         self._serialized: str = json.dumps(self._vertices, sort_keys=True, separators=(',', ':'))
 

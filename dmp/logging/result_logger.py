@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, List, Tuple
 from uuid import UUID
 
 
@@ -15,10 +15,6 @@ class ResultLogger(ABC):
     @abstractmethod
     def log(
         self,
-        run_id: UUID,
-        experiment_parameters: Dict,
-        run_parameters: Dict,
-        run_values: Dict,
-        result: Dict,
+        results: List[Tuple[UUID, UUID, Dict, Dict, Dict, Dict]],
     ) -> None:
         pass
