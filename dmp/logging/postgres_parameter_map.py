@@ -46,26 +46,35 @@ FROM {}"""
                 typed_values = self._make_typed_values(value)
 
                 cursor.execute(sql.SQL("""
-WITH i as (
-    INSERT INTO {} ({})
-        VALUES %s
+WITH v as (
+    SELECT 
+        (
+            SELECT id from {_parameter_table}
+            WHERE
+                kind = %s and
+                bool_value IS NOT DISTINCT FROM %s and
+                integer_value IS NOT DISTINCT FROM %s and
+                real_value IS NOT DISTINCT FROM (%s)::real and
+                string_value IS NOT DISTINCT FROM %s
+            LIMIT 1
+        ) id,
+        *
+    FROM (VALUES %s) AS ({_key_columns})
+),
+i as (
+    INSERT INTO {_parameter_table} ({})
+        SELECT {_key_columns} FROM (SELECT * from v WHERE v.id IS NULL)
     ON CONFLICT DO NOTHING
-    RETURNING id
+    RETURNING id, {_key_columns}
 )
-SELECT id from i 
+SELECT * from to_insert WHERE id IS NOT NULL
 UNION ALL 
-SELECT id from {}
-WHERE
-    kind = %s and
-    bool_value IS NOT DISTINCT FROM %s and
-    integer_value IS NOT DISTINCT FROM %s and
-    real_value IS NOT DISTINCT FROM (%s)::real and
-    string_value IS NOT DISTINCT FROM %s
+SELECT * from i
 ;"""
                                        ).format(
-                    self._parameter_table,
-                    self._key_columns,
-                    self._parameter_table,
+                    _parameter_table = self._parameter_table,
+                    _key_columns = self._key_columns,
+                    _parameter_table = self._parameter_table,
                 ), 
                 (
                     (kind, *typed_values),
