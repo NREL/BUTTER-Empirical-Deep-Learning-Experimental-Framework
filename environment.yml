@@ -14,7 +14,7 @@ dependencies:
 - psycopg2
 - pyarrow
 - tensorflow>=2.6
-- ujson
+- simplejson
 - pip:
   - pytest
   - tensorflow_datasets

@@ -16,7 +16,7 @@ FlatParameterDict = Dict[str, ParameterValue]
 
 @dataclass
 class Task(ABC):
-
+    
     seed: int
     batch: str
 
@@ -35,23 +35,10 @@ class Task(ABC):
         parameters = self.extract_parameters()
         parameters['task'] = type(self).__name__
 
-        # def extract_keys(src, keys):
-        #     dest = {}
-        #     for k in keys:
-        #         if k in src:
-        #             dest[k] = src[k]
-        #             del src[k]
-        #     return dest
-
-        # run_parameters = extract_keys(
-        #     experiment_parameters, self._run_parameter_keys)
-        # run_values = extract_keys(
-        #     experiment_parameters, self._run_value_keys)
-
-        parameters['task_version'] = self.version # new
-        parameters['tensorflow_version'] = str(tensorflow.__version__) # new
-        parameters['python_version'] = str(platform.python_version())  # new
-        parameters['platform'] = str(platform.platform())  # new
+        parameters['task_version'] = self.version
+        parameters['tensorflow_version'] = str(tensorflow.__version__)
+        parameters['python_version'] = str(platform.python_version()) 
+        parameters['platform'] = str(platform.platform()) 
 
         git_hash = None
         try:
@@ -60,10 +47,10 @@ class Task(ABC):
                 cwd=os.path.dirname(__file__)).strip().decode()
         except:
             pass
-        parameters['git_hash'] = git_hash # new
+        parameters['git_hash'] = git_hash
 
-        parameters['hostname'] = str(platform.node()) # new
-        parameters['slurm_job_id'] = os.getenv("SLURM_JOB_ID") # new
+        parameters['hostname'] = str(platform.node())
+        parameters['slurm_job_id'] = os.getenv("SLURM_JOB_ID")
  
         return parameters
 

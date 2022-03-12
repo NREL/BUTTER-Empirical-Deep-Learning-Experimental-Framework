@@ -11,11 +11,11 @@ from psycopg2 import sql
 
 from typing import Dict, Iterable, Optional, Tuple, List
 
-import ujson
+import simplejson
 import psycopg2
 
-psycopg2.extras.register_default_json(loads=ujson.loads, globally=True)
-psycopg2.extras.register_default_jsonb(loads=ujson.loads, globally=True)
+psycopg2.extras.register_default_json(loads=simplejson.loads, globally=True)
+psycopg2.extras.register_default_jsonb(loads=simplejson.loads, globally=True)
 psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
 
 class PostgresResultLogger(ResultLogger):
@@ -244,7 +244,8 @@ ON CONFLICT DO NOTHING
                 for x in columns])
         return columns_sql, cast_columns_sql
 
-    def make_values_array(self, cursor, values: Iterable[Tuple]) -> sql.SQL:
+    @staticmethod
+    def make_values_array(cursor, values: Iterable[Tuple]) -> sql.SQL:
         return sql.SQL(','.join((
             cursor.mogrify(
                 '(' + (','.join(['%s' for _ in e])) + ')', e).decode("utf-8")
