@@ -113,7 +113,7 @@ exp_to_insert as (
         experiment_parameters,
         {experiment_columns}
     FROM v
-    WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)) a
+    WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
 ),
 ir as (
     INSERT INTO {experiment_table} (
