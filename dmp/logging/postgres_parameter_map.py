@@ -67,7 +67,7 @@ i as (
     ON CONFLICT DO NOTHING
     RETURNING id, {_key_columns}
 )
-SELECT * from to_insert WHERE id IS NOT NULL
+SELECT * from v WHERE id IS NOT NULL
 UNION ALL 
 SELECT * from i
 ;"""
