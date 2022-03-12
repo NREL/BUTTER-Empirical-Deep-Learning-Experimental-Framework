@@ -74,12 +74,11 @@ SELECT * from i
                                        ).format(
                     _parameter_table = self._parameter_table,
                     _key_columns = self._key_columns,
-                    _parameter_table = self._parameter_table,
                 ), 
                 (
-                    (kind, *typed_values),
                     kind,
                     *typed_values,
+                    (kind, *typed_values),
                 ))
                 result = cursor.fetchone()
 
