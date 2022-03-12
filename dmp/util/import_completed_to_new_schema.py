@@ -98,17 +98,20 @@ class SchemaUpdate:
         environment = doc['environment']
 
         result['task_version'] = 0
-        result['tensorflow_version'] = environment['tensorflow_version']
-        result['python_version'] = environment['python_version']
-        result['platform'] = environment['platform']
-        result['git_hash'] = environment['git_hash']
-        result['hostname'] = environment['hostname']
-        result['slurm_job_id'] = environment['SLURM_JOB_ID']
-        result['widths'] = config['widths']
-        result['num_free_parameters'] = doc['num_weights']
-
-        ns = NetworkJSONDeserializer(config['network_structure'])()
-        result['network_structure'] =  jobqueue_marshal.marshal(ns)
+        result['tensorflow_version'] = environment.get('tensorflow_version', None)
+        result['python_version'] = environment.get('python_version', None)
+        result['platform'] = environment.get('platform', None)
+        result['git_hash'] = environment.get('git_hash', None)
+        result['hostname'] = environment.get('hostname', None)
+        result['slurm_job_id'] = environment.get('SLURM_JOB_ID', None)
+        result['widths'] = config.get('widths', None)
+        result['num_free_parameters'] = doc.get('num_weights', None)
+        
+        network_structure = None
+        if 'network_structure' in config:
+            network_structure = jobqueue_marshal.marshal(
+                NetworkJSONDeserializer(config['network_structure'])())
+        result['network_structure'] =  network_structure
         # pprint(result)
         result.update(doc['history'])
 
