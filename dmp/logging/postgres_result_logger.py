@@ -109,12 +109,18 @@ WITH v as (
             )
 ),
 exp_to_insert as (
-    SELECT 
-        experiment_parameters,
-        {experiment_columns}
-    FROM v
-    WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
-    group by experiment_parameters
+    SELECT * FROM
+    (
+        SELECT distinct experiment_parameters
+        FROM v
+        WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
+    ) d,
+    lateral (
+        SELECT {experiment_columns}
+        FROM v
+        WHERE v.experiment_parameters = d.experiment_parameters
+        LIMIT 1
+    ) l
 ),
 ir as (
     INSERT INTO {experiment_table} (
