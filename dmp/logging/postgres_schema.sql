@@ -220,7 +220,6 @@ from
                 AND NOT EXISTS (SELECT * FROM experiment_summary_ s WHERE 
                               s.experiment_id = r.experiment_id 
                               AND s.update_timestamp > r.record_timestamp)
-            LIMIT 1000
         )
 ) e,
 lateral (
@@ -324,7 +323,7 @@ lateral (
       group by epoch order by epoch ) x
 ) kullback_leibler_divergence_
 ON CONFLICT (experiment_id) DO UPDATE SET
-                num_runs = EXCLUDED.num_runs,
+        num_runs = EXCLUDED.num_runs,
         num = EXCLUDED.num,
         val_loss_num_finite = EXCLUDED.val_loss_num_finite,
         val_loss_avg = EXCLUDED.val_loss_avg,
