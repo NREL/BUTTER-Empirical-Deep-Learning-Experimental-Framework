@@ -95,6 +95,10 @@ if __name__ == "__main__":
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     
+    queue = args.queue
+    if not isinstance(queue, int):
+        queue = 1
+        
     credentials = connect.load_credentials('dmp')
     job_queue = JobQueue(credentials, int(args.queue), check_table=False)
     result_logger = PostgresResultLogger(credentials)

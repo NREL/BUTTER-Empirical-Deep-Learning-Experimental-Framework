@@ -12,7 +12,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # parser.add_argument('worker', help='python worker module')
     parser.add_argument('project', help='project identifier in your jobqueue.json file')
-    parser.add_argument('group', help='group name or tag')
+    parser.add_argument('queue', help='queue id')
     parser.add_argument('worker_configs',
                         help='A json list of worker configs. Example: [[0,2,0,1,4096], [2,34,0,0,0], [34,36,1,2,4096]] places three workers:  one on CPUs 0-1 and GPU 0, one on CPUs 2-33, and one on CPUs 34-35 and GPU 1.'
                         )
@@ -21,9 +21,7 @@ if __name__ == "__main__":
     host = platform.node()
 
     configs = json.loads(args.worker_configs)
-    # print(
-    #     f'Started Node Manager on host "{host}" for project "{args.project}" and group "{args.group}" executing worker module "{args.worker}".')
-    print(f'Started Node Manager on host "{host}" for project "{args.project}" and group "{args.group}".')
+    print(f'Started Node Manager on host "{host}" for project "{args.project}" and queue "{args.queue}".')
     print(f'Launching worker processes...')
     print(json.dumps(configs))
 
@@ -35,7 +33,7 @@ if __name__ == "__main__":
         for rank, config in enumerate(configs):
             command = ['python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
                        'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-                       *[str(e) for e in config], args.project, args.group]
+                       *[str(e) for e in config], args.project, args.queue]
             print(f'Creating subprocess {rank} with command: "{" ".join(command)}"')
             worker = subprocess.Popen(
                 command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -56,16 +54,11 @@ if __name__ == "__main__":
             line = name + line
             sys.stdout.write(line)
             sys.stdout.flush()
-            # print(line, flush=True)
-            # sys.stdout.write(line)
-            # sys.stdout.flush()
 
 
         print('Starting output redirection...')
         while True:
-            # print(f'select...')
             rstreams, _, _ = select.select(streams, [], [], 30)
-            # print(f'selected {len(rstreams)}')
             for stream in rstreams:
                 line = stream.readline()
                 if len(line) != 0:

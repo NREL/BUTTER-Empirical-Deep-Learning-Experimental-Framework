@@ -8,12 +8,6 @@ if __name__ == "__main__":
     print(f'Starting Worker Manager...')
     while True:
         print(f'Launching subprocess command "{" ".join(subprocess_args)}"...', flush=True)
-        # completed_process = subprocess.run(subprocess_args,
-        #                                    # capture_output=False,
-        #                                    bufsize=0,
-        #                                    # universal_newlines=True,
-        #                                    stdout=subprocess.STDOUT,
-        #                                    stderr=subprocess.STDOUT)
         worker = subprocess.Popen(subprocess_args, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, close_fds=True)
         while True:
@@ -22,8 +16,6 @@ if __name__ == "__main__":
                 break
             if output:
                 sys.stdout.write(output)
-                # sys.stdout.flush()
-                # print(output.strip(), flush=True)
         returncode = worker.poll()
 
         if returncode != 1:
