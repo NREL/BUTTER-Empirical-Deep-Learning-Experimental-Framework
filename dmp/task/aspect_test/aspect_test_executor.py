@@ -8,7 +8,6 @@ from pytest import param
 from dmp.data.pmlb import pmlb_loader
 from dmp.jobqueue_interface.common import jobqueue_marshal
 
-
 import tensorflow.keras.metrics as metrics
 import tensorflow.keras.callbacks as callbacks
 
@@ -116,8 +115,8 @@ class AspectTestExecutor(AspectTestTask):
                 metrics.SquaredHinge(),
             ]
 
-            print(self.optimizer)
             run_optimizer = tensorflow.keras.optimizers.get(self.optimizer)
+            
 
             self.keras_model.compile(
                 # loss='binary_crossentropy', # binary classification

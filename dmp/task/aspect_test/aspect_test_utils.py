@@ -9,9 +9,9 @@ from typing import Callable, Dict, Tuple, Union, List, Optional
 import numpy
 import tensorflow
 from sklearn.model_selection import train_test_split
-from tensorflow.python.keras import losses, Input
-from tensorflow.python.keras.layers import Dense
-from tensorflow.python.keras.models import Model
+from tensorflow.keras import losses, Input
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Model
 import tensorflow.keras as keras
 
 from dmp.structure.n_add import NAdd

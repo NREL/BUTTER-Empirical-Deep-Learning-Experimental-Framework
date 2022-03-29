@@ -21,9 +21,12 @@ from tensorflow.keras import (
     metrics,
 )
 from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.python.keras import losses, Input
-from tensorflow.python.keras.layers import Dense
-from tensorflow.python.keras.models import Model
+# from tensorflow.python.keras import losses, Input
+# from tensorflow.python.keras.layers import Dense
+# from tensorflow.python.keras.models import Model
+from tensorflow.keras.layers import Dense
+from tensorflow.keras import losses, Input
+from tensorflow.keras.models import Model
 
 from command_line_tools import (
     command_line_config,

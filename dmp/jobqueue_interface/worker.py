@@ -2,7 +2,7 @@ import argparse
 import gc
 import uuid
 
-from jobqueue.connect import connect
+import jobqueue.connect as connect
 from jobqueue.job_queue import JobQueue
 from dmp.logging.postgres_result_logger import PostgresResultLogger
 from dmp.worker import Worker
@@ -71,12 +71,6 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     return strategy
 
 
-def handle_job(worker_id: uuid.UUID, job: jobqueue.Job):
-    gc.collect()
-    task = jobqueue_marshal.demarshal(job.command)
-    task(job.id)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('cpu_low', type=int, help='minimum CPU id to use')
@@ -94,14 +88,15 @@ if __name__ == "__main__":
 
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
-    
+    print('\n', flush=True)
+
     queue = args.queue
     if not isinstance(queue, int):
         queue = 1
-        
+
     credentials = connect.load_credentials('dmp')
     job_queue = JobQueue(credentials, int(args.queue), check_table=False)
     result_logger = PostgresResultLogger(credentials)
     worker = Worker(job_queue, result_logger)
 
-    worker() # runs the work loop on the worker
+    worker()  # runs the work loop on the worker
