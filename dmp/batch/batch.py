@@ -1,6 +1,8 @@
 import itertools
 from attr import dataclass
 
+from dmp.task.aspect_test.aspect_test_task import AspectTestTask
+
 
 # TODO: fix this
 @dataclass

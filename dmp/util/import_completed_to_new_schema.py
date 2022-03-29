@@ -154,7 +154,7 @@ class SchemaUpdate:
         if not isinstance(kwargs['early_stopping'], dict):
             kwargs['early_stopping'] = None
 
-        if kwargs.get('residual_mode', None) == 'full':
+        if config.get('residual_mode', None) == 'full':
             kwargs['shape'] = kwargs['shape'] + '_' + 'residual'
 
         if kwargs['label_noise'] == 'none':

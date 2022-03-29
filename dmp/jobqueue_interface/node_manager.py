@@ -41,7 +41,7 @@ if __name__ == "__main__":
                 command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 close_fds=True)
             workers.append(worker)
-            time.sleep(random.uniform(0.5, 2))  # wait a bit to avoid overwhelming the database, etc...
+            time.sleep(random.uniform(1, 10))  # wait a bit to avoid overwhelming the database, etc...
 
         streams = [w.stdout for w in workers]
         stream_name_map = {id(s): f'{i}:' for i, s in enumerate(streams)}

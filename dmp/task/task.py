@@ -15,7 +15,7 @@ FlatParameterDict = Dict[str, ParameterValue]
 
 
 @dataclass
-class Task(ABC):
+class Task:
     
     seed: int
     batch: str

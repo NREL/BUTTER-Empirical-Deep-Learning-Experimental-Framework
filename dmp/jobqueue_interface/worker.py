@@ -2,6 +2,11 @@ import argparse
 import gc
 import uuid
 
+from jobqueue.connect import connect
+from jobqueue.job_queue import JobQueue
+from dmp.logging.postgres_result_logger import PostgresResultLogger
+from dmp.worker import Worker
+
 
 import jobqueue
 import tensorflow
@@ -89,6 +94,10 @@ if __name__ == "__main__":
 
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
-    credentials = jobqueue.connect.load_credentials(args.database)
-    job_queue = jobqueue.JobQueue(credentials, queue=args.queue)
-    job_queue.run_worker(handle_job, worker_id=worker_id)
+    
+    credentials = connect.load_credentials('dmp')
+    job_queue = JobQueue(credentials, int(args.queue), check_table=False)
+    result_logger = PostgresResultLogger(credentials)
+    worker = Worker(job_queue, result_logger)
+
+    worker() # runs the work loop on the worker

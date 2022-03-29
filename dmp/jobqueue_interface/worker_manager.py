@@ -29,5 +29,5 @@ if __name__ == "__main__":
         if returncode != 1:
             break
         print(f'Subprocess failed with returncode {returncode}.', flush=True)
-        time.sleep(random.uniform(60, 120))
+        time.sleep(random.uniform(30, 240))
     print(f'Subprocess completed with returncode {returncode}, exiting Worker Manager...', flush=True)

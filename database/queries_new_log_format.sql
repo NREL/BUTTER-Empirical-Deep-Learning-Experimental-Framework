@@ -791,3 +791,66 @@ from
         ) x
     ) x 
 ;
+
+
+
+select experiment_id, ep.experiment_parameters
+from
+(select experiment_id, experiment_parameters from experiment_ limit 4) e,
+lateral (
+    select array_agg(pid::smallint) experiment_parameters from
+    (
+        select pid
+        from
+        lateral unnest(e.experiment_parameters) pid
+        union all
+        select pid from (values (24), (27)) as t(pid)
+        order by pid
+    ) pid
+    ) ep
+;
+
+update experiment_ e
+set experiment_parameters= 
+(
+    select array_agg(pid::smallint) experiment_parameters from
+    (
+        select pid
+        from
+        lateral unnest(e.experiment_parameters) pid
+        union all
+        select pid from (values (24), (27)) as t(pid)
+        order by pid
+    ) pid
+);
+
+update run_ r
+set run_parameters = 
+(
+    select array_agg(pid::smallint) run_parameters from
+    (
+        select pid
+        from
+        lateral unnest(r.run_parameters) pid
+        union all
+        select pid from (values (24), (27)) as t(pid)
+        order by pid
+    ) pid
+);
+
+
+select * from parameter_ order by kind, real_value, integer_value, string_value;
+
+with param as (
+select * from parameter_ p 
+)
+select param.*, ec.* from 
+param,
+lateral (
+    select count(*) num 
+    from experiment_ e
+    where e.experiment_parameters @> (ARRAY[param.id])::smallint[]
+    ) ec
+order by param.kind, ec.num, param.real_value, param.integer_value, param.string_value;
+
+

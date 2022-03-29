@@ -35,8 +35,8 @@ class AspectTestTask(Task):
     # epoch_scale: dict
     # rep: int
 
-    validation_split: float  # does not use run_config.validation_split
-    validation_split_method: str
+    test_split: float  
+    test_split_method: str
     run_config: dict
     # run_config.batch_size
     # run_config.epochs
@@ -44,14 +44,16 @@ class AspectTestTask(Task):
 
     label_noise: float
 
+    kernel_regularizer : Optional[dict] = None
+    bias_regularizer : Optional[dict] = None
+    activity_regularizer : Optional[dict] = None
+
     early_stopping: Optional[dict] = None
     save_every_epochs: Optional[int] = None
 
     def __call__(self) -> Dict[str, any]:
         from .aspect_test_executor import AspectTestExecutor
-        return AspectTestExecutor(
-            **dataclasses.asdict(self)
-        )()
+        return AspectTestExecutor(*dataclasses.astuple(self))()
 
     @property
     def version(self) -> int:

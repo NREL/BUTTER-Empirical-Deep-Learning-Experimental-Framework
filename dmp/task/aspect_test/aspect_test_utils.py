@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import math
 import random
 from copy import deepcopy
@@ -11,6 +12,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow.python.keras import losses, Input
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model
+import tensorflow.keras as keras
 
 from dmp.structure.n_add import NAdd
 from dmp.structure.n_dense import NDense
@@ -65,23 +67,22 @@ def add_label_noise(label_noise, run_task, train_outputs):
 
 
 def prepare_dataset(
-    validation_split_method,
-    label_noise,
-    run_config,
-    run_task,
+    test_split_method: str,
+    split_portion: float,
+    label_noise: float,
+    run_config: dict,
+    run_task: str,
     inputs,
     outputs,
 ) -> Dict[str, any]:
     run_config = deepcopy(run_config)
-    if validation_split_method == 'shuffled':
-        test_split = run_config['validation_split']
-        del run_config['validation_split']
+    if test_split_method == 'shuffled_train_test_split':
 
         train_inputs, test_inputs, train_outputs, test_outputs = \
             train_test_split(
                 inputs,
                 outputs,
-                test_size=test_split,
+                test_size=split_portion,
                 shuffle=True,
             )
         add_label_noise(label_noise, run_task, train_outputs)
@@ -90,8 +91,8 @@ def prepare_dataset(
         run_config['x'] = train_inputs
         run_config['y'] = train_outputs
     else:
-        raise ValueError(
-            f'Unknown validation_split_method {validation_split_method}.')
+        raise NotImplementedError(
+            f'Unknown test_split_method {test_split_method}.')
         # run_config['x'] = inputs
         # run_config['y'] = outputs
     return run_config
@@ -145,11 +146,12 @@ def make_network(
         inputs: numpy.ndarray,
         widths: List[int],
         residual_mode: any,
-        input_activation,
-        internal_activation,
-        output_activation,
-        depth,
-        shape
+        input_activation: str,
+        internal_activation: str,
+        output_activation: str,
+        depth: int,
+        shape: str,
+        layer_args: dict,
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
@@ -172,15 +174,14 @@ def make_network(
         layer = NDense(label=0,
                        inputs=[current, ],
                        shape=[layer_width, ],
-                       activation=activation)
+                       activation=activation,
+                       **layer_args
+                       )
 
         # Skip connections for residual modes
-        assert residual_mode in [
-            'full', 'none'], f"Invalid residual mode {residual_mode}"
-        if residual_mode == 'full':
-            assert shape in ['rectangle',
-                                'wide_first'], f"Full residual mode is only compatible with rectangular and wide_first topologies, not {shape}"
-
+        if residual_mode is None or residual_mode == 'none':
+            pass
+        elif residual_mode == 'full':
             # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
             first_residual_layer = 1 if shape == "wide_first" else 0
             # Output layer is assumed to be of a different dimension, and will therefore not directly receive skip connections
@@ -189,10 +190,86 @@ def make_network(
                 layer = NAdd(label=0,
                              inputs=[layer, current],
                              shape=layer.shape.copy())  # TODO JP: Only works for rectangle
+        else:
+            raise NotImplementedError(
+                f'Unknown residual mode "{residual_mode}".')
 
         current = layer
 
     return current
+
+
+def make_regularizer(regularization_settings: dict) \
+        -> keras.regularizers.Regularizer:
+    if regularization_settings is None:
+        return None
+    name = regularization_settings['type']
+    args = regularization_settings.copy()
+    del args['type']
+
+    cls = None
+    if name == 'l1':
+        cls = keras.regularizers.L1
+    elif name == 'l2':
+        cls = keras.regularizers.L2
+    elif name == 'l1l2':
+        cls = keras.regularizers.L1L2
+    else:
+        raise NotImplementedError(f'Unknown regularizer "{name}".')
+
+    return cls(**args)
+
+
+class MakeKerasLayersFromNetwork:
+    """
+    Visitor that makes a keras module for a given network module and input keras modules
+    """
+    _inputs: list = []
+    _nodes: dict = {}
+    _output: any = None
+
+    def __init__(self, target: NetworkModule) -> None:
+        self._output = self._visit(target)
+
+    def __call__(self) -> Tuple[list, any]:
+        return self._inputs, self._output
+
+    def _visit(self, target: NetworkModule) -> any:
+        if target not in self._nodes:
+            keras_inputs = [self._visit(i) for i in target.inputs]
+            self._nodes[target] = self._visit_raw(target, keras_inputs)
+        return self._nodes[target]
+
+    @singledispatchmethod
+    def _visit_raw(self, target, keras_inputs) -> any:
+        raise NotImplementedError(
+            'Unsupported module of type "{}".'.format(type(target)))
+
+    @_visit_raw.register
+    def _(self, target: NInput, keras_inputs) -> any:
+        result = Input(shape=target.shape)
+        self._inputs.append(result)
+        return result
+
+    @_visit_raw.register
+    def _(self, target: NDense, keras_inputs) -> any:
+
+        kernel_regularizer = make_regularizer(target.kernel_regularizer)
+        bias_regularizer = make_regularizer(target.bias_regularizer)
+        activity_regularizer = make_regularizer(
+            target.activity_regularizer)
+
+        return Dense(
+            target.shape[0],
+            activation=target.activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NAdd, keras_inputs) -> any:
+        return tensorflow.keras.layers.add(keras_inputs)
 
 
 def make_keras_network_from_network_module(target: NetworkModule, model_cache: dict = {}):
@@ -200,54 +277,9 @@ def make_keras_network_from_network_module(target: NetworkModule, model_cache: d
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
     :param model_cache: optional, used internally to preserve information through recursive calls
-    :return: a list of input keras modules to the network and the output keras module
     """
-
-    class MakeModelFromNetwork:
-        """
-        Visitor that makes a keras module for a given network module and input keras modules
-        """
-
-        @singledispatchmethod
-        def visit(self, target, inputs: list) -> any:
-            raise Exception(
-                'Unsupported module of type "{}".'.format(type(target)))
-
-        @visit.register
-        def _(self, target: NInput, inputs: list) -> any:
-            return Input(shape=target.shape), True
-
-        @visit.register
-        def _(self, target: NDense, inputs: list) -> any:
-            return Dense(
-                target.shape[0],
-                activation=target.activation,
-            )(*inputs), False
-
-        @visit.register
-        def _(self, target: NAdd, inputs: list) -> any:
-            return tensorflow.keras.layers.add(inputs), False
-
-    network_inputs = {}
-    keras_inputs = []
-
-    for i in target.inputs:
-        if i not in model_cache.keys():
-            model_cache[i] = make_keras_network_from_network_module(
-                i, model_cache)
-        i_network_inputs, i_keras_module = model_cache[i]
-        for new_input in i_network_inputs:
-            network_inputs[new_input.ref()] = new_input
-        keras_inputs.append(i_keras_module)
-
-    keras_module, is_input = MakeModelFromNetwork().visit(target, keras_inputs)
-
-    if is_input:
-        network_inputs[keras_module.ref()] = keras_module
-
-    keras_input = list(network_inputs.values())
-
-    return Model(inputs=keras_input, outputs=keras_module)
+    inputs, output = MakeKerasLayersFromNetwork(target)()
+    return Model(inputs=inputs, outputs=[output])
 
 
 def compute_network_configuration(num_outputs, dataset) -> Tuple[any, any]:
@@ -316,7 +348,8 @@ def find_best_layout_for_budget_and_depth(
         size,
         make_widths: Callable[[int], List[int]],
         depth,
-        shape
+        shape,
+        layer_args
 ) -> Tuple[int, List[int], NetworkModule]:
     best = (math.inf, None, None)
 
@@ -330,7 +363,8 @@ def find_best_layout_for_budget_and_depth(
                                internal_activation,
                                output_activation,
                                depth,
-                               shape
+                               shape,
+                               layer_args
                                )
         delta = count_num_free_parameters(network) - size
 

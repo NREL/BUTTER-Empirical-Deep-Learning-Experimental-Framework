@@ -8,10 +8,12 @@ from pytest import param
 from dmp.data.pmlb import pmlb_loader
 from dmp.jobqueue_interface.common import jobqueue_marshal
 
-from .aspect_test_task import AspectTestTask
+
 import tensorflow.keras.metrics as metrics
 import tensorflow.keras.callbacks as callbacks
-from .aspect_test_utils import *
+
+from dmp.task.aspect_test.aspect_test_task import AspectTestTask
+from dmp.task.aspect_test.aspect_test_utils import *
 from dmp.task.task import Parameter
 
 import pandas
@@ -30,9 +32,9 @@ class AspectTestExecutor(AspectTestTask):
     output_activation: Optional[str] = None
     tensorflow_strategy: Optional[tensorflow.distribute.Strategy] = None
     keras_model: Optional[tensorflow.keras.Model] = None
-    run_loss: Optional[tensorflow.keras.losses] = None
+    run_loss: Optional[tensorflow.keras.losses.Loss] = None
     network_structure: Optional[NetworkModule] = None
-    dataset: Optional[pandas.Series] = None
+    dataset_series: Optional[pandas.Series] = None
     inputs: Optional[numpy.ndarray] = None
     outputs: Optional[numpy.ndarray] = None
 
@@ -45,15 +47,16 @@ class AspectTestExecutor(AspectTestTask):
         self.seed = set_random_seeds(self.seed)
 
         # Load dataset
-        self.dataset, self.inputs, self.outputs =  \
+        self.dataset_series, self.inputs, self.outputs =  \
             pmlb_loader.load_dataset(_datasets, self.dataset)
 
         # prepare dataset shuffle, split, and label noise:
         prepared_config = prepare_dataset(
-            self.validation_split_method,
+            self.test_split_method,
+            self.test_split,
             self.label_noise,
             self.run_config,
-            self.dataset['Task'],
+            self.dataset_series['Task'],
             self.inputs,
             self.outputs,
         )
@@ -61,7 +64,7 @@ class AspectTestExecutor(AspectTestTask):
         # Generate neural network architecture
         num_outputs = self.outputs.shape[1]
         self.output_activation, self.run_loss = \
-            compute_network_configuration(num_outputs, self.dataset)
+            compute_network_configuration(num_outputs, self.dataset_series)
 
         # TODO: make it so we don't need this hack
         shape = self.shape
@@ -70,6 +73,12 @@ class AspectTestExecutor(AspectTestTask):
         if shape.endswith(residual_suffix):
             residual_mode = 'full'
             shape = shape[0:-len(residual_suffix)]
+
+        layer_args = {
+            'kernel_regularizer': self.kernel_regularizer,
+            'bias_regularizer': self.bias_regularizer,
+            'activity_regularizer': self.activity_regularizer,
+        }
 
         # Build NetworkModule network
         delta, widths, self.network_structure = find_best_layout_for_budget_and_depth(
@@ -81,11 +90,9 @@ class AspectTestExecutor(AspectTestTask):
             self.size,
             widths_factory(shape)(num_outputs, self.depth),
             self.depth,
-            shape
+            shape,
+            layer_args,
         )
-
-        print('begin reps: size: {}, depth: {}, widths: {}, rep: {}'.format(self.size, self.depth, self.widths,
-                                                                            self.rep))
 
         # Create and execute network using Keras
         with self.tensorflow_strategy.scope():
@@ -109,6 +116,7 @@ class AspectTestExecutor(AspectTestTask):
                 metrics.SquaredHinge(),
             ]
 
+            print(self.optimizer)
             run_optimizer = tensorflow.keras.optimizers.get(self.optimizer)
 
             self.keras_model.compile(
