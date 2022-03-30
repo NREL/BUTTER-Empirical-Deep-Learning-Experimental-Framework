@@ -47,7 +47,7 @@ def do_parameter_sweep(sweep_config, task_handler):
 def main():
     default_config = {
         'repetitions': 30,
-        'base_priority': 2000000000,
+        'base_priority': 2100000000,
         'queue': 1,
         'sweep_values': {
             'batch': ['fixed_3k_1'],
@@ -59,7 +59,7 @@ def main():
             'size': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                      32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                      8388608, 16777216, 33554432],
-            'depth': [6],
+            'depth': [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20],
             'test_split': [.2],
             'test_split_method': ['shuffled_train_test_split'],
             'run_config': [{
