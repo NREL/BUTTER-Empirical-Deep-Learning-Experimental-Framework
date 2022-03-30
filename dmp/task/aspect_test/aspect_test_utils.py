@@ -459,6 +459,8 @@ def widths_factory(shape):
         return get_wide_first_4x
     elif shape == 'wide_first_5x':
         return get_wide_first_5x
+    elif shape == 'wide_first_8x':
+        return get_wide_first_8x
     elif shape in {'wide_first', 'wide_first_10x'}:
         return get_wide_first_layer_rectangular_other_layers_widths
     elif shape == 'wide_first_16x':
