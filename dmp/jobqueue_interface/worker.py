@@ -95,7 +95,7 @@ if __name__ == "__main__":
         queue = 1
 
     credentials = connect.load_credentials('dmp')
-    job_queue = JobQueue(credentials, int(args.queue), check_table=False)
+    job_queue = JobQueue(credentials, int(queue), check_table=False)
     result_logger = PostgresResultLogger(credentials)
     worker = Worker(job_queue, result_logger)
 
