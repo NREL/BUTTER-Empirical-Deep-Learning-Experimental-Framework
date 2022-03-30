@@ -1,6 +1,6 @@
 name: dmp
 dependencies:
-- python=3.8
+- python=3.9
 - pandas
 - jupyter
 - matplotlib
@@ -8,12 +8,13 @@ dependencies:
 - statsmodels
 - seaborn
 - pip
-- scipy=1.4.1
+- scipy
 - numpy
 - sqlalchemy
 - psycopg2
 - pyarrow
-- tensorflow>=2.6
+- tensorflow-gpu>=2.7
+- cudnn>=8
 - simplejson
 - pip:
   - pytest

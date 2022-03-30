@@ -1,3 +1,26 @@
+
+mamba install python=3.9 pandas jupyter matplotlib scikit-learn statsmodels seaborn pip scipy numpy sqlalchemy psycopg2 pyarrow tensorflow-gpu=2.7 cudnn=8 simplejson --force-reinstall
+squeue -o "%.10i %9P %60j %10u %.2t %.10M %.6D %.4C %10R %o"
+
+
+
+​[12:04 PM] Bendl, Kurt
+source /nopt/nrel/apps/210929a/myenv.2110041605
+source /nopt/nrel/apps/210929a/myenv.2110041605
+
+https://nrel.github.io/HPC/Documentation/Systems/Vermillion/modules/
+
+
+
+from tensorflow.python.client import device_lib
+
+def get_available_gpus():
+    local_device_protos = device_lib.list_local_devices()
+    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
+get_available_gpus()
+
+
 squeue -u ctripp -h | grep -P ".*\s+\(JobHeldUser\)" | awk '{print $1}' | xargs scontrol release
 
 
@@ -29,6 +52,16 @@ sbatch -J v_0 -t1440 -n1 -c4 --account=dmpapps slurm_job_runner.sh python -m dmp
 for i in {1..400}; do sbatch -J v_0 -t1440 -n1 -c4 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[[0,4,0,0,0]]"; done
 
 for i in {1..400}; do sbatch -J v_0 -t1440 -n1 -c2 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[[0,2,0,0,0]]"; done
+
+for i in {1..400}; do sbatch -J vg_0 -t1440 -n1 -c8 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[[0,1,0,1,4650], [1,2,0,1,4650], [2,3,0,1,4650], [3,4,0,1,4650], [4,5,0,1,4650], [5,6,0,1,4650], [5,6,0,1,4650], [5,6,0,1,4650]]"; done
+
+sbatch --partition=gpu -J vg_0 -t1440 -n1 -c29 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[[0,1,0,1,4445], [1,2,0,1,4445], [2,3,0,1,4445], [3,4,0,1,4445], [4,5,0,1,4445], [5,6,0,1,4445], [5,6,0,1,4445], [5,6,0,1,4445], [6,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,29,0,0,0]]"
+sbatch --partition=gpu -J vg_0 -t1440 -n1 -c29 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[[0,1,0,1,4445], [1,2,0,1,4445], [2,3,0,1,4445], [3,4,0,1,4445], [4,5,0,1,4445], [5,7,0,0,0], [7,9,0,0,0], [9,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,29,0,0,0]]"
+
+sbatch --partition=gpu -J vg_1 -t1440 -n1 -c29 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[[0,2,0,1,4445], [2,4,0,1,4445], [4,6,0,1,4445], [6,8,0,1,4445], [8,10,0,1,4445], [10,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,29,0,0,0]]"
+
+
+sbatch --partition=gpu -J vg_x -t1440 -n1 -c29 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[[10,12,0,0,0], [12,15,0,0,0], [15,18,0,0,0], [18,21,0,0,0], [21,24,0,0,0], [24,27,0,0,0], [27,29,0,0,0]]"
 
 
 
