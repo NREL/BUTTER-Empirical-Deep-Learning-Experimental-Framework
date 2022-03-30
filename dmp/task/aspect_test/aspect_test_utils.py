@@ -224,15 +224,17 @@ class MakeKerasLayersFromNetwork:
     """
     Visitor that makes a keras module for a given network module and input keras modules
     """
-    _inputs: list = []
-    _nodes: dict = {}
-    _output: any = None
 
     def __init__(self, target: NetworkModule) -> None:
-        self._output = self._visit(target)
+        self._inputs: list = []
+        self._nodes: dict = {}
+        self._outputs: list = []
+
+        output = self._visit(target)
+        self._outputs = [output]
 
     def __call__(self) -> Tuple[list, any]:
-        return self._inputs, self._output
+        return self._inputs, self._outputs
 
     def _visit(self, target: NetworkModule) -> any:
         if target not in self._nodes:
@@ -272,14 +274,14 @@ class MakeKerasLayersFromNetwork:
         return tensorflow.keras.layers.add(keras_inputs)
 
 
-def make_keras_network_from_network_module(target: NetworkModule, model_cache: dict = {}):
+def make_keras_network_from_network_module(target: NetworkModule) -> keras.Model:
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
     :param model_cache: optional, used internally to preserve information through recursive calls
     """
-    inputs, output = MakeKerasLayersFromNetwork(target)()
-    return Model(inputs=inputs, outputs=[output])
+    inputs, outputs = MakeKerasLayersFromNetwork(target)()
+    return Model(inputs=inputs, outputs=outputs)
 
 
 def compute_network_configuration(num_outputs, dataset) -> Tuple[any, any]:

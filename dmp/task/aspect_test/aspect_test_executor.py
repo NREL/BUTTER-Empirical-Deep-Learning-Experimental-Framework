@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import json
 import os
 import platform
 import subprocess
@@ -37,7 +38,8 @@ class AspectTestExecutor(AspectTestTask):
     inputs: Optional[numpy.ndarray] = None
     outputs: Optional[numpy.ndarray] = None
 
-    def __call__(self) -> Tuple[Dict[str, Parameter], Dict[str, any]]:
+    def __call__(self, parent: AspectTestTask) \
+            -> Tuple[Dict[str, Parameter], Dict[str, any]]:
         # Configure hardware
         if self.tensorflow_strategy is None:
             self.tensorflow_strategy = tensorflow.distribute.get_strategy()
@@ -98,8 +100,10 @@ class AspectTestExecutor(AspectTestTask):
             # Build Keras model
             self.keras_model = make_keras_network_from_network_module(
                 self.network_structure)
-            assert len(
-                self.keras_model.inputs) == 1, 'Wrong number of keras inputs generated'
+            if len(self.keras_model.inputs) != 1:
+                print(
+                    f'weird error: {len(self.keras_model.inputs)}, {json.dumps(jobqueue_marshal.marshal(self.network_structure))}')
+                raise ValueError('Wrong number of keras inputs generated')
 
             # Compile Keras Model
             run_metrics = [
@@ -116,7 +120,6 @@ class AspectTestExecutor(AspectTestTask):
             ]
 
             run_optimizer = tensorflow.keras.optimizers.get(self.optimizer)
-            
 
             self.keras_model.compile(
                 # loss='binary_crossentropy', # binary classification
@@ -171,7 +174,8 @@ class AspectTestExecutor(AspectTestTask):
             # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
             # model.save(f'./log/models/{run_name}.h5', save_format='h5')
 
-            parameters: Dict[str, any] = self.parameters
+            parameters: Dict[str, any] = parent.parameters
+            parameters['output_activation'] = self.output_activation
             parameters['widths'] = widths
             parameters['num_free_parameters'] = num_free_parameters
             parameters['output_activation'] = self.output_activation

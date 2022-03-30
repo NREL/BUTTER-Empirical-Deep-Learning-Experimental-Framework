@@ -46,20 +46,20 @@ def do_parameter_sweep(sweep_config, task_handler):
 
 def main():
     default_config = {
-        'repetitions': 5,
-        'base_priority': 0,
+        'repetitions': 10,
+        'base_priority': 100000,
         'queue': 1,
         'sweep_values': {
-            'batch': ['test'],
-            'dataset': ['connect_4'],
+            'batch': ['l2_group_0'],
+            'dataset': ['201_pol', '529_pollen', 'connect_4', '537_houses', 'adult', 'mnist', 'nursery', 'sleep', 'wine_quality_white',],
             'input_activation': ['relu'],
             'activation': ['relu'],
             'optimizer': [{'class_name': 'adam', 'config': {'learning_rate': 0.0001}}],
-            'shape': ['rectangle'],
+            'shape': ['rectangle',],
             'size': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                      32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                      8388608, 16777216, 33554432],
-            'depth': [3],
+            'depth': [2, 3, 4],
             'test_split': [.2],
             'test_split_method': ['shuffled_train_test_split'],
             'run_config': [{
@@ -89,7 +89,7 @@ def main():
     do_parameter_sweep(sweep_config, handler)
 
     tasks = sorted(tasks, key=lambda t: (
-        t.kernel_regularizer['l2'], numpy.random.randint(10000), t.seed))
+        t.depth, t.dataset, t.kernel_regularizer['l2'], numpy.random.randint(10000), t.seed))
 
     base_priority = sweep_config['base_priority']
     jobs = [Job(
@@ -103,6 +103,7 @@ def main():
     job_queue = JobQueue(credentials, queue_id, check_table=False)
     job_queue.push(jobs)
     print(f'Enqueued {len(jobs)} jobs.')
+
     # task = jobqueue_marshal.demarshal(jobs[0].command)
     # print(task)
     # task()

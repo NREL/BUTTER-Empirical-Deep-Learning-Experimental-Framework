@@ -51,19 +51,28 @@ WITH v as (
         (
             SELECT id from {_parameter_table}
             WHERE
-                kind = %s and
-                bool_value IS NOT DISTINCT FROM %s and
-                integer_value IS NOT DISTINCT FROM %s and
-                real_value IS NOT DISTINCT FROM (%s)::real and
-                string_value IS NOT DISTINCT FROM %s
+                kind = t.kind and
+                bool_value IS NOT DISTINCT FROM t.bool_value and
+                integer_value IS NOT DISTINCT FROM t.integer_value and
+                real_value IS NOT DISTINCT FROM (t.real_value)::real and
+                string_value IS NOT DISTINCT FROM t.string_value
             LIMIT 1
         ) id,
         *
-    FROM (VALUES %s) AS ({_key_columns})
+    FROM 
+    (
+        SELECT
+        kind,
+        bool_value::bool,
+        integer_value::bigint,
+        real_value::real,
+        string_Value::text
+        FROM (VALUES %s) AS t ({_key_columns})
+    ) t
 ),
 i as (
-    INSERT INTO {_parameter_table} ({})
-        SELECT {_key_columns} FROM (SELECT * from v WHERE v.id IS NULL)
+    INSERT INTO {_parameter_table} ({_key_columns})
+        SELECT {_key_columns} FROM (SELECT * from v WHERE v.id IS NULL) s
     ON CONFLICT DO NOTHING
     RETURNING id, {_key_columns}
 )
@@ -76,8 +85,6 @@ SELECT * from i
                     _key_columns = self._key_columns,
                 ), 
                 (
-                    kind,
-                    *typed_values,
                     (kind, *typed_values),
                 ))
                 result = cursor.fetchone()

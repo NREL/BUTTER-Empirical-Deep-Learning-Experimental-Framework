@@ -53,7 +53,7 @@ class AspectTestTask(Task):
 
     def __call__(self) -> Dict[str, any]:
         from .aspect_test_executor import AspectTestExecutor
-        return AspectTestExecutor(*dataclasses.astuple(self))()
+        return AspectTestExecutor(*dataclasses.astuple(self))(self)
 
     @property
     def version(self) -> int:

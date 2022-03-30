@@ -33,7 +33,7 @@ class Worker:
 
         # log task run
         
-        self.logger.log(
+        self._result_logger.log(
             [
                 (
                     job.id,
