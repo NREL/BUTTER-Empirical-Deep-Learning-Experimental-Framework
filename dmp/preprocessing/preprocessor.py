@@ -1,8 +1,4 @@
 from abc import abstractmethod
-from typing import (
-    Iterable,
-    Union,
-    )
 
 
 class Preprocessor:

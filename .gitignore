@@ -2,7 +2,7 @@
 /.envrc
 /download/
 __pycache__
-/.pmlb_cache/
+**/.pmlb_cache
 /.idea/
 .idea
 .idea/*

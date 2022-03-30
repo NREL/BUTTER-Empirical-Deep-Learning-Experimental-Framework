@@ -1,7 +1,6 @@
 import json
 import re
 from copy import deepcopy
-from json import JSONDecodeError
 
 
 def parse_config_from_args(

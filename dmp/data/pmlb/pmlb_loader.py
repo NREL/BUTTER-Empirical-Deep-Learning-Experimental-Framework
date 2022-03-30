@@ -2,6 +2,7 @@ import numbers
 import os
 from typing import (
     Callable,
+    Dict,
     Optional,
     Tuple,
 )
@@ -26,7 +27,7 @@ def load_dataset_index(filePath: str = dataset_path) -> pandas.DataFrame:
     return datasets
 
 
-def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> (pandas.Series, ndarray, ndarray):
+def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> Tuple[pandas.Series, ndarray, ndarray]:
     matching_datasets = datasets[datasets['Dataset'] == dataset_name]
     if len(matching_datasets) <= 0:
         raise Exception('No matching dataset "{}".'.format(dataset_name))
@@ -66,24 +67,24 @@ def _read_raw_pmlb(cache_directory, dataset_name):
     return raw_inputs, raw_outputs
 
 
-def _default_loader(raw_inputs: ndarray, raw_outputs: ndarray) -> (ndarray, ndarray, Optional[str]):
+def _default_loader(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
     inputs = _prepare_data(raw_inputs)
     outputs = _prepare_data(raw_outputs)
     return inputs, outputs, None
 
 
-def _load_MNIST(raw_inputs: ndarray, raw_outputs: ndarray) -> (ndarray, ndarray, Optional[str]):
+def _load_MNIST(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
     inputs = _prepare_matrix(raw_inputs, lambda value: value / 255.0)
     outputs = _prepare_value(raw_outputs, _one_hot)
     return inputs, outputs, 'classification'
 
 
-def _load_201_pol(raw_inputs: ndarray, raw_outputs: ndarray) -> (ndarray, ndarray, Optional[str]):
+def _load_201_pol(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
     inputs, outputs, _ = _default_loader(raw_inputs, raw_outputs)
     return inputs, outputs, 'classification'
 
 
-_custom_loaders: {str: Callable[[ndarray, ndarray], Tuple[ndarray, ndarray]]} = {
+_custom_loaders: Dict[str, Callable[[ndarray, ndarray], Tuple[ndarray, ndarray]]] = {
     'mnist': _load_MNIST,
     '201_pol': _load_201_pol,
 }

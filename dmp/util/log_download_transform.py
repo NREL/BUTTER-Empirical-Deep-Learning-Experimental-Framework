@@ -16,7 +16,7 @@ try:
     _data = json.loads(open(filename).read())
     _credentials = _data[_database]
     user = _credentials["user"]
-except KeyError as e:
+except KeyError:
     raise Exception("No credetials for {} found in {}".format(_database, filename))
 connection_string = 'postgresql://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
 # connection_string = 'postgresql+asyncpg://{user}:{password}@{host}:5432/{database}'.format(**_credentials)
@@ -28,31 +28,31 @@ import math
 from psycopg2.extensions import register_adapter, AsIs
 
 
-def addapt_numpy_float64(numpy_float64):
+def adapt_numpy_float64(numpy_float64):
     return AsIs(numpy_float64)
 
 
-def addapt_numpy_int64(numpy_int64):
+def adapt_numpy_int64(numpy_int64):
     return AsIs(numpy_int64)
 
 
-def addapt_numpy_float32(numpy_float32):
+def adapt_numpy_float32(numpy_float32):
     return AsIs(numpy_float32)
 
 
-def addapt_numpy_int32(numpy_int32):
+def adapt_numpy_int32(numpy_int32):
     return AsIs(numpy_int32)
 
 
-def addapt_numpy_array(numpy_array):
+def adapt_numpy_array(numpy_array):
     return AsIs(numpy_array.tolist())
 
 
-register_adapter(numpy.float64, addapt_numpy_float64)
-register_adapter(numpy.int64, addapt_numpy_int64)
-register_adapter(numpy.float32, addapt_numpy_float32)
-register_adapter(numpy.int32, addapt_numpy_int32)
-register_adapter(numpy.ndarray, addapt_numpy_array)
+register_adapter(numpy.float64, adapt_numpy_float64)
+register_adapter(numpy.int64, adapt_numpy_int64)
+register_adapter(numpy.float32, adapt_numpy_float32)
+register_adapter(numpy.int32, adapt_numpy_int32)
+register_adapter(numpy.ndarray, adapt_numpy_array)
 
 # async def fetch_as_dataframe(con: asyncpg.Connection, query: str, *args):
 #     stmt = await con.prepare(query)
@@ -250,6 +250,8 @@ history_cols = [
     'mean_squared_logarithmic_error',
     'val_kullback_leibler_divergence',
     'val_mean_squared_logarithmic_error',
+    'loss',
+    'val_loss',
 ]
 
 dest_cols = set(base_cols)
@@ -351,11 +353,10 @@ def insert_on_duplicate(table, conn, keys, data_iter):
 
 def func():
     # log_filename = 'aspect_analysis_datasets.feather'
-    log_filename = 'fixed_3k_1.parquet'
-    groupnames = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
+    groups = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
     source_table = 'log'
     dest_table_base = 'materialized_experiments_3_base'
-    dest_table_loss = 'materialized_experiments_3_val_loss'
+    dest_table_val_loss = 'materialized_experiments_3_val_loss'
     dest_table_history = 'materialized_experiments_3_history'
     num_threads = 64
     # num_threads = 1
@@ -382,13 +383,13 @@ def func():
     for i, str_id in enumerate(string_map_df['id'].to_list()):
         string_map[values[i]] = str_id
 
-    conditions = f'log.groupname IN {groupnames}'
+    conditions = f'log.groupname IN {groups}'
     q = f'''
     select log.id from {source_table} AS log 
     where {conditions} AND 
     (
     NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
-    NOT EXISTS (SELECT id FROM {dest_table_loss} AS d WHERE d.id = log.id) OR
+    NOT EXISTS (SELECT id FROM {dest_table_val_loss} AS d WHERE d.id = log.id) OR
     NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id)
     )
     ORDER BY id ASC
@@ -404,7 +405,6 @@ def func():
     ids = ids['id'].to_numpy()
     count = ids.size
 
-    loaded = 0
     chunk_size = 16
     # max_buffered_chunks = 4
     print(f'Loading {count} records from database...')
@@ -435,8 +435,8 @@ def func():
             log.id as id,
             log.job as job,
             log.timestamp as timestamp,
-            log.groupname as groupname,
-            EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time))::int AS runtime,
+            log.groupname as group,
+            COALESCE((EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time)) * 1000)::int, -1) AS job_length,
             log.doc as doc
             FROM
                  {source_table} AS log,
@@ -458,7 +458,7 @@ def func():
             base_chunk, loss_chunk, history_chunk = postprocess_dataframe(chunk, engine)
             print(f'Read #{read_number}: writing chunk to database...')
             base_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
-            loss_chunk.to_sql(dest_table_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
+            loss_chunk.to_sql(dest_table_val_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
             history_chunk.to_sql(dest_table_history, engine, method=insert_on_duplicate, if_exists='append',
                                  index=False)
             print(f'Read #{read_number}: done writing...')
@@ -474,7 +474,7 @@ def func():
     # for i in range(0, num_readers):
     #     read_chunk(i)
     with Pool(num_readers) as p:
-        data_load = p.map(read_chunk, range(0, num_readers))
+        p.map(read_chunk, range(0, num_readers))
     # data_load = Parallel(n_jobs=num_readers, batch_size=1, backend='multiprocessing')(
     #     delayed(read_chunk(i)) for i in range(num_readers))
 
@@ -482,4 +482,5 @@ def func():
     print(f'Processed {count} entries in {delta_t}s at a rate of {count / delta_t} entries / second.')
 
 
-func()
+if __name__ == "__main__":
+    func()
