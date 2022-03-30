@@ -98,10 +98,10 @@ def main():
     ) for i, t in enumerate(tasks)]
 
     print(f'Generated {len(jobs)} jobs.')
-    credentials = connect.load_credentials('dmp')
-    queue_id = int(sweep_config['queue'])
-    job_queue = JobQueue(credentials, queue_id, check_table=False)
-    job_queue.push(jobs)
+    # credentials = connect.load_credentials('dmp')
+    # queue_id = int(sweep_config['queue'])
+    # job_queue = JobQueue(credentials, queue_id, check_table=False)
+    # job_queue.push(jobs)
     print(f'Enqueued {len(jobs)} jobs.')
 
     # task = jobqueue_marshal.demarshal(jobs[0].command)
