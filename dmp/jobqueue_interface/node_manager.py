@@ -31,8 +31,8 @@ def main():
     workers = []
     for rank, config in enumerate(configs):
         command = ['python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
-                    'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-                    *[str(e) for e in config], args.project, args.queue]
+                   'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
+                   *[str(e) for e in config], args.project, args.queue]
         print(
             f'Creating subprocess {rank} with command: "{" ".join(command)}"')
         worker = subprocess.Popen(
@@ -58,11 +58,13 @@ def main():
     print('Starting output redirection...')
     while True:
         rstreams, _, _ = select.select(streams, [], [], 30)
+        exit = False
         for stream in rstreams:
             line = stream.readline()
-            if len(line) != 0:
-                output(stream, line)
-        if all(w.poll() is not None for w in workers):
+            if len(line) == 0:
+                exit = True
+            output(stream, line)
+        if (len(rstreams) == 0 or exit) and all(w.poll() is not None for w in workers):
             break
 
     for stream in streams:
