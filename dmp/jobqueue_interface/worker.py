@@ -34,7 +34,7 @@ def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     # print(tensorflow.config.experimental.list_physical_devices('GPU'))
 
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
-    # print(f'gpus: {gpus}')
+    print(f'Found: {len(gpus)} using: {gpu_low} - {gpu_high-1}.')
     visible_devices = []
     for i in range(gpu_low, gpu_high):
         gpu = gpus[i]
