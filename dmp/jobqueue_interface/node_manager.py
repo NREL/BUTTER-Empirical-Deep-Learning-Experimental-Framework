@@ -47,6 +47,8 @@ def main():
         for i in range((num_cpu-base)/cpu_per_worker):
             configs.append([base + i*cpu_per_worker, base +
                            (i+1)*cpu_per_worker, 0, 0, 0])
+    else:
+        configs = configs[1:]
 
     print(
         f'Started Node Manager on host "{host}" for project "{args.project}" and queue "{args.queue}".')
