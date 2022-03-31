@@ -8,6 +8,14 @@ import sys
 import time
 from queue import Queue
 
+import multiprocessing
+from tensorflow.python.client import device_lib
+
+
+def get_available_gpus():
+    local_device_protos = device_lib.list_local_devices()
+    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -23,6 +31,23 @@ def main():
     host = platform.node()
 
     configs = json.loads(args.worker_configs)
+
+    if not isinstance(configs[0], int):
+        num_cpu = multiprocessing.cpu_count()
+        num_gpu = len(get_available_gpus())
+        if num_gpu == 2:
+            configs = [[0, 1, 0, 1, 4445], [1, 2, 0, 1, 4445], [2, 3, 0, 1, 4445], [
+                3, 4, 1, 2, 4445], [4, 5, 1, 2, 4445], [5, 6, 1, 2, 4445]]
+        elif num_gpu == 1:
+            configs = [[0, 1, 0, 1, 6000], [1, 2, 0, 1, 6000], [
+                2, 3, 0, 1, 6000], [3, 4, 0, 1, 6000], [4, 5, 0, 1, 6000]]
+
+        base = len(configs)
+        cpu_per_worker = 2
+        for i in range((num_cpu-base)/cpu_per_worker):
+            configs.append([base + i*cpu_per_worker, base +
+                           (i+1)*cpu_per_worker, 0, 0, 0])
+
     print(
         f'Started Node Manager on host "{host}" for project "{args.project}" and queue "{args.queue}".')
     print(f'Launching worker processes...')
