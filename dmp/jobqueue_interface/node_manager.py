@@ -44,7 +44,8 @@ def main():
 
         base = len(configs)
         cpu_per_worker = 2
-        for i in range((num_cpu-base)/cpu_per_worker):
+        num_cpu_workers = int((num_cpu-base)/cpu_per_worker)
+        for i in range(num_cpu_workers):
             configs.append([base + i*cpu_per_worker, base +
                            (i+1)*cpu_per_worker, 0, 0, 0])
     else:
