@@ -25,6 +25,8 @@ dependencies:
   - orjson
   - connectorx
   - pathos
+  - rust
+  - cargo
 
 
   
