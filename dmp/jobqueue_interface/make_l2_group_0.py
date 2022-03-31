@@ -10,7 +10,7 @@ from jobqueue.job import Job
 from jobqueue.job_queue import JobQueue
 import numpy
 
-from command_line_tools import command_line_config
+# from command_line_tools import command_line_config
 from dmp.jobqueue_interface.common import jobqueue_marshal
 
 import sys
@@ -45,7 +45,7 @@ def do_parameter_sweep(sweep_config, task_handler):
 
 
 def main():
-    default_config = {
+    sweep_config = {
         'repetitions': 10,
         'base_priority': 100000,
         'queue': 1,
@@ -77,8 +77,8 @@ def main():
         },
     }
 
-    sweep_config = command_line_config.parse_config_from_args(
-        sys.argv[1:], default_config)
+    # sweep_config = command_line_config.parse_config_from_args(
+    #     sys.argv[1:], default_config)
 
     tasks = []
 
@@ -98,10 +98,10 @@ def main():
     ) for i, t in enumerate(tasks)]
 
     print(f'Generated {len(jobs)} jobs.')
-    credentials = connect.load_credentials('dmp')
-    queue_id = int(sweep_config['queue'])
-    job_queue = JobQueue(credentials, queue_id, check_table=False)
-    job_queue.push(jobs)
+    # credentials = connect.load_credentials('dmp')
+    # queue_id = int(sweep_config['queue'])
+    # job_queue = JobQueue(credentials, queue_id, check_table=False)
+    # job_queue.push(jobs)
     print(f'Enqueued {len(jobs)} jobs.')
 
     # task = jobqueue_marshal.demarshal(jobs[0].command)
