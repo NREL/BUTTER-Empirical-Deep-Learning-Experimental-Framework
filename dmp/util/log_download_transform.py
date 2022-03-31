@@ -124,7 +124,8 @@ rename_map.update({
     'config.optimizer.class_name': 'optimizer',
     'config.run_config.epochs': 'epochs',
     'config.run_config.batch_size': 'batch_size',
-    'config.run_config.validation_split': 'validation_split'
+    'config.run_config.validation_split': 'validation_split',
+    'groupname' : 'group'
 
 })
 # print(rename_map)
@@ -145,7 +146,7 @@ type_map = {
     'validation_split': 'float32',
     # 'label_noise' : 'float32',
     'residual_mode': 'str',
-    # 'job_length': 'str',
+    # 'runtime': 'str',
     # 'loss' : 'float32[]',
     # 'hinge' : 'float32[]',
     # 'accuracy' : 'float32[]',
@@ -219,7 +220,7 @@ base_cols = [
     'residual_mode',
     'optimizer',
     'activation',
-    'job_length',
+    'runtime',
 ]
 
 loss_cols = [
@@ -229,6 +230,8 @@ loss_cols = [
 
 history_cols = [
     record_key,
+    'loss',
+    'val_loss',
     'hinge',
     'accuracy',
     'val_hinge',
@@ -278,19 +281,22 @@ def postprocess_dataframe(data_log, engine):
     datasets.drop(columns=[c for c in drop_list if c in col_set], inplace=True)
 
     # print(datasets.columns)
-    col_set = set(datasets.columns)
-    datasets.rename(columns={k: v for k, v in rename_map.items() if k in col_set}, inplace=True)
+    
+    
     # print(datasets.columns)
     # print(f'Joining with original dataframe...')
     datasets = datasets.join(data_log)
-    # datasets['job_length'].replace({"NaT": numpy.NaN, pd.NaT: numpy.NaN}, inplace=True)
-    # datasets['job_length'].replace({pd.NaT: None}, inplace=True)
+
+    col_set = set(datasets.columns)
+    datasets.rename(columns={k: v for k, v in rename_map.items() if k in col_set}, inplace=True)
+    # datasets['runtime'].replace({"NaT": numpy.NaN, pd.NaT: numpy.NaN}, inplace=True)
+    # datasets['runtime'].replace({pd.NaT: None}, inplace=True)
     # print(datasets.columns)
     # print(datasets.dtypes)
     # print(f'converting...')
     datasets = datasets.astype(type_map)
-    datasets['job_length'] = datasets['job_length'].apply(lambda s : None if pd.isna(s) else str(s))
-    # datasets['job_length'].replace({"NaT": None, pd.NaT: None}, inplace=True)
+    datasets['runtime'] = datasets['runtime'].apply(lambda s : 0 if pd.isna(s) else str(int(s)))
+    # datasets['runtime'].replace({"NaT": None, pd.NaT: None}, inplace=True)
 
     def convert_label_noise(v):
         if v is None:
@@ -302,7 +308,8 @@ def postprocess_dataframe(data_log, engine):
 
     datasets['label_noise'] = datasets['label_noise'].apply(convert_label_noise)
 
-    # print(datasets.columns)
+    # print('rename map:' + str(rename_map), flush=True)
+    # print(datasets.columns, flush=True)
 
     def canonicalize_string(s):
         if s in string_map:
