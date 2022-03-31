@@ -16,6 +16,7 @@ dependencies:
 - tensorflow-gpu>=2.7
 - cudnn>=8
 - simplejson
+- mamba
 - pip:
   - pytest
   - tensorflow_datasets
