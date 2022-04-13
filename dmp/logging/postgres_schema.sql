@@ -172,7 +172,9 @@ insert into experiment_summary_ (
     kullback_leibler_divergence_avg,
     kullback_leibler_divergence_stddev,
     network_structure,
-    widths
+    widths,
+    "size",
+    relative_size_error
 )
 select
     e.experiment_id,
@@ -207,7 +209,9 @@ select
     kullback_leibler_divergence_.v_avg kullback_leibler_divergence_avg, 
     kullback_leibler_divergence_.v_stddev kullback_leibler_divergence_stddev,
     network_structure,
-    widths
+    widths,
+    e.size,
+    e.relative_size_error
 from
 (
     SELECT * FROM experiment_ e WHERE

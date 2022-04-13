@@ -46,28 +46,59 @@ def do_parameter_sweep(sweep_config, task_handler):
 
 def main():
     default_config = {
-        'repetitions': 30,
-        'base_priority': 2000000000 / 1000,
+        'repetitions': 10,
+        'base_priority': 7000000,
         'queue': 1,
         'sweep_values': {
-            'batch': ['fixed_3k_1'],
-            'dataset': ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white',],
+            'batch': ['batch_size_1'],
+            'dataset': ['201_pol', '529_pollen', 'connect_4', '537_houses', 'adult', 'mnist', 'nursery', 'sleep', 'wine_quality_white',],
             'input_activation': ['relu'],
             'activation': ['relu'],
             'optimizer': [{'class_name': 'adam', 'config': {'learning_rate': 0.0001}}],
-            'shape': ['rectangle', 'trapezoid', 'exponential', 'wide_first_2x', 'wide_first_4x', 'wide_first_8x', 'wide_first_16x', 'rectangle_residual'],
+            'shape': ['rectangle', ],
             'size': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                      32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
-                     8388608, 16777216, 33554432],
-            'depth': [6],
+                     8388608, 16777216,],
+            'depth': [2, 3, 4, 5, 7, 8, 9, 10,],
             'test_split': [.2],
             'test_split_method': ['shuffled_train_test_split'],
             'run_config': [{
                 'shuffle': True,
                 'epochs': 3000,
-                'batch_size': 256,
+                'batch_size': 32,
                 'verbose': 0,
-            }],
+            },
+            {
+                'shuffle': True,
+                'epochs': 3000,
+                'batch_size': 64,
+                'verbose': 0,
+            },
+            {
+                'shuffle': True,
+                'epochs': 3000,
+                'batch_size': 128,
+                'verbose': 0,
+            },
+            {
+                'shuffle': True,
+                'epochs': 3000,
+                'batch_size': 512,
+                'verbose': 0,
+            },
+            {
+                'shuffle': True,
+                'epochs': 3000,
+                'batch_size': 1024,
+                'verbose': 0,
+            },
+            {
+                'shuffle': True,
+                'epochs': 3000,
+                'batch_size': 2048,
+                'verbose': 0,
+            },
+            ],
             'label_noise': [0.0],
             'kernel_regularizer': [None],
             'bias_regularizer': [None],
@@ -89,7 +120,7 @@ def main():
     do_parameter_sweep(sweep_config, handler)
 
     tasks = sorted(tasks, key=lambda t: (
-        t.depth, t.dataset, numpy.random.randint(10000), t.seed))
+        t.depth, t.dataset, t.run_config['batch_size'], numpy.random.randint(10000), t.seed))
 
     base_priority = sweep_config['base_priority']
     jobs = [Job(
@@ -103,6 +134,7 @@ def main():
     job_queue = JobQueue(credentials, queue_id, check_table=False)
     job_queue.push(jobs)
     print(f'Enqueued {len(jobs)} jobs.')
+
     # task = jobqueue_marshal.demarshal(jobs[0].command)
     # print(task)
     # task()
