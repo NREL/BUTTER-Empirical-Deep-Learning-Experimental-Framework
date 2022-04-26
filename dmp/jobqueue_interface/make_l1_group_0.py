@@ -47,10 +47,10 @@ def do_parameter_sweep(sweep_config, task_handler):
 def main():
     default_config = {
         'repetitions': 10,
-        'base_priority': 1000,
+        'base_priority': 30000,
         'queue': 1,
         'sweep_values': {
-            'batch': ['l2_group_0'],
+            'batch': ['l1_group_0'],
             'dataset': ['201_pol', '529_pollen', 'connect_4', '537_houses', 'adult', 'mnist', 'nursery', 'sleep', 'wine_quality_white',],
             'input_activation': ['relu'],
             'activation': ['relu'],
@@ -69,7 +69,7 @@ def main():
                 'verbose': 0,
             }],
             'label_noise': [0.0],
-            'kernel_regularizer': [{'type': 'l2', 'l2': 0.00015625}, {'type': 'l2', 'l2': 7.8125e-05}], #{'type': 'l2', 'l2': 0.0003125}, {'type': 'l2', 'l2': 0.000625}, {'type': 'l2', 'l2': 0.00125}, {'type': 'l2', 'l2': 0.0025}, {'type': 'l2', 'l2': 0.005}, {'type': 'l2', 'l2': 0.01}, {'type': 'l2', 'l2': 0.02}, {'type': 'l2', 'l2': 0.04}, {'type': 'l2', 'l2': 0.08}, {'type': 'l2', 'l2': 0.16}, {'type': 'l2', 'l2': 0.32}],
+            'kernel_regularizer': [{'type': 'l1', 'l1': 0.00015625}, {'type': 'l1', 'l1': 7.8125e-05}], #[{'type': 'l1', 'l1': 0.0003125}, {'type': 'l1', 'l1': 0.000625}, {'type': 'l1', 'l1': 0.00125}, {'type': 'l1', 'l1': 0.0025}, {'type': 'l1', 'l1': 0.005}, {'type': 'l1', 'l1': 0.01}, {'type': 'l1', 'l1': 0.02}, {'type': 'l1', 'l1': 0.04}, {'type': 'l1', 'l1': 0.08}, {'type': 'l1', 'l1': 0.16}, {'type': 'l1', 'l1': 0.32}],
             'bias_regularizer': [None],
             'activity_regularizer': [None],
             'early_stopping': [None],
@@ -89,7 +89,7 @@ def main():
     do_parameter_sweep(sweep_config, handler)
 
     tasks = sorted(tasks, key=lambda t: (
-        t.depth, t.dataset, t.kernel_regularizer['l2'], numpy.random.randint(10000), t.seed))
+        t.depth, t.dataset, t.kernel_regularizer['l1'], numpy.random.randint(10000), t.seed))
 
     base_priority = sweep_config['base_priority']
     jobs = [Job(

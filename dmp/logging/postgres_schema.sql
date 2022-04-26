@@ -209,19 +209,16 @@ select
     network_structure,
     widths
 from
-(
-    SELECT * FROM experiment_ e WHERE
-        e.experiment_id IN (
-            select distinct r.experiment_id 
-            FROM
-                run_ r
-            WHERE 
-                r.record_timestamp >= COALESCE(0, (SELECT MAX(update_timestamp) FROM experiment_summary_))
-                AND NOT EXISTS (SELECT * FROM experiment_summary_ s WHERE 
-                              s.experiment_id = r.experiment_id 
-                              AND s.update_timestamp > r.record_timestamp)
-        )
-) e,
+(select distinct r.experiment_id 
+    FROM
+        run_ r
+    WHERE 
+--         r.record_timestamp >= COALESCE(0, (SELECT MAX(update_timestamp) FROM experiment_summary_))
+        NOT EXISTS (SELECT * FROM experiment_summary_ s WHERE 
+                      s.experiment_id = r.experiment_id 
+                      AND s.update_timestamp > r.record_timestamp)
+) eid,
+experiment_ e,
 lateral (
     select
         max(num) num_runs,
@@ -322,6 +319,7 @@ lateral (
       where r.experiment_id = e.experiment_id
       group by epoch order by epoch ) x
 ) kullback_leibler_divergence_
+where e.experiment_id = eid.experiment_id
 ON CONFLICT (experiment_id) DO UPDATE SET
         num_runs = EXCLUDED.num_runs,
         num = EXCLUDED.num,
@@ -349,4 +347,123 @@ ON CONFLICT (experiment_id) DO UPDATE SET
         val_kullback_leibler_divergence_stddev = EXCLUDED.val_kullback_leibler_divergence_stddev,
         kullback_leibler_divergence_avg = EXCLUDED.kullback_leibler_divergence_avg,
         kullback_leibler_divergence_stddev = EXCLUDED.kullback_leibler_divergence_stddev
+;
+
+
+update experiment_ e set 
+    "size" = size_.integer_value,
+    "relative_size_error" = (abs( (size_.integer_value - e.num_free_parameters) / (size_.integer_value)::float))::real
+FROM
+parameter_ as size_
+WHERE
+(e.size is NULL OR e.relative_size_error is NULL) and
+e.experiment_parameters @> array[size_.id] and size_.kind = 'size';
+
+update experiment_summary_ s
+set 
+    "size" = e.size,
+    relative_size_error = e.relative_size_error
+from
+    experiment_ e
+where 
+    s.experiment_id = e.experiment_id and 
+    e.size is not null and 
+    e.relative_size_error is not null and
+    (s.size is null or s.relative_size_error is null);
+
+
+vacuum experiment_summary_;
+
+
+select 
+    queue, min(priority) min_priority, max(priority) max_priority, command->'batch' batch, command->'shape' shape, status, count(*)
+from 
+    job_status s,
+    job_data d
+where s.id = d.id and queue = 1
+group by status, queue, batch, shape
+order by status asc, min_priority asc, queue, batch, shape;
+
+select (command->'size')::bigint size, (now()::timestamp - start_time) runtime, * from
+job_status s,
+job_data d
+where s.id = d.id and queue = 1 and status = 1 and (now()::timestamp - start_time) > '3 days'
+order by runtime desc
+;
+
+update job_status s
+set status = 0, start_time = NULL, update_time = NULL
+where queue = 1 and status = 1 and (now()::timestamp - start_time) > '3 days';
+
+select * from job_status s
+where queue = 1 and status = 3;
+
+update job_status s
+set status = 0, start_time = NULL, update_time = NULL
+where queue = 1 and status = 3;
+
+
+
+update job_status stat
+    set priority = seq.seq
+from
+(
+    select ROW_NUMBER() OVER() seq, ordered_job.id id
+    from
+    (   select 
+        (command->'depth')::bigint depth,
+        (command->'kernel_regularizer'->'l2')::float lambda,
+        (command->'seed')::bigint seed,
+        (command->>'dataset') dataset,
+        s.id
+        from
+            job_status s,
+            job_data d
+        where
+            s.id = d.id and queue = 1 and status = 0 and
+            command->>'batch' = 'l2_group_0' and command->>'shape' = 'rectangle'
+        order by depth asc, lambda asc, dataset, floor(random() * 100)::smallint asc
+    ) ordered_job
+) seq
+where
+seq.id = stat.id
+;
+
+
+
+
+with b as (
+select s.id
+from
+    job_data d,
+    job_status s
+where
+    d.id = s.id and
+    s.queue = 1 and
+    (s.status = 0 or s.status = 3) and
+    exists (
+        select 
+            size_.integer_value size,
+            shape_.string_value shape,
+            depth_.integer_value depth,
+            dataset_.string_value dataset,
+            relative_size_error
+        from
+            experiment_ e,
+            parameter_ size_,
+            parameter_ shape_,
+            parameter_ depth_,
+            parameter_ dataset_
+        where
+            e.relative_size_error > .2 and
+            e.experiment_parameters @> array[size_.id] and size_.kind = 'size' and size_.integer_value = (d.command->'size')::bigint and
+            e.experiment_parameters @> array[shape_.id] and shape_.kind = 'shape' and shape_.string_value = d.command->>'shape' and
+            e.experiment_parameters @> array[depth_.id] and depth_.kind = 'depth' and depth_.integer_value = (d.command->'depth')::bigint and
+            e.experiment_parameters @> array[dataset_.id] and dataset_.kind = 'dataset' and  dataset_.string_value = d.command->>'dataset'
+        )
+),
+d1 as (
+delete from job_status s using b where s.id = b.id
+)
+delete from job_data s using b where s.id = b.id
 ;
