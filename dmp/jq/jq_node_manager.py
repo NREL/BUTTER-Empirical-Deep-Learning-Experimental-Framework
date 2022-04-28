@@ -15,6 +15,7 @@ def get_run_script(default_script, custom_script):
 
 
 def make_worker_process(rank, command):
+    command = [str(a) for a in command]
     print(f'Creating subprocess {rank} with command: "{" ".join(command)}"')
     return subprocess.Popen(
         command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
