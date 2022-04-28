@@ -115,7 +115,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     strategy = make_strategy(
-        args.first_socket, args.num_scokets,
+        args.first_socket, args.num_sockets,
         args.first_core, args.num_cores,
         args.first_gpu, args.num_gpus,
         args.gpu_mem)
