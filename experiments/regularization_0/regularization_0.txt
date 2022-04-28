@@ -185,3 +185,24 @@ squeue -u ctripp -A dmpapps -h | grep -P ".*\s+c_\d\s+.*\(.*\)" | awk '{print $1
 squeue -u ctripp -A dmpapps -h | grep -P "\s+c_\s+.*\(.*\)" | awk '{print $1}' | xargs scancel
 
 squeue -u ctripp -A dmpapps -h | grep -P "\s+\(.*\)" | awk '{print $1}' | xargs scancel
+
+
+squeue -u ctripp -A dmpapps -h | grep -P "\sc_\d+\s.*\s+\(.*\)" | awk '{print $1}' | xargs scontrol hold
+squeue -u ctripp -A dmpapps -h | grep -P "\sc_\d+\s.*\s+\(.*\)" | awk '{print $1}' | xargs scancel
+
+for i in {1..200}; do sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner_cpu.sh python -m dmp.jq.jq_node_manager dmp 1 "[0, [0, 30, 0, 0, 0]]"; done
+
+sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[0, [0, 6, 0, 0, 0], [6, 12, 0, 0, 0], [12, 18, 0, 0, 0], [18, 24, 0, 0, 0], [24, 30, 0, 0, 0], [30, 36, 0, 0, 0], [36, 42, 0, 0, 0]]"; done
+
+srun --nodes=1 -C gpu -A m3772_g -c 128 --gpus=4 --time=01:00:00 --pty bash -i
+
+
+salloc --nodes 1 --qos interactive --time 01:00:00 --constraint gpu --gpus 4 --account=m3772_g
+
+
+python -m dmp.jq.jq_node_manager dmp 1 "[0, [0, 4, 0, 0, 0, 10000], [4, 8, 0, 0, 1, 10000], [8, 12, 0, 1, 1, 10000], [12, 16, 0, 1, 2, 10000], [16, 20, 0, 2, 2, 10000], [20, 24, 0, 2, 3, 10000], [24, 28, 0, 3, 3, 10000], [28, 32, 0, 3, 4, 10000]]"
+
+python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 4 0 0 0 10000 dmp 1
+
+sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner_cpu.sh python -m dmp.jq.jq_node_manager dmp 1 "[0, [0, 6, 0, 0, 0], [6, 12, 0, 0, 0], [12, 18, 0, 0, 0], [18, 24, 0, 0, 0], [24, 30, 0, 0, 0]]";
+sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner_cpu.sh python -m dmp.jq.jq_node_manager dmp 1 "[0, [0, 30, 0, 0, 0]]";
