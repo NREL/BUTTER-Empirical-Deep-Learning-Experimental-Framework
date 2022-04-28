@@ -13,6 +13,33 @@ import tensorflow
 
 from .common import jobqueue_marshal
 
+"""
+TODO:
+python -m dmp.jq.jq_node_manager dmp 1 "[0, [0, 6, 0, 0, 0], [6, 12, 0, 0, 0], [12, 18, 0, 0, 0], [18, 24, 0, 0, 0], [24, 30, 0, 0, 0]]"
+
+ + jq_node_manager:
+    + identify system configuration
+        + num gpus, gpu memory, num cpus
+    + call node manager with appropriate args:
+        + cpu call 
+
+ + Create python program or script to get number of gpus and return it in stdout
+ + Replace worker script with:
+    + Check GPUs, Memory: https://stackoverflow.com/questions/59567226/how-to-programmatically-determine-available-gpu-memory-with-tensorflow
+        + ~one GPU worker per 6 GB? 1 or 2 threads for this worker.
+    + Remaining threads run in cpu environment on single worker.
+
+    total_cpu_cores=$(nproc)
+    number_sockets=$(($(grep "^physical id" /proc/cpuinfo | awk '{print $4}' | sort -un | tail -1)+1))
+    number_cpu_cores=$(( (total_cpu_cores/2) / number_sockets))
+
+    export KMP_BLOCKTIME=1
+    export OMP_NUM_THREADS= #physical cores
+    export KMP_AFFINITY=granularity=fine,verbose,compact,1,0
+
+    intra_op_parallelism = number of physical core per socket
+    inter_op_parallelism = number of sockets
+"""
 
 def make_strategy(cpu_low, cpu_high, gpu_low, gpu_high, gpu_mem):
     # tensorflow.distribute.MirroredStrategy(devices=["/gpu:0", "/gpu:1"])
