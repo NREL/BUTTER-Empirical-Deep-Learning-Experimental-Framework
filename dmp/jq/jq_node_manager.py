@@ -37,7 +37,7 @@ def run_worker(run_script, project, queue, cores_per_cpu, workers, config):
         f'--physcpubind={physcpus}',
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-        start_socket, num_sockets, *config, args.project, args.queue]
+        start_socket, num_sockets, *config, project, queue]
     return make_worker_process(len(workers), command)
 
 
