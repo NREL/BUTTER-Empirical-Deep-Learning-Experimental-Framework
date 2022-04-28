@@ -21,7 +21,7 @@ def make_worker_process(rank, command):
         close_fds=True)
 
 
-def run_worker(run_script, args, cores_per_cpu, workers, config):
+def run_worker(run_script, project, queue, cores_per_cpu, workers, config):
     start_core = config[2]
     end_core = start_core + config[3]
     physcpus = ','.join([str(i) for i in range(start_core, end_core+1)])
@@ -49,7 +49,7 @@ def main():
     host = platform.node()
 
     print(
-        f'Started Node Manager on host "{host}" for project "{args.project}" and queue "{args.queue}".')
+        f'Started Node Manager on host "{host}" for project "{project}" and queue "{queue}".')
     print(f'Launching worker processes...')
 
     total_cpu_cores = int(subprocess.check_output(
@@ -106,11 +106,11 @@ def main():
 
     workers = []
     for config in gpu_worker_configs:
-        workers.append(run_worker(gpu_run_script, args,
+        workers.append(run_worker(gpu_run_script, project, queue,
                        cores_per_cpu, workers, config))
 
     for config in cpu_worker_configs:
-        workers.append(run_worker(cpu_run_script, args,
+        workers.append(run_worker(cpu_run_script, project, queue,
                        cores_per_cpu, workers, config))
 
     streams = [w.stdout for w in workers]
