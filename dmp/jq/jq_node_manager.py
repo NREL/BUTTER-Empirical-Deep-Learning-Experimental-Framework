@@ -33,7 +33,7 @@ def run_worker(run_script, project, queue, cores_per_cpu, workers, config):
     num_sockets = end_socket - start_socket + 1
 
     command = [
-        'source', run_script,
+        f'./{run_script}',
         'numactl', f'--cpunodebind={socket_list}', f'--preferred={socket_list}',
         f'--physcpubind={physcpus}',
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
