@@ -22,20 +22,22 @@ def make_worker_process(rank, command):
 
 
 def run_worker(run_script, args, cores_per_cpu, workers, config):
-    start_core = config[0]
-    end_core = start_core + config[1]
+    start_core = config[2]
+    end_core = start_core + config[3]
     physcpus = ','.join([str(i) for i in range(start_core, end_core+1)])
     start_socket = int(start_core / cores_per_cpu)
     end_socket = int(end_core / cores_per_cpu)
     socket_list = ','.join([str(i)
                             for i in range(start_socket, end_socket+1)])
+    num_sockets = end_socket - start_socket + 1
 
     command = [
         run_script,
-        'numactl', f'--cpunodebind={socket_list}', f'--preferred={socket_list}', f'--physcpubind={physcpus}',
+        'numactl', f'--cpunodebind={socket_list}', f'--preferred={socket_list}',
+        f'--physcpubind={physcpus}',
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-        *config, args.project, args.queue]
+        start_socket, num_sockets, *config, args.project, args.queue]
     return make_worker_process(len(workers), command)
 
 
@@ -88,14 +90,14 @@ def main():
                     cpu_sockets) * cores_per_gpu_worker)) % cores_per_cpu
             cores_remaining_per_socket[socket] -= cores_per_gpu_worker
             gpu_worker_configs.append(
-                [core, cores_per_gpu_worker, 1, gpu_number, 1, mem_per_worker])
+                [core, cores_per_gpu_worker, gpu_number, 1, mem_per_worker])
 
     cpu_worker_configs = []
     for socket, cores_remaining in enumerate(cores_remaining_per_socket):
         if cores_remaining < min_cores_per_cpu_worker:
             continue
         core = cores_per_cpu - cores_remaining
-        cpu_worker_configs.append([core, cores_remaining, 1, 0, 0, 0])
+        cpu_worker_configs.append([core, cores_remaining, 0, 0, 0])
 
     gpu_run_script = get_run_script(
         'gpu_run_script.sh', 'custom_gpu_run_script.sh')
