@@ -180,6 +180,8 @@ for i in {1..400}; do sbatch -J c_4 -t1440 -n1 -c30 --account=dmpapps slurm_job_
 
 
 
+sbatch --partition=gpu -J g_4 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 "[0, [0,2,0,1,5000], [2,4,0,1,5000], [4,6,0,1,5000], [6,8,0,1,5000], [8,10,0,1,5000], [10, 16, 0, 0, 0], [16, 24, 0, 0, 0], [24, 30, 0, 0, 0]]"
+
 squeue -u ctripp -A dmpapps -h | grep -P ".*\s+c_\d\s+.*\(.*\)" | awk '{print $1}' | xargs scancel
 
 squeue -u ctripp -A dmpapps -h | grep -P "\s+c_\s+.*\(.*\)" | awk '{print $1}' | xargs scancel

@@ -17,3 +17,5 @@ log
 admp
 *slurm-*.out
 workspace.code*
+custom_gpu_run_script.sh
+custom_cpu_run_script.sh
