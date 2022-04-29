@@ -89,9 +89,10 @@ def main():
             worker_count = len(gpu_worker_configs)
             socket = worker_count % num_sockets
             cores_allocated = cores_allocated_per_socket[socket]
+            cores_allocated_per_socket[socket] += cores_per_gpu_worker
+            
             core = socket * cores_per_socket + \
                 (cores_allocated % cores_per_socket)
-            cores_allocated[socket] += cores_per_gpu_worker
             gpu_worker_configs.append(
                 [core, cores_per_gpu_worker, gpu_number, 1, mem_per_worker])
 
