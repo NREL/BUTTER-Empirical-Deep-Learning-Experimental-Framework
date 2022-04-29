@@ -25,9 +25,9 @@ def make_worker_process(rank, command):
 def run_worker(run_script, project, queue, cores_per_cpu, workers, config):
     start_core = config[0]
     end_core = start_core + config[1]
-    physcpus = ','.join([str(i) for i in range(start_core, end_core+1)])
+    physcpus = ','.join([str(i) for i in range(start_core, end_core)])
     start_socket = int(start_core / cores_per_cpu)
-    end_socket = int(end_core / cores_per_cpu)
+    end_socket = int((end_core-1) / cores_per_cpu)
     socket_list = ','.join([str(i)
                             for i in range(start_socket, end_socket+1)])
     num_sockets = end_socket - start_socket + 1
