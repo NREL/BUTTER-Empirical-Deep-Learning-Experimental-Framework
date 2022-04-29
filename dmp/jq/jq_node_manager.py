@@ -59,8 +59,12 @@ def main():
         'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True))
     cores_per_socket = int(num_cores / num_sockets)
 
-    gpu_mems = [int(i) for i in subprocess.check_output(
-        'nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader', shell=True).splitlines()]
+    gpu_mems = []
+    try:
+        gpu_mems = [int(i) for i in subprocess.check_output(
+            'nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader', shell=True).splitlines()]
+    except subprocess.CalledProcessError:
+        pass
 
     min_gpu_mem_per_worker = 4096
     worker_gpu_mem_overhead = 1024
