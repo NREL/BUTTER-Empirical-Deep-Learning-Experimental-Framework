@@ -53,11 +53,11 @@ def main():
         f'Started Node Manager on host "{host}" for project "{project}" and queue "{queue}".')
     print(f'Launching worker processes...')
 
-    total_cpu_cores = int(subprocess.check_output(
+    num_cores = int(subprocess.check_output(
         'grep -c processor /proc/cpuinfo', shell=True))
-    cpu_sockets = int(subprocess.check_output(
+    num_sockets = int(subprocess.check_output(
         'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True))
-    cores_per_cpu = int(total_cpu_cores / cpu_sockets)
+    cores_per_socket = int(num_cores / num_sockets)
 
     gpu_mems = [int(i) for i in subprocess.check_output(
         'nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader', shell=True).splitlines()]
@@ -72,7 +72,7 @@ def main():
     cores_per_gpu_worker = 1
     min_cores_per_cpu_worker = 1
 
-    cores_remaining_per_socket = [cores_per_cpu for _ in range(cpu_sockets)]
+    cores_allocated_per_socket = [0 for _ in range(num_sockets)]
     gpu_worker_configs = []
     for gpu_number, gpu_mem in enumerate(gpu_mems):
         mem_avail = gpu_mem - min_gpu_mem_buffer
@@ -82,22 +82,25 @@ def main():
         num_workers = max(max_worker_per_gpu,
                           int(math.floor(mem_avail / min_total_worker_gpu_mem)))
 
-        mem_per_worker = (mem_avail / num_workers) - worker_gpu_mem_overhead
+        mem_per_worker = int((mem_avail / num_workers) -
+                             worker_gpu_mem_overhead)
 
         for _ in range(num_workers):
             worker_count = len(gpu_worker_configs)
-            socket = worker_count % cpu_sockets
-            core = (socket * cores_per_cpu + int((worker_count /
-                    cpu_sockets) * cores_per_gpu_worker)) % cores_per_cpu
-            cores_remaining_per_socket[socket] -= cores_per_gpu_worker
+            socket = worker_count % num_sockets
+            cores_allocated = cores_allocated_per_socket[socket]
+            core = socket * cores_per_socket + \
+                (cores_allocated % cores_per_socket)
+            cores_allocated[socket] += cores_per_gpu_worker
             gpu_worker_configs.append(
                 [core, cores_per_gpu_worker, gpu_number, 1, mem_per_worker])
 
     cpu_worker_configs = []
-    for socket, cores_remaining in enumerate(cores_remaining_per_socket):
+    for socket, cores_allocated in enumerate(cores_allocated_per_socket):
+        cores_remaining = cores_per_socket - cores_allocated
         if cores_remaining < min_cores_per_cpu_worker:
             continue
-        core = cores_per_cpu - cores_remaining
+        core = socket * cores_per_socket + cores_allocated
         cpu_worker_configs.append([core, cores_remaining, 0, 0, 0])
 
     gpu_run_script = get_run_script(
@@ -108,11 +111,11 @@ def main():
     workers = []
     for config in gpu_worker_configs:
         workers.append(run_worker(gpu_run_script, project, queue,
-                       cores_per_cpu, workers, config))
+                       cores_per_socket, workers, config))
 
     for config in cpu_worker_configs:
         workers.append(run_worker(cpu_run_script, project, queue,
-                       cores_per_cpu, workers, config))
+                       cores_per_socket, workers, config))
 
     streams = [w.stdout for w in workers]
     stream_name_map = {id(s): f'{i}:' for i, s in enumerate(streams)}
