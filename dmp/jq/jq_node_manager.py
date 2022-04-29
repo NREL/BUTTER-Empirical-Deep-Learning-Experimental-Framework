@@ -79,7 +79,7 @@ def main():
         if mem_avail < 0:
             continue
 
-        num_workers = max(max_worker_per_gpu,
+        num_workers = min(max_worker_per_gpu,
                           int(math.floor(mem_avail / min_total_worker_gpu_mem)))
 
         mem_per_worker = int((mem_avail / num_workers) -
