@@ -854,3 +854,55 @@ lateral (
 order by param.kind, ec.num, param.real_value, param.integer_value, param.string_value;
 
 
+
+update job_status s
+set status = 0, start_time = NULL, update_time = NULL
+where queue = 1 and status = 1 and (now()::timestamp - start_time) > '2880 minutes';
+
+select
+    r.slurm_job_id,
+    r.job_id,
+    r.hostname,
+    r.platform,
+    s.start_time,
+    s.update_time,
+    (s.update_time - s.start_time) run_time,
+    s.worker worker_id,
+    command->'batch' batch,
+    command->'size' size,
+    command->'shape' shape,
+    command->'depth' depth,
+    (select string_value from parameter_ p where p.kind='tensorflow_version' and r.run_parameters @> array[p.id] limit 1) tensorflow_version
+from
+    run_ r,
+    job_status s,
+    job_data d
+where
+    r.job_id = s.id
+    and s.id = d.id
+    and s.queue = 1
+    and s.status = 2
+order by s.update_time desc
+limit 100;
+
+select
+    s.start_time,
+    s.update_time,
+    (s.update_time - s.start_time) run_time,
+    s.worker worker_id,
+    command->'batch' batch,
+    command->'size' size,
+    command->'shape' shape,
+    command->'depth' depth,
+    s.error_count,
+    s.error    
+from
+    job_status s,
+    job_data d
+where
+    s.id = d.id
+    and s.queue = 1
+    and s.status = 3
+order by s.update_time desc
+limit 1000;
+
