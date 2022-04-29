@@ -23,8 +23,8 @@ def make_worker_process(rank, command):
 
 
 def run_worker(run_script, project, queue, cores_per_cpu, workers, config):
-    start_core = config[2]
-    end_core = start_core + config[3]
+    start_core = config[0]
+    end_core = start_core + config[1]
     physcpus = ','.join([str(i) for i in range(start_core, end_core+1)])
     start_socket = int(start_core / cores_per_cpu)
     end_socket = int(end_core / cores_per_cpu)
