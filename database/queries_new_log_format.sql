@@ -906,3 +906,94 @@ where
 order by s.update_time desc
 limit 1000;
 
+
+select
+    inter,
+    (3600 * num_runs / inter_seconds) run_rate,
+    (3600 * effort / inter_seconds)::bigint effort_throughput,
+    (3600 * num_runs / worker_seconds) worker_throughput,
+    (3600 * effort / worker_seconds)::bigint worker_effort_throughput,
+    (3600 * num_runs / node_seconds) node_run_throughput,
+    (3600 * effort / node_seconds)::bigint node_effort_throughput,
+    num_nodes,
+    num_workers,
+    num_runs,
+    worker_runtime,
+    node_runtime,
+    effort,
+    num_workers / num_nodes worker_to_node_ratio,
+    worker_seconds / node_seconds worker_to_node_time
+from
+    (
+    select
+        inter,
+        count(*) num_nodes,
+        sum(num_workers) num_workers,
+        sum(num_runs) num_runs,
+        sum(worker_runtime) worker_runtime,
+        sum(node_runtime) node_runtime,
+        sum(effort) effort,
+        EXTRACT(epoch FROM sum(node_runtime)) node_seconds,
+        EXTRACT(epoch FROM sum(worker_runtime)) worker_seconds,
+        EXTRACT(epoch FROM inter) inter_seconds
+    from
+        (
+        select
+            inter,
+            count(*) num_workers,
+            sum(num_runs) num_runs,
+            sum(worker_runtime) worker_runtime,
+            sum(effort) effort,
+            max(last_finish) - min(first_start) node_runtime
+        from
+            (
+            select 
+                inter,
+                slurm_job_id,
+                hostname,
+                worker,
+                count(*) num_runs,
+                sum(run_time) worker_runtime,
+                sum(effort) effort,
+                max(update_time) last_finish,
+                min(start_time) first_start
+            from
+                (
+                select 
+                    inter::interval inter
+                from (VALUES ('3 hours'), ('6 hours'), ('12 hours'), ('1 day'), ('2 days'), ('4 days'), ('8 days'), ('16 days'), ('30 days'), ('60 days'), ('120 days'), ('1 year')) inter (inter) order by inter asc
+                ) inter,
+                (
+                                     select
+                                        r.slurm_job_id,
+                                        r.hostname,
+                                        r.platform,
+                                        s.start_time,
+                                        s.update_time,
+                                        (s.update_time - s.start_time) run_time,
+                                        s.worker worker,
+                                        command->'batch' batch,
+                                        (command->'size')::bigint * (command->'run_config'->'epochs')::bigint effort,
+                                        command->'shape' shape,
+                                        command->'depth' depth
+                                    from
+                                        run_ r,
+                                        job_status s,
+                                        job_data d
+                                    where
+                                        r.job_id = s.id
+                                        and s.id = d.id
+                                        and s.status = 2
+                                        and (s.update_time - s.start_time) >= '1 second'
+                 ) j
+            where
+                j.start_time >= (now()::timestamp -  inter.inter)
+            group by inter, slurm_job_id, hostname, worker
+            ) worker
+        group by inter, slurm_job_id, hostname
+        ) host
+    group by inter
+    ) agg
+order by inter asc
+;
+
