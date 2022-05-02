@@ -66,7 +66,7 @@ def main():
     except subprocess.CalledProcessError:
         pass
 
-    min_gpu_mem_per_worker = 12 * 1024
+    min_gpu_mem_per_worker = 8 * 1024
     worker_gpu_mem_overhead = 1024
     min_total_worker_gpu_mem = min_gpu_mem_per_worker + worker_gpu_mem_overhead
 
