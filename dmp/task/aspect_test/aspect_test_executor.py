@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import json
+from msilib.schema import Error
 import os
 import platform
 import subprocess
@@ -94,6 +95,12 @@ class AspectTestExecutor(AspectTestTask):
             shape,
             layer_args,
         )
+
+        # reject non-conformant network sizes
+        delta = count_num_free_parameters(self.network_structure) - self.size
+        relative_error = delta / self.size
+        if math.abs(relative_error) > .2:
+            raise ValueError(f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
 
         # Create and execute network using Keras
         with self.tensorflow_strategy.scope():
