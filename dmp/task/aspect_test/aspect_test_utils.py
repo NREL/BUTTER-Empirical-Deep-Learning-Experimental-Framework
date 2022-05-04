@@ -427,15 +427,15 @@ def get_wide_first_2x(num_outputs: int, depth: int) -> Callable[[float], List[in
 
 
 def get_wide_first_4x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 4)
 
 
 def get_wide_first_8x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 8)
 
 
 def get_wide_first_16x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 16)
 
 
 def get_wide_first_5x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:

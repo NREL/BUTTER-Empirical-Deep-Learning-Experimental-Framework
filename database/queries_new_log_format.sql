@@ -997,3 +997,309 @@ from
 order by inter asc
 ;
 
+
+insert into experiment_summary_ (
+    experiment_id,
+    experiment_parameters,
+    num_runs,
+    num_free_parameters,
+    num,
+    val_loss_num_finite,
+    val_loss_avg,
+    val_loss_stddev,
+    val_loss_min,
+    val_loss_max,
+    val_loss_percentile,
+    loss_num_finite,
+    loss_avg,
+    loss_stddev,
+    loss_min,
+    loss_max,
+    loss_percentile,
+    val_accuracy_avg,
+    val_accuracy_stddev,
+    accuracy_avg,
+    accuracy_stddev,
+    val_mean_squared_error_avg,
+    val_mean_squared_error_stddev,
+    mean_squared_error_avg,
+    mean_squared_error_stddev,
+    val_kullback_leibler_divergence_avg,
+    val_kullback_leibler_divergence_stddev,
+    kullback_leibler_divergence_avg,
+    kullback_leibler_divergence_stddev,
+    network_structure,
+    widths,
+    "size",
+    relative_size_error
+)
+select
+    e.experiment_id,
+    experiment_parameters,
+    num_runs,
+    num_free_parameters,
+    num,
+    val_loss_num_finite,
+    val_loss_avg,
+    val_loss_stddev,
+    val_loss_min,
+    val_loss_max,
+    val_loss_percentile,
+    
+    loss_num_finite,
+    loss_avg,
+    loss_stddev,
+    loss_min,
+    loss_max,
+    loss_percentile,
+    
+    val_accuracy_.v_avg val_accuracy_avg, 
+    val_accuracy_.v_stddev val_accuracy_stddev, 
+    accuracy_.v_avg accuracy_avg, 
+    accuracy_.v_stddev accuracy_stddev, 
+    val_mean_squared_error_.v_avg val_mean_squared_error_avg, 
+    val_mean_squared_error_.v_stddev val_mean_squared_error_stddev, 
+    mean_squared_error_.v_avg mean_squared_error_avg, 
+    mean_squared_error_.v_stddev mean_squared_error_stddev, 
+    val_kullback_leibler_divergence_.v_avg val_kullback_leibler_divergence_avg,
+    val_kullback_leibler_divergence_.v_stddev val_kullback_leibler_divergence_stddev, 
+    kullback_leibler_divergence_.v_avg kullback_leibler_divergence_avg, 
+    kullback_leibler_divergence_.v_stddev kullback_leibler_divergence_stddev,
+    network_structure,
+    widths,
+    e.size,
+    e.relative_size_error
+from
+(
+    select
+        e.* 
+    from 
+        experiment_ e,
+        (
+            select distinct r.experiment_id 
+            FROM
+                run_ r
+            WHERE 
+        --         r.record_timestamp >= COALESCE(0, (SELECT MAX(update_timestamp) FROM experiment_summary_))
+                NOT EXISTS (SELECT * FROM experiment_summary_ s WHERE 
+                              s.experiment_id = r.experiment_id 
+                              AND s.update_timestamp > r.record_timestamp)
+        ) re
+    where
+        re.experiment_id = e.experiment_id
+) e,
+lateral (
+    select
+        max(num) num_runs,
+        array_agg(num) num,
+        array_agg(val_loss_num_finite) val_loss_num_finite,
+        array_agg(val_loss_avg) val_loss_avg,
+        array_agg(val_loss_stddev) val_loss_stddev,
+        array_agg(val_loss_min) val_loss_min,
+        array_agg(val_loss_max) val_loss_max,
+        array_agg(val_loss_percentile) val_loss_percentile
+    from (
+        select 
+            (COUNT(COALESCE(v, 'NaN'::real)))::smallint num,
+            (COUNT(v))::smallint val_loss_num_finite,
+            (AVG(v))::real val_loss_avg,
+            (stddev_samp(v))::real val_loss_stddev,
+            MIN(v) val_loss_min,
+            MAX(v) val_loss_max,
+            (PERCENTILE_DISC(array[.166, .333, .5, .667, .834]) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real))) val_loss_percentile
+        from
+            run_ r,
+            lateral unnest(r.val_loss) WITH ORDINALITY as epoch_value(v, epoch)
+        where r.experiment_id = e.experiment_id
+        group by epoch
+        order by epoch
+    ) x
+) val_loss_,
+lateral
+(
+    select
+        array_agg(loss_num_finite) loss_num_finite,
+        array_agg(loss_avg) loss_avg,
+        array_agg(loss_stddev) loss_stddev,
+        array_agg(loss_min) loss_min,
+        array_agg(loss_max) loss_max,
+        array_agg(loss_percentile) loss_percentile
+    from (
+    select 
+        (COUNT(v))::smallint loss_num_finite,
+        (AVG(v))::real loss_avg,
+        (stddev_samp(v))::real loss_stddev,
+        MIN(v) loss_min,
+        MAX(v) loss_max,
+        (PERCENTILE_DISC(array[.166, .333, .5, .667, .834]) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real))) loss_percentile
+    from
+        run_ r,
+        lateral unnest(r.loss) WITH ORDINALITY as epoch_value(v, epoch)
+    where r.experiment_id = e.experiment_id
+    group by epoch
+    order by epoch
+    ) x
+) loss_,
+lateral (
+    select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev
+    from (
+      select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev
+      from run_ r, lateral unnest(r.val_accuracy) WITH ORDINALITY as epoch_value(v, epoch)
+      where r.experiment_id = e.experiment_id
+      group by epoch order by epoch ) x
+) val_accuracy_,
+lateral (
+    select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev
+    from (
+      select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev
+      from run_ r, lateral unnest(r.accuracy) WITH ORDINALITY as epoch_value(v, epoch)
+      where r.experiment_id = e.experiment_id
+      group by epoch order by epoch ) x
+) accuracy_,
+lateral (
+    select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev
+    from (
+      select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev
+      from run_ r, lateral unnest(r.val_mean_squared_error) WITH ORDINALITY as epoch_value(v, epoch)
+      where r.experiment_id = e.experiment_id
+      group by epoch order by epoch ) x
+) val_mean_squared_error_, 
+lateral (
+    select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev
+    from (
+      select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev
+      from run_ r, lateral unnest(r.mean_squared_error) WITH ORDINALITY as epoch_value(v, epoch)
+      where r.experiment_id = e.experiment_id
+      group by epoch order by epoch ) x
+) mean_squared_error_,
+lateral (
+    select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev
+    from (
+      select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev
+      from run_ r, lateral unnest(r.val_kullback_leibler_divergence) WITH ORDINALITY as epoch_value(v, epoch)
+      where r.experiment_id = e.experiment_id
+      group by epoch order by epoch ) x
+) val_kullback_leibler_divergence_,
+lateral (
+    select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev
+    from (
+      select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev
+      from run_ r, lateral unnest(r.kullback_leibler_divergence) WITH ORDINALITY as epoch_value(v, epoch)
+      where r.experiment_id = e.experiment_id
+      group by epoch order by epoch ) x
+) kullback_leibler_divergence_
+ON CONFLICT (experiment_id) DO UPDATE SET
+        num_runs = EXCLUDED.num_runs,
+        num = EXCLUDED.num,
+        val_loss_num_finite = EXCLUDED.val_loss_num_finite,
+        val_loss_avg = EXCLUDED.val_loss_avg,
+        val_loss_stddev = EXCLUDED.val_loss_stddev,
+        val_loss_min = EXCLUDED.val_loss_min,
+        val_loss_max = EXCLUDED.val_loss_max,
+        val_loss_percentile = EXCLUDED.val_loss_percentile,
+        loss_num_finite = EXCLUDED.loss_num_finite,
+        loss_avg = EXCLUDED.loss_avg,
+        loss_stddev = EXCLUDED.loss_stddev,
+        loss_min = EXCLUDED.loss_min,
+        loss_max = EXCLUDED.loss_max,
+        loss_percentile = EXCLUDED.loss_percentile,
+        val_accuracy_avg = EXCLUDED.val_accuracy_avg,
+        val_accuracy_stddev = EXCLUDED.val_accuracy_stddev,
+        accuracy_avg = EXCLUDED.accuracy_avg,
+        accuracy_stddev = EXCLUDED.accuracy_stddev,
+        val_mean_squared_error_avg = EXCLUDED.val_mean_squared_error_avg,
+        val_mean_squared_error_stddev = EXCLUDED.val_mean_squared_error_stddev,
+        mean_squared_error_avg = EXCLUDED.mean_squared_error_avg,
+        mean_squared_error_stddev = EXCLUDED.mean_squared_error_stddev,
+        val_kullback_leibler_divergence_avg = EXCLUDED.val_kullback_leibler_divergence_avg,
+        val_kullback_leibler_divergence_stddev = EXCLUDED.val_kullback_leibler_divergence_stddev,
+        kullback_leibler_divergence_avg = EXCLUDED.kullback_leibler_divergence_avg,
+        kullback_leibler_divergence_stddev = EXCLUDED.kullback_leibler_divergence_stddev
+;
+
+
+WITH shape_params as
+(
+    select * from parameter_ shape where (shape.kind = 'shape' and shape.string_value IN ('wide_first_4x', 'wide_first_8x', 'wide_first_16x'))
+    order by id
+),
+wide_first_2x_parameter as (
+    select "id" from parameter_ where kind = 'shape' and string_value = 'wide_first_2x' limit 1
+),
+to_update as
+(
+    
+    select 
+
+--         widths,
+--                 shape.string_value shape,    
+--         depth.integer_value depth,
+--                 size.integer_value size,
+--                 dataset.string_value dataset,
+--                 batch.string_value batch,
+        e.experiment_id experiment_id,
+        new_params.experiment_parameters new_params,
+        (select tst.experiment_id from experiment_ tst where tst.experiment_parameters = new_params.experiment_parameters limit 1) merge_into
+    from 
+        experiment_ e,
+        parameter_ shape,
+--         parameter_ depth,
+--         parameter_ size,
+--         parameter_ dataset,
+--         parameter_ batch,
+        lateral (
+            select array_agg(id)::smallint[] experiment_parameters from
+            (
+                select id from
+                    unnest(e.experiment_parameters) as id
+                where
+                    id not in (select id from shape_params)
+                union all
+                select id from wide_first_2x_parameter
+                order by id asc
+            ) x
+        ) new_params
+    where 
+                TRUE
+--                 and (shape.kind = 'shape' and shape.string_value IN ('wide_first_4x', 'wide_first_8x', 'wide_first_16x') and e.experiment_parameters @> array[shape.id])
+                and shape.id in (select id from shape_params) and e.experiment_parameters @> array[shape.id]
+--                 and (depth.kind = 'depth' and e.experiment_parameters @> array[depth.id])
+--                 and (size.kind = 'size' and e.experiment_parameters @> array[size.id])
+--                 and (dataset.kind = 'dataset' and e.experiment_parameters @> array[dataset.id])
+--                 and (batch.kind = 'batch' and e.experiment_parameters @> array[batch.id])
+                and (widths[1]::float / widths[2]) <= 3.5
+    ORDER BY experiment_id
+),
+update_unmerged_exp as (
+UPDATE experiment_ e SET experiment_parameters = to_update.new_params
+FROM to_update WHERE e.experiment_id = to_update.experiment_id AND to_update.merge_into IS NULL
+),
+delete_merged_exp as (
+DELETE FROM experiment_ e USING to_update WHERE e.experiment_id = to_update.experiment_id and to_update.merge_into IS NOT NULL
+),
+update_run as (
+UPDATE run_ r SET 
+    experiment_id = COALESCE(to_update.merge_into, to_update.experiment_id),
+    run_parameters = (
+        select array_agg(id)::smallint[] run_parameters from
+            (
+                select id from
+                    unnest(r.run_parameters) as id
+                where
+                    id not in (select id from shape_params)
+                union all
+                select id from wide_first_2x_parameter
+                order by id asc
+            ) x
+    )
+FROM to_update WHERE r.experiment_id = to_update.experiment_id
+),
+deleted_summary AS (
+DELETE FROM experiment_summary_ s USING to_update WHERE
+    s.experiment_id = to_update.experiment_id
+),
+deleted_summary_2 AS (
+DELETE FROM experiment_summary_ s WHERE
+    s.experiment_parameters @> (select array_agg(id)::smallint[] from wide_first_2x_parameter)
+)
+select count(*) from to_update;
