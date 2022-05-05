@@ -1,5 +1,4 @@
 from math import ceil
-import ujson
 from psycopg2 import sql
 import psycopg2.extras as extras
 import psycopg2
