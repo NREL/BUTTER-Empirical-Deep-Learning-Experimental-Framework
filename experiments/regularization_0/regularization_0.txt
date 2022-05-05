@@ -186,7 +186,7 @@ for i in {1..50}; do sbatch --partition=gpu -J g_4 -t1440 -n1 -c30 --account=dmp
 
 for i in {1..50}; do sbatch --partition=gpu -J g_4 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 
-for i in {1..200}; do sbatch -J c_4 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
+for i in {1..200}; do sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
 
 for i in {1..100}; do sbatch -J c_4 -t1440 -n1 -c60 --partition=lg --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
 
