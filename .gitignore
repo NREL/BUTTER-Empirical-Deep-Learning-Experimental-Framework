@@ -15,6 +15,8 @@ log
 *.pyc
 *.ipynb_checkpoints
 admp
+admpc
+admpp
 *slurm-*.out
 workspace.code*
 custom_gpu_run_script.sh
