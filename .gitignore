@@ -15,7 +15,11 @@ log
 *.pyc
 *.ipynb_checkpoints
 admp
+admpc
+admpp
 *slurm-*.out
 workspace.code*
 custom_gpu_run_script.sh
 custom_cpu_run_script.sh
+dmp.egg-info/dmp.egg-info/
+src/dmp.egg-info/
