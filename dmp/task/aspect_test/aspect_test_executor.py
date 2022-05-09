@@ -98,7 +98,7 @@ class AspectTestExecutor(AspectTestTask):
         # reject non-conformant network sizes
         delta = count_num_free_parameters(self.network_structure) - self.size
         relative_error = delta / self.size
-        if math.abs(relative_error) > .2:
+        if numpy.abs(relative_error) > .2:
             raise ValueError(f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
 
         # Create and execute network using Keras
