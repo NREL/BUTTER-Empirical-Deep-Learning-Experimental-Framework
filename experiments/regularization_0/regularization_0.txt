@@ -201,3 +201,12 @@ squeue -u ctripp -A dmpapps -h | grep -P "\s+g_\d+\s+.*" | awk '{print $1}' | xa
 squeue -u ctripp -A dmpapps -h | grep -P "\s+gs12_1\s+.*" | awk '{print $1}' | xargs scontrol release
 
 squeue -u ctripp -A dmpapps -h | grep -P "\s+\(.*\)" | awk '{print $1}' | xargs scancel
+
+
+
+
+sbatch -J ct_1 -q regular --time=2-00:00:00 --nodes=1 --ntasks-per-node=1 --cpus-per-task=32 --account=m3772 --constraint=haswell slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+
+sbatch -J pt_1 -q regular --time=6:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -q regular -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+
+

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import json
-from msilib.schema import Error
 import os
 import platform
 import subprocess
