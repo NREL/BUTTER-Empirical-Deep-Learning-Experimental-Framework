@@ -1,8 +1,8 @@
 
 mamba install python=3.9 pandas jupyter matplotlib scikit-learn statsmodels seaborn pip scipy numpy sqlalchemy psycopg2 pyarrow tensorflow-gpu=2.7 cudnn=8 simplejson --force-reinstall
-squeue -o "%.10i %9P %60j %10u %.2t %.10M %.6D %.4C %10R %o"
+squeue -o "%.10i %9P %Q %60j %10u %.2t %.10M %.6D %.4C %10R %o"
 
-squeue -u ctripp -o "%.10i %9P %60j %10u %.2t %.10M %.6D %.4C %10R %o"
+squeue -u ctripp -o "%.10i %9P %Q %60j %10u %.2t %.10M %.6D %.4C %10R %o"
 
 
 
@@ -225,10 +225,19 @@ num_jobs=jobs_at_max;
 for ((power=$max_power; power>=0; power--)); do
   num_nodes=$((2**power));
   for ((i=0; i<$num_jobs;i++)); do
-    sbatch -J pt_$((num_nodes)) -q regular --time=6:00:00 --nodes=$((num_nodes)) --ntasks-per-node=1 --account=m3772_g --constraint=gpu -q regular -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+    sbatch -J pt_$((num_nodes)) -q regular --time=6:00:00 --nodes=$((num_nodes)) --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
   done;
   num_jobs=$((num_jobs * 2));
 done;
 }
 
+
+sbatch -J pt_d -q debug  --time=2:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+sbatch -J pt_ds -q debug  --time=30:00 --nodes=1 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+
+sbatch -J ct_d -q debug --time=30:00 --nodes=1 --ntasks-per-node=1 --account=m3772 --constraint=haswell --cpus-per-task=32 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+sbatch -J ct_kd -q debug --time=30:00 --nodes=1 --ntasks-per-node=1 --account=m3772 --constraint=knl --cpus-per-task=272 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+
+
+sbatch -J ckf_0 -q flex --time-min=2:00:00 --time=48:00:00 --comment=500:00:00 -N 1 -A m3772 -C knl --mail-user=charles.tripp@nrel.gov flex_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
 
