@@ -136,6 +136,6 @@ if __name__ == "__main__":
     result_logger = PostgresResultLogger(credentials)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
     worker = Worker(job_queue, result_logger)
-    print(f'Worker id {worker_id} start worker...\n', flush=True)
+    print(f'Worker id {worker_id} start Worker object...\n', flush=True)
     worker()  # runs the work loop on the worker
     print(f'Worker id {worker_id} Worker exited.\n', flush=True)
