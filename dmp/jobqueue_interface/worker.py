@@ -128,9 +128,14 @@ if __name__ == "__main__":
     if not isinstance(queue, int):
         queue = 1
 
+    print(f'Worker id {worker_id} load credentials...\n', flush=True)
     credentials = connect.load_credentials('dmp')
+    print(f'Worker id {worker_id} create job queue...\n', flush=True)
     job_queue = JobQueue(credentials, int(queue), check_table=False)
+    print(f'Worker id {worker_id} create result logger..\n', flush=True)
     result_logger = PostgresResultLogger(credentials)
+    print(f'Worker id {worker_id} create Worker object..\n', flush=True)
     worker = Worker(job_queue, result_logger)
-
+    print(f'Worker id {worker_id} start worker...\n', flush=True)
     worker()  # runs the work loop on the worker
+    print(f'Worker id {worker_id} Worker exited.\n', flush=True)
