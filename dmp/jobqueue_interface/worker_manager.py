@@ -23,8 +23,8 @@ if __name__ == "__main__":
                 sys.stdout.write(output)
         returncode = worker.poll()
 
-        if returncode != 1:
+        if returncode != 0:
             break
         print(f'Subprocess failed with returncode {returncode}.', flush=True)
-        time.sleep(random.uniform(30, 240))
+        time.sleep(random.uniform(5, 90))
     print(f'Subprocess completed with returncode {returncode}, exiting Worker Manager...', flush=True)
