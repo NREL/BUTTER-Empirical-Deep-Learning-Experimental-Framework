@@ -219,7 +219,7 @@ sbatch -J pt_1 -q interactive --time=2:00:00 --nodes=1 --ntasks-per-node=1 --acc
 for i in {0..7}; do for j in {0..$i}; do echo $((j)); done; done;
 
 {
-max_power=4;
+max_power=7;
 jobs_at_max=1;
 num_jobs=jobs_at_max;
 for ((power=$max_power; power>=0; power--)); do
@@ -232,8 +232,11 @@ done;
 }
 
 
+sbatch -J ck_0 -q regular --time=48:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772 --constraint=knl --cpus-per-task=272 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+
 sbatch -J pt_d -q debug  --time=2:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
-sbatch -J pt_ds -q debug  --time=30:00 --nodes=1 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+for i in {0..10}; do sbatch -J pt_d -q debug  --time=2:00:00 --nodes=4 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+
 
 sbatch -J ct_d -q debug --time=30:00 --nodes=1 --ntasks-per-node=1 --account=m3772 --constraint=haswell --cpus-per-task=32 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
 sbatch -J ct_kd -q debug --time=30:00 --nodes=1 --ntasks-per-node=1 --account=m3772 --constraint=knl --cpus-per-task=272 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
