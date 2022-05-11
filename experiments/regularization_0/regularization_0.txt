@@ -223,7 +223,7 @@ for i in {1..100}; do sbatch -J gpu_1 -N1 -t2880 --gres=gpu:2 --account=dmpscale
 for i in {0..7}; do for j in {0..$i}; do echo $((j)); done; done;
 
 {
-max_power=2;
+max_power=3;
 min_power=0;
 jobs_at_max=16;
 num_jobs=jobs_at_max;
@@ -231,17 +231,29 @@ for ((power=$max_power; power>=$min_power; power--)); do
   num_nodes=$((2**power));
   for ((i=0; i<$num_jobs;i++)); do
     t=$((2 + (i % 5)))
-    sbatch -J pt_$((num_nodes))_$((t)) -q regular --time=$((t)):00:00 --nodes=$((num_nodes)) --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1;
+    sbatch -J pt_$((num_nodes))_$((t)) -q regular --time=6:00:00 --nodes=$((num_nodes)) --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1;
   done;
   num_jobs=$((num_jobs * 2));
 done;
 }
 
+{
+max_power=2;
+min_power=0;
+jobs_per_power=128;
+for ((power=$max_power; power>=$min_power; power--)); do
+  num_nodes=$((2**power));
+  for ((i=0; i<$jobs_per_power;i++)); do
+    t=$((2 + (i % 5)))
+    sbatch -J pt_$((num_nodes))_$((t)) -q regular --time=$((t)):00:00 --nodes=$((num_nodes)) --ntasks-per-node=1 --account=m3772_g --constraint=gpu --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1;
+  done;
+done;
+}
 
 {
 max_power=2;
 min_power=0;
-jobs_at_max=16;
+jobs_at_max=8;
 num_jobs=jobs_at_max;
 for ((power=$max_power; power>=$min_power; power--)); do
   num_nodes=$((2**power));
