@@ -23,7 +23,9 @@ def get_available_gpus():
 get_available_gpus()
 
 
+squeue -u ctripp -h | grep -P ".*\s+\([^)]+\)" | awk '{print $1}' | xargs scontrol hold
 squeue -u ctripp -h | grep -P ".*\s+\(JobHeldUser\)" | awk '{print $1}' | xargs scontrol release
+
 
 
 for i in {1..50}; do sbatch -J gs12_4 -N4 -t2880 --account=dmpapps --gres=gpu:2 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp fixed_3k_1 "[[0,6,0,1,4650], [6,12,0,1,4650], [12,18,0,1,4650], [18,24,1,2,4650], [24,30,1,2,4650], [30,36,1,2,4650]]"; done
@@ -216,20 +218,40 @@ sbatch -J pt_1 -q regular --time=6:00:00 --nodes=1 --ntasks-per-node=1 --account
 sbatch -J pt_1 -q interactive --time=2:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -q regular -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
 
 
+for i in {1..100}; do sbatch -J gpu_1 -N1 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
 for i in {0..7}; do for j in {0..$i}; do echo $((j)); done; done;
 
 {
-max_power=7;
-jobs_at_max=1;
+max_power=2;
+min_power=0;
+jobs_at_max=16;
 num_jobs=jobs_at_max;
-for ((power=$max_power; power>=0; power--)); do
+for ((power=$max_power; power>=$min_power; power--)); do
   num_nodes=$((2**power));
   for ((i=0; i<$num_jobs;i++)); do
-    sbatch -J pt_$((num_nodes)) -q regular --time=6:00:00 --nodes=$((num_nodes)) --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+    t=$((2 + (i % 5)))
+    sbatch -J pt_$((num_nodes))_$((t)) -q regular --time=$((t)):00:00 --nodes=$((num_nodes)) --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1;
   done;
   num_jobs=$((num_jobs * 2));
 done;
 }
+
+
+{
+max_power=2;
+min_power=0;
+jobs_at_max=16;
+num_jobs=jobs_at_max;
+for ((power=$max_power; power>=$min_power; power--)); do
+  num_nodes=$((2**power));
+  for ((i=0; i<$num_jobs;i++)); do
+    sbatch -J pt_d_$((num_nodes)) -q debug  --time=2:00:00 --nodes=$((num_nodes)) --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1;
+  done;
+  num_jobs=$((num_jobs * 2));
+done;
+}
+
 
 
 sbatch -J ck_0 -q regular --time=48:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772 --constraint=knl --cpus-per-task=272 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1

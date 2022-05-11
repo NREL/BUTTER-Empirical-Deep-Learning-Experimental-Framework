@@ -46,25 +46,24 @@ def do_parameter_sweep(sweep_config, task_handler):
 
 def main():
     default_config = {
-        'repetitions': 30,
-        'base_priority': 5000000,
+        'repetitions': 10,
+        'base_priority': 2448340,
         'queue': 1,
         'sweep_values': {
-            'batch': ['fixed_3k_1'],
+            'batch': ['fixed_30k_1'],
             'dataset': ['201_pol', '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'nursery', 'sleep', 'wine_quality_white',],
             'input_activation': ['relu'],
             'activation': ['relu'],
             'optimizer': [{'class_name': 'adam', 'config': {'learning_rate': 0.0001}}],
-            'shape': ['wide_first_16x_residual', 'wide_first_8x_residual', 'wide_first_4x_residual', 'wide_first_2x_residual'],
+            'shape': ['wide_first_16x_residual', 'wide_first_8x_residual', 'wide_first_4x_residual', 'wide_first_2x_residual', 'wide_first_8x', 'wide_first_4x',],
             'size': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
-                     32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
-                     8388608, 16777216],
+                     32768, 65536, 131072, 262144],
             'depth': [3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20],
             'test_split': [.2],
             'test_split_method': ['shuffled_train_test_split'],
             'run_config': [{
                 'shuffle': True,
-                'epochs': 3000,
+                'epochs': 30000,
                 'batch_size': 256,
                 'verbose': 0,
             }],
