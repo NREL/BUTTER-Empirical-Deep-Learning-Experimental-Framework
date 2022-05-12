@@ -73,7 +73,7 @@ def main():
     min_gpu_mem_buffer = 500
     max_worker_per_gpu = 4
 
-    cores_per_gpu_worker = 2
+    cores_per_gpu_worker = 1
     min_cores_per_cpu_worker = 1
 
     cores_allocated_per_socket = [0 for _ in range(num_sockets)]
