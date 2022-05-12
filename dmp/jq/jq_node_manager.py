@@ -71,7 +71,7 @@ def main():
     min_total_worker_gpu_mem = min_gpu_mem_per_worker + worker_gpu_mem_overhead
 
     min_gpu_mem_buffer = 500
-    max_worker_per_gpu = 2
+    max_worker_per_gpu = 3
 
     cores_per_gpu_worker = 1
     min_cores_per_cpu_worker = 1
