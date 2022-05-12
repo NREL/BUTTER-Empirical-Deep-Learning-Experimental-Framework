@@ -23,3 +23,4 @@ custom_gpu_run_script.sh
 custom_cpu_run_script.sh
 dmp.egg-info/dmp.egg-info/
 src/dmp.egg-info/
+flex_job_runner.sh

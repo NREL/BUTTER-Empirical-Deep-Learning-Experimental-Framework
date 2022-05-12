@@ -1,15 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=dmp_test
-#SBATCH --nodes=1
-#SBATCH --tasks-per-node=1
-#SBATCH --time=59
-#SBATCH --account=dmpscale
 #SBATCH --cpu-freq=high-high:Performance
-
-# Eagle Modules
-source ./admp
-unset LD_PRELOAD
 
 num_nodes=$(($SLURM_JOB_NUM_NODES))
 #total_cpus=$(($SLURM_JOB_NUM_NODES * $SLURM_CPUS_ON_NODE))
