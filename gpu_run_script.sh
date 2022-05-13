@@ -37,4 +37,4 @@ export TF_ENABLE_XLA=1
 # export ZENDNN_BLOCKED_FORMAT=0
 # export ZENDNN_PRIMITIVE_CACHE_CAPACITY=1024
 
-numactl --cpunodebind="$socket_list" --membind="$socket_list" --physcpubind="$core_list" --show "${command[@]}"
+numactl --cpunodebind="$socket_list" --membind="$socket_list" --physcpubind="$core_list" "${command[@]}"
