@@ -23,8 +23,6 @@ def get_available_gpus():
 get_available_gpus()
 
 
-squeue -u ctripp -h | grep -P ".*\s+\([^)]+\)" | awk '{print $1}' | xargs scontrol hold
-squeue -u ctripp -h | grep -P ".*\s+\(JobHeldUser\)" | awk '{print $1}' | xargs scontrol release
 
 
 
@@ -299,4 +297,11 @@ sbatch -J t_knl_l_4 -q low --time=48:00:00 --nodes=4 --ntasks-per-node=1 --accou
 
 
 sbatch -J ckf_1 -q flex --time-min=4:00:00 --time=48:00:00 --comment=100:00:00 -N 1 -A m3772 -C knl --mail-user=charles.tripp@nrel.gov flex_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+
+squeue -u ctripp -h | grep -P ".*\s+\([^)]+\)" | awk '{print $1}' | xargs scontrol hold
+squeue -u ctripp -h | grep -P ".*\s+\(JobHeldUser\)" | awk '{print $1}' | xargs scontrol release
+squeue -u ctripp -h | grep -P ".*\s+R\s+" | awk '{print $1}' | xargs scancel
+
+sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+for i in {1..200}; do sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
 
