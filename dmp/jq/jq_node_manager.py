@@ -1,9 +1,7 @@
-import argparse
 import math
 import platform
 import select
 import sys
-import dmp.jobqueue_interface.node_manager as node_manager
 import subprocess
 import os
 
@@ -22,20 +20,20 @@ def make_worker_process(rank, command):
         close_fds=True)
 
 
-def run_worker(run_script, project, queue, cores_per_cpu, workers, config):
+def run_worker(run_script, project, queue, cores_per_socket, workers, config):
     start_core = config[0]
     end_core = start_core + config[1]
-    physcpus = ','.join([str(i) for i in range(start_core, end_core)])
-    start_socket = int(start_core / cores_per_cpu)
-    end_socket = int((end_core-1) / cores_per_cpu)
+    num_cores = end_core - start_core
+    core_list = ','.join([str(i) for i in range(start_core, end_core)])
+    start_socket = int(start_core / cores_per_socket)
+    end_socket = int((end_core-1) / cores_per_socket)
     socket_list = ','.join([str(i)
                             for i in range(start_socket, end_socket+1)])
     num_sockets = end_socket - start_socket + 1
 
     command = [
-        f'./{run_script}',
-        'numactl', f'--cpunodebind={socket_list}', f'--preferred={socket_list}',
-        f'--physcpubind={physcpus}',
+        f'./{run_script}', 
+        num_sockets, num_cores, socket_list, core_list,
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
         start_socket, num_sockets, *config, project, queue]
@@ -65,6 +63,10 @@ def main():
             'nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader', shell=True).splitlines()]
     except subprocess.CalledProcessError:
         pass
+    # num_cores = 32
+    # num_sockets = 2
+    # cores_per_socket = int(num_cores / num_sockets)
+    # gpu_mems = [16*1024,]
 
     min_gpu_mem_per_worker = 6.5 * 1024
     worker_gpu_mem_overhead = 1024
@@ -74,7 +76,8 @@ def main():
     max_worker_per_gpu = 3
 
     cores_per_gpu_worker = 1
-    min_cores_per_cpu_worker = 1
+    min_cores_per_cpu_worker = 8
+    target_cores_per_cpu_worker = 16
 
     cores_allocated_per_socket = [0 for _ in range(num_sockets)]
     gpu_worker_configs = []
@@ -102,11 +105,20 @@ def main():
 
     cpu_worker_configs = []
     for socket, cores_allocated in enumerate(cores_allocated_per_socket):
-        cores_remaining = cores_per_socket - cores_allocated
-        if cores_remaining < min_cores_per_cpu_worker:
-            continue
-        core = socket * cores_per_socket + cores_allocated
-        cpu_worker_configs.append([core, cores_remaining, 0, 0, 0])
+        while True:
+            cores_remaining = cores_per_socket - cores_allocated
+            if cores_remaining < min_cores_per_cpu_worker:
+                break
+
+            num_workers = \
+                max(1, int(round(cores_remaining / target_cores_per_cpu_worker)))
+            num_cores = int(round(cores_remaining / num_workers))
+            if cores_remaining < (num_cores + min_cores_per_cpu_worker):
+                num_cores = cores_remaining
+            
+            core = socket * cores_per_socket + cores_allocated
+            cores_allocated += num_cores
+            cpu_worker_configs.append([core, num_cores, 0, 0, 0])
 
     gpu_run_script = get_run_script(
         'gpu_run_script.sh', 'custom_gpu_run_script.sh')
