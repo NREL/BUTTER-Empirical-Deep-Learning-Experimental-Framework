@@ -13,7 +13,7 @@ echo "$num_sockets"
 echo "$num_cores"
 echo "$socket_list"
 echo "$core_list"
-echo "Executing: " numactl --cpunodebind="$socket_list" --preferred="$socket_list" --physcpubind="$core_list" "${command[@]}"
+
 
 export OMP_DYNAMIC=false
 export OMP_WAIT_POLICY=active
@@ -39,4 +39,5 @@ export TF_ENABLE_XLA=1
 # export ZENDNN_BLOCKED_FORMAT=0
 # export ZENDNN_PRIMITIVE_CACHE_CAPACITY=1024
 
+echo "Executing: " numactl --cpunodebind="$socket_list" --preferred="$socket_list" --physcpubind="$core_list" "${command[@]}"
 numactl --cpunodebind="$socket_list" --preferred="$socket_list" --physcpubind="$core_list" "${command[@]}"
