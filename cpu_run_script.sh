@@ -7,12 +7,11 @@ core_list=("${ARGS[3]}")
 command=("${ARGS[@]:4}")
 
 
-
-echo "${ARGS[@]}"
-echo "$num_sockets"
-echo "$num_cores"
-echo "$socket_list"
-echo "$core_list"
+echo args "${ARGS[@]}"
+echo num_sockets "$num_sockets"
+echo num_cores "$num_cores"
+echo socket_list "$socket_list"
+echo core_list "$core_list"
 
 
 #export OMP_DYNAMIC=false
@@ -37,4 +36,5 @@ export TF_ENABLE_XLA=1
 # export ZENDNN_BLOCKED_FORMAT=0
 # export ZENDNN_PRIMITIVE_CACHE_CAPACITY=1024
 
+echo executing numactl --cpunodebind="$socket_list" --membind="$socket_list" --physcpubind="$core_list" "${command[@]}"
 numactl --cpunodebind="$socket_list" --membind="$socket_list" --physcpubind="$core_list" "${command[@]}"

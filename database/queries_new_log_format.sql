@@ -1111,10 +1111,11 @@ from
             FROM
                 run_ r
             WHERE 
-        --         r.record_timestamp >= COALESCE(0, (SELECT MAX(update_timestamp) FROM experiment_summary_))
                 NOT EXISTS (SELECT * FROM experiment_summary_ s WHERE 
-                              s.experiment_id = r.experiment_id 
-                              AND s.update_timestamp > r.record_timestamp)
+                              s.experiment_id = r.experiment_id AND s.update_timestamp > r.record_timestamp)
+--                 OR (r.record_timestamp >= COALESCE(0, (SELECT MAX(update_timestamp) FROM experiment_summary_))
+--                               AND s.update_timestamp > r.record_timestamp)
+            
         ) re
     where
         re.experiment_id = e.experiment_id
@@ -1274,88 +1275,158 @@ ON CONFLICT (experiment_id) DO UPDATE SET
 
 
 
+
+-- May 3rd, 2022, 6:46pm -> '2022-05-03T18:46:00'
+-- ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer
+
 WITH shape_params as
 (
     select * from parameter_ shape where (shape.kind = 'shape' and shape.string_value IN ('wide_first_4x', 'wide_first_8x', 'wide_first_16x'))
-    order by id
 ),
 wide_first_2x_parameter as (
     select "id" from parameter_ where kind = 'shape' and string_value = 'wide_first_2x' limit 1
 ),
-to_update as
-(
-    
+exp_to_update0 as (
     select 
-
---         widths,
---                 shape.string_value shape,    
---         depth.integer_value depth,
---                 size.integer_value size,
---                 dataset.string_value dataset,
---                 batch.string_value batch,
-        e.experiment_id experiment_id,
-        new_params.experiment_parameters new_params,
-        (select tst.experiment_id from experiment_ tst where tst.experiment_parameters = new_params.experiment_parameters limit 1) merge_into
-    from 
-        experiment_ e,
-        parameter_ shape,
---         parameter_ depth,
---         parameter_ size,
---         parameter_ dataset,
---         parameter_ batch,
-        lateral (
-            select array_agg(id)::smallint[] experiment_parameters from
-            (
-                select id from
-                    unnest(e.experiment_parameters) as id
-                where
-                    id not in (select id from shape_params)
-                union all
-                select id from wide_first_2x_parameter
-                order by id asc
-            ) x
-        ) new_params
-    where 
-                TRUE
---                 and (shape.kind = 'shape' and shape.string_value IN ('wide_first_4x', 'wide_first_8x', 'wide_first_16x') and e.experiment_parameters @> array[shape.id])
-                and shape.id in (select id from shape_params) and e.experiment_parameters @> array[shape.id]
---                 and (depth.kind = 'depth' and e.experiment_parameters @> array[depth.id])
---                 and (size.kind = 'size' and e.experiment_parameters @> array[size.id])
---                 and (dataset.kind = 'dataset' and e.experiment_parameters @> array[dataset.id])
---                 and (batch.kind = 'batch' and e.experiment_parameters @> array[batch.id])
-                and (widths[1]::float / widths[2]) <= 3.5
-    ORDER BY experiment_id
+        *
+--         (CASE WHEN merge_into is NULL THEN (nextval('experiment__experiment_id_seq1'::regclass)) ELSE NULL END) new_experiment_id
+--         (CASE WHEN merge_into is NULL THEN -1 ELSE NULL END) new_experiment_id
+    FROM
+    (
+        select 
+            widths,
+    --         shape.string_value shape,    
+    --         depth.integer_value depth,
+    --         size.integer_value size,
+    --         dataset.string_value dataset,
+    --         batch.string_value batch,
+            e.experiment_id experiment_id,
+            new_params.experiment_parameters new_params,
+            e.experiment_parameters old_params
+--             (select tst.experiment_id from experiment_ tst where tst.experiment_parameters = new_params.experiment_parameters limit 1 for update) merge_into
+        from 
+            experiment_ e,
+            shape_params shape,
+    --         parameter_ shape,
+    --         parameter_ depth,
+    --         parameter_ size,
+    --         parameter_ dataset,
+    --         parameter_ batch,
+            lateral (
+                select array_agg(id)::smallint[] experiment_parameters from
+                (
+                    select distinct id from
+                        (
+                        select id from
+                            unnest(e.experiment_parameters) as id
+                        where
+                            id not in (select id from shape_params)
+                        union all
+                        select id from wide_first_2x_parameter
+                        ) x
+                    order by id asc
+                ) x
+            ) new_params
+        where 
+           e.experiment_parameters @> array[shape.id]
+    --                 shape.id in (select id from shape_params) and e.experiment_parameters @> array[shape.id]
+                    -- and (shape.kind = 'shape' and shape.string_value IN ('wide_first_4x', 'wide_first_8x', 'wide_first_16x') and e.experiment_parameters @> array[shape.id])
+    --                 and (depth.kind = 'depth' and e.experiment_parameters @> array[depth.id])
+    --                 and (size.kind = 'size' and e.experiment_parameters @> array[size.id])
+    --                 and (dataset.kind = 'dataset' and e.experiment_parameters @> array[dataset.id])
+    --                 and (batch.kind = 'batch' and e.experiment_parameters @> array[batch.id])
+                    -- and (widths[1]::float / widths[2]) <= 3.5
+        ) x
 ),
-update_unmerged_exp as (
-UPDATE experiment_ e SET experiment_parameters = to_update.new_params
-FROM to_update WHERE e.experiment_id = to_update.experiment_id AND to_update.merge_into IS NULL
+exp_to_insert as (
+    select * from exp_to_update0 where not exists (select * from experiment_ e where e.experiment_parameters = exp_to_update0.new_params)
+    for update
 ),
-delete_merged_exp as (
-DELETE FROM experiment_ e USING to_update WHERE e.experiment_id = to_update.experiment_id and to_update.merge_into IS NOT NULL
+ir as (
+    insert into experiment_ (
+        experiment_parameters
+        )
+    select
+--         new_experiment_id experiment_id, --experiment_id integer NOT NULL DEFAULT nextval('experiment__experiment_id_seq1'::regclass),
+        new_params as experiment_parameters -- experiment_parameters smallint[] NOT NULL,
+--         NULL num_free_parameters,
+--         NULL network_structure,
+--         NULL widths,
+--         NULL size,
+--         NULL relative_size_errror
+    FROM
+        exp_to_insert
+    ON CONFLICT DO NOTHING
+    RETURNING 
+        experiment_id, 
+        experiment_parameters
 ),
-update_run as (
-UPDATE run_ r SET 
-    experiment_id = COALESCE(to_update.merge_into, to_update.experiment_id),
-    run_parameters = (
-        select array_agg(id)::smallint[] run_parameters from
-            (
-                select id from
-                    unnest(r.run_parameters) as id
-                where
-                    id not in (select id from shape_params)
-                union all
-                select id from wide_first_2x_parameter
-                order by id asc
-            ) x
-    )
-FROM to_update WHERE r.experiment_id = to_update.experiment_id
+exp_to_update as (
+    select 
+        exp_to_update0.*, 
+        COALESCE (
+            (select experiment_id from ir where ir.experiment_parameters = exp_to_update0.new_params limit 1),
+            (select experiment_id from experiment_ e where e.experiment_parameters = exp_to_update0.new_params limit 1)
+        ) merge_into 
+    from exp_to_update0, experiment_ e 
+    where e.experiment_parameters = exp_to_update0.new_params
+        and not exists (select * from ir where ir.experiment_parameters = exp_to_update0.new_params)
 ),
-deleted_summary AS (
-DELETE FROM experiment_summary_ s USING to_update WHERE
-    s.experiment_id = to_update.experiment_id
+runs_to_update as (
+    update run_ r set
+        experiment_id = merge_into,
+        run_parameters = (
+            select array_agg(id)::smallint[] run_parameters from
+                (
+                    select distinct id from
+                        (
+                        select id from
+                            unnest(r.run_parameters) as id
+                        where
+                            id not in (select id from shape_params)
+                        union all
+                        select id from wide_first_2x_parameter
+                        ) x
+                    order by id asc
+                ) x
+        )
+--     select
+--         (COALESCE (exp_to_update.merge_into, exp_to_update.new_experiment_id)) as experiment_id,
+--         (
+--             select array_agg(id)::smallint[] run_parameters from
+--                 (
+--                     select distinct id from
+--                         (
+--                         select id from
+--                             unnest(r.run_parameters) as id
+--                         where
+--                             id not in (select id from shape_params)
+--                         union all
+--                         select id from wide_first_2x_parameter
+--                         ) x
+--                     order by id asc
+--                 ) x
+--         ) run_parameters
+    from
+        exp_to_update,
+--         run_ r,
+        job_status s
+    where
+        exp_to_update.experiment_id = r.experiment_id
+        and s.id = r.job_id
+        and r.record_timestamp <= ((date_part('epoch'::text, '2022-05-04T18:46:00'::timestamp) - (1600000000)::double precision))::integer
+        and s.update_time <= '2022-05-03T18:47:00'::timestamp
 ),
-deleted_summary_2 AS (
-DELETE FROM experiment_summary_ s WHERE
-    s.experiment_parameters @> (select array_agg(id)::smallint[] from wide_first_2x_parameter)
+summaries_to_delete as (
+--     select
+--         s.experiment_id
+    delete from experiment_summary_ s
+    using exp_to_update
+--     from
+--         exp_to_update,
+--         experiment_summary_ s
+    where
+        s.experiment_id = exp_to_update.experiment_id
 )
-select count(*) from to_update;
+select (select count(*) from exp_to_update)
+;
