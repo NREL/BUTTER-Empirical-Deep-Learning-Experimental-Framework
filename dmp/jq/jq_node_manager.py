@@ -55,7 +55,7 @@ def main():
 
     numa_nodes = subprocess.check_output('numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii').split('\n')
     
-    numa_cores = [[int(i) for i in n.split('cpus: ')[1].split(' ')] for n in numa_nodes]
+    numa_cores = [[int(i) for i in n.split('cpus: ')[1].split(' ')] for n in numa_nodes if n.startswith('node ')]
     num_nodes = len(numa_cores)
 
     cores_per_node = len(numa_cores[0])
