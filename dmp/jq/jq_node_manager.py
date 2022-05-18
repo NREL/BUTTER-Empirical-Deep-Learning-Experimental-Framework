@@ -62,7 +62,7 @@ def main():
 
     # numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
     numa_cores = [[i for i in
-                   [int(i) for i in [i.strip()
+                   [int(i) for i in [i.replace('\n', '').strip()
                                      for i in n.split('cpus: ')[1].split(' ')] if len(i) > 0]
                    if i in numa_cpus]
                   for n in numa_nodes]
