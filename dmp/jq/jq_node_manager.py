@@ -20,23 +20,20 @@ def make_worker_process(rank, command):
         close_fds=True)
 
 
-def run_worker(run_script, project, queue, cores_per_socket, workers, config):
-    start_core = config[0]
-    end_core = start_core + config[1]
-    num_cores = end_core - start_core
-    core_list = ','.join([str(i) for i in range(start_core, end_core)])
-    start_socket = int(start_core / cores_per_socket)
-    end_socket = int((end_core-1) / cores_per_socket)
-    socket_list = ','.join([str(i)
-                            for i in range(start_socket, end_socket+1)])
-    num_sockets = end_socket - start_socket + 1
+def run_worker(run_script, project, queue, workers, config):
+    nodes = config[0]
+    cores = config[1]
+    num_nodes = len(nodes)
+    num_cores = len(cores)
+    core_list = ','.join([str(i) for i in cores])
+    node_list = ','.join([str(i) for i in nodes])
 
     command = [
         f'./{run_script}', 
-        num_sockets, num_cores, socket_list, core_list,
+        num_nodes, num_cores, node_list, core_list,
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-        start_socket, num_sockets, *config, project, queue]
+        num_nodes, core_list[0], num_cores, config[2], config[3], config[4], project, queue]
     return make_worker_process(len(workers), command)
 
 
@@ -51,11 +48,17 @@ def main():
         f'Started Node Manager on host "{host}" for project "{project}" and queue "{queue}".')
     print(f'Launching worker processes...')
 
-    num_cores = int(subprocess.check_output(
-        'grep -c processor /proc/cpuinfo', shell=True))
-    num_sockets = int(subprocess.check_output(
-        'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True))
-    cores_per_socket = int(num_cores / num_sockets)
+    # num_cores = int(subprocess.check_output(
+    #     'grep -c processor /proc/cpuinfo', shell=True))
+    # num_sockets = int(subprocess.check_output(
+    #     'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True))
+
+    numa_nodes = subprocess.check_output('numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii').split('\n')
+    
+    numa_cores = [[int(i) for i in n.split('cpus: ')[1].split(' ')] for n in numa_nodes]
+    num_nodes = len(numa_cores)
+
+    cores_per_node = len(numa_cores[0])
 
     gpu_mems = []
     try:
@@ -79,7 +82,7 @@ def main():
     min_cores_per_cpu_worker = 6
     target_cores_per_cpu_worker = 12
 
-    cores_allocated_per_socket = [0 for _ in range(num_sockets)]
+    cores_allocated_per_node = [0 for _ in range(num_nodes)]
     gpu_worker_configs = []
     for gpu_number, gpu_mem in enumerate(gpu_mems):
         mem_avail = gpu_mem - min_gpu_mem_buffer
@@ -94,19 +97,20 @@ def main():
 
         for _ in range(num_workers):
             worker_count = len(gpu_worker_configs)
-            socket = worker_count % num_sockets
-            cores_allocated = cores_allocated_per_socket[socket]
-            cores_allocated_per_socket[socket] += cores_per_gpu_worker
+            node = worker_count % num_nodes
+            cores_allocated = cores_allocated_per_node[node]
+            cores_allocated_per_node[node] += cores_per_gpu_worker
             
-            core = socket * cores_per_socket + \
-                (cores_allocated % cores_per_socket)
+            # core = node * cores_per_node + \
+            #     (cores_allocated % cores_per_node)
+            cores = numa_cores[node][cores_allocated:cores_allocated+cores_per_gpu_worker]
             gpu_worker_configs.append(
-                [core, cores_per_gpu_worker, gpu_number, 1, mem_per_worker])
+                [[node], cores, gpu_number, 1, mem_per_worker])
 
     cpu_worker_configs = []
-    for socket, cores_allocated in enumerate(cores_allocated_per_socket):
+    for node, cores_allocated in enumerate(cores_allocated_per_node):
         while True:
-            cores_remaining = cores_per_socket - cores_allocated
+            cores_remaining = cores_per_node - cores_allocated
             if cores_remaining < min_cores_per_cpu_worker:
                 break
 
@@ -116,9 +120,10 @@ def main():
             if cores_remaining < (num_cores + min_cores_per_cpu_worker):
                 num_cores = cores_remaining
             
-            core = socket * cores_per_socket + cores_allocated
+            # core = node * cores_per_node + cores_allocated
+            cores = numa_cores[node][cores_allocated:cores_allocated+num_cores]
             cores_allocated += num_cores
-            cpu_worker_configs.append([core, num_cores, 0, 0, 0])
+            cpu_worker_configs.append([[node], cores, 0, 0, 0])
 
     gpu_run_script = get_run_script(
         'gpu_run_script.sh', 'custom_gpu_run_script.sh')
@@ -128,11 +133,11 @@ def main():
     workers = []
     for config in gpu_worker_configs:
         workers.append(run_worker(gpu_run_script, project, queue,
-                       cores_per_socket, workers, config))
+                       workers, config))
 
     for config in cpu_worker_configs:
         workers.append(run_worker(cpu_run_script, project, queue,
-                       cores_per_socket, workers, config))
+                       workers, config))
 
     streams = [w.stdout for w in workers]
     stream_name_map = {id(s): f'{i}:' for i, s in enumerate(streams)}
