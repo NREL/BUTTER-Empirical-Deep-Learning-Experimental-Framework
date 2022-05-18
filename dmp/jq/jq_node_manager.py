@@ -60,6 +60,8 @@ def main():
     numa_cores = [[int(i) for i in n.split('cpus: ')[1].split(' ')] for n in numa_nodes]
     num_nodes = len(numa_cores)
 
+    print(f'NUMA topology: {list(zip(numa_node_numbers, numa_cores))}')
+
     cores_per_node = len(numa_cores[0])
 
     gpu_mems = []
