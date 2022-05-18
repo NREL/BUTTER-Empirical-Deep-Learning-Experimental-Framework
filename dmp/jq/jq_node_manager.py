@@ -1,5 +1,6 @@
 import math
 import platform
+import re
 import select
 import sys
 import subprocess
@@ -53,9 +54,10 @@ def main():
     # num_sockets = int(subprocess.check_output(
     #     'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True))
 
-    numa_nodes = subprocess.check_output('numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii').split('\n')
+    numa_nodes = [s for s in subprocess.check_output('numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii').split('\n') if s.startswith('node ')]
     
-    numa_cores = [[int(i) for i in n.split('cpus: ')[1].split(' ')] for n in numa_nodes if n.startswith('node ')]
+    numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
+    numa_cores = [[int(i) for i in n.split('cpus: ')[1].split(' ')] for n in numa_nodes]
     num_nodes = len(numa_cores)
 
     cores_per_node = len(numa_cores[0])
@@ -105,7 +107,7 @@ def main():
             #     (cores_allocated % cores_per_node)
             cores = numa_cores[node][cores_allocated:cores_allocated+cores_per_gpu_worker]
             gpu_worker_configs.append(
-                [[node], cores, gpu_number, 1, mem_per_worker])
+                [[numa_node_numbers[node]], cores, gpu_number, 1, mem_per_worker])
 
     cpu_worker_configs = []
     for node, cores_allocated in enumerate(cores_allocated_per_node):
@@ -123,7 +125,7 @@ def main():
             # core = node * cores_per_node + cores_allocated
             cores = numa_cores[node][cores_allocated:cores_allocated+num_cores]
             cores_allocated += num_cores
-            cpu_worker_configs.append([[node], cores, 0, 0, 0])
+            cpu_worker_configs.append([[numa_node_numbers[node]], cores, 0, 0, 0])
 
     gpu_run_script = get_run_script(
         'gpu_run_script.sh', 'custom_gpu_run_script.sh')
