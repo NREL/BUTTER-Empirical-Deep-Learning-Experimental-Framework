@@ -57,8 +57,9 @@ def main():
     numa_nodes = [s for s in subprocess.check_output(
         'numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii').split('\n') if s.startswith('node ')]
 
-    numa_cpus = {int(s) for s in subprocess.check_output(
-        'numactl --show | grep -P physcpubind', shell=True).decode('ascii')[len('physcpubind: '):].split(' ')}
+    numa_cpus = {int(i) for i in [i.replace('\n', '').strip()
+                                  for i in subprocess.check_output('numactl --show | grep -P physcpubind', shell=True).decode('ascii')[len('physcpubind: '):].split(' ')]
+                 if len(i) > 0}
 
     # numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
     numa_cores = [[i for i in
