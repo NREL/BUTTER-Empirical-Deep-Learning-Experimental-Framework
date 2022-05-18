@@ -61,8 +61,11 @@ def main():
         'numactl --show | grep -P physcpubind', shell=True).decode('ascii')[len('physcpubind: '):].split(' ')}
 
     # numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
-    numa_cores = [[i for i in [int(i) for i in n.split(
-        'cpus: ')[1].split(' ')] if i in numa_cpus] for n in numa_nodes]
+    numa_cores = [[i for i in
+                   [int(i) for i in [i.strip()
+                                     for i in n.split('cpus: ')[1].split(' ')] if len(i) > 0]
+                   if i in numa_cpus]
+                  for n in numa_nodes]
 
     print(f'NUMA topology: {numa_cores}')
 
