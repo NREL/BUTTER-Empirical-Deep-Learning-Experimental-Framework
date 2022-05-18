@@ -30,7 +30,7 @@ def run_worker(run_script, project, queue, workers, config):
     node_list = ','.join([str(i) for i in nodes])
 
     command = [
-        f'./{run_script}', 
+        f'./{run_script}',
         num_nodes, num_cores, node_list, core_list,
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
         'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
@@ -54,15 +54,19 @@ def main():
     # num_sockets = int(subprocess.check_output(
     #     'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True))
 
-    numa_nodes = [s for s in subprocess.check_output('numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii').split('\n') if s.startswith('node ')]
-    
-    numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
-    numa_cores = [[int(i) for i in n.split('cpus: ')[1].split(' ')] for n in numa_nodes]
-    num_nodes = len(numa_cores)
+    numa_nodes = [s for s in subprocess.check_output(
+        'numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii').split('\n') if s.startswith('node ')]
 
-    print(f'NUMA topology: {list(zip(numa_node_numbers, numa_cores))}')
+    numa_cpus = {int(s) for s in subprocess.check_output(
+        'numactl --show | grep -P physcpubind', shell=True).decode('ascii')[len('physcpubind: '):].split(' ')}
 
-    cores_per_node = len(numa_cores[0])
+    # numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
+    numa_cores = [[i for i in [int(i) for i in n.split(
+        'cpus: ')[1].split(' ')] if i in numa_cpus] for n in numa_nodes]
+
+    print(f'NUMA topology: {numa_cores}')
+
+    # cores_per_node = len(numa_cores[0])
 
     gpu_mems = []
     try:
@@ -86,7 +90,10 @@ def main():
     min_cores_per_cpu_worker = 6
     target_cores_per_cpu_worker = 12
 
-    cores_allocated_per_node = [0 for _ in range(num_nodes)]
+    # cores_allocated_per_node = [0 for _ in range(num_nodes)]
+    cores_avaliable = numa_cores.deepcopy()
+
+    node = len(cores_avaliable) - 1
     gpu_worker_configs = []
     for gpu_number, gpu_mem in enumerate(gpu_mems):
         mem_avail = gpu_mem - min_gpu_mem_buffer
@@ -100,21 +107,26 @@ def main():
                              worker_gpu_mem_overhead)
 
         for _ in range(num_workers):
-            worker_count = len(gpu_worker_configs)
-            node = worker_count % num_nodes
-            cores_allocated = cores_allocated_per_node[node]
-            cores_allocated_per_node[node] += cores_per_gpu_worker
-            
-            # core = node * cores_per_node + \
-            #     (cores_allocated % cores_per_node)
-            cores = numa_cores[node][cores_allocated:cores_allocated+cores_per_gpu_worker]
+            cores_avail_in_node = None
+            next_node = node
+            while True:
+                next_node = (next_node + 1) % len(cores_avaliable)
+                cores_avail_in_node = cores_avaliable[next_node]
+                if len(cores_avail_in_node) >= cores_per_gpu_worker or next_node == node:
+                    break
+            if len(cores_avail_in_node) < cores_per_gpu_worker:
+                break
+            node = next_node
+
+            worker_cores = [
+                cores_avail_in_node.pop(-1) for i in range(cores_per_gpu_worker)]
             gpu_worker_configs.append(
-                [[numa_node_numbers[node]], cores, gpu_number, 1, mem_per_worker])
+                [[node], worker_cores, gpu_number, 1, mem_per_worker])
 
     cpu_worker_configs = []
-    for node, cores_allocated in enumerate(cores_allocated_per_node):
+    for node, cores_avail_in_node in enumerate(cores_avaliable):
         while True:
-            cores_remaining = cores_per_node - cores_allocated
+            cores_remaining = len(cores_avail_in_node)
             if cores_remaining < min_cores_per_cpu_worker:
                 break
 
@@ -123,11 +135,10 @@ def main():
             num_cores = int(round(cores_remaining / num_workers))
             if cores_remaining < (num_cores + min_cores_per_cpu_worker):
                 num_cores = cores_remaining
-            
-            # core = node * cores_per_node + cores_allocated
-            cores = numa_cores[node][cores_allocated:cores_allocated+num_cores]
-            cores_allocated += num_cores
-            cpu_worker_configs.append([[numa_node_numbers[node]], cores, 0, 0, 0])
+
+            worker_cores = [
+                cores_avail_in_node.pop(-1) for i in range(num_cores)]
+            cpu_worker_configs.append([[node], worker_cores, 0, 0, 0])
 
     gpu_run_script = get_run_script(
         'gpu_run_script.sh', 'custom_gpu_run_script.sh')
