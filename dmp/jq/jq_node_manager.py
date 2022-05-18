@@ -95,7 +95,7 @@ def main():
     target_cores_per_cpu_worker = 12
 
     # cores_allocated_per_node = [0 for _ in range(num_nodes)]
-    cores_avaliable = numa_cores.deepcopy()
+    cores_avaliable = numa_cores
 
     node = len(cores_avaliable) - 1
     gpu_worker_configs = []
