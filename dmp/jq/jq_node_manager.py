@@ -92,7 +92,7 @@ def main():
 
     cores_per_gpu_worker = 1
     min_cores_per_cpu_worker = 4
-    target_cores_per_cpu_worker = 10
+    target_cores_per_cpu_worker = 8
 
     # cores_allocated_per_node = [0 for _ in range(num_nodes)]
     cores_avaliable = numa_cores
