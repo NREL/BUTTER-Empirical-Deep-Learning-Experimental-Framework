@@ -183,7 +183,7 @@ def make_network(
             pass
         elif residual_mode == 'full':
             # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
-            first_residual_layer = 1 if shape == "wide_first" else 0
+            first_residual_layer = 1 if shape.startswith('wide_first') else 0
             # Output layer is assumed to be of a different dimension, and will therefore not directly receive skip connections
             last_residual_layer = depth - 1
             if d > first_residual_layer and d < last_residual_layer:
