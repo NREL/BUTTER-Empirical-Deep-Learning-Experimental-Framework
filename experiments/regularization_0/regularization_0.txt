@@ -225,7 +225,19 @@ for i in {1..20}; do sbatch -J lgx_3 -N3 -t4000 --gres=gpu:2 --account=dmpscale 
 for i in {1..20}; do sbatch -J lgx_4 -N4 -t4000 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 for i in {1..20}; do sbatch -J lgx_5 -N5 -t4000 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 for i in {1..20}; do sbatch -J lgx_6 -N6 -t4000 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
-for i in {1..20}; do sbatch -J lgx_8 -N8 -t4000 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..32}; do sbatch -J lgx_8 -N8 -t4000 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
+
+for i in {1..16}; do sbatch -J lx_128 -N128 -t4000 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
+for i in {1..16}; do sbatch -J x_512 -N512 -t2880 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..16}; do sbatch -J x_256 -N256 -t2880 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..16}; do sbatch -J x_900 -N900 -t2880 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
+for i in {1..16}; do sbatch -J xs_512 -N512 -t1440 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..16}; do sbatch -J xs_256 -N256 -t1440 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..16}; do sbatch -J xs_900 -N900 -t1440 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
 
 for i in {0..7}; do for j in {0..$i}; do echo $((j)); done; done;
 
@@ -316,6 +328,6 @@ squeue -u ctripp -h | grep -P ".*\s+\(JobHeldUser\)" | awk '{print $1}' | xargs 
 squeue -u ctripp -h | grep -P ".*\s+R\s+" | awk '{print $1}' | xargs scancel
 
 sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
-for i in {1..100}; do sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
+for i in {1..200}; do sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
 for i in {1..200}; do sbatch -J c_4 -t1440 -n1 -c60 --partition=lg --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
 for i in {1..100}; do sbatch --partition=gpu -J g_3 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
