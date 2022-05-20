@@ -46,8 +46,8 @@ def do_parameter_sweep(sweep_config, task_handler):
 
 def main():
     default_config = {
-        'repetitions': 10,
-        'base_priority': 2448340,
+        'repetitions': 5,
+        'base_priority': 0,
         'queue': 1,
         'sweep_values': {
             'batch': ['fixed_30k_1'],
@@ -55,7 +55,9 @@ def main():
             'input_activation': ['relu'],
             'activation': ['relu'],
             'optimizer': [{'class_name': 'adam', 'config': {'learning_rate': 0.0001}}],
-            'shape': ['wide_first_16x_residual', 'wide_first_8x_residual', 'wide_first_4x_residual', 'wide_first_2x_residual', 'wide_first_8x', 'wide_first_4x',],
+            # 'shape': ['wide_first_16x_residual', 'wide_first_8x_residual', 'wide_first_4x_residual', 'wide_first_2x_residual', 'wide_first_8x', 'wide_first_4x',],
+            # 'shape': ['wide_first_16x', 'wide_first_8x', 'wide_first_4x','wide_first_2x'],
+            'shape': ['rectangle', 'exponential', 'trapezoid', 'rectangle_residual'],
             'size': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                      32768, 65536, 131072, 262144],
             'depth': [3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20],
