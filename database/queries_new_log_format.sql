@@ -1274,7 +1274,89 @@ ON CONFLICT (experiment_id) DO UPDATE SET
 
 
 
+select 
+    queue, min(priority) min_priority, max(priority) max_priority, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, status, count(*)
+from 
+    job_status s,
+    job_data d
+where s.id = d.id and queue = 1
+group by status, queue, batch, shape, dataset
+order by status asc, min_priority asc, queue, batch, shape, dataset;
 
+
+select 
+    queue, min(priority) min_priority, max(priority) max_priority, command->'batch' batch, command->'shape' shape, status, count(*)
+from 
+    job_status s,
+    job_data d
+where s.id = d.id
+    and command->>'batch' = 'fixed_3k_1'
+group by status, queue, batch, shape
+order by queue, status asc, min_priority asc, batch, shape;
+
+select 
+    queue, min(priority) min_priority, max(priority) max_priority, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, status, count(*)
+from 
+    job_status s,
+    job_data d
+where s.id = d.id and queue = 1
+group by status, queue, batch, shape, dataset
+order by status asc, min_priority asc, queue, batch, shape, dataset;
+
+select 
+    min(priority) min_priority, max(priority) max_priority, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, status, count(*)
+from 
+    job_status s,
+    job_data d
+where s.id = d.id 
+--     and queue = 1
+    and status = 2
+    and command->>'batch' = 'fixed_3k_1'
+group by status, batch, shape, dataset
+order by status asc, batch, dataset, shape;
+
+select (command->'size')::bigint size, (now()::timestamp - start_time) runtime, * from
+job_status s,
+job_data d
+where s.id = d.id and queue = 1 and status = 1 and (now()::timestamp - start_time) > '3 days'
+order by runtime desc
+;
+
+update job_status s
+set status = 0, start_time = NULL, update_time = NULL
+where queue = 1 and status = 1 and (now()::timestamp - start_time) > '3 days';
+
+select * from job_status s
+where queue = 1 and status = 3;
+
+update job_status s
+set status = 0, start_time = NULL, update_time = NULL
+where queue = 1 and status = 3;
+
+select
+    s.start_time,
+    s.update_time,
+    (s.update_time - s.start_time) run_time,
+    s.worker worker_id,
+    command->'batch' batch,
+    command->'size' size,
+    command->'shape' shape,
+    command->'depth' depth,
+    s.error_count,
+    s.error    
+from
+    job_status s,
+    job_data d
+where
+    s.id = d.id
+    and s.queue = 1
+    and s.status = 3
+    and s.error not like 'Could not find%'
+    and s.error not like ' BiasGrad %'
+    and s.error not like '%RESOURCE_EXHAUSTED%'
+    and s.error not like ' OOM%'
+order by s.update_time desc
+limit 1000;
 
 -- May 3rd, 2022, 6:46pm -> '2022-05-03T18:46:00'
 -- ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer

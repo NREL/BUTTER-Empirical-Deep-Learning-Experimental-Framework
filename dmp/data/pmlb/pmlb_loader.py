@@ -58,8 +58,8 @@ def _read_raw_pmlb(cache_directory, dataset_name):
     """ See if the file has been cached and try to read that, download otherwise"""
     try:
         with open(os.path.join(cache_directory, 'data.npy'), 'rb') as f:
-            raw_inputs = numpy.load(f)
-            raw_outputs = numpy.load(f)
+            raw_inputs = numpy.load(f, allow_pickle=True)
+            raw_outputs = numpy.load(f, allow_pickle=True)
     except FileNotFoundError:
         raw_inputs, raw_outputs = pmlb.fetch_data(dataset_name, return_X_y=True)
         _save_raw_pmlb(cache_directory, raw_inputs, raw_outputs)
