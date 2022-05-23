@@ -31,12 +31,12 @@ def run_worker(run_script, project, queue, workers, config):
 
     if queue == 0:
         command = [
-        f'./{run_script}',
-        num_nodes, num_cores, node_list, core_list,
-        'echo',
-        'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
-        'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-        nodes[0], num_nodes, cores[0], num_cores, config[2], config[3], config[4], project, queue]
+            f'./{run_script}',
+            num_nodes, num_cores, node_list, core_list,
+            'echo',
+            'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
+            'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
+            nodes[0], num_nodes, cores[0], num_cores, config[2], config[3], config[4], project, queue]
     else:
         command = [
             f'./{run_script}',
@@ -44,7 +44,7 @@ def run_worker(run_script, project, queue, workers, config):
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
             nodes[0], num_nodes, cores[0], num_cores, config[2], config[3], config[4], project, queue]
-    
+
     return make_worker_process(len(workers), command)
 
 
@@ -64,11 +64,16 @@ def main():
     # num_sockets = int(subprocess.check_output(
     #     'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True))
 
-    numa_nodes = [s for s in subprocess.check_output(
-        'numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii').split('\n') if s.startswith('node ')]
+    numa_hardware_output = subprocess.check_output(
+        'numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii')
 
+    numa_nodes = [s for s in numa_hardware_output.split(
+        '\n') if s.startswith('node ')]
+
+    numa_physcpubind_output = subprocess.check_output(
+        'numactl --show | grep -P "physcpubind"', shell=True).decode('ascii')
     numa_cpus = {int(i) for i in [i.replace('\n', '').strip()
-                                  for i in subprocess.check_output('numactl --show | grep -P physcpubind', shell=True).decode('ascii')[len('physcpubind: '):].split(' ')]
+                                  for i in numa_physcpubind_output[len('physcpubind: '):].split(' ')]
                  if len(i) > 0}
 
     # numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
@@ -78,7 +83,10 @@ def main():
                    if i in numa_cpus]
                   for n in numa_nodes]
 
-    print(f'NUMA topology: {numa_cores}')
+    print(f'numactl --hardware output: "{numa_hardware_output}".\n' +
+          f'numactl --show output: "{numa_hardware_output}"\n' +
+          f'NUMA topology: {numa_cores}',
+          flush=True)
 
     # cores_per_node = len(numa_cores[0])
 
