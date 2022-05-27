@@ -1007,6 +1007,8 @@ WHERE
 (e.size is NULL OR e.relative_size_error is NULL) and
 e.experiment_parameters @> array[size_.id] and size_.kind = 'size';
 
+
+
 insert into experiment_summary_ (
     experiment_id,
     experiment_parameters,
@@ -1111,14 +1113,13 @@ from
             FROM
                 run_ r
             WHERE 
+--                 r.record_timestamp >= COALESCE(0, (SELECT MAX(update_timestamp) FROM experiment_summary_))
                 NOT EXISTS (SELECT * FROM experiment_summary_ s WHERE 
                               s.experiment_id = r.experiment_id AND s.update_timestamp > r.record_timestamp)
---                 OR (r.record_timestamp >= COALESCE(0, (SELECT MAX(update_timestamp) FROM experiment_summary_))
---                               AND s.update_timestamp > r.record_timestamp)
-            
         ) re
     where
         re.experiment_id = e.experiment_id
+        order by e.experiment_id offset 0 limit 1000
 ) e,
 lateral (
     select
@@ -1235,6 +1236,7 @@ lateral (
       group by epoch order by epoch ) x
 ) kullback_leibler_divergence_
 ON CONFLICT (experiment_id) DO UPDATE SET
+        update_timestamp = ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer,
         num_runs = EXCLUDED.num_runs,
         num = EXCLUDED.num,
         val_loss_num_finite = EXCLUDED.val_loss_num_finite,
@@ -1270,9 +1272,6 @@ ON CONFLICT (experiment_id) DO UPDATE SET
         kullback_leibler_divergence_stddev = EXCLUDED.kullback_leibler_divergence_stddev,
         kullback_leibler_divergence_median = EXCLUDED.kullback_leibler_divergence_median
 ;
-
-
-
 
 select 
     queue, min(priority) min_priority, max(priority) max_priority, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, status, count(*)
@@ -1331,7 +1330,10 @@ where queue = 1 and status = 3;
 
 update job_status s
 set status = 0, start_time = NULL, update_time = NULL
-where queue = 1 and status = 3;
+where 
+    queue = 1 and status = 3
+    and s.error not like 'Could not find%'
+;
 
 select
     s.start_time,
