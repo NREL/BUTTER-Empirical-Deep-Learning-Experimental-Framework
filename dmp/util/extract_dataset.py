@@ -11,7 +11,9 @@ from dmp.logging.postgres_parameter_map import PostgresParameterMap
 
 def main():
     credentials = connect.load_credentials('dmp')
-    parameter_map = PostgresParameterMap(cursor)
+    parameter_map = None
+    with CursorManager(credentials) as cursor:
+        parameter_map = PostgresParameterMap(cursor)
 
     # base_path = '/projects/dmpapps/jperrsau/datasets/2022_05_20_fixed_3k_1/'
     # base_path = '/home/ctripp/scratch/'
