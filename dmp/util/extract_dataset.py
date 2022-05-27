@@ -14,7 +14,8 @@ def main():
     parameter_map = PostgresParameterMap(cursor)
 
     # base_path = '/projects/dmpapps/jperrsau/datasets/2022_05_20_fixed_3k_1/'
-    base_path = '/home/ctripp/scratch/'
+    # base_path = '/home/ctripp/scratch/'
+    base_path = './'
     file_name = os.path.join(base_path, 'fixed_3k_1.hdf5')
 
     # fixed_3k_1_meta.csv.gz
