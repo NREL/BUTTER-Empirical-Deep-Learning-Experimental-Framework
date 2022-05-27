@@ -94,6 +94,15 @@ SELECT * from i
                     return self.to_parameter_id(kind, value, None)
             raise KeyError(f'Unable to translate parameter {kind} : {value}.')
 
+    def get_all_kinds(self):
+        return tuple(self._parameter_to_id_map.keys())
+
+    def get_all_parameters_for_kind(self, kind):
+        return tuple(self._parameter_to_id_map[kind].items())
+    
+    def get_all_ids_for_kind(self, kind):
+        return tuple(self._parameter_to_id_map[kind].values())
+
     def to_parameter_ids(self, kvl, cursor=None):
         if isinstance(kvl, dict):
             kvl = kvl.items()
