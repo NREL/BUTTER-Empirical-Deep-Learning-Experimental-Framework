@@ -113,7 +113,7 @@ def main():
         def make_parameter_dataset(name, dtype, index, description):
             dataset = parameters_group.create_dataset(
                 name, (len(parameters)), dtype=dtype)
-            dataset[:] = np.array(
+            dataset[:] = numpy.array(
                 [p[index] for p in parameters],
             )
             dataset.attrs['description'] = description
@@ -160,7 +160,7 @@ def main():
         chunk_size = 64
         chunks = [
             list(experiment_ids[chunk_size*chunk:chunk_size*(chunk+1)])
-            for chunk in range(int(np.ceil(len(experiment_ids) / chunk_size)))]
+            for chunk in range(int(numpy.ceil(len(experiment_ids) / chunk_size)))]
 
         def download_chunk(chunk):
             # print(f'Begin chunk {chunk[0]}.')
@@ -183,7 +183,7 @@ def main():
                             if id in parameter_index:
                                 kind, value, dim, i, id = parameter_index[id]
                                 dims[dim] = i
-                        data = np.array(row[2], dtype=dtype)[0:num_epochs]
+                        data = numpy.array(row[2], dtype=dtype)[0:num_epochs]
                         result_block.append((variable, dims, data))
 
             # print(f'End chunk {chunk[0]}.')
