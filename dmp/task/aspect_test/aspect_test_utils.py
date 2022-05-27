@@ -31,7 +31,7 @@ def set_random_seeds(seed: Optional[int]) -> int:
 
 
 def add_label_noise(label_noise, run_task, train_outputs):
-    if label_noise is not None and label_noise != 'none':
+    if label_noise is not None and label_noise != 'none' and label_noise != 0.0:
         train_size = len(train_outputs)
         # print(f'run_task {run_task} output shape {outputs.shape}')
         # print(f'sample\n{outputs_train[0:20, :]}')

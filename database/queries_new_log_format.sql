@@ -1335,6 +1335,7 @@ where
     and s.error not like 'Could not find%'
 ;
 
+
 select
     s.start_time,
     s.update_time,
@@ -1344,6 +1345,7 @@ select
     command->'size' size,
     command->'shape' shape,
     command->'depth' depth,
+    command->'dataset' dataset,
     s.error_count,
     s.error    
 from
