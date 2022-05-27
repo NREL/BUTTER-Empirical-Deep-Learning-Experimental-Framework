@@ -2,7 +2,7 @@ from multiprocessing import Pool
 import os
 
 import h5py
-from jobqueue.connect import connect
+from jobqueue import connect
 from jobqueue.cursor_manager import CursorManager
 import numpy
 
