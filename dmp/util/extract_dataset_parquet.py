@@ -26,7 +26,7 @@ def main():
     # fixed_3k_1_meta.csv.gz
 
     fixed_parameters = [
-        ('batch', 'fixed_3k_1'),
+        # ('batch', 'fixed_3k_1'),
     ]
 
     parameter_columns = [
@@ -47,13 +47,13 @@ def main():
         pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
         pyarrow.field('output_activation', pyarrow.string(), nullable=True),
-        pyarrow.field('python_version', pyarrow.string(), nullable=True),
+        # pyarrow.field('python_version', pyarrow.string(), nullable=True),
         # pyarrow.field('run_config.shuffle', pyarrow.bool(), nullable=True),
         pyarrow.field('shape', pyarrow.string(), nullable=True),
         pyarrow.field('size', pyarrow.uint64(), nullable=True),
         pyarrow.field('task', pyarrow.string(), nullable=True),
-        pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
-        pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
+        # pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
+        # pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
         pyarrow.field('test_split', pyarrow.float32(), nullable=True),
         pyarrow.field('test_split_method', pyarrow.string(), nullable=True),
     ]
