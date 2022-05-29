@@ -143,11 +143,11 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 32
     chunks = []
+
     with CursorManager(credentials) as cursor:
 
-        q = sql.SQL('SELECT experiment_id, ')
+        q = sql.SQL('SELECT ')
         q += sql.SQL(', ').join(
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
              for p in partition_cols]
@@ -161,25 +161,17 @@ def main():
             q += sql.SQL(' WHERE ')
             q += sql.SQL(' s.experiment_parameters @> array[{}]::smallint[] ').format(
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
-        q += sql.SQL(' ORDER BY ')
+        q += sql.SQL(' GROUP BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
-                                  for p in partition_cols] + [sql.SQL('experiment_id')])
+                                  for p in partition_cols])
         q += sql.SQL(' ;')
 
         x = cursor.mogrify(q)
         print(x)
         cursor.execute(q)
-
-        chunk = []
-        chunk_partition = None
         for row in cursor:
-            partition = [row[i+1] for i in range(len(partition_cols))]
-            if len(chunk) > chunk_size or partition != chunk_partition:
-                chunk_partition = partition
-                chunk = []
-                chunks.append(chunk)
-
-            chunk.append(row[0])
+            chunks.append([row[i] for i in range(len(partition_cols))])
+            # experiment_ids.append(row[0])
 
     # chunks = list(product(*[parameter_map.get_all_ids_for_kind(p) for p in partition_cols]))
 
@@ -191,9 +183,9 @@ def main():
     def download_chunk(chunk):
         print(f'Begin chunk {chunk}.')
         # chunk = sorted(chunk)
-        # non_null_params = sorted([c for c in chunk if c is not None])
-        # null_kinds = [partition_cols[i]
-        #               for i, c in enumerate(chunk) if c is None]
+        non_null_params = sorted([c for c in chunk if c is not None])
+        null_kinds = [partition_cols[i]
+                      for i, c in enumerate(chunk) if c is None]
 
         result_block = {name: [] for name in column_names}
         row_number = 0
@@ -202,28 +194,25 @@ def main():
         q += sql.SQL(', ').join([sql.Identifier(c)
                                 for c in data_column_names])
         q += sql.SQL(' FROM experiment_summary_ s ')
-        q += sql.SQL(' WHERE s.experiment_id IN ( ')
-        q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
-        q += sql.SQL(' );')
+        q += sql.SQL(' WHERE s.experiment_parameters @> array[')
+        q += sql.SQL(', ').join([sql.Literal(p)
+                                    for p in non_null_params])
+        q += sql.SQL(']::smallint[] ')
 
-        # q += sql.SQL(' WHERE s.experiment_parameters @> array[')
-        # q += sql.SQL(', ').join([sql.Literal(p)
-        #                             for p in non_null_params])
-        # q += sql.SQL(']::smallint[] ')
+        if len(null_kinds) > 0:
+            q += sql.SQL(' AND NOT (s.experiment_parameters && (')
+            q += sql.SQL(' SELECT array_agg(id) FROM (')
+            q += sql.SQL(' UNION ALL ').join([
+                sql.SQL(' SELECT id from parameter_ where kind = {} ').
+                format(sql.Literal(k))
+                for k in null_kinds])
+            q += sql.SQL(') u )) ')
 
-        # if len(null_kinds) > 0:
-        #     q += sql.SQL(' AND NOT (s.experiment_parameters && (')
-        #     q += sql.SQL(' SELECT array_agg(id) FROM (')
-        #     q += sql.SQL(' UNION ALL ').join([
-        #         sql.SQL(' SELECT id from parameter_ where kind = {} ').
-        #         format(sql.Literal(k))
-        #         for k in null_kinds])
-        #     q += sql.SQL(') u )) ')
+        if len(fixed_parameters) > 0:
+            q += sql.SQL(' AND s.experiment_parameters @> array[{}]::smallint[] ').format(
+                sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
 
-        # if len(fixed_parameters) > 0:
-        #     q += sql.SQL(' AND s.experiment_parameters @> array[{}]::smallint[] ').format(
-        #         sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
-        # q += sql.SQL(';')
+        q += sql.SQL(';')
 
         with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
             cursor.itersize = 2
@@ -232,7 +221,7 @@ def main():
             # if cursor.description is None:
             #     print(cursor.mogrify(q))
             #     continue
-
+            
             for row in cursor:
                 for name in column_names:
                     result_block[name].append(None)
@@ -243,7 +232,7 @@ def main():
 
                 for i in range(len(data_column_names)):
                     result_block[data_column_names[i]
-                                 ][row_number] = row[i+2]
+                                    ][row_number] = row[i+2]
 
                 row_number += 1
 
@@ -297,8 +286,7 @@ def main():
         results = pool.uimap(download_chunk, chunks)
         for num_rows, chunk in results:
             num_stored += 1
-            print(
-                f'Stored {num_rows} in chunk {chunk}, {num_stored} / {len(chunks)}.')
+            print(f'Stored {num_rows} in chunk {chunk}, {num_stored} / {len(chunks)}.')
             # writer.write_batch(record_batch)
 
     print('Done.')
