@@ -177,15 +177,28 @@ def main():
 
     def download_chunk(chunk):
         # print(f'Begin chunk {chunk[0]}.')
-        chunk = sorted(chunk)
+        # chunk = sorted(chunk)
+        non_null_params = sorted([c for c in chunk if c is not None])
+        null_kinds = [partition_cols[i] for i, c in enumerate(chunk) if c is None]
+
+
         result_block = {name: [] for name in column_names}
         with CursorManager(credentials) as cursor:
             q = sql.SQL('SELECT experiment_id, experiment_parameters, ')
             q += sql.SQL(', ').join([sql.Literal(c) for c in data_column_names])
             q += sql.SQL(' FROM experiment_summary_ s ')
-            q += sql.SQL('WHERE s.experiment_parameters @> array[')
-            q += sql.SQL(', ').join([sql.Literal(c) for c in chunk])
-            q += sql.SQL(']::smallint[];')
+            q += sql.SQL(' WHERE s.experiment_parameters @> array[')
+            q += sql.SQL(', ').join([sql.Literal(p) for p in non_null_params])
+            q += sql.SQL(']::smallint[] ')
+            if len(null_kinds) > 0:
+                q += sql.SQL(' AND NOT (s.experiment_parameters && (')
+                q += sql.SQL(' SELECT array_agg(id) FROM (')
+                q += sql.SQL(' UNION ALL ').join([
+                    sql.SQL(' SELECT id from parameter_ where kind = {}').\
+                        format(sql.Literal(k))
+                    for k in null_kinds])
+                q += sql.SQL(') u ))')
+            q += sql.SQL(';')
 
             cursor.execute(q)
             for row in cursor.fetchall():
