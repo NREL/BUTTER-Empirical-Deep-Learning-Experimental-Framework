@@ -215,7 +215,7 @@ def main():
         q += sql.SQL(';')
 
         with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
-            cursor.itersize = 8
+            cursor.itersize = 2
 
             cursor.execute(q)
             # if cursor.description is None:
@@ -282,7 +282,7 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(38) as pool:
+    with multiprocessing.ProcessPool(16) as pool:
         results = pool.uimap(download_chunk, chunks)
         for num_rows, chunk in results:
             num_stored += 1
