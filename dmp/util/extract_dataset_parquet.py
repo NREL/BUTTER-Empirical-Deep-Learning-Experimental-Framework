@@ -61,14 +61,14 @@ def main():
     ]
 
     partition_cols = [
-        'dataset',
-        'shape',
+        # 'dataset',
+        # 'shape',
         'learning_rate',
         'batch_size',
         'kernel_regularizer.type',
         'label_noise',
         'depth',
-        'epochs',
+        # 'epochs',
     ]
 
     # patameters_metadata.to_csv(base_path+'patameters_metadata.csv.gz',
@@ -243,7 +243,7 @@ def main():
                 schema=schema,
                 use_dictionary=parameter_column_names,
                 partition_cols=partition_cols,
-                data_page_size=128 * 1024,
+                # data_page_size=128 * 1024,
                 compression='BROTLI',
                 compression_level=9,
                 use_byte_stream_split=data_column_names,
