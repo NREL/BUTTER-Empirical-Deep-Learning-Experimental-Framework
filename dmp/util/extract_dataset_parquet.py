@@ -48,7 +48,7 @@ def main():
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
         pyarrow.field('output_activation', pyarrow.string(), nullable=True),
         pyarrow.field('python_version', pyarrow.string(), nullable=True),
-        pyarrow.field('run_config.shuffle', pyarrow.string(), nullable=True),
+        # pyarrow.field('run_config.shuffle', pyarrow.bool(), nullable=True),
         pyarrow.field('shape', pyarrow.string(), nullable=True),
         pyarrow.field('size', pyarrow.uint64(), nullable=True),
         pyarrow.field('task', pyarrow.string(), nullable=True),
