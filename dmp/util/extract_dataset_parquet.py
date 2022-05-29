@@ -146,8 +146,9 @@ def main():
     schema = pyarrow.schema(columns)
 
     # Write metadata-only Parquet file from schema
+    os.makedirs(dataset_path)
     parquet.write_metadata(
-        schema=schema, where=dataset_path + 'metadata.pq')
+        schema, dataset_path + '_common_metadata')
     
 
     # experiment_ids = []
