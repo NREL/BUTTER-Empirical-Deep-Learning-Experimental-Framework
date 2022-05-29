@@ -97,6 +97,10 @@ def main():
         pyarrow.field('update_time', pyarrow.int64(), nullable=True),
         pyarrow.field('command', pyarrow.string(), nullable=True),
 
+        pyarrow.field('network_structure', pyarrow.string(), nullable=True),
+        pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
+        pyarrow.field('num_free_parameters', pyarrow.uint64()),
+
         pyarrow.field('val_loss', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('loss', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('val_accuracy', pyarrow.list_(pyarrow.float32())),
@@ -175,7 +179,7 @@ def main():
         q += sql.SQL(' ORDER BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
                                   for p in partition_cols] + [sql.SQL('experiment_id'), sql.SQL('run_id')])
-        q += sql.SQL(' limit 60 ;')
+        q += sql.SQL(' ;')
 
         x = cursor.mogrify(q)
         print(x)
@@ -227,13 +231,13 @@ def main():
                 for name in column_names:
                     result_block[name].append(None)
 
-                for kind, value in parameter_map.parameter_from_id(row[1]):
+                for kind, value in parameter_map.parameter_from_id(row[0]):
                     if kind in parameter_column_names_set:
                         result_block[kind][row_number] = value
 
                 for i in range(len(data_column_names)):
                     result_block[data_column_names[i]
-                                 ][row_number] = row[i+2]
+                                 ][row_number] = row[i+1]
 
                 row_number += 1
 
