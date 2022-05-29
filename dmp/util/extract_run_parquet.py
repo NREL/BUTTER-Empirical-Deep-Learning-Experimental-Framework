@@ -1,4 +1,5 @@
 from itertools import product
+import json
 from multiprocessing import Pool
 import os
 import uuid
@@ -50,13 +51,13 @@ def main():
         pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
         pyarrow.field('output_activation', pyarrow.string(), nullable=True),
-        pyarrow.field('python_version', pyarrow.string(), nullable=True),
-        pyarrow.field('run_config.shuffle', pyarrow.bool(), nullable=True),
+        # pyarrow.field('python_version', pyarrow.string(), nullable=True),
+        # pyarrow.field('run_config.shuffle', pyarrow.bool(), nullable=True),
         pyarrow.field('shape', pyarrow.string(), nullable=True),
         pyarrow.field('size', pyarrow.uint64(), nullable=True),
         pyarrow.field('task', pyarrow.string(), nullable=True),
-        pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
-        pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
+        # pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
+        # pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
         pyarrow.field('test_split', pyarrow.float32(), nullable=True),
         pyarrow.field('test_split_method', pyarrow.string(), nullable=True),
     ]
@@ -83,14 +84,14 @@ def main():
 
     # all_kinds = list((p[0] for p in fixed_parameters)) + \
     #     variable_parameter_kinds
-    run_columns = [
-        pyarrow.field('platform', pyarrow.uint64()),
-        pyarrow.field('git_hash', pyarrow.uint64()),
-        pyarrow.field('hostname', pyarrow.uint64()),
-        pyarrow.field('slurm_job_id', pyarrow.uint64()),
-    ]
-    
+
     data_columns = [
+        pyarrow.field('run_id', pyarrow.uint32(), nullable=False),
+        pyarrow.field('experiment_id', pyarrow.uint32(), nullable=False),
+
+        pyarrow.field('num_free_parameters', pyarrow.uint64()),
+        pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
+        pyarrow.field('network_structure', pyarrow.string()),
         pyarrow.field('num', pyarrow.list_(pyarrow.uint8())),
         pyarrow.field('val_loss_num_finite', pyarrow.list_(pyarrow.uint8())),
         pyarrow.field('val_loss_avg', pyarrow.list_(pyarrow.float32())),
@@ -144,6 +145,18 @@ def main():
     columns = parameter_columns + data_columns
     schema = pyarrow.schema(columns)
 
+    # use_dictionary=parameter_column_names,
+    # use_byte_stream_split=data_column_names,
+    use_byte_stream_split = [
+        c.name for c in columns
+        if c.type in [
+            pyarrow.float32(), pyarrow.list_(pyarrow.float32()),
+            pyarrow.float64(), pyarrow.list_(pyarrow.float64()),
+        ]
+    ]
+
+    use_dictionary = [c.name for c in parameter_columns]
+
     # Write metadata-only Parquet file from schema
     os.makedirs(dataset_path)
     parquet.write_metadata(
@@ -153,7 +166,7 @@ def main():
     chunks = []
     with CursorManager(credentials) as cursor:
 
-        q = sql.SQL('SELECT run_id, ')
+        q = sql.SQL('SELECT ')
         q += sql.SQL(', ').join(
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
              for p in partition_cols]
@@ -204,11 +217,13 @@ def main():
         result_block = {name: [] for name in column_names}
         row_number = 0
 
-        q = sql.SQL('SELECT run_id, run_parameters, ')
+        q = sql.SQL('SELECT r.experiment_id, r.run_parameters, ')
+
         q += sql.SQL(', ').join([sql.Identifier(c)
                                 for c in data_column_names])
-        q += sql.SQL(' FROM experiment_summary_ s ')
-        q += sql.SQL(' WHERE s.experiment_id IN ( ')
+
+        q += sql.SQL(' FROM run_ r join experiment_ e on (r.experiment_id = e.experiment_id) ')
+        q += sql.SQL(' WHERE r.run_id IN ( ')
         q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
         q += sql.SQL(' );')
 
@@ -254,6 +269,11 @@ def main():
                 row_number += 1
 
         if row_number > 0:
+
+            result_block['network_structure'] = \
+                [json.dumps(js, separators=(',', ':'))
+                 for js in result_block['network_structure']]
+
             record_batch = pyarrow.Table.from_pydict(
                 result_block,
                 schema=schema,
@@ -263,12 +283,12 @@ def main():
                 record_batch,
                 root_path=dataset_path,
                 schema=schema,
-                use_dictionary=parameter_column_names,
                 partition_cols=partition_cols,
                 # data_page_size=128 * 1024,
                 compression='BROTLI',
                 compression_level=9,
-                use_byte_stream_split=data_column_names,
+                use_dictionary=use_dictionary,
+                use_byte_stream_split=use_byte_stream_split,
                 data_page_version='2.0',
                 existing_data_behavior='overwrite_or_ignore',
                 use_legacy_dataset=False,

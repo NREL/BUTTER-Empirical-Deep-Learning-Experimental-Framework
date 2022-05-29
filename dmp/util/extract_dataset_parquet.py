@@ -86,6 +86,7 @@ def main():
     #     variable_parameter_kinds
 
     data_columns = [
+        pyarrow.field('experiment_id', pyarrow.uint32(), nullable=False),
         pyarrow.field('num_free_parameters', pyarrow.uint64()),
         pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
         pyarrow.field('network_structure', pyarrow.string()),
