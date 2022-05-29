@@ -85,9 +85,9 @@ def main():
     #     variable_parameter_kinds
 
     data_columns = [
-        pyarrow.field('num_free_parameters', pyarrow.uint64(), nullable=True),
-        pyarrow.field('widths', pyarrow.string(), nullable=True),
-        pyarrow.field('network_structure', pyarrow.string(), nullable=True),
+        pyarrow.field('num_free_parameters', pyarrow.uint64()),
+        pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
+        pyarrow.field('network_structure', pyarrow.string()),
         pyarrow.field('num', pyarrow.list_(pyarrow.uint8())),
         pyarrow.field('val_loss_num_finite', pyarrow.list_(pyarrow.uint8())),
         pyarrow.field('val_loss_avg', pyarrow.list_(pyarrow.float32())),
