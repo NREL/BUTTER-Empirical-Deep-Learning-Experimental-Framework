@@ -198,6 +198,7 @@ def main():
         q += sql.SQL(', ').join([sql.Literal(p)
                                     for p in non_null_params])
         q += sql.SQL(']::smallint[] ')
+
         if len(null_kinds) > 0:
             q += sql.SQL(' AND NOT (s.experiment_parameters && (')
             q += sql.SQL(' SELECT array_agg(id) FROM (')
@@ -205,7 +206,12 @@ def main():
                 sql.SQL(' SELECT id from parameter_ where kind = {} ').
                 format(sql.Literal(k))
                 for k in null_kinds])
-            q += sql.SQL(') u ))')
+            q += sql.SQL(') u )) ')
+
+        if len(fixed_parameters) > 0:
+            q += sql.SQL(' AND s.experiment_parameters @> array[{}]::smallint[] ').format(
+                sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
+                
         q += sql.SQL(';')
 
         with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
