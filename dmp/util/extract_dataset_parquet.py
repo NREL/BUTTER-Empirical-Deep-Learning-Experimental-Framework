@@ -128,6 +128,7 @@ def main():
     ]
 
     parameter_column_names = [f.name for f in parameter_columns]
+    parameter_column_names_set = set(parameter_column_names)
     data_column_names = [f.name for f in data_columns]
     column_names = parameter_column_names + data_column_names
 
@@ -202,13 +203,12 @@ def main():
 
             cursor.execute(q)
             for row in cursor.fetchall():
-                parameters = \
-                    {p[0]: p[1]
-                        for p in parameter_map.parameter_from_id(row[1])}
-                for i in range(len(parameter_column_names)):
-                    name = parameter_column_names[i]
-                    value = parameters.get(name, None)
-                    result_block[name].append(value)
+                for kind in null_kinds:
+                    result_block[kind].append(None)
+
+                for kind, value in parameter_map.parameter_from_id(row[1]):
+                    if kind in parameter_column_names_set:
+                        result_block[kind].append(value)
 
                 for i in range(len(data_column_names)):
                     result_block[data_column_names[i]].append(row[i+2])
