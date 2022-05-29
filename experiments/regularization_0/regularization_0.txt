@@ -290,11 +290,12 @@ for i in {0..128}; do sbatch -J pt_128 -q regular --time=6:00:00 --nodes=128 --n
 for i in {0..32}; do sbatch -J pt_128 -q regular --time=6:00:00 --nodes=128 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..32}; do sbatch -J pt_96 -q regular --time=6:00:00 --nodes=96 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..32}; do sbatch -J pt_72 -q regular --time=6:00:00 --nodes=72 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
-for i in {0..128}; do sbatch -J pt_64 -q regular --time=6:00:00 --nodes=64 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
-for i in {0..128}; do sbatch -J pt_32 -q regular --time=6:00:00 --nodes=32 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
-for i in {0..128}; do sbatch -J pt_16 -q regular --time=6:00:00 --nodes=16 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..64}; do sbatch -J pt_64 -q regular --time=6:00:00 --nodes=64 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..64}; do sbatch -J pt_32 -q regular --time=6:00:00 --nodes=32 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..64}; do sbatch -J pt_16 -q regular --time=6:00:00 --nodes=16 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..64}; do sbatch -J pt_8 -q regular --time=6:00:00 --nodes=8 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..128}; do sbatch -J pt_4 -q regular --time=6:00:00 --nodes=4 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..128}; do sbatch -J pt_2 -q regular --time=6:00:00 --nodes=2 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..128}; do sbatch -J pt_1 -q regular --time=6:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772_g --constraint=gpu -c 128 --gpus-per-task=4 slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 
 

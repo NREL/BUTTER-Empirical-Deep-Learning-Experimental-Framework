@@ -50,13 +50,13 @@ def main():
         pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
         pyarrow.field('output_activation', pyarrow.string(), nullable=True),
-        # pyarrow.field('python_version', pyarrow.string(), nullable=True),
-        # pyarrow.field('run_config.shuffle', pyarrow.bool(), nullable=True),
+        pyarrow.field('python_version', pyarrow.string(), nullable=True),
+        pyarrow.field('run_config.shuffle', pyarrow.bool(), nullable=True),
         pyarrow.field('shape', pyarrow.string(), nullable=True),
         pyarrow.field('size', pyarrow.uint64(), nullable=True),
         pyarrow.field('task', pyarrow.string(), nullable=True),
-        # pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
-        # pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
+        pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
+        pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
         pyarrow.field('test_split', pyarrow.float32(), nullable=True),
         pyarrow.field('test_split_method', pyarrow.string(), nullable=True),
     ]
@@ -83,11 +83,14 @@ def main():
 
     # all_kinds = list((p[0] for p in fixed_parameters)) + \
     #     variable_parameter_kinds
-
+    run_columns = [
+        pyarrow.field('platform', pyarrow.uint64()),
+        pyarrow.field('git_hash', pyarrow.uint64()),
+        pyarrow.field('hostname', pyarrow.uint64()),
+        pyarrow.field('slurm_job_id', pyarrow.uint64()),
+    ]
+    
     data_columns = [
-        pyarrow.field('num_free_parameters', pyarrow.uint64(), nullable=True),
-        pyarrow.field('widths', pyarrow.string(), nullable=True),
-        pyarrow.field('network_structure', pyarrow.string(), nullable=True),
         pyarrow.field('num', pyarrow.list_(pyarrow.uint8())),
         pyarrow.field('val_loss_num_finite', pyarrow.list_(pyarrow.uint8())),
         pyarrow.field('val_loss_avg', pyarrow.list_(pyarrow.float32())),
@@ -146,27 +149,27 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 64
+    chunk_size = 128
     chunks = []
     with CursorManager(credentials) as cursor:
 
-        q = sql.SQL('SELECT experiment_id, ')
+        q = sql.SQL('SELECT run_id, ')
         q += sql.SQL(', ').join(
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
              for p in partition_cols]
         )
-        q += sql.SQL(' FROM experiment_summary_ s ')
+        q += sql.SQL(' FROM run_ r ')
         q += sql.SQL(' ').join(
-            [sql.SQL(' left join parameter_ {} on ({}.kind = {} and s.experiment_parameters @> array[{}.id]) ').format(
+            [sql.SQL(' left join parameter_ {} on ({}.kind = {} and s.run_parameters @> array[{}.id]) ').format(
                 sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols])
 
         if len(fixed_parameters) > 0:
             q += sql.SQL(' WHERE ')
-            q += sql.SQL(' s.experiment_parameters @> array[{}]::smallint[] ').format(
+            q += sql.SQL(' s.run_parameters @> array[{}]::smallint[] ').format(
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
         q += sql.SQL(' ORDER BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
-                                  for p in partition_cols] + [sql.SQL('experiment_id')])
+                                  for p in partition_cols] + [sql.SQL('experiment_id'), sql.SQL('run_id')])
         q += sql.SQL(' ;')
 
         x = cursor.mogrify(q)
@@ -201,11 +204,9 @@ def main():
         result_block = {name: [] for name in column_names}
         row_number = 0
 
-        q = sql.SQL('SELECT experiment_id, experiment_parameters, ')
-
+        q = sql.SQL('SELECT run_id, run_parameters, ')
         q += sql.SQL(', ').join([sql.Identifier(c)
                                 for c in data_column_names])
-                                
         q += sql.SQL(' FROM experiment_summary_ s ')
         q += sql.SQL(' WHERE s.experiment_id IN ( ')
         q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
@@ -249,7 +250,7 @@ def main():
                 for i in range(len(data_column_names)):
                     result_block[data_column_names[i]
                                  ][row_number] = row[i+2]
-                
+
                 row_number += 1
 
         if row_number > 0:
