@@ -201,16 +201,19 @@ def main():
                 q += sql.SQL(' AND NOT (s.experiment_parameters && (')
                 q += sql.SQL(' SELECT array_agg(id) FROM (')
                 q += sql.SQL(' UNION ALL ').join([
-                    sql.SQL(' SELECT id from parameter_ where kind = {}').
+                    sql.SQL(' SELECT id from parameter_ where kind = {} ').
                     format(sql.Literal(k))
                     for k in null_kinds])
                 q += sql.SQL(') u ))')
             q += sql.SQL(';')
 
+
             x = cursor.mogrify(q)
-            print(x)
+            # print(x)
 
             cursor.execute(q)
+            if cursor.description is None:
+                print(x)
             for row in cursor.fetchall():
                 for name in column_names:
                     result_block[name].append(None)
