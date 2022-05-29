@@ -208,29 +208,27 @@ def main():
             q += sql.SQL(') u ))')
         q += sql.SQL(';')
 
-        while True:
-            with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
-                cursor.itersize = 1
+        with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
+            cursor.itersize = 1
 
-                cursor.execute(q)
-                # if cursor.description is None:
-                #     print(cursor.mogrify(q))
-                #     continue
-                
-                for row in cursor:
-                    for name in column_names:
-                        result_block[name].append(None)
+            cursor.execute(q)
+            # if cursor.description is None:
+            #     print(cursor.mogrify(q))
+            #     continue
+            
+            for row in cursor:
+                for name in column_names:
+                    result_block[name].append(None)
 
-                    for kind, value in parameter_map.parameter_from_id(row[1]):
-                        if kind in parameter_column_names_set:
-                            result_block[kind][row_number] = value
+                for kind, value in parameter_map.parameter_from_id(row[1]):
+                    if kind in parameter_column_names_set:
+                        result_block[kind][row_number] = value
 
-                    for i in range(len(data_column_names)):
-                        result_block[data_column_names[i]
-                                     ][row_number] = row[i+2]
+                for i in range(len(data_column_names)):
+                    result_block[data_column_names[i]
+                                    ][row_number] = row[i+2]
 
-                    row_number += 1
-            break
+                row_number += 1
 
         if row_number > 0:
             record_batch = pyarrow.Table.from_pydict(
@@ -255,7 +253,7 @@ def main():
                 # dictionary_pagesize_limit=64*1024,
             )
         print(f'End chunk {chunk}.')
-        return row_number
+        return row_number, chunk
 
     # with parquet.ParquetWriter(
     #         file_name,
@@ -280,9 +278,9 @@ def main():
     num_stored = 0
     with multiprocessing.ProcessPool(24) as pool:
         results = pool.uimap(download_chunk, chunks)
-        for num_rows in results:
+        for num_rows, chunk in results:
             num_stored += 1
-            print(f'Stored {num_rows} in chunk {num_stored} / {len(chunks)}.')
+            print(f'Stored {num_rows} in chunk {chunk}, {num_stored} / {len(chunks)}.')
             # writer.write_batch(record_batch)
 
     print('Done.')
