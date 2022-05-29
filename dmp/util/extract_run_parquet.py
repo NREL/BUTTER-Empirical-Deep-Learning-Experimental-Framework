@@ -22,7 +22,7 @@ def main():
 
     # base_path = '/projects/dmpapps/jperrsau/datasets/2022_05_20_fixed_3k_1/'
     # base_path = '/home/ctripp/scratch/'
-    dataset_path = '../experiment_summary/'
+    dataset_path = '../experiment/'
     # file_name = os.path.join(base_path, 'fixed_3k_1.pq')
 
     # fixed_3k_1_meta.csv.gz
@@ -86,54 +86,45 @@ def main():
     #     variable_parameter_kinds
 
     data_columns = [
-        pyarrow.field('run_id', pyarrow.uint32(), nullable=False),
+        pyarrow.field('run_id', pyarrow.string(), nullable=False),
         pyarrow.field('experiment_id', pyarrow.uint32(), nullable=False),
+        pyarrow.field('platform', pyarrow.string(), nullable=True),
+        pyarrow.field('git_hash', pyarrow.string(), nullable=True),
+        pyarrow.field('hostname', pyarrow.string(), nullable=True),
+        pyarrow.field('seed', pyarrow.int64(), nullable=True),
 
-        pyarrow.field('num_free_parameters', pyarrow.uint64()),
-        pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
-        pyarrow.field('network_structure', pyarrow.string()),
-        pyarrow.field('num', pyarrow.list_(pyarrow.uint8())),
-        pyarrow.field('val_loss_num_finite', pyarrow.list_(pyarrow.uint8())),
-        pyarrow.field('val_loss_avg', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_loss_stddev', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_loss_min', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_loss_max', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('loss_num_finite', pyarrow.list_(pyarrow.uint8())),
-        pyarrow.field('loss_avg', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('loss_stddev', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('loss_min', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('loss_max', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('loss_median', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_accuracy_avg', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_accuracy_stddev', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_accuracy_median', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_loss_median', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('accuracy_avg', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('accuracy_stddev', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('accuracy_median', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_mean_squared_error_avg',
+        pyarrow.field('start_time', pyarrow.int64(), nullable=True),
+        pyarrow.field('update_time', pyarrow.int64(), nullable=True),
+        pyarrow.field('command', pyarrow.string(), nullable=True),
+
+        pyarrow.field('val_loss', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('loss', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('val_accuracy', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('accuracy', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('val_mean_squared_error',
                       pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_mean_squared_error_stddev',
+        pyarrow.field('mean_squared_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('val_mean_absolute_error',
                       pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_mean_squared_error_median',
+        pyarrow.field('mean_absolute_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('val_root_mean_squared_error',
                       pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('mean_squared_error_avg',
+        pyarrow.field('root_mean_squared_error',
                       pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('mean_squared_error_stddev',
+        pyarrow.field('val_mean_squared_logarithmic_error',
                       pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('mean_squared_error_median',
+        pyarrow.field('mean_squared_logarithmic_error',
                       pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_kullback_leibler_divergence_avg',
+        pyarrow.field('val_hinge', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('hinge', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('val_squared_hinge', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('squared_hinge', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('val_cosine_similarity',
                       pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_kullback_leibler_divergence_stddev',
+        pyarrow.field('cosine_similarity', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('val_kullback_leibler_divergence',
                       pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_kullback_leibler_divergence_median',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('kullback_leibler_divergence_avg',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('kullback_leibler_divergence_stddev',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('kullback_leibler_divergence_median',
+        pyarrow.field('kullback_leibler_divergence',
                       pyarrow.list_(pyarrow.float32())),
     ]
 
@@ -166,24 +157,25 @@ def main():
     chunks = []
     with CursorManager(credentials) as cursor:
 
-        q = sql.SQL('SELECT ')
+        q = sql.SQL('SELECT run_id, ')
         q += sql.SQL(', ').join(
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
              for p in partition_cols]
         )
         q += sql.SQL(' FROM run_ r ')
         q += sql.SQL(' ').join(
-            [sql.SQL(' left join parameter_ {} on ({}.kind = {} and s.run_parameters @> array[{}.id]) ').format(
+            [sql.SQL(' left join parameter_ {} on ({}.kind = {} and r.run_parameters @> array[{}.id]) ').format(
                 sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols])
 
         if len(fixed_parameters) > 0:
             q += sql.SQL(' WHERE ')
-            q += sql.SQL(' s.run_parameters @> array[{}]::smallint[] ').format(
+            q += sql.SQL(' r.run_parameters @> array[{}]::smallint[] ').format(
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
+
         q += sql.SQL(' ORDER BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
                                   for p in partition_cols] + [sql.SQL('experiment_id'), sql.SQL('run_id')])
-        q += sql.SQL(' ;')
+        q += sql.SQL(' limit 60 ;')
 
         x = cursor.mogrify(q)
         print(x)
@@ -200,51 +192,28 @@ def main():
 
             chunk.append(row[0])
 
-    # chunks = list(product(*[parameter_map.get_all_ids_for_kind(p) for p in partition_cols]))
-
-    # chunk_size = 16
-    # chunks = [
-    #     list(experiment_ids[chunk_size*chunk:chunk_size*(chunk+1)])
-    #     for chunk in range(int(numpy.ceil(len(experiment_ids) / chunk_size)))]
-
     def download_chunk(chunk):
-        print(f'Begin chunk {chunk}.')
-        # chunk = sorted(chunk)
-        # non_null_params = sorted([c for c in chunk if c is not None])
-        # null_kinds = [partition_cols[i]
-        #               for i, c in enumerate(chunk) if c is None]
+        # print(f'Begin chunk {chunk}.')
 
         result_block = {name: [] for name in column_names}
         row_number = 0
 
-        q = sql.SQL('SELECT r.experiment_id, r.run_parameters, ')
+        q = sql.SQL('SELECT run_parameters, ')
 
         q += sql.SQL(', ').join([sql.Identifier(c)
                                 for c in data_column_names])
+        q += sql.SQL(' FROM ( ')
+        q += sql.SQL(' SELECT r.*, e.num_free_parameters num_free_parameters, e.widths widths, e.network_structure network_structure, EXTRACT(epoch FROM s.start_time) start_time, EXTRACT(epoch FROM s.update_time) update_time, d.command command ')
 
-        q += sql.SQL(' FROM run_ r join experiment_ e on (r.experiment_id = e.experiment_id) ')
+        q += sql.SQL(' FROM run_ r JOIN experiment_ e ON (r.experiment_id = e.experiment_id) ')
+        q += sql.SQL(' LEFT JOIN job_status s ON (s.id = r.run_id) ')
+        q += sql.SQL(' LEFT JOIN job_data d ON (d.id = r.run_id) ')
         q += sql.SQL(' WHERE r.run_id IN ( ')
         q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
-        q += sql.SQL(' );')
 
-        # q += sql.SQL(' WHERE s.experiment_parameters @> array[')
-        # q += sql.SQL(', ').join([sql.Literal(p)
-        #                             for p in non_null_params])
-        # q += sql.SQL(']::smallint[] ')
-
-        # if len(null_kinds) > 0:
-        #     q += sql.SQL(' AND NOT (s.experiment_parameters && (')
-        #     q += sql.SQL(' SELECT array_agg(id) FROM (')
-        #     q += sql.SQL(' UNION ALL ').join([
-        #         sql.SQL(' SELECT id from parameter_ where kind = {} ').
-        #         format(sql.Literal(k))
-        #         for k in null_kinds])
-        #     q += sql.SQL(') u )) ')
-
-        # if len(fixed_parameters) > 0:
-        #     q += sql.SQL(' AND s.experiment_parameters @> array[{}]::smallint[] ').format(
-        #         sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
-        # q += sql.SQL(';')
+        q += sql.SQL(') ')
+        q += sql.SQL(') x ')
+        q += sql.SQL(' ;')
 
         with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
             cursor.itersize = 4
@@ -274,6 +243,12 @@ def main():
                 [json.dumps(js, separators=(',', ':'))
                  for js in result_block['network_structure']]
 
+            result_block['run_id'] = [str(e) for e in result_block['run_id']]
+
+            result_block['command'] = \
+                [json.dumps(js, separators=(',', ':'))
+                 for js in result_block['command']]
+
             record_batch = pyarrow.Table.from_pydict(
                 result_block,
                 schema=schema,
@@ -295,7 +270,7 @@ def main():
                 # write_batch_size=64,
                 # dictionary_pagesize_limit=64*1024,
             )
-        print(f'End chunk {chunk}.')
+        # print(f'End chunk {chunk}.')
         return row_number, chunk
 
     # with parquet.ParquetWriter(
@@ -319,12 +294,12 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(38) as pool:
+    with multiprocessing.ProcessPool(1) as pool:
         results = pool.uimap(download_chunk, chunks)
         for num_rows, chunk in results:
             num_stored += 1
             print(
-                f'Stored {num_rows} in chunk {chunk}, {num_stored} / {len(chunks)}.')
+                f'Stored {num_rows}, chunk {num_stored} / {len(chunks)}.')
             # writer.write_batch(record_batch)
 
     print('Done.')
