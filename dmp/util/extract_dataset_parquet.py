@@ -211,9 +211,13 @@ def main():
             x = cursor.mogrify(q)
             # print(x)
 
-            cursor.execute(q)
-            if cursor.description is None:
-                print(x)
+            while True:
+                cursor.execute(q)
+                if cursor.description is None:
+                    print(x)
+                else:
+                    break
+            
             for row in cursor.fetchall():
                 for name in column_names:
                     result_block[name].append(None)
@@ -273,7 +277,7 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(96) as pool:
+    with multiprocessing.ProcessPool(38) as pool:
         results = pool.uimap(download_chunk, chunks)
         for num_rows in results:
             num_stored += 1
