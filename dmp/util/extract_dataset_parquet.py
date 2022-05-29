@@ -63,7 +63,7 @@ def main():
 
     partition_cols = [
         # 'dataset',
-        'shape',
+        # 'shape',
         'learning_rate',
         'batch_size',
         'kernel_regularizer.type',
@@ -213,9 +213,9 @@ def main():
                 cursor.itersize = 1
 
                 cursor.execute(q)
-                if cursor.description is None:
-                    print(cursor.mogrify(q))
-                    continue
+                # if cursor.description is None:
+                #     print(cursor.mogrify(q))
+                #     continue
                 
                 for row in cursor:
                     for name in column_names:
