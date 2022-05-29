@@ -169,30 +169,6 @@ vacuum experiment_summary_;
 
 
 
-update job_status stat
-    set priority = seq.seq
-from
-(
-    select ROW_NUMBER() OVER() seq, ordered_job.id id
-    from
-    (   select 
-        (command->'depth')::bigint depth,
-        (command->'kernel_regularizer'->'l2')::float lambda,
-        (command->'seed')::bigint seed,
-        (command->>'dataset') dataset,
-        s.id
-        from
-            job_status s,
-            job_data d
-        where
-            s.id = d.id and queue = 1 and status = 0 and
-            command->>'batch' = 'l2_group_0' and command->>'shape' = 'rectangle'
-        order by depth asc, lambda asc, dataset, floor(random() * 100)::smallint asc
-    ) ordered_job
-) seq
-where
-seq.id = stat.id
-;
 
 
 
