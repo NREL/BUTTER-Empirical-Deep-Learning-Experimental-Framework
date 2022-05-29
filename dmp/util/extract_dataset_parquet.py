@@ -1,6 +1,7 @@
 from itertools import product
 from multiprocessing import Pool
 import os
+import uuid
 from psycopg2 import sql
 
 import pyarrow
@@ -208,7 +209,7 @@ def main():
         q += sql.SQL(';')
 
         while True:
-            with CursorManager(credentials) as cursor:
+            with CursorManager(credentials, name=uuid.uuid1()) as cursor:
                 cursor.itersize = 1
 
                 cursor.execute(q)
@@ -216,7 +217,6 @@ def main():
                     print(cursor.mogrify(q))
                     continue
                 
-                cursor.itersize = 1
                 for row in cursor:
                     for name in column_names:
                         result_block[name].append(None)
