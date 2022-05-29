@@ -269,7 +269,7 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(1) as pool:
+    with multiprocessing.ProcessPool(64) as pool:
         results = pool.uimap(download_chunk, chunks)
         for record_batch in results:
             num_stored += 1
