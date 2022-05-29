@@ -160,7 +160,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 64
+    chunk_size = 128
     chunks = []
     with CursorManager(credentials) as cursor:
 
@@ -245,7 +245,7 @@ def main():
         # q += sql.SQL(';')
 
         with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
-            cursor.itersize = 4
+            cursor.itersize = 8
 
             cursor.execute(q)
             # if cursor.description is None:
