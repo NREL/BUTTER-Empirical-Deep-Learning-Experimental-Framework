@@ -1,4 +1,5 @@
 from itertools import product
+import json
 from multiprocessing import Pool
 import os
 import uuid
@@ -205,7 +206,7 @@ def main():
 
         q += sql.SQL(', ').join([sql.Identifier(c)
                                 for c in data_column_names])
-                                
+
         q += sql.SQL(' FROM experiment_summary_ s ')
         q += sql.SQL(' WHERE s.experiment_id IN ( ')
         q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
@@ -249,10 +250,15 @@ def main():
                 for i in range(len(data_column_names)):
                     result_block[data_column_names[i]
                                  ][row_number] = row[i+2]
-                
+
                 row_number += 1
 
         if row_number > 0:
+
+            result_block['network_structure'] = \
+                [json.dumps(js, separators=(',', ':'))
+                 for js in result_block['network_structure']]
+
             record_batch = pyarrow.Table.from_pydict(
                 result_block,
                 schema=schema,
