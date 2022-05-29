@@ -215,7 +215,7 @@ def main():
         result_block = {name: [] for name in column_names}
         row_number = 0
 
-        q = sql.SQL('SELECT experiment_id, experiment_parameters, ')
+        q = sql.SQL('SELECT experiment_parameters, ')
 
         q += sql.SQL(', ').join([sql.Identifier(c)
                                 for c in data_column_names])
@@ -256,13 +256,13 @@ def main():
                 for name in column_names:
                     result_block[name].append(None)
 
-                for kind, value in parameter_map.parameter_from_id(row[1]):
+                for kind, value in parameter_map.parameter_from_id(row[0]):
                     if kind in parameter_column_names_set:
                         result_block[kind][row_number] = value
 
                 for i in range(len(data_column_names)):
                     result_block[data_column_names[i]
-                                 ][row_number] = row[i+2]
+                                 ][row_number] = row[i+1]
 
                 row_number += 1
 
