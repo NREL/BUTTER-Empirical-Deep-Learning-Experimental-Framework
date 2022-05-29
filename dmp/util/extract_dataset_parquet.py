@@ -230,7 +230,6 @@ def main():
                                      ][row_number] = row[i+2]
 
                     row_number += 1
-                cursor.connection.commit()
             break
 
         if row_number > 0:
