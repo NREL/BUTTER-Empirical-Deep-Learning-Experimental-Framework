@@ -168,7 +168,7 @@ def main():
         x = cursor.mogrify(q)
         print(x)
         cursor.execute(q)
-        for row in cursor.fetchall():
+        for row in cursor:
             chunks.append([row[i] for i in range(len(partition_cols))])
             # experiment_ids.append(row[0])
 
@@ -187,56 +187,56 @@ def main():
                       for i, c in enumerate(chunk) if c is None]
 
         result_block = {name: [] for name in column_names}
-
         row_number = 0
-        with CursorManager(credentials) as cursor:
-            q = sql.SQL('SELECT experiment_id, experiment_parameters, ')
-            q += sql.SQL(', ').join([sql.Identifier(c)
-                                     for c in data_column_names])
-            q += sql.SQL(' FROM experiment_summary_ s ')
-            q += sql.SQL(' WHERE s.experiment_parameters @> array[')
-            q += sql.SQL(', ').join([sql.Literal(p) for p in non_null_params])
-            q += sql.SQL(']::smallint[] ')
-            if len(null_kinds) > 0:
-                q += sql.SQL(' AND NOT (s.experiment_parameters && (')
-                q += sql.SQL(' SELECT array_agg(id) FROM (')
-                q += sql.SQL(' UNION ALL ').join([
-                    sql.SQL(' SELECT id from parameter_ where kind = {} ').
-                    format(sql.Literal(k))
-                    for k in null_kinds])
-                q += sql.SQL(') u ))')
-            q += sql.SQL(';')
 
+        q = sql.SQL('SELECT experiment_id, experiment_parameters, ')
+        q += sql.SQL(', ').join([sql.Identifier(c)
+                                for c in data_column_names])
+        q += sql.SQL(' FROM experiment_summary_ s ')
+        q += sql.SQL(' WHERE s.experiment_parameters @> array[')
+        q += sql.SQL(', ').join([sql.Literal(p)
+                                    for p in non_null_params])
+        q += sql.SQL(']::smallint[] ')
+        if len(null_kinds) > 0:
+            q += sql.SQL(' AND NOT (s.experiment_parameters && (')
+            q += sql.SQL(' SELECT array_agg(id) FROM (')
+            q += sql.SQL(' UNION ALL ').join([
+                sql.SQL(' SELECT id from parameter_ where kind = {} ').
+                format(sql.Literal(k))
+                for k in null_kinds])
+            q += sql.SQL(') u ))')
+        q += sql.SQL(';')
 
-            x = cursor.mogrify(q)
-            # print(x)
+        while True:
+            with CursorManager(credentials) as cursor:
+                cursor.itersize = 8
 
-            while True:
                 cursor.execute(q)
                 if cursor.description is None:
-                    print(x)
-                else:
-                    break
-            
-            for row in cursor.fetchall():
-                for name in column_names:
-                    result_block[name].append(None)
+                    print(cursor.mogrify(q))
+                    continue
+                
+                for row in cursor:
+                    for name in column_names:
+                        result_block[name].append(None)
 
-                for kind, value in parameter_map.parameter_from_id(row[1]):
-                    if kind in parameter_column_names_set:
-                        result_block[kind][row_number] = value
+                    for kind, value in parameter_map.parameter_from_id(row[1]):
+                        if kind in parameter_column_names_set:
+                            result_block[kind][row_number] = value
 
-                for i in range(len(data_column_names)):
-                    result_block[data_column_names[i]][row_number] = row[i+2]
+                    for i in range(len(data_column_names)):
+                        result_block[data_column_names[i]
+                                     ][row_number] = row[i+2]
 
-                row_number += 1
+                    row_number += 1
+            break
 
         if row_number > 0:
             record_batch = pyarrow.Table.from_pydict(
                 result_block,
                 schema=schema,
             )
-            
+
             parquet.write_to_dataset(
                 record_batch,
                 root_path=dataset_path,
