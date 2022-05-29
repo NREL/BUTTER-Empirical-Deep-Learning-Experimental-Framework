@@ -139,35 +139,25 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
     
-
-    # experiment_ids = []
-    # with CursorManager(credentials) as cursor:
-#         cursor.execute(f'''
-# SELECT
-#     experiment_id
-# FROM
-#     experiment_summary_ s
-# WHERE
-#     s.experiment_parameters @> (array[ {parameter_map.to_parameter_ids(fixed_parameters)} ])::smallint[]
-# ORDER BY experiment_id
-# ;''')
-#         for row in cursor.fetchall():
-#             experiment_ids.append(row[0])
-
-    # experiment_ids = []
     chunks = []
+    
     with CursorManager(credentials) as cursor:
 
         q = sql.SQL('SELECT ')
         q += sql.SQL(', ').join(
-            [sql.SQL('(select id from parameter_ where kind = {} and experiment_parameters @> array[id]) {}').format(sql.Literal(p), sql.Identifier(p)) for p in partition_cols])
+            [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p)) for p in partition_cols]
+        )
         q += sql.SQL(' FROM experiment_summary_ s ')
+        q += sql.SQL(' ').join(
+            [sql.SQL(' left join parameter_ {} on ({}.kind = {} and s.experiment_parameters @> array[{}.id]) ').format(
+                sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols])
+
         if len(fixed_parameters) > 0:
             q += sql.SQL(' WHERE ')
             q += sql.SQL(' s.experiment_parameters @> array[{}]::smallint[] ').format(
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
         q += sql.SQL(' GROUP BY ')
-        q += sql.SQL(' , ').join([sql.SQL('{}').format(sql.Identifier(p))
+        q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
                                     for p in partition_cols])
         q += sql.SQL(' ;')
 
@@ -187,25 +177,17 @@ def main():
 
     def download_chunk(chunk):
         # print(f'Begin chunk {chunk[0]}.')
-        chunk = [str(c) for c in sorted([c for c in chunk if c is not None])]
+        chunk = sorted(chunk)
         result_block = {name: [] for name in column_names}
         with CursorManager(credentials) as cursor:
-            #             cursor.execute(f'''
-            # SELECT
-            #     experiment_id, experiment_parameters, {', '.join(data_column_names)}
-            # FROM
-            #     experiment_summary_ s
-            # WHERE
-            #     s.experiment_id in ( {','.join((str(eid) for eid in chunk))} )
-            # ;''')
-            cursor.execute(f'''
-SELECT
-    experiment_id, experiment_parameters, {', '.join(data_column_names)}
-FROM
-    experiment_summary_ s
-WHERE
-    s.experiment_parameters @> array[{','.join(chunk)}]::smallint[]
-;''')
+            q = sql.SQL('SELECT experiment_id, experiment_parameters, ')
+            q += sql.SQL(', ').join([sql.Literal(c) for c in data_column_names])
+            q += sql.SQL(' FROM experiment_summary_ s ')
+            q += sql.SQL('WHERE s.experiment_parameters @> array[')
+            q += sql.SQL(', ').join([sql.Literal(c) for c in chunk])
+            q += sql.SQL(']::smallint[];')
+
+            cursor.execute(q)
             for row in cursor.fetchall():
                 parameters = \
                     {p[0]: p[1]
@@ -220,11 +202,6 @@ WHERE
 
         if len(result_block[column_names[0]]) == 0:
             return None
-        # from pyarrow import RecordBatch
-        # record_batch = RecordBatch.from_pydict(
-        #     result_block,
-        #     schema=schema,
-        #     )
 
         record_batch = pyarrow.Table.from_pydict(
             result_block,
@@ -271,7 +248,7 @@ WHERE
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(32) as pool:
+    with multiprocessing.ProcessPool(64) as pool:
         results = pool.uimap(download_chunk, chunks)
         for record_batch in results:
             num_stored += 1
