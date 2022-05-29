@@ -40,9 +40,12 @@ def main():
         pyarrow.field('epochs', pyarrow.uint32(), nullable=True),
         pyarrow.field('input_activation', pyarrow.string(), nullable=True),
         pyarrow.field('kernel_regularizer', pyarrow.string(), nullable=True),
-        pyarrow.field('kernel_regularizer.l1', pyarrow.float32(), nullable=True),
-        pyarrow.field('kernel_regularizer.l2', pyarrow.float32(), nullable=True),
-        pyarrow.field('kernel_regularizer.type', pyarrow.string(), nullable=True),
+        pyarrow.field('kernel_regularizer.l1',
+                      pyarrow.float32(), nullable=True),
+        pyarrow.field('kernel_regularizer.l2',
+                      pyarrow.float32(), nullable=True),
+        pyarrow.field('kernel_regularizer.type',
+                      pyarrow.string(), nullable=True),
         pyarrow.field('label_noise', pyarrow.float32(), nullable=True),
         pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
@@ -139,14 +142,15 @@ def main():
     os.makedirs(dataset_path)
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
-    
+
     chunks = []
-    
+
     with CursorManager(credentials) as cursor:
 
         q = sql.SQL('SELECT ')
         q += sql.SQL(', ').join(
-            [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p)) for p in partition_cols]
+            [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
+             for p in partition_cols]
         )
         q += sql.SQL(' FROM experiment_summary_ s ')
         q += sql.SQL(' ').join(
@@ -159,7 +163,7 @@ def main():
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
         q += sql.SQL(' GROUP BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
-                                    for p in partition_cols])
+                                  for p in partition_cols])
         q += sql.SQL(' ;')
 
         x = cursor.mogrify(q)
@@ -177,16 +181,17 @@ def main():
     #     for chunk in range(int(numpy.ceil(len(experiment_ids) / chunk_size)))]
 
     def download_chunk(chunk):
-        # print(f'Begin chunk {chunk[0]}.')
+        print(f'Begin chunk {chunk[0]}.')
         # chunk = sorted(chunk)
         non_null_params = sorted([c for c in chunk if c is not None])
-        null_kinds = [partition_cols[i] for i, c in enumerate(chunk) if c is None]
-
+        null_kinds = [partition_cols[i]
+                      for i, c in enumerate(chunk) if c is None]
 
         result_block = {name: [] for name in column_names}
         with CursorManager(credentials) as cursor:
             q = sql.SQL('SELECT experiment_id, experiment_parameters, ')
-            q += sql.SQL(', ').join([sql.Literal(c) for c in data_column_names])
+            q += sql.SQL(', ').join([sql.Identifier(c)
+                                     for c in data_column_names])
             q += sql.SQL(' FROM experiment_summary_ s ')
             q += sql.SQL(' WHERE s.experiment_parameters @> array[')
             q += sql.SQL(', ').join([sql.Literal(p) for p in non_null_params])
@@ -195,12 +200,15 @@ def main():
                 q += sql.SQL(' AND NOT (s.experiment_parameters && (')
                 q += sql.SQL(' SELECT array_agg(id) FROM (')
                 q += sql.SQL(' UNION ALL ').join([
-                    sql.SQL(' SELECT id from parameter_ where kind = {}').\
-                        format(sql.Literal(k))
+                    sql.SQL(' SELECT id from parameter_ where kind = {}').
+                    format(sql.Literal(k))
                     for k in null_kinds])
                 q += sql.SQL(') u ))')
             q += sql.SQL(';')
 
+            x = cursor.mogrify(q)
+            print(x)
+            
             cursor.execute(q)
             for row in cursor.fetchall():
                 for kind in null_kinds:
@@ -261,7 +269,7 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(64) as pool:
+    with multiprocessing.ProcessPool(1) as pool:
         results = pool.uimap(download_chunk, chunks)
         for record_batch in results:
             num_stored += 1
