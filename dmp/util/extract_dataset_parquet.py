@@ -62,13 +62,13 @@ def main():
 
     partition_cols = [
         # 'dataset',
-        # 'shape',
+        'shape',
         'learning_rate',
         'batch_size',
         'kernel_regularizer.type',
         'label_noise',
         'depth',
-        # 'epochs',
+        'epochs',
     ]
 
     # patameters_metadata.to_csv(base_path+'patameters_metadata.csv.gz',
