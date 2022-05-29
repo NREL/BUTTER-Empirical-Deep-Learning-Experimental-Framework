@@ -209,7 +209,7 @@ def main():
 
         while True:
             with CursorManager(credentials) as cursor:
-                cursor.itersize = 8
+                cursor.itersize = 1
 
                 cursor.execute(q)
                 if cursor.description is None:
