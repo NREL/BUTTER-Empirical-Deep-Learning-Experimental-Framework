@@ -30,7 +30,6 @@ def main():
     ]
 
     parameter_columns = [
-        pyarrow.field('kind', pyarrow.string(), nullable=True),
         pyarrow.field('activation', pyarrow.string(), nullable=True),
         pyarrow.field('batch', pyarrow.string(), nullable=True),
         pyarrow.field('batch_size', pyarrow.uint32(), nullable=True),
@@ -188,6 +187,8 @@ def main():
                       for i, c in enumerate(chunk) if c is None]
 
         result_block = {name: [] for name in column_names}
+
+        row_number = 0
         with CursorManager(credentials) as cursor:
             q = sql.SQL('SELECT experiment_id, experiment_parameters, ')
             q += sql.SQL(', ').join([sql.Identifier(c)
@@ -206,22 +207,24 @@ def main():
                 q += sql.SQL(') u ))')
             q += sql.SQL(';')
 
-            x = cursor.mogrify(q)
-            print(x)
-            
+            # x = cursor.mogrify(q)
+            # print(x)
+
             cursor.execute(q)
             for row in cursor.fetchall():
-                for kind in null_kinds:
-                    result_block[kind].append(None)
+                for name in column_names:
+                    result_block[name].append(None)
 
                 for kind, value in parameter_map.parameter_from_id(row[1]):
                     if kind in parameter_column_names_set:
-                        result_block[kind].append(value)
+                        result_block[kind][row_number] = value
 
                 for i in range(len(data_column_names)):
-                    result_block[data_column_names[i]].append(row[i+2])
+                    result_block[data_column_names[i]][row_number] = row[i+2]
 
-        if len(result_block[column_names[0]]) == 0:
+                row_number += 1
+
+        if row_number == 0:
             return None
 
         record_batch = pyarrow.Table.from_pydict(
