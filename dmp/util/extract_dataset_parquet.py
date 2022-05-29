@@ -216,6 +216,7 @@ def main():
                     print(cursor.mogrify(q))
                     continue
                 
+                cursor.itersize = 1
                 for row in cursor:
                     for name in column_names:
                         result_block[name].append(None)
