@@ -152,7 +152,7 @@ def main():
         ]
     ]
 
-    use_dictionary = parameter_columns.copy()
+    use_dictionary = [c.name for c in parameter_columns]
 
     # Write metadata-only Parquet file from schema
     os.makedirs(dataset_path)
