@@ -209,7 +209,7 @@ def main():
         q += sql.SQL(';')
 
         while True:
-            with CursorManager(credentials, name=uuid.uuid1()) as cursor:
+            with CursorManager(credentials, name=str(uuid.uuid1())) as cursor:
                 cursor.itersize = 1
 
                 cursor.execute(q)
