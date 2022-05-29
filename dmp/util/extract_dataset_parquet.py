@@ -230,6 +230,7 @@ def main():
                                      ][row_number] = row[i+2]
 
                     row_number += 1
+                cursor.connection.commit()
             break
 
         if row_number > 0:
@@ -278,7 +279,7 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(38) as pool:
+    with multiprocessing.ProcessPool(24) as pool:
         results = pool.uimap(download_chunk, chunks)
         for num_rows in results:
             num_stored += 1
