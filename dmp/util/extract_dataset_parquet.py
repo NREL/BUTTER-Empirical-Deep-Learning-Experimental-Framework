@@ -142,6 +142,18 @@ def main():
     columns = parameter_columns + data_columns
     schema = pyarrow.schema(columns)
 
+    # use_dictionary=parameter_column_names,
+    # use_byte_stream_split=data_column_names,
+    use_byte_stream_split = [
+        c.name for c in columns
+        if c.type in [
+            pyarrow.float32(), pyarrow.list_(pyarrow.float32()),
+            pyarrow.float64(), pyarrow.list_(pyarrow.float64()),
+        ]
+    ]
+
+    use_dictionary = parameter_columns.copy()
+
     # Write metadata-only Parquet file from schema
     os.makedirs(dataset_path)
     parquet.write_metadata(
@@ -268,12 +280,12 @@ def main():
                 record_batch,
                 root_path=dataset_path,
                 schema=schema,
-                use_dictionary=parameter_column_names,
                 partition_cols=partition_cols,
                 # data_page_size=128 * 1024,
                 compression='BROTLI',
                 compression_level=9,
-                use_byte_stream_split=data_column_names,
+                use_dictionary=use_dictionary,
+                use_byte_stream_split=use_byte_stream_split,
                 data_page_version='2.0',
                 existing_data_behavior='overwrite_or_ignore',
                 use_legacy_dataset=False,
