@@ -211,11 +211,11 @@ def main():
         if len(fixed_parameters) > 0:
             q += sql.SQL(' AND s.experiment_parameters @> array[{}]::smallint[] ').format(
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
-                
+
         q += sql.SQL(';')
 
         with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
-            cursor.itersize = 1
+            cursor.itersize = 8
 
             cursor.execute(q)
             # if cursor.description is None:
@@ -282,7 +282,7 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(24) as pool:
+    with multiprocessing.ProcessPool(38) as pool:
         results = pool.uimap(download_chunk, chunks)
         for num_rows, chunk in results:
             num_stored += 1
