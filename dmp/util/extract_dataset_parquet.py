@@ -180,7 +180,7 @@ def main():
     #     for chunk in range(int(numpy.ceil(len(experiment_ids) / chunk_size)))]
 
     def download_chunk(chunk):
-        print(f'Begin chunk {chunk[0]}.')
+        print(f'Begin chunk {chunk}.')
         # chunk = sorted(chunk)
         non_null_params = sorted([c for c in chunk if c is not None])
         null_kinds = [partition_cols[i]
@@ -207,8 +207,8 @@ def main():
                 q += sql.SQL(') u ))')
             q += sql.SQL(';')
 
-            # x = cursor.mogrify(q)
-            # print(x)
+            x = cursor.mogrify(q)
+            print(x)
 
             cursor.execute(q)
             for row in cursor.fetchall():
@@ -224,32 +224,30 @@ def main():
 
                 row_number += 1
 
-        if row_number == 0:
-            return None
-
-        record_batch = pyarrow.Table.from_pydict(
-            result_block,
-            schema=schema,
-        )
-
-        # print(f'End chunk {chunk[0]}.')
-        parquet.write_to_dataset(
-            record_batch,
-            root_path=dataset_path,
-            schema=schema,
-            use_dictionary=parameter_column_names,
-            partition_cols=partition_cols,
-            data_page_size=128 * 1024,
-            compression='BROTLI',
-            compression_level=9,
-            use_byte_stream_split=data_column_names,
-            data_page_version='2.0',
-            existing_data_behavior='overwrite_or_ignore',
-            use_legacy_dataset=False,
-            # write_batch_size=64,
-            # dictionary_pagesize_limit=64*1024,
-        )
-        return None
+        if row_number > 0:
+            record_batch = pyarrow.Table.from_pydict(
+                result_block,
+                schema=schema,
+            )
+            
+            parquet.write_to_dataset(
+                record_batch,
+                root_path=dataset_path,
+                schema=schema,
+                use_dictionary=parameter_column_names,
+                partition_cols=partition_cols,
+                data_page_size=128 * 1024,
+                compression='BROTLI',
+                compression_level=9,
+                use_byte_stream_split=data_column_names,
+                data_page_version='2.0',
+                existing_data_behavior='overwrite_or_ignore',
+                use_legacy_dataset=False,
+                # write_batch_size=64,
+                # dictionary_pagesize_limit=64*1024,
+            )
+        print(f'End chunk {chunk}.')
+        return row_number
 
     # with parquet.ParquetWriter(
     #         file_name,
@@ -272,11 +270,11 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(64) as pool:
+    with multiprocessing.ProcessPool(96) as pool:
         results = pool.uimap(download_chunk, chunks)
-        for record_batch in results:
+        for num_rows in results:
             num_stored += 1
-            print(f'Stored chunk {num_stored} / {len(chunks)}.')
+            print(f'Stored {num_rows} in chunk {num_stored} / {len(chunks)}.')
             # writer.write_batch(record_batch)
 
     print('Done.')
