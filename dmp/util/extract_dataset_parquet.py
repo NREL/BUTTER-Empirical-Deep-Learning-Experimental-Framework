@@ -12,9 +12,14 @@ from jobqueue.cursor_manager import CursorManager
 import numpy
 
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
-
+import sys
 
 def main():
+
+    sweep = None
+    if len(sys.argv) >= 2:
+        sweep = str(sys.argv[1])
+
     credentials = connect.load_credentials('dmp')
     parameter_map = None
     with CursorManager(credentials) as cursor:
@@ -23,6 +28,9 @@ def main():
     # base_path = '/projects/dmpapps/jperrsau/datasets/2022_05_20_fixed_3k_1/'
     # base_path = '/home/ctripp/scratch/'
     dataset_path = '../experiment_summary/'
+    if sweep is not None:
+        dataset_path = f'../{sweep}_summary/'
+    
     # file_name = os.path.join(base_path, 'fixed_3k_1.pq')
 
     # fixed_3k_1_meta.csv.gz
@@ -201,10 +209,25 @@ def main():
             [sql.SQL(' left join parameter_ {} on ({}.kind = {} and s.experiment_parameters @> array[{}.id]) ').format(
                 sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols])
 
+        where = False
+
         if len(fixed_parameters) > 0:
+            where = True
             q += sql.SQL(' WHERE ')
+
             q += sql.SQL(' s.experiment_parameters @> array[{}]::smallint[] ').format(
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
+
+        if sweep is not None:
+            if where:
+                q += sql.SQL(' AND ')
+            else:
+                where = True
+                q += sql.SQL(' WHERE ')
+                
+            q += sql.SQL(' {} ').format(sql.Identifier(sweep))
+
+
         q += sql.SQL(' ORDER BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
                                   for p in partition_cols] + [sql.SQL('experiment_id')])
