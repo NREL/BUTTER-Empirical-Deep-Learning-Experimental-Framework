@@ -171,7 +171,7 @@ def main():
         'kullback_leibler_divergence_median': 'train_kullback_leibler_divergence_median',
     }
 
-    inverse_column_name_mapping = {v: k for k, v in column_name_mapping}
+    inverse_column_name_mapping = {v: k for k, v in column_name_mapping.items()}
 
     for f in data_columns:
         if f.name in column_name_mapping:
