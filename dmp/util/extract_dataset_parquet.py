@@ -224,7 +224,7 @@ def main():
             else:
                 where = True
                 q += sql.SQL(' WHERE ')
-                
+
             q += sql.SQL(' {} ').format(sql.Identifier(sweep))
 
 
@@ -334,7 +334,7 @@ def main():
                 partition_cols=partition_cols,
                 # data_page_size=128 * 1024,
                 compression='BROTLI',
-                compression_level=10,
+                compression_level=8,
                 use_dictionary=use_dictionary,
                 use_byte_stream_split=use_byte_stream_split,
                 data_page_version='2.0',
