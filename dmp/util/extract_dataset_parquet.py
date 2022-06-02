@@ -58,7 +58,7 @@ def main():
 
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
         # pyarrow.field('python_version', pyarrow.string(), nullable=True),
-        # pyarrow.field('run_config.shuffle', pyarrow.bool(), nullable=True),
+        # pyarrow.field('run_config.shuffle', pyarrow.bool_(), nullable=True),
 
         pyarrow.field('task', pyarrow.string(), nullable=True),
         # pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
@@ -81,13 +81,13 @@ def main():
     data_columns = [
         pyarrow.field('experiment_id', pyarrow.uint32(), nullable=False),
         
-        pyarrow.field('primary_sweep', pyarrow.bool(), nullable=False),
-        pyarrow.field('300_epoch_sweep', pyarrow.bool(), nullable=False),
-        pyarrow.field('30k_epoch_sweep', pyarrow.bool(), nullable=False),
-        pyarrow.field('learning_rate_sweep', pyarrow.bool(), nullable=False),
-        pyarrow.field('label_noise_sweep', pyarrow.bool(), nullable=False),
-        pyarrow.field('batch_size_sweep', pyarrow.bool(), nullable=False),
-        pyarrow.field('regularization_sweep', pyarrow.bool(), nullable=False),
+        pyarrow.field('primary_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('300_epoch_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('30k_epoch_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('learning_rate_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('label_noise_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('batch_size_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('regularization_sweep', pyarrow.bool_(), nullable=False),
         
         pyarrow.field('num_free_parameters', pyarrow.uint64()),
         pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
