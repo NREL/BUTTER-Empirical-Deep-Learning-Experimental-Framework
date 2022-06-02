@@ -210,8 +210,8 @@ def main():
             else:
                 where = True
                 q += sql.SQL(' WHERE ')
-                
-            q += sql.SQL(' {} ').format(sql.Identifier(sweep))
+
+            q += sql.SQL('EXISTS (SELECT * FROM experiment_ e WHERE e.experiment_id = r.experiment_id AND e.{}) ').format(sql.Identifier(sweep))
 
         q += sql.SQL(' ORDER BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
