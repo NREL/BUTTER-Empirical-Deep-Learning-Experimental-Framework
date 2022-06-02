@@ -959,35 +959,39 @@ from
                 min(start_time) first_start
             from
                 (
-                select 
-                    inter::interval inter
-                from (VALUES ('3 hours'), ('6 hours'), ('12 hours'), ('1 day'), ('2 days'), ('4 days'), ('8 days'), ('16 days'), ('30 days'), ('60 days'), ('120 days'), ('1 year')) inter (inter) order by inter asc
-                ) inter,
-                (
-                                     select
-                                        r.slurm_job_id,
-                                        r.hostname,
-                                        r.platform,
-                                        s.start_time,
-                                        s.update_time,
-                                        (s.update_time - s.start_time) run_time,
-                                        s.worker worker,
-                                        command->'batch' batch,
-                                        (command->'size')::bigint * (command->'run_config'->'epochs')::bigint effort,
-                                        command->'shape' shape,
-                                        command->'depth' depth
-                                    from
-                                        run_ r,
-                                        job_status s,
-                                        job_data d
-                                    where
-                                        r.job_id = s.id
-                                        and s.id = d.id
-                                        and s.status = 2
-                                        and (s.update_time - s.start_time) >= '1 second'
+                     select
+                        inter,
+                        r.slurm_job_id,
+                        r.hostname,
+                        r.platform,
+                        s.start_time,
+                        s.update_time,
+                        (s.update_time - s.start_time) run_time,
+                        s.worker worker,
+                        command->'batch' batch,
+                        (command->'size')::bigint * (command->'run_config'->'epochs')::bigint effort,
+                        command->'shape' shape,
+                        command->'depth' depth
+                    from
+                        (
+                            select 
+                                inter::interval inter,
+                                (now()::timestamp -  inter::interval) start_limit
+                            from (VALUES ('3 hours'), ('6 hours'), ('12 hours'), ('1 day'), ('2 days'), ('4 days'), ('8 days'), ('16 days')
+                                -- ('30 days'), ('60 days'), ('120 days'), ('1 year')
+                                ) inter (inter)
+                        ) inter,
+                        run_ r,
+                        job_status s,
+                        job_data d
+                    where
+                        s.start_time >= inter.start_limit
+                        and r.job_id = s.id
+                        and s.id = d.id
+                        and s.status = 2
+                        and s.queue = 1
+                        and (s.update_time - s.start_time) >= '1 second'
                  ) j
-            where
-                j.start_time >= (now()::timestamp -  inter.inter)
             group by inter, slurm_job_id, hostname, worker
             ) worker
         group by inter, slurm_job_id, hostname
@@ -1701,6 +1705,281 @@ summaries_to_delete as (
 select (select count(*) from exp_to_update)
 ;
 
+
+
+-- nested CTE - TID summary update:
+insert into experiment_summary_ (
+    experiment_id,
+    experiment_parameters,
+    num_runs,
+    num_free_parameters,
+    num,
+    val_loss_num_finite,
+    val_loss_avg,
+    val_loss_stddev,
+    val_loss_min,
+    val_loss_max,
+    val_loss_median,
+    val_loss_percentile,
+    loss_num_finite,
+    loss_avg,
+    loss_stddev,
+    loss_min,
+    loss_max,
+    loss_median,
+    loss_percentile,
+    val_accuracy_avg,
+    val_accuracy_stddev,
+    val_accuracy_median,
+    accuracy_avg,
+    accuracy_stddev,
+    accuracy_median,
+    val_mean_squared_error_avg,
+    val_mean_squared_error_stddev,
+    val_mean_squared_error_median,
+    mean_squared_error_avg,
+    mean_squared_error_stddev,
+    mean_squared_error_median,
+    val_kullback_leibler_divergence_avg,
+    val_kullback_leibler_divergence_stddev,
+    val_kullback_leibler_divergence_median,
+    kullback_leibler_divergence_avg,
+    kullback_leibler_divergence_stddev,
+    kullback_leibler_divergence_median,
+    network_structure,
+    widths,
+    "size",
+    relative_size_error
+)
+select
+    e.experiment_id,
+    experiment_parameters,
+    aggregates.*,
+    network_structure,
+    widths,
+    e.size,
+    e.relative_size_error
+from
+(
+    select
+        e.* 
+    from 
+        experiment_ e
+--         (
+--             select distinct r.experiment_id 
+--             FROM
+--                 run_ r
+--             WHERE 
+-- --                 r.record_timestamp >= COALESCE(0, (SELECT MAX(update_timestamp) FROM experiment_summary_))
+--                 NOT EXISTS (SELECT * FROM experiment_summary_ s WHERE 
+--                               s.experiment_id = r.experiment_id AND s.update_timestamp > r.record_timestamp)
+--             order by experiment_id offset 0 limit 1000
+--         ) re
+    where
+        exists (select * from run_ r where r.experiment_id = e.experiment_id and not exists (select * from experiment_summary_ s where s.experiment_id = r.experiment_id and s.update_timestamp > r.record_timestamp))
+    order by experiment_id offset 0 limit 1000
+) e,
+lateral (
+    with rr as (
+        select run_.ctid as run_ctid from run_ where run_.experiment_id = e.experiment_id
+    )
+    select
+        num_runs,
+        num_free_parameters,
+        num,
+        val_loss_num_finite,
+        val_loss_avg,
+        val_loss_stddev,
+        val_loss_min,
+        val_loss_max,
+        val_loss_median,
+        val_loss_percentile,
+
+        loss_num_finite,
+        loss_avg,
+        loss_stddev,
+        loss_min,
+        loss_max,
+        loss_median,
+        loss_percentile,
+
+        val_accuracy_.v_avg val_accuracy_avg, 
+        val_accuracy_.v_stddev val_accuracy_stddev, 
+        val_accuracy_.v_median val_accuracy_median, 
+
+        accuracy_.v_avg accuracy_avg, 
+        accuracy_.v_stddev accuracy_stddev, 
+        accuracy_.v_median accuracy_median, 
+
+        val_mean_squared_error_.v_avg val_mean_squared_error_avg, 
+        val_mean_squared_error_.v_stddev val_mean_squared_error_stddev, 
+        val_mean_squared_error_.v_median val_mean_squared_error_median, 
+
+        mean_squared_error_.v_avg mean_squared_error_avg, 
+        mean_squared_error_.v_stddev mean_squared_error_stddev, 
+        mean_squared_error_.v_median mean_squared_error_median, 
+
+        val_kullback_leibler_divergence_.v_avg val_kullback_leibler_divergence_avg,
+        val_kullback_leibler_divergence_.v_stddev val_kullback_leibler_divergence_stddev, 
+        val_kullback_leibler_divergence_.v_median val_kullback_leibler_divergence_median, 
+
+        kullback_leibler_divergence_.v_avg kullback_leibler_divergence_avg, 
+        kullback_leibler_divergence_.v_stddev kullback_leibler_divergence_stddev,
+        kullback_leibler_divergence_.v_median kullback_leibler_divergence_median
+    from
+        (
+            select
+                max(num) num_runs,
+                array_agg(num) num,
+                array_agg(val_loss_num_finite) val_loss_num_finite,
+                array_agg(val_loss_avg) val_loss_avg,
+                array_agg(val_loss_stddev) val_loss_stddev,
+                array_agg(val_loss_min) val_loss_min,
+                array_agg(val_loss_max) val_loss_max,
+                array_agg(val_loss_median) val_loss_median,
+                array_agg(val_loss_percentile) val_loss_percentile
+            from (
+                select
+                    *,
+                    val_loss_percentile[3] val_loss_median
+                from
+                (
+                    select 
+                        (COUNT(COALESCE(v, 'NaN'::real)))::smallint num,
+                        (COUNT(v))::smallint val_loss_num_finite,
+                        (AVG(v))::real val_loss_avg,
+                        (stddev_samp(v))::real val_loss_stddev,
+                        MIN(v) val_loss_min,
+                        MAX(v) val_loss_max,
+                        (PERCENTILE_DISC(array[.25, .333, .5, .667, .75]) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real))) val_loss_percentile
+                    from
+                        rr,
+                        run_ r,
+                        lateral unnest(r.val_loss) WITH ORDINALITY as epoch_value(v, epoch)
+                    where r.ctid = rr.run_ctid
+                    group by epoch
+                    order by epoch
+                  ) x
+                ) x
+        ) val_loss_,
+        (
+            select
+                array_agg(loss_num_finite) loss_num_finite,
+                array_agg(loss_avg) loss_avg,
+                array_agg(loss_stddev) loss_stddev,
+                array_agg(loss_min) loss_min,
+                array_agg(loss_max) loss_max,
+                array_agg(loss_median) loss_median,
+                array_agg(loss_percentile) loss_percentile
+            from (
+                select
+                    *,
+                    loss_percentile[3] loss_median
+                from
+                (
+                    select 
+                        (COUNT(v))::smallint loss_num_finite,
+                        (AVG(v))::real loss_avg,
+                        (stddev_samp(v))::real loss_stddev,
+                        MIN(v) loss_min,
+                        MAX(v) loss_max,
+                        (PERCENTILE_DISC(array[.25, .333, .5, .667, .75]) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real))) loss_percentile
+                    from
+                        rr,
+                        run_ r,
+                        lateral unnest(r.loss) WITH ORDINALITY as epoch_value(v, epoch)
+                    where r.ctid = rr.run_ctid
+                    group by epoch
+                    order by epoch
+                    ) x
+                ) x
+        ) loss_,
+        lateral (
+            select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev, array_agg(v_median) v_median
+            from (
+              select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev,(PERCENTILE_DISC(.5) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real)))::real v_median
+              from rr, run_ r, lateral unnest(r.val_accuracy) WITH ORDINALITY as epoch_value(v, epoch)
+                where r.ctid = rr.run_ctid
+              group by epoch order by epoch ) x
+        ) val_accuracy_,
+        lateral (
+            select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev, array_agg(v_median) v_median
+            from (
+              select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev,(PERCENTILE_DISC(.5) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real)))::real v_median
+              from rr, run_ r, lateral unnest(r.accuracy) WITH ORDINALITY as epoch_value(v, epoch)
+             where r.ctid = rr.run_ctid
+              group by epoch order by epoch ) x
+        ) accuracy_,
+        lateral (
+            select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev, array_agg(v_median) v_median
+            from (
+              select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev,(PERCENTILE_DISC(.5) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real)))::real v_median
+              from rr, run_ r, lateral unnest(r.val_mean_squared_error) WITH ORDINALITY as epoch_value(v, epoch)
+              where r.ctid = rr.run_ctid
+              group by epoch order by epoch ) x
+        ) val_mean_squared_error_, 
+        lateral (
+            select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev, array_agg(v_median) v_median
+            from (
+              select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev,(PERCENTILE_DISC(.5) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real)))::real v_median
+              from rr, run_ r, lateral unnest(r.mean_squared_error) WITH ORDINALITY as epoch_value(v, epoch)
+                where r.ctid = rr.run_ctid
+              group by epoch order by epoch ) x
+        ) mean_squared_error_,
+        lateral (
+            select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev, array_agg(v_median) v_median
+            from (
+              select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev,(PERCENTILE_DISC(.5) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real)))::real v_median
+              from rr, run_ r, lateral unnest(r.val_kullback_leibler_divergence) WITH ORDINALITY as epoch_value(v, epoch)
+                where r.ctid = rr.run_ctid
+              group by epoch order by epoch ) x
+        ) val_kullback_leibler_divergence_,
+        lateral (
+            select array_agg(v_avg) v_avg, array_agg(v_stddev) v_stddev, array_agg(v_median) v_median
+            from (
+              select (AVG(v))::real v_avg,(stddev_samp(v))::real v_stddev,(PERCENTILE_DISC(.5) WITHIN GROUP(ORDER BY  COALESCE(v, 'NaN'::real)))::real v_median
+              from rr, run_ r, lateral unnest(r.kullback_leibler_divergence) WITH ORDINALITY as epoch_value(v, epoch)
+                where r.ctid = rr.run_ctid
+              group by epoch order by epoch ) x
+        ) kullback_leibler_divergence_
+    ) aggregates
+ON CONFLICT (experiment_id) DO UPDATE SET
+        update_timestamp = ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer,
+        num_runs = EXCLUDED.num_runs,
+        num = EXCLUDED.num,
+        val_loss_num_finite = EXCLUDED.val_loss_num_finite,
+        val_loss_avg = EXCLUDED.val_loss_avg,
+        val_loss_stddev = EXCLUDED.val_loss_stddev,
+        val_loss_min = EXCLUDED.val_loss_min,
+        val_loss_max = EXCLUDED.val_loss_max,
+        val_loss_median = EXCLUDED.val_loss_median,
+        val_loss_percentile = EXCLUDED.val_loss_percentile,
+        loss_num_finite = EXCLUDED.loss_num_finite,
+        loss_avg = EXCLUDED.loss_avg,
+        loss_stddev = EXCLUDED.loss_stddev,
+        loss_min = EXCLUDED.loss_min,
+        loss_max = EXCLUDED.loss_max,
+        loss_median = EXCLUDED.loss_median,
+        loss_percentile = EXCLUDED.loss_percentile,
+        val_accuracy_avg = EXCLUDED.val_accuracy_avg,
+        val_accuracy_stddev = EXCLUDED.val_accuracy_stddev,
+        val_accuracy_median = EXCLUDED.val_accuracy_median,
+        accuracy_avg = EXCLUDED.accuracy_avg,
+        accuracy_stddev = EXCLUDED.accuracy_stddev,
+        accuracy_median = EXCLUDED.accuracy_median,
+        val_mean_squared_error_avg = EXCLUDED.val_mean_squared_error_avg,
+        val_mean_squared_error_stddev = EXCLUDED.val_mean_squared_error_stddev,
+        val_mean_squared_error_median = EXCLUDED.val_mean_squared_error_median,
+        mean_squared_error_avg = EXCLUDED.mean_squared_error_avg,
+        mean_squared_error_stddev = EXCLUDED.mean_squared_error_stddev,
+        mean_squared_error_median = EXCLUDED.mean_squared_error_median,
+        val_kullback_leibler_divergence_avg = EXCLUDED.val_kullback_leibler_divergence_avg,
+        val_kullback_leibler_divergence_stddev = EXCLUDED.val_kullback_leibler_divergence_stddev,
+        val_kullback_leibler_divergence_median = EXCLUDED.val_kullback_leibler_divergence_median,
+        kullback_leibler_divergence_avg = EXCLUDED.kullback_leibler_divergence_avg,
+        kullback_leibler_divergence_stddev = EXCLUDED.kullback_leibler_divergence_stddev,
+        kullback_leibler_divergence_median = EXCLUDED.kullback_leibler_divergence_median
+;
 
 
 -- alternate nested CTE summary:

@@ -32,62 +32,64 @@ def main():
     ]
 
     parameter_columns = [
-        pyarrow.field('activation', pyarrow.string(), nullable=True),
-        pyarrow.field('batch', pyarrow.string(), nullable=True),
-        pyarrow.field('batch_size', pyarrow.uint32(), nullable=True),
         pyarrow.field('dataset', pyarrow.string(), nullable=True),
+        pyarrow.field('shape', pyarrow.string(), nullable=True),
+        pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
+        pyarrow.field('batch_size', pyarrow.uint32(), nullable=True),
+        pyarrow.field('kernel_regularizer.type',
+                      pyarrow.string(), nullable=True),
+        pyarrow.field('label_noise', pyarrow.float32(), nullable=True),
         pyarrow.field('depth', pyarrow.uint8(), nullable=True),
-        pyarrow.field('early_stopping', pyarrow.string(), nullable=True),
         pyarrow.field('epochs', pyarrow.uint32(), nullable=True),
+        pyarrow.field('size', pyarrow.uint64(), nullable=True),
+        pyarrow.field('batch', pyarrow.string(), nullable=True),
+        pyarrow.field('early_stopping', pyarrow.string(), nullable=True),
+        pyarrow.field('activation', pyarrow.string(), nullable=True),
         pyarrow.field('input_activation', pyarrow.string(), nullable=True),
+        pyarrow.field('output_activation', pyarrow.string(), nullable=True),
         pyarrow.field('kernel_regularizer', pyarrow.string(), nullable=True),
         pyarrow.field('kernel_regularizer.l1',
                       pyarrow.float32(), nullable=True),
         pyarrow.field('kernel_regularizer.l2',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('kernel_regularizer.type',
-                      pyarrow.string(), nullable=True),
-        pyarrow.field('label_noise', pyarrow.float32(), nullable=True),
-        pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
-        pyarrow.field('output_activation', pyarrow.string(), nullable=True),
-        # pyarrow.field('python_version', pyarrow.string(), nullable=True),
-        # pyarrow.field('run_config.shuffle', pyarrow.bool(), nullable=True),
-        pyarrow.field('shape', pyarrow.string(), nullable=True),
-        pyarrow.field('size', pyarrow.uint64(), nullable=True),
         pyarrow.field('task', pyarrow.string(), nullable=True),
-        # pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
-        # pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
         pyarrow.field('test_split', pyarrow.float32(), nullable=True),
-        pyarrow.field('test_split_method', pyarrow.string(), nullable=True),
+
+
+        pyarrow.field('python_version', pyarrow.string(), nullable=True),
+        
+        pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
+        pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
     ]
 
     partition_cols = [
         'dataset',
-        'shape',
         'learning_rate',
         'batch_size',
         'kernel_regularizer.type',
         'label_noise',
-        'depth',
         'epochs',
+        'shape',
+        'depth',
     ]
-
-    # patameters_metadata.to_csv(base_path+'patameters_metadata.csv.gz',
-    #                        index=False, compression='gzip')
-
-    # fixed_3k_1_meta = experiment_table_meta.query('batch=='fixed_3k_1'')
-    # fixed_3k_1_meta.to_csv(base_path+'fixed_3k_1_meta.csv.gz',
-    #                        index=False, compression='gzip')
-
-    # fixed_3k_1_dataset_...csv.gz
-
-    # all_kinds = list((p[0] for p in fixed_parameters)) + \
-    #     variable_parameter_kinds
 
     data_columns = [
         pyarrow.field('run_id', pyarrow.string(), nullable=False),
         pyarrow.field('experiment_id', pyarrow.uint32(), nullable=False),
+
+        pyarrow.field('primary_sweep', pyarrow.bool(), nullable=False),
+        pyarrow.field('300_epoch_sweep', pyarrow.bool(), nullable=False),
+        pyarrow.field('30k_epoch_sweep', pyarrow.bool(), nullable=False),
+        pyarrow.field('learning_rate_sweep', pyarrow.bool(), nullable=False),
+        pyarrow.field('label_noise_sweep', pyarrow.bool(), nullable=False),
+        pyarrow.field('batch_size_sweep', pyarrow.bool(), nullable=False),
+        pyarrow.field('regularization_sweep', pyarrow.bool(), nullable=False),
+
+        pyarrow.field('num_free_parameters', pyarrow.uint64()),
+        pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
+        pyarrow.field('network_structure', pyarrow.string(), nullable=True),
+
         pyarrow.field('platform', pyarrow.string(), nullable=True),
         pyarrow.field('git_hash', pyarrow.string(), nullable=True),
         pyarrow.field('hostname', pyarrow.string(), nullable=True),
@@ -96,10 +98,6 @@ def main():
         pyarrow.field('start_time', pyarrow.int64(), nullable=True),
         pyarrow.field('update_time', pyarrow.int64(), nullable=True),
         pyarrow.field('command', pyarrow.string(), nullable=True),
-
-        pyarrow.field('network_structure', pyarrow.string(), nullable=True),
-        pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
-        pyarrow.field('num_free_parameters', pyarrow.uint64()),
 
         pyarrow.field('val_loss', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('loss', pyarrow.list_(pyarrow.float32())),
@@ -132,6 +130,35 @@ def main():
                       pyarrow.list_(pyarrow.float32())),
     ]
 
+    column_name_mapping = {
+        'val_loss' : 'test_loss',
+        'loss' : 'train_loss',
+        'val_accuracy' : 'test_accuracy',
+        'accuracy' : 'train_accuracy',
+        'val_mean_squared_error' : 'test_mean_squared_error',
+        'mean_squared_error' : 'train_mean_squared_error',
+        'val_mean_absolute_error' : 'test_mean_absolute_error',
+        'mean_absolute_error' : 'train_mean_absolute_error',
+        'val_root_mean_squared_error' : 'test_root_mean_squared_error',
+        'root_mean_squared_error' : 'train_root_mean_squared_error',
+        'val_mean_squared_logarithmic_error' : 'test_mean_squared_logarithmic_error',
+        'mean_squared_logarithmic_error' : 'train_mean_squared_logarithmic_error',
+        'val_hinge' : 'test_hinge',
+        'hinge' : 'train_hinge',
+        'val_squared_hinge' : 'test_squared_hinge',
+        'squared_hinge' : 'train_squared_hinge',
+        'val_cosine_similarity' : 'test_cosine_similarity',
+        'cosine_similarity' : 'train_cosine_similarity',
+        'val_kullback_leibler_divergence' : 'test_kullback_leibler_divergence',
+        'kullback_leibler_divergence' : 'train_kullback_leibler_divergence',
+    }
+
+    inverse_column_name_mapping = {v: k for k, v in column_name_mapping}
+
+    for f in data_columns:
+        if f.name in column_name_mapping:
+            f.name = column_name_mapping[f.name]
+            
     parameter_column_names = [f.name for f in parameter_columns]
     parameter_column_names_set = set(parameter_column_names)
     data_column_names = [f.name for f in data_columns]
@@ -204,10 +231,16 @@ def main():
 
         q = sql.SQL('SELECT run_parameters, ')
 
-        q += sql.SQL(', ').join([sql.Identifier(c)
+        q += sql.SQL(', ').join([sql.Identifier(inverse_column_name_mapping.get(c,c))
                                 for c in data_column_names])
         q += sql.SQL(' FROM ( ')
         q += sql.SQL(' SELECT r.*, e.num_free_parameters num_free_parameters, e.widths widths, e.network_structure network_structure, EXTRACT(epoch FROM s.start_time) start_time, EXTRACT(epoch FROM s.update_time) update_time, d.command command ')
+        q += sql.SQL(' e."300_epoch_sweep" "300_epoch_sweep", ')
+        q += sql.SQL(' e."30k_epoch_sweep" "30k_epoch_sweep", ')
+        q += sql.SQL(' e."learning_rate_sweep" "learning_rate_sweep", ')
+        q += sql.SQL(' e."label_noise_sweep" "label_noise_sweep", ')
+        q += sql.SQL(' e."batch_size_sweep" "batch_size_sweep", ')
+        q += sql.SQL(' e."regularization_sweep" "regularization_sweep" ')
 
         q += sql.SQL(' FROM run_ r JOIN experiment_ e ON (r.experiment_id = e.experiment_id) ')
         q += sql.SQL(' LEFT JOIN job_status s ON (s.id = r.run_id) ')

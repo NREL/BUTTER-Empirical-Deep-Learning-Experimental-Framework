@@ -1,0 +1,242 @@
++ add sweep motivations
++ add per-sweep extractions
++ use bool sweep columns
+
+core:
+core shapes, core datasets, core sizes, core depths, lr=.01, .001, .0001, .00001, label_noise 0, l1, l2 = 0, 
+
+core shapes, core datasets, core sizes, core depths, lr=.0001, label_noise 0, l1, l2 = 0, 
+
+primary:
+core + secondary shapes, lr = .0001, 14 core + extended depths + [6], 21 core sizes + 33554432, 11 core + secondary + tertiary datasets
+
+300 and 30k:
+primary at 300 and 30k at different size ranges, core shapes?
+
+learning rates:
+core shapes over learning rates .01, .001, (.0001), .00001 on core datasets, 13 core + extended depths, 20 core sizes
+
+label noise:
+core shapes over label noises (0.0), 0.05, .1, .15, .2 at learning rate .0001 on core datasets, 13 core + extended depths, 20 core sizes
+core shapes at label noise (0.0), .05 at learning rate .001 on core datasets, 13 core + extended depths, 20 core sizes
+
+batch size:
+rectangle 32,64,128,(256),512,1024 at lr .0001 on 9 core + secondary datasets, 9 core depths, 20 core sizes
+
+regularization sweep:
+rectangle, l1 and l2 regularization, penalties (0.0), .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5
+lr .0001 on 9 core + secondary datasets, 9 core depths, 21 core sizes + 33554432
+
+
+
+20 core sizes:
+32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
+                     32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
+                     8388608, 16777216
+300 sizes:
+33554432, 67108864, 134217728
+
+30k sizes:
+32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
+                     32768, 65536, 131072, 262144
+
+8 core depths:
+2,3,4,5,7,8,9,10
+
+5 extended depths:
+12,14,16,18,20
+
+4 core shapes:
+rectangle
+trapezoid
+exponential
+wide_first_2x
+
+secondary shapes:
+rectangle_residual
+wide_first_4x
+wide_first_8x
+wide_first_16x
+
+tertiary shapes:
+wide_first_2x_residual
+wide_first_4x_residual
+wide_first_8x_residual
+wide_first_16x_residual
+
+7 core datasets:
+529_pollen
+connect_4
+537_houses
+mnist
+201_pol
+sleep
+wine_quality_white
+
+2 secondary datasets:
+nursery
+adult
+
+2 tertiary datasets:
+505_tecator
+294_satellite_images
+
+possible datasets:
+splice
+banana
+poker
+
+
+
+
+Dataset Contents:
+
+/experiment_summary/  contains statistics aggregated over every run of each distinct deep learning experiment
+/experiment/ contains the entire experiment run data in an unaggregated form
+
+Experiment Summary Schema:
+
+dataset,
+shape,
+learning rate,
+batch size,
+regularizer,
+label noise,
+depth,
+epochs
+
+Experiment Summary data is partitioned by dataset, shape, learning rate, batch size, kernel regularizer, label noise, depth, and number of training epochs. Each experiment has a unique experiment_id value, which matches run records in the Experiment dataset. For many varieties of analysis, we recommend using the precomputed Experiment Summary dataset as it is considerably smaller and more convenient to work with than the full Experiment dataset. However, the entire record of every repetition of every experiment is stored in the Experiment dataset so that other statistics can be computed from the raw data.
+
+Experiment Summary Columns:
+
+activation: string, the activation function used for hidden layers
+batch: string, a nickname for the experimental batch this experiment belongs to
+batch_size: uint32, minibatch size
+dataset: string, name of the dataset used
+depth: uint8, number of layers
+early_stopping: string, early stopping policy
+epochs: uint32, number of training epochs in this run
+input_activation: string, input activation function
+kernel_regularizer: string, null if no regularizer is used
+kernel_regularizer.l1: float32, L1 regularization penalty coefficient
+kernel_regularizer.l2: float32, L2 regularization penalty coefficient
+kernel_regularizer.type: string, name of kernel regularizer used (null if none used)
+label_noise: float32, amount of label noise applied to dataset before training (.05 means 5% label noise)
+learning_rate: float32, learning rate used
+optimizer: string, name of the optimizer used
+output_activation: string, activation function for output layer
+shape: string, network shape
+size: uint64, approximate number of trainable parameters used
+task: string, name of training task 
+test_split: float32, test split proportion
+test_split_method: string, test split method
+experiment_id: uint32, unique id of this experiment 
+num_free_parameters: uint64, exact number of trainable parameters
+widths: [uint32], list of layer widths used
+network_structure: string, marshaled json representation of network structure used
+num_runs: uint8, number of runs aggregated in this summary record
+num: [uint8], number of runs aggregated in this summary record at each epoch
+val_loss_num_finite: [uint8], number of finite test losses at each epoch
+val_loss_avg: [float32], average test loss at each epoch
+val_loss_stddev: [float32], standard deviation of the test loss at each epoch
+val_loss_min: [float32], minimum test loss at each epoch
+val_loss_max: [float32], maximum test loss at each epoch
+val_loss_median: [float32], median test loss at each epoch
+loss_num_finite: [uint8], number of finite training losses at each epoch
+loss_avg: [float32], average training loss at each epoch
+loss_stddev: [float32], standard deviation of training losses at each epoch
+loss_min: [float32], minimum training loss at each epoch
+loss_max: [float32], maximum training loss at each epoch
+loss_median: [float32], median training loss at each epoch
+val_accuracy_avg: [float32], average test accuracy at each epoch
+val_accuracy_stddev: [float32], test accuracy standard deviation accuracy at each epoch
+val_accuracy_median: [float32], median test accuracy at each epoch
+accuracy_avg: [float32], average training accuracy at each epoch
+accuracy_stddev: [float32], standard deviation of the training accuracy at each epoch
+accuracy_median: [float32], median training accuracy at each epoch
+val_mean_squared_error_avg: [float32], test MSE at each epoch
+val_mean_squared_error_stddev: [float32], test MSE standard deviation at each epoch
+val_mean_squared_error_median: [float32], median test MSE at each epoch
+mean_squared_error_avg: [float32], average training MSE at each epoch
+mean_squared_error_stddev: [float32], training MSE standard deviation at each epoch
+mean_squared_error_median: [float32], median training MSE at each epoch
+val_kullback_leibler_divergence_avg: [float32], average test KL-Divergence at each epoch
+val_kullback_leibler_divergence_stddev: [float32], test KL-Divergence standard deviation at each epoch
+val_kullback_leibler_divergence_median: [float32], median test KL-Divergence at each epoch
+kullback_leibler_divergence_avg: [float32], average training KL-Divergence at each epoch
+kullback_leibler_divergence_stddev: [float32], training KL-Divergence standard deviation at each epoch
+kullback_leibler_divergence_median: [float32], median training KL-Divergence at each epoch
+
+
+
+Experiment Schema:
+
+Each entry in the experiment dataset represents a single training run of a network on a dataset for a given number of epochs. Each training run was instrumented to record various statistics at the end of each training epoch, and those statistics are stored here. These 'runs' are labeled with an 'experiment_id' which was used to aggregate repetitions of the same experimental parameters together in the Experiment Summary dataset. An experiment_id in the experiment dataset correspond to the same experiment_id in the summary dataset.
+
+Experiment data is partitioned by dataset, shape, learning rate, batch size, kernel regularizer, label noise, depth, and number of training epochs.
+
+Experiment Columns:
+
+activation: string, the activation function used for hidden layers
+batch: string, a nickname for the experimental batch this experiment belongs to
+batch_size: uint32, minibatch size
+dataset: string, name of the dataset used
+depth: uint8, number of layers
+early_stopping: string, early stopping policy
+epochs: uint32, number of training epochs in this run
+input_activation: string, input activation function
+kernel_regularizer: string, null if no regularizer is used
+kernel_regularizer.l1: float32, L1 regularization penalty coefficient
+kernel_regularizer.l2: float32, L2 regularization penalty coefficient
+kernel_regularizer.type: string, name of kernel regularizer used (null if none used)
+label_noise: float32, amount of label noise applied to dataset before training (.05 means 5% label noise)
+learning_rate: float32, learning rate used
+optimizer: string, name of the optimizer used
+output_activation: string, activation function for output layer
+python_version: string, python version used
+shape: string, network shape
+size: uint64, approximate number of trainable parameters used
+task: string, name of training task 
+task_version: uint16, major version of training task
+tensorflow_version: string, tensorflow version
+test_split: float32, test split proportion
+test_split_method: string, test split method
+experiment_id: uint32, unique id of this experiment 
+num_free_parameters: uint64, exact number of trainable parameters
+widths: [uint32], list of layer widths used
+network_structure: string, marshaled json representation of network structure used
+run_id: string, unique id of this run
+experiment_id: uint32, id of the distinct experiment this run was a repetition of 
+platform: string, platform run executed on
+git_hash: string, git hash of version of experimental framework used
+hostname: string, hostname of system that executed this run
+seed: int64, random seed used to initialize this run
+start_time: int64, unix timestamp of start time of this run
+update_time: int64, unix timestamp of completion time of this run
+command: string, complete marshaled json representation of this run's settings
+network_structure: string, marshaled json representation of this run's network configuration
+widths: uint32, list of layer widths for the network used
+num_free_parameters: uint64, exact number of free parameters in the tested network
+val_loss: [float32], test loss at the end of each epoch
+loss: [float32], training loss at the end of each epoch
+val_accuracy: [float32], test accuracy at the end of each epoch
+accuracy: [float32], training accuracy at the end of each epoch
+val_mean_squared_error: [float32], test MSE at the end of each epoch
+mean_squared_error: [float32], training MSE at the end of each epoch
+val_mean_absolute_error: [float32], test MAE at the end of each epoch
+mean_absolute_error: [float32], training MAE at the end of each epoch
+val_root_mean_squared_error: [float32], test RMS error at the end of each epoch
+root_mean_squared_error: [float32], training RMS error at the end of each epoch
+val_mean_squared_logarithmic_error: [float32], test MSLE at the end of each epoch
+mean_squared_logarithmic_error: [float32], training MSLE at the end of each epoch
+val_hinge: [float32], test hinge loss at the end of each epoch
+hinge: [float32], training hinge loss at the end of each epoch
+val_squared_hinge: [float32], test squared hinge loss at the end of each epoch
+squared_hinge: [float32], training squared hinge loss at the end of each epoch
+val_cosine_similarity: [float32], test cosine similarity at the end of each epoch
+cosine_similarity: [float32], training cosine similarity at the end of each epoch
+val_kullback_leibler_divergence: [float32], test KL-divergence at the end of each epoch
+kullback_leibler_divergence: [float32], training KL-divergence at the end of each epoch
+
+
+
