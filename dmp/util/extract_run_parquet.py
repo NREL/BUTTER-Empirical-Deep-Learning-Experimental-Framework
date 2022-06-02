@@ -226,6 +226,7 @@ def main():
                                 for c in data_column_names])
         q += sql.SQL(' FROM ( ')
         q += sql.SQL(' SELECT r.*, e.num_free_parameters num_free_parameters, e.widths widths, e.network_structure network_structure, EXTRACT(epoch FROM s.start_time) start_time, EXTRACT(epoch FROM s.update_time) update_time, d.command command, ')
+        q += sql.SQL(' e."primary_sweep" "primary_sweep", ')
         q += sql.SQL(' e."300_epoch_sweep" "300_epoch_sweep", ')
         q += sql.SQL(' e."30k_epoch_sweep" "30k_epoch_sweep", ')
         q += sql.SQL(' e."learning_rate_sweep" "learning_rate_sweep", ')
