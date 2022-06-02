@@ -53,7 +53,6 @@ set primary_sweep = (
        and (core_learning_rate)
        and (core_batch_size)
    )
-)
 from
 (
     select 
@@ -164,7 +163,15 @@ update experiment_summary_ s set
     "batch_size_sweep" = e."batch_size_sweep",
     "regularization_sweep" = e."regularization_sweep"
 from experiment_ e
-where e.experiment_id = s.experiment_id;
+where e.experiment_id = s.experiment_id
+AND
+(    s.primary_sweep <> e.primary_sweep OR
+    s."300_epoch_sweep" <> e."300_epoch_sweep" OR
+    s."30k_epoch_sweep" <> e."30k_epoch_sweep" OR
+    s.learning_rate_sweep <> e.learning_rate_sweep OR
+    s.label_noise_sweep <> e.label_noise_sweep OR
+    s.batch_size_sweep <> e.batch_size_sweep OR
+    s.regularization_sweep <> e.regularization_sweep);
 
 
 select 

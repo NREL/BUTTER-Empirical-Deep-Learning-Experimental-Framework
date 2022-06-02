@@ -175,7 +175,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 128
+    chunk_size = 64
     chunks = []
     with CursorManager(credentials) as cursor:
 
@@ -245,7 +245,7 @@ def main():
         q += sql.SQL(' ;')
 
         with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
-            cursor.itersize = 4
+            cursor.itersize = 8
 
             cursor.execute(q)
             # if cursor.description is None:
@@ -290,7 +290,7 @@ def main():
                 partition_cols=partition_cols,
                 # data_page_size=128 * 1024,
                 compression='BROTLI',
-                compression_level=9,
+                compression_level=10,
                 use_dictionary=use_dictionary,
                 use_byte_stream_split=use_byte_stream_split,
                 data_page_version='2.0',

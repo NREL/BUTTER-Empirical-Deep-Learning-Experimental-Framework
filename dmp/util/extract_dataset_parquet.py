@@ -161,7 +161,7 @@ def main():
     }
 
     inverse_column_name_mapping = {v: k for k, v in column_name_mapping.items()}
-    
+
     parameter_column_names = [f.name for f in parameter_columns]
     parameter_column_names_set = set(parameter_column_names)
     data_column_names = [f.name for f in data_columns]
@@ -311,7 +311,7 @@ def main():
                 partition_cols=partition_cols,
                 # data_page_size=128 * 1024,
                 compression='BROTLI',
-                compression_level=9,
+                compression_level=10,
                 use_dictionary=use_dictionary,
                 use_byte_stream_split=use_byte_stream_split,
                 data_page_version='2.0',
