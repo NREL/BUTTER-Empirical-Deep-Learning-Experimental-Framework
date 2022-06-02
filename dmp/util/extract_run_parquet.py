@@ -103,31 +103,26 @@ def main():
         pyarrow.field('loss', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('val_accuracy', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('accuracy', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_mean_squared_error',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('mean_squared_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_mean_absolute_error',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('mean_absolute_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_root_mean_squared_error',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('root_mean_squared_error',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_mean_squared_logarithmic_error',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('mean_squared_logarithmic_error',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_hinge', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('hinge', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_squared_hinge', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('squared_hinge', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_cosine_similarity',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('cosine_similarity', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('val_kullback_leibler_divergence',
-                      pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('kullback_leibler_divergence',
-                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_loss', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_loss', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_accuracy', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_accuracy', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_mean_squared_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_mean_squared_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_mean_absolute_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_mean_absolute_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_root_mean_squared_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_root_mean_squared_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_mean_squared_logarithmic_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_mean_squared_logarithmic_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_hinge', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_hinge', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_squared_hinge', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_squared_hinge', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_cosine_similarity', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_cosine_similarity', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_kullback_leibler_divergence', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_kullback_leibler_divergence', pyarrow.list_(pyarrow.float32())),
     ]
 
     column_name_mapping = {
@@ -154,10 +149,6 @@ def main():
     }
 
     inverse_column_name_mapping = {v: k for k, v in column_name_mapping.items()}
-
-    for f in data_columns:
-        if f.name in column_name_mapping:
-            f.name = column_name_mapping[f.name]
             
     parameter_column_names = [f.name for f in parameter_columns]
     parameter_column_names_set = set(parameter_column_names)
