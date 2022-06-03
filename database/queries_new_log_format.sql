@@ -907,6 +907,7 @@ order by s.update_time desc
 limit 1000;
 
 
+
 select
     inter,
     (3600 * num_runs / inter_seconds) run_rate,
@@ -922,7 +923,9 @@ select
     node_runtime,
     effort,
     num_workers / num_nodes worker_to_node_ratio,
-    worker_seconds / node_seconds worker_to_node_time
+    worker_seconds / node_seconds worker_to_node_time,
+    core_runtime,
+    gpu_runtime
 from
     (
     select
@@ -930,16 +933,53 @@ from
         count(*) num_nodes,
         sum(num_workers) num_workers,
         sum(num_runs) num_runs,
-        sum(worker_runtime) worker_runtime,
-        sum(node_runtime) node_runtime,
+        EXTRACT(epoch FROM sum(worker_runtime)) * interval '1 sec' worker_runtime,
+        EXTRACT(epoch FROM sum(node_runtime)) * interval '1 sec' node_runtime,
         sum(effort) effort,
         EXTRACT(epoch FROM sum(node_runtime)) node_seconds,
         EXTRACT(epoch FROM sum(worker_runtime)) worker_seconds,
-        EXTRACT(epoch FROM inter) inter_seconds
+        EXTRACT(epoch FROM inter) inter_seconds,
+        EXTRACT(epoch FROM sum(core_runtime)) * interval '1 sec' core_runtime,
+        EXTRACT(epoch FROM sum(gpu_runtime)) * interval '1 sec' gpu_runtime
     from
         (
         select
+            host.*,
+         (CASE
+                -- eagle gpu node
+                WHEN hostname like 'r103u%' THEN node_runtime * 38
+                -- eagle compute node
+                WHEN (hostname like 'r%' and (not hostname like 'r103%')) THEN node_runtime * 38
+                --vermillion 
+                WHEN hostname like 'vs-gpu%' THEN node_runtime * 30
+                WHEN hostname like 'vs-std%' THEN node_runtime * 30
+                WHEN hostname like 'vs-lg%' THEN node_runtime * 60
+                -- perlmutter gpu
+                WHEN (hostname like 'nid001%' or hostname like 'nid002%' or hostname like 'nid003%' or hostname like 'nid0040%') THEN node_runtime * 128
+                -- perlmutter cpu
+                WHEN hostname like 'nid0048%' or hostname like 'nid005%' THEN node_runtime * 256
+          ELSE node_runtime * 38
+          END) core_runtime,
+            (CASE
+                -- eagle gpu node
+                WHEN hostname like 'r103u%' THEN node_runtime * 2
+                -- eagle compute node
+                WHEN hostname like 'r%' and not hostname like 'r103%' THEN node_runtime * 0
+                --vermillion 
+                WHEN hostname like 'vs-gpu%' THEN node_runtime * 1
+                WHEN hostname like 'vs-std%' THEN node_runtime * 0
+                WHEN hostname like 'vs-lg%' THEN node_runtime * 0
+                -- perlmutter gpu
+                WHEN (hostname like 'nid001%' or hostname like 'nid002%' or hostname like 'nid003%' or hostname like 'nid0040%') THEN node_runtime * 4
+                -- perlmutter cpu
+                WHEN hostname like 'nid0048%' or hostname like 'nid005%' THEN node_runtime * 0
+          ELSE node_runtime * 0
+          END) gpu_runtime
+        FROM
+            (
+        select
             inter,
+            hostname,
             count(*) num_workers,
             sum(num_runs) num_runs,
             sum(worker_runtime) worker_runtime,
@@ -977,8 +1017,8 @@ from
                             select 
                                 inter::interval inter,
                                 (now()::timestamp -  inter::interval) start_limit
-                            from (VALUES ('3 hours'), ('6 hours'), ('12 hours'), ('1 day'), ('2 days'), ('4 days'), ('8 days'), ('16 days')
-                                -- ('30 days'), ('60 days'), ('120 days'), ('1 year')
+                            from (VALUES ('3 hours'), ('6 hours'), ('12 hours'), ('1 day'), ('2 days'), ('4 days'), ('8 days'), ('16 days'),
+                                ('30 days'), ('60 days'), ('120 days'), ('1 year'), ('2 year')
                                 ) inter (inter)
                         ) inter,
                         run_ r,
@@ -989,17 +1029,22 @@ from
                         and r.job_id = s.id
                         and s.id = d.id
                         and s.status = 2
-                        and s.queue = 1
+--                         and s.queue = 1
                         and (s.update_time - s.start_time) >= '1 second'
                  ) j
             group by inter, slurm_job_id, hostname, worker
             ) worker
         group by inter, slurm_job_id, hostname
         ) host
+        ) host
     group by inter
     ) agg
 order by inter asc
 ;
+
+
+
+
 
 
 update experiment_ e set 
@@ -1372,31 +1417,39 @@ limit 1000;
 
 -- reset group priority
 update job_status stat
-    set priority = -900000 + seq.seq
+    set priority = priority + (7300000 -  22300001)
 from
 (
-    select ROW_NUMBER() OVER() seq, ordered_job.id id
+    select ROW_NUMBER() OVER() seq, ordered_job.id id, sctid
     from
     (   select 
         (command->'depth')::bigint depth,
         (command->'kernel_regularizer'->'l2')::float lambda,
         (command->'seed')::bigint seed,
         (command->>'dataset') dataset,
-        s.id
+        s.id,
+        s.ctid sctid
         from
             job_status s,
             job_data d
         where
             s.id = d.id and queue = 1 and status <> 2
             and command @> jsonb_build_object(
-                'batch', 'fixed_30k_1', 
-                'shape', 'trapezoid')
+                'batch', 'l2_group_1')
+--                 'shape', 'trapezoid')
+--             and command->>'shape' in (
+--                 'rectangle',
+--                 'exponential',
+--                 'trapezoid',
+--                 'wide_first_2x',
+--                 'rectangle_residual'
+--             )
 --         order by depth asc, lambda asc, dataset, floor(random() * 100)::smallint asc
         order by priority asc
     ) ordered_job
 ) seq
 where
-seq.id = stat.id
+seq.sctid = stat.ctid
 ;
 
 -- compact priority queue:
@@ -1405,6 +1458,7 @@ update job_status stat
 from
 (
 select 
+    job.sctid,
     job.id,
     group_num * 100000 + element_num seq
 from
@@ -1427,10 +1481,11 @@ from
     lateral (
         select 
             ROW_NUMBER() OVER() element_num,
-            job.id
+            job.id,
+            job.sctid
         from
             (
-            select s.id, priority
+            select s.id, priority, s.ctid sctid
             from
                 job_status s,
                 job_data d
@@ -1445,7 +1500,7 @@ from
     ) job
 ) seq
 where
-seq.id = stat.id
+stat.ctid = seq.sctid
 ;
 
 
