@@ -17,39 +17,39 @@ For each training epoch of each run we recorded 20 performance statistics, and t
 This is a list of the values of each hyperparameter we swept across in this dataset. **Bold** values are the "core" values that are common to nearly all of the experimental sweeps.
  
 + dataset: Datasets are drawn from the Penn Machine Learning Benchmark Suite (https://epistasislab.github.io/pmlb/)
- + **529_pollen**: regression, 4 features, 1 response variable, 3848 observations
- + **connect_4**: classification, 42 features, 3 classes, 67557 observations
- + **537_houses**: regression, 8 features, 1 response variable, 20640 observations
- + **mnist**: classification, 784 features, 10 classes, 70000 observations
- + **201_pol**: regression, 48 features, 1 response variable, 15000 observations
- + **sleep**: classification, 13 features, 5 classes, 105908 observations
- + **wine_quality_white**: classification, 11 features, 7 classes, 4898 observations
- + nursery: classification, 11 features, 7 classes, 12958 observations
- + adult: classification, 8 features, 4 classes, 4898 observations
- + 505_tecator: regression, 124 features, 1 response variable, 240 observations
- + 294_satellite_image: regression, 36 features, 1 response variable, 6435 observations
- + splice: classification, 60 features, 3 classes, 3188 observations
- + banana: regression, 2 features, 1 response variable, 5300 observations
+   + **529_pollen**: regression, 4 features, 1 response variable, 3848 observations
+   + **connect_4**: classification, 42 features, 3 classes, 67557 observations
+   + **537_houses**: regression, 8 features, 1 response variable, 20640 observations
+   + **mnist**: classification, 784 features, 10 classes, 70000 observations
+   + **201_pol**: regression, 48 features, 1 response variable, 15000 observations
+   + **sleep**: classification, 13 features, 5 classes, 105908 observations
+   + **wine_quality_white**: classification, 11 features, 7 classes, 4898 observations
+   + nursery: classification, 11 features, 7 classes, 12958 observations
+   + adult: classification, 8 features, 4 classes, 4898 observations
+   + 505_tecator: regression, 124 features, 1 response variable, 240 observations
+   + 294_satellite_image: regression, 36 features, 1 response variable, 6435 observations
+   + splice: classification, 60 features, 3 classes, 3188 observations
+   + banana: regression, 2 features, 1 response variable, 5300 observations
 + shape: Network shape, which in combination with depth and size determines the neural network topology used.
- + **rectangle**: All layers except for the output layer have the same width.
- + **trapezoid**: Layer widths linearly decrease from input to output.
- + **exponential**: Layer widths exponentially decay from input to output.
- + **wide_first_2x**: Like rectangle, but the first layer is twice as wide as the other layers.
- + rectangle_residual: rectangle but with residual connections for every layer.
- + wide_first_4x: Like rectangle, but the first layer is four times as wide as the other layers.
- + wide_first_8x: Like rectangle, but the first layer is eight times as wide as the other layers.
- + wide_first_16x: Like rectangle, but the first layer is sixteen times as wide as the other layers.
+   + **rectangle**: All layers except for the output layer have the same width.
+   + **trapezoid**: Layer widths linearly decrease from input to output.
+   + **exponential**: Layer widths exponentially decay from input to output.
+   + **wide_first_2x**: Like rectangle, but the first layer is twice as wide as the other layers.
+   + rectangle_residual: rectangle but with residual connections for every layer.
+   + wide_first_4x: Like rectangle, but the first layer is four times as wide as the other layers.
+   + wide_first_8x: Like rectangle, but the first layer is eight times as wide as the other layers.
+   + wide_first_16x: Like rectangle, but the first layer is sixteen times as wide as the other layers.
 + size: {**2^5, 2^6, ... 2^24**,  2^25, 2^26, 2^27}
- + The approximate number of trainable parameters in the network. The exact number is recorded in the dataset. If a topology of the desired shape and depth could not be found with a number of trainable parameters within 20% of the size setting, the experiment may not be included. Typically this occurs with only the smallest few size settings. The exact number of trainable parameters is reported in the dataset as num_free_parameters, layer widths are reported in the widths column, and the exact topology is reported in the network_structure column.
+   + The approximate number of trainable parameters in the network. The exact number is recorded in the dataset. If a topology of the desired shape and depth could not be found with a number of trainable parameters within 20% of the size setting, the experiment may not be included. Typically this occurs with only the smallest few size settings. The exact number of trainable parameters is reported in the dataset as num_free_parameters, layer widths are reported in the widths column, and the exact topology is reported in the network_structure column.
 + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
- + the number of layers in the network
+   + the number of layers in the network
 + learning rate: {0.01, 0.001, **0.0001**, 0.00001}
 + minibatch size: {32, 64, 128, **256**, 512, 1024}
 + L1 and L2 regularization penalties: {**0.0**, .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5}
 + label noise level: {**0.0**, 0.05, .1, .15, .2}
 + training epochs: {300, **3000**, 30000}
 + repetitions: {10, **30**}
- + The number of times each identical experiment was repeated with different random seeds.
+   + The number of times each identical experiment was repeated with different random seeds.
 + optimizer: **ADAM**
 + hidden layer activation function: **ReLU**
 + train-test split: **80% training set, 20% test set**
@@ -63,84 +63,84 @@ For regressions, we used mean squared error as the loss function; for binary cla
 Sweeping the entire hypercube of eight hyperparameter dimensions would require evaluation of over 90 million distinct experiments. To reduce the total number of experiments executed while preserving significant utility of the dataset, we conducted seven overlapping hyperparameter sweeps, each covering a hypercube (or in one case two hypercubes) of the hyperparameter search space:
  
 + primary sweep: The primary sweep tests all datasets and depths with all but the largest sizes without regularization or label noise at the core learning rate and batch size.
- + typical repetitions: **30**
- + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult, 505_tecator, 294_satellite_images, splice, banana}
- + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**, rectangle_residual, wide_first_4x, wide_first_8x, wide_first_16x}
- + size: {**2^5, 2^6, ... 2^24**, 2^25}
- + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
- + learning rate: **.0001**
- + minibatch size: **256**
- + regularization: **none**
- + label noise: **0**
+   + typical repetitions: **30**
+   + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult, 505_tecator, 294_satellite_images, splice, banana}
+   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**, rectangle_residual, wide_first_4x, wide_first_8x, wide_first_16x}
+   + size: {**2^5, 2^6, ... 2^24**, 2^25}
+   + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
+   + learning rate: **.0001**
+   + minibatch size: **256**
+   + regularization: **none**
+   + label noise: **0**
  
 + 300 epoch sweep: This sweep extends the primary sweep to larger sizes for 300 training epochs.
- + typical repetitions: 10 for rectangle, 0-10 for other shapes
- + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
- + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
- + size: {2^25, 2^26, 2^27}
- + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
- + learning rate: **.0001**
- + minibatch size: **256**
- + regularization: **none**
- + label noise: **0**
+   + typical repetitions: 10 for rectangle, 0-10 for other shapes
+   + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
+   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
+   + size: {2^25, 2^26, 2^27}
+   + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
+   + learning rate: **.0001**
+   + minibatch size: **256**
+   + regularization: **none**
+   + label noise: **0**
  
 + 30k epoch sweep: This sweep extends the primary sweep to 30 thousand training epochs for smaller sizes.
- + typical repetitions: 10 for rectangle, 0-10 for other shapes
- + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
- + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
- + size: {**2^5, 2^6 .. 2^18**}
- + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
- + learning rate: **.0001**
- + minibatch size: **256**
- + regularization: **none**
- + label noise: **0**
+   + typical repetitions: 10 for rectangle, 0-10 for other shapes
+   + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
+   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
+   + size: {**2^5, 2^6 .. 2^18**}
+   + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
+   + learning rate: **.0001**
+   + minibatch size: **256**
+   + regularization: **none**
+   + label noise: **0**
  
 + learning rate sweep: This sweep scans the core shapes over several learning rates.
- + typical repetitions: **30**
- + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
- + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
- + size: {**2^5, 2^6, ... 2^24**}
- + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
- + learning rate: {0.01, 0.001, **0.0001**, 0.00001}
- + minibatch size: **256**
- + regularization: **none**
- + label noise: **0**
- + label noise sweep: This sweep scans the core shapes over several label noise levels at two different learning rates.
- + typical repetitions: **30**
- + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
- + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
- + size: {**2^5, 2^6, ... 2^24**}
- + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
- + learning rate: {0.001, **0.0001**}
- + minibatch size: **256**
- + regularization: **none**
- + label noise:
-   + {**0**, 0.05} at learning rate 0.001
-   + {**0.0**, 0.05, .1, .15, .2} at learning rate **0.0001**
+   + typical repetitions: **30**
+   + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
+   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
+   + size: {**2^5, 2^6, ... 2^24**}
+   + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
+   + learning rate: {0.01, 0.001, **0.0001**, 0.00001}
+   + minibatch size: **256**
+   + regularization: **none**
+   + label noise: **0**
+   + label noise sweep: This sweep scans the core shapes over several label noise levels at two different learning rates.
+   + typical repetitions: **30**
+   + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
+   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
+   + size: {**2^5, 2^6, ... 2^24**}
+   + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
+   + learning rate: {0.001, **0.0001**}
+   + minibatch size: **256**
+   + regularization: **none**
+   + label noise:
+     + {**0**, 0.05} at learning rate 0.001
+     + {**0.0**, 0.05, .1, .15, .2} at learning rate **0.0001**
  
 + batch size sweep: This sweep scans rectangular networks of the core depths over several batch sizes.
- + typical repetitions: **30**
- + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
- + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
- + size: {**2^5, 2^6, ... 2^24**}
- + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**}
- + learning rate: **0.0001**
- + minibatch size: {32, 64, 128, **256**, 512, 1024}
- + regularization: **none**
- + label noise: **0**
+   + typical repetitions: **30**
+   + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
+   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
+   + size: {**2^5, 2^6, ... 2^24**}
+   + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**}
+   + learning rate: **0.0001**
+   + minibatch size: {32, 64, 128, **256**, 512, 1024}
+   + regularization: **none**
+   + label noise: **0**
  
 + regularization sweep: This sweep scans rectangular networks of the core depths over several L1 and L2 regularization levels.
- + typical repetitions: **30**
- + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
- + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
- + size: {**2^5, 2^6, ... 2^24**, 2^25}
- + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**}
- + learning rate: **0.0001**
- + minibatch size: **256**
- + regularization:
-   + L1: {**0.0**, .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5}
-   + L2: {**0.0**, .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5}
- + label noise: **0**
+   + typical repetitions: **30**
+   + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
+   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
+   + size: {**2^5, 2^6, ... 2^24**, 2^25}
+   + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**}
+   + learning rate: **0.0001**
+   + minibatch size: **256**
+   + regularization:
+     + L1: {**0.0**, .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5}
+     + L2: {**0.0**, .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5}
+   + label noise: **0**
  
  
 ## Directory structure
@@ -158,33 +158,28 @@ The complete raw dataset is available in the /all_runs/ partitioned parquet data
 /complete_summary/ contains per-experiment statistics aggregated over every run of each distinct experiment for all sweeps
 /complete_summary.tar is a tarball of /experiment_summary/
  
-/primary_sweep_runs/ contains all of the experimental run records for the primary sweep
 /primary_sweep_summary/ contains summary experiment statistics for the primary sweep
 /primary_sweep_summary.tar is a tarball of /primary_sweep_summary/
- 
-/learning_rate_sweep_runs/ contains all of the experimental run records for the learning rate sweep
-/learning_rate_sweep_summary/ contains summary experiment statistics for the learning rate sweep
-/learning_rate_sweep_summary.tar is a tarball of /learning_rate_sweep_summary/
- 
-/label_noise_sweep_runs/ contains all of the experimental run records for the label noise sweep
-/label_noise_sweep_summary/ contains summary experiment statistics for the label noise sweep
-/label_noise_sweep_summary.tar is a tarball of /label_noise_sweep_summary/
- 
-/batch_size_sweep_runs/ contains all of the experimental run records for the batch size sweep
-/batch_size_sweep_summary/ contains summary experiment statistics for the batch size sweep
-/batch_size_sweep_summary.tar is a tarball of /batch_size_sweep_summary/
- 
-/regularization_sweep_runs/ contains all of the experimental run records for the regularization sweep
-/regularization_sweep_summary/ contains summary experiment statistics for the regularization sweep
-/regularization_sweep_summary.tar is a tarball of /regularization_sweep_summary/
- 
-/300_epoch_sweep_runs/ contains all of the experimental run records for the 300 epoch sweep
+
 /300_epoch_sweep_summary/ contains summary experiment statistics for the 300 epoch sweep
 /300_epoch_sweep_summary.tar is a tarball of /300_epoch_sweep_summary/
  
-/30k_epoch_sweep_runs/ contains all of the experimental run records for the 30k epoch sweep
 /30k_epoch_sweep_summary/ contains summary experiment statistics for the 30k epoch sweep
 /30k_epoch_sweep_summary.tar is a tarball of /30k_epoch_sweep_summary/
+ 
+/learning_rate_sweep_summary/ contains summary experiment statistics for the learning rate sweep
+/learning_rate_sweep_summary.tar is a tarball of /learning_rate_sweep_summary/
+ 
+/label_noise_sweep_summary/ contains summary experiment statistics for the label noise sweep
+/label_noise_sweep_summary.tar is a tarball of /label_noise_sweep_summary/
+ 
+/batch_size_sweep_summary/ contains summary experiment statistics for the batch size sweep
+/batch_size_sweep_summary.tar is a tarball of /batch_size_sweep_summary/
+ 
+/regularization_sweep_summary/ contains summary experiment statistics for the regularization sweep
+/regularization_sweep_summary.tar is a tarball of /regularization_sweep_summary/
+ 
+
  
 ### Experiment Summary Schema
  
