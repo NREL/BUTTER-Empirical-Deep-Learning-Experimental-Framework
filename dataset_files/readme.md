@@ -96,7 +96,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + label noise: **0**
  
 + learning rate sweep: This sweep scans the core shapes over several learning rates.
-   + typical repetitions: **30**
+   + typical repetitions: **20**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
    + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
    + size: {**2^5, 2^6, ... 2^24**}
@@ -105,7 +105,8 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + minibatch size: **256**
    + regularization: **none**
    + label noise: **0**
-   + label noise sweep: This sweep scans the core shapes over several label noise levels at two different learning rates.
+  
+ + label noise sweep: This sweep scans the core shapes over several label noise levels at two different learning rates.
    + typical repetitions: **30**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
    + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
@@ -121,7 +122,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
 + batch size sweep: This sweep scans rectangular networks of the core depths over several batch sizes.
    + typical repetitions: **30**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
-   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
+   + shape: **rectangle**
    + size: {**2^5, 2^6, ... 2^24**}
    + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**}
    + learning rate: **0.0001**
@@ -132,7 +133,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
 + regularization sweep: This sweep scans rectangular networks of the core depths over several L1 and L2 regularization levels.
    + typical repetitions: **30**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
-   + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
+   + shape: **rectangle**
    + size: {**2^5, 2^6, ... 2^24**, 2^25}
    + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**}
    + learning rate: **0.0001**
@@ -143,7 +144,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + label noise: **0**
  
  
-## Directory structure
+ 
  
 If the dataset is made up of multiple files a description of how they are/will
 be stored in relation to each other.
