@@ -23,7 +23,7 @@ if __name__ == "__main__":
                 sys.stdout.write(output)
         returncode = worker.poll()
 
-        if returncode != 0:
+        if returncode == 0:
             break
         print(f'Subprocess failed with returncode {returncode}.', flush=True)
         time.sleep(random.uniform(5, 90))
