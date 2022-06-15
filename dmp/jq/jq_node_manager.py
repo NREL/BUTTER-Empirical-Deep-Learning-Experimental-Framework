@@ -77,9 +77,22 @@ def main():
                  if len(i) > 0}
 
     # numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
+
+    def group_hyperthreads(cpus):
+        cpus = sorted(cpus)
+        cpu_groups = []
+        cpu_group = None
+        for i, c in cpus:
+            if i == 0 or c - cpus[i-1] > 1:
+                cpu_group = []
+                cpu_groups.append(cpu_group)
+            cpu_group.append(c)
+        return [v for p in zip(*cpu_groups) for v in p]
+
+
     numa_cores = [[i for i in
-                   [int(i) for i in [i.replace('\n', '').strip()
-                                     for i in n.split('cpus: ')[1].split(' ')] if len(i) > 0]
+                   group_hyperthreads([int(i) for i in [i.replace('\n', '').strip()
+                                     for i in n.split('cpus: ')[1].split(' ')] if len(i) > 0])
                    if i in numa_cpus]
                   for n in numa_nodes]
 
@@ -110,7 +123,7 @@ def main():
 
     cores_per_gpu_worker = 1
     min_cores_per_cpu_worker = 4
-    target_cores_per_cpu_worker = 32
+    target_cores_per_cpu_worker = 64
 
     # cores_allocated_per_node = [0 for _ in range(num_nodes)]
     cores_avaliable = numa_cores
