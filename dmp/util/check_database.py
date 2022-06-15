@@ -1,3 +1,4 @@
+from ast import arg
 from math import ceil
 from psycopg2 import sql
 import psycopg2.extras as extras
@@ -13,9 +14,16 @@ psycopg2.extras.register_uuid()
 
 def main():
     import simplejson
+    import argparse
 
-    print('checking database connection...')
-    credentials = connect.load_credentials('dmp')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('project', type=str,
+                        help='project name to test')
+    args = parser.parse_args()
+    project = args.project
+    print(f'checking database connection for project "{project}"...')
+    
+    credentials = connect.load_credentials(project)
 
     extras.register_default_json(loads=simplejson.loads, globally=True)
     extras.register_default_jsonb(loads=simplejson.loads, globally=True)
