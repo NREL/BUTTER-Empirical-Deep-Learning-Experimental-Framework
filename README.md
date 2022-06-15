@@ -1,3 +1,5 @@
+<img src="star-collage.png?raw=true" alt="Collage image demonstrating several axis of the BUTTER dataset" width=300px />
+
 # The BUTTER Empirical Deep Learning Framework
 
 The BUTTER Empirical Framework enables researchers to run high volumes of computational experiments, including machine learning experiments, in a highly distributed asynchronous way. The BUTTER Framework was designed for asynchronous, unpredictable, and occasionally unreliable worker jobs to execute on any number of computing systems including laptops, servers, cloud resources, clusters, and high-performance supercomputers (HPC systems). 
@@ -12,11 +14,13 @@ The BUTTER Empirical Framework enables researchers to run high volumes of comput
 
     Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *BUTTER Empirical Deep Learning Experimental Framework.* [Computer software]. https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework.  https://doi.org/10.11578/dc.20220608.2.
 
-+ The [DOE Code record for JobQueue-PG](https://www.osti.gov/doecode/biblio/74434) which powers BUTTER:
-    Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *JobQueue-PG: (A Task Queue for Coordinating Varied Tasks Across Multiple HPC Resources and HPC Jobs)*. [Computer software]. https://github.com/NREL/E-Queue-HPC. https://doi.org/10.11578/dc.20220608.1.
++ The [DOE Code record for JobQueue](https://www.osti.gov/doecode/biblio/74434) which powers BUTTER:
+    Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *JobQueue: (A Task Queue for Coordinating Varied Tasks Across Multiple HPC Resources and HPC Jobs)*. [Computer software]. https://github.com/NREL/E-Queue-HPC. https://doi.org/10.11578/dc.20220608.1.
 
 + If relevant, also cite our [BUTTER Dataset](https://data.openei.org/submissions/5708) generated using this framework:
     Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, & Lunacek, Monte. *BUTTER - Empirical Deep Learning Dataset.* United States. https://data.openei.org/submissions/5708
+
++ Examples of plotting data from the dataset are available [here](https://github.nrel.gov/DMP/BUTTER-Neurips2022-Dataset-Paper).
 
 
 ## The BUTTER Empirical Deep Learning Dataset
@@ -51,15 +55,17 @@ If Conda is too slow you might have better luck using [Mamba](https://github.com
     pip install -e . 
 
 
-Next, install JobQueue-PG:
+Next, install JobQueue:
 
     pip install --editable=git+https://github.com/NREL/E-Queue-HPC.git#egg=jobqueue
 
 Be sure you do not have keras installed in this environment, as it will cause runners to fail due to a namespace conflict when instantiating the DNN optimizer.
 
-### Configuring JobQueue-PG
+For performance reasons, you might consider installing `tensorflow-gpu`, or an optimized `tensorflow` package. If you don't use a GPU-enabled version of TensorFlow, the framework will not be able to use any GPUs.
 
-JobQueue-PG will look for a credentials configuration file named `.jobqueue.json` in your home directory as defined by `os.path.join(os.environ['HOME'], ".jobqueue.json")`. The file should look something like this:
+### Configuring JobQueue
+
+JobQueue will look for a credentials configuration file named `.jobqueue.json` in your home directory as defined by `os.path.join(os.environ['HOME'], ".jobqueue.json")`. The file should look something like this:
 
     {
         "project_1": {
@@ -78,7 +84,7 @@ JobQueue-PG will look for a credentials configuration file named `.jobqueue.json
         },
     }
 
-This [JSON](https://www.json.org/json-en.html) configuration file tells the framework what database to connect to and what credentials to use when doing so. Make sure it matches the database you configured. The `"table_name"` setting sets the prefix of the job status and job data tables. The [database setup script](/database/setup_database.sql) creates tables with prefix `"job"` (`"job_status"` and `"job_data"`). If you wish to use a different prefix, consider editing the file or manually creating the tables. However, upon initialization, JobQueue-PG should create the tables if they do not exist. Once setup, you can verify that the database connection works by running the [database connection test script](dmp/util/check_database.py):
+This [JSON](https://www.json.org/json-en.html) configuration file tells the framework what database to connect to and what credentials to use when doing so. Make sure it matches the database you configured. The `"table_name"` setting sets the prefix of the job status and job data tables. The [database setup script](/database/setup_database.sql) creates tables with prefix `"job"` (`"job_status"` and `"job_data"`). If you wish to use a different prefix, consider editing the file or manually creating the tables. However, upon initialization, JobQueue should create the tables if they do not exist. Once setup, you can verify that the database connection works by running the [database connection test script](dmp/util/check_database.py):
 
 
     python -m dmp.util.check_database project_1
@@ -101,34 +107,34 @@ You can verify the basic operation of the framework with pytest:
 
 ## Enqueueing Experimental Runs
 
+To add experiments to the queue, use the `JobQueue.push(job)` method. An example scripts adding an experiment batches are in the [example_batch_scripts](/dmp/example_batch_scripts) directory, such ash [make_depth6_batch](/dmp/example_batch_scripts/make_depth6_batch.py) which enqueues a set of 6 hidden layer neural network training runs over several different sizes, shapes, and datasets.
 
-## Running experiments locally
+## Running Workers
 
-    python -u -m dmp.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'test_split': 0.1, 'reps': 1, 'mode':'direct' }"
+A worker process can be executed directly by calling
 
-## Checkpointing
+    python -u -m dmp.jobqueue_interface.worker [first_socket] [num_sockets] [first_core] [num_cores] [first_gpu] [num_gpus] [gpu_mem] [queue]
 
-You can add checkpointing and automatic-resuming of model runs by including the "checkpoint_epochs" parameter in the run config. This should be set to an integer number of epochs. The model will be checkpointed after this number of epochs have been completed. By default, the checkpoints will be saved to the directory "./checkpoints". This can be overridden by setting the environment variable $DMP_CHECKPOINT_DIR, which can itself be overridden by the "checkpoint_dir" parmeter in the config.
+For example,
 
-The name of the checkpoint will be "run_name" if not specified. If run through the job queue, it will be set to the uuid of the job being run. You can name the checkpoint file manually by passing in "jq_uuid" to the configuration.
+    python -u -m dmp.jobqueue_interface.worker 0 1 0 4 0 0 0 1
 
-Note:
-- This feature relies on keras-buoy package from PyPi.
-- This feature is not compatible with test_split configuration due to the way Keras stores historical losses in callback objects.
-- This feature does not restore the random state, so a result from a session which has been checkpointed and resumed may not be reproducible.
+Will run a worker for queue #1 using the first 4 cores of the first NUMA node (typically corresponding to the first physical CPU socket) in the system.
 
-    python -u -m dmp.aspect_test "{'datasets': ['nursery'],'budgets':[500], 'topologies' : [ 'wide_first' ], 'depths' : [4],  'run_config' : { 'epochs': 10}, 'reps': 1, 'mode':'direct', 'checkpoint_epochs':1, 'jq_uuid':'nursery_500_widefirst_4' }"
+    python -u -m dmp.jobqueue_interface.worker 0 1 0 1 0 1 8192 1
 
-## Tensorboard Logging
+Will run a worker for queue #1 using the first cores of the first NUMA node in the system and also use 8GB of the first (zeroth) GPU. You can use the [numactl utility](https://linux.die.net/man/8/numactl) to inspect the CPU numbering and NUMA architecture:
 
-You can enable tensorboard logging with 'tensorboard' configuration. Set this to the tensorboard log directory.
+    numactl --hardware
 
-```
-'tensorboard':'./log/tensorboard'
-```
 
-To view the tensorboard logs, use the following command:
+## Running A Full Node of Workers
 
-```
-tensorboard --logdir ./log/tensorboard/
-```
+The framework also has a [node manager script](dmp/jq/jq_node_manager.py) that will allocate workers over the hardware in a reasonable manner for many deep learning experiments. In order to use the node manager, the system must be linux-like, supporting bash scripts and the numactl utility must be installed and working.
+
+One worker will be allocated for up to every 64 cores of each NUMA node, and two cores from the same NUMA node will be allocated for each GPU worker in the system, evenly distributed over the NUMA nodes. A GPU worker will be allocated for approximately every 6.5GB of GPU memory available, up to 4 workers per GPU. These parameters can be changed by editing the script.
+
+The node manager is convenient for use in HPC job systems like slurm where resources are allocated on a per-node basis. In this case, submitting jobs that run the node manager on each node will cause multiple workers to be automatically allocated over the node's resources. An example slurm script is [slurm_job_runner.sh](slurm_job_runner.sh). Additionally, the node manager will call a [worker manager](dmp/jobqueue_interface/worker_manager.py) script that acts as a nanny, restarting the worker process if it exits abnormally and therefore avoiding spurious worker failures. Finally, GPU and CPU based jobs can be made to use different conda environments or generally to execute under different parameters by supplying a `custom_cpu_run_script.sh` and/or a `custom_gpu_run_script.sh` which will be executed before running the `worker.py` script. Custom scripts can be adapted from the default [cpu run script](cpu_run_script.sh).
+
+
+

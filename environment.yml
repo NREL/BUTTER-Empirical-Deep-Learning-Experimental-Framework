@@ -12,15 +12,13 @@ dependencies:
 - numpy
 - sqlalchemy
 - psycopg2
-- pyarrow
-- tensorflow-gpu>=2.7
-- cudnn>=8
+- conda-forge::tensorflow >= 2.7
 - simplejson
 - pip:
+  - pyarrow >= 8
   - pytest
   - tensorflow_datasets
   - pmlb
-  - keras_buoy
   - orjson
   - connectorx
   - pathos

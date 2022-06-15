@@ -14,38 +14,8 @@ import tensorflow
 
 from .common import jobqueue_marshal
 
-"""
-TODO:
-python -m dmp.jq.jq_node_manager dmp 1 "[0, [0, 6, 0, 0, 0], [6, 12, 0, 0, 0], [12, 18, 0, 0, 0], [18, 24, 0, 0, 0], [24, 30, 0, 0, 0]]"
-
- + jq_node_manager:
-    + identify system configuration
-        + num gpus, gpu memory, num cpus
-    + call node manager with appropriate args:
-        + cpu call 
-
- + Create python program or script to get number of gpus and return it in stdout
- + Replace worker script with:
-    + Check GPUs, Memory: https://stackoverflow.com/questions/59567226/how-to-programmatically-determine-available-gpu-memory-with-tensorflow
-        + ~one GPU worker per 6 GB? 1 or 2 threads for this worker.
-    + Remaining threads run in cpu environment on single worker.
-
-    total_cpu_cores=$(nproc)
-    number_sockets=$(($(grep "^physical id" /proc/cpuinfo | awk '{print $4}' | sort -un | tail -1)+1))
-    number_cpu_cores=$(( (total_cpu_cores/2) / number_sockets))
-
-    export KMP_BLOCKTIME=1
-    export OMP_NUM_THREADS= #physical cores
-    export KMP_AFFINITY=granularity=fine,verbose,compact,1,0
-
-    intra_op_parallelism = number of physical core per socket
-    inter_op_parallelism = number of sockets
-"""
-
-
 def make_strategy(first_socket, num_sockets, first_core, num_cores, first_gpu, num_gpus, gpu_mem):
-    # tensorflow.distribute.MirroredStrategy(devices=["/gpu:0", "/gpu:1"])
-
+    
     devices = []
     devices.extend(['/GPU:' + str(i)
                    for i in range(first_gpu, first_gpu + num_gpus)])
@@ -54,11 +24,6 @@ def make_strategy(first_socket, num_sockets, first_core, num_cores, first_gpu, n
 
     # make sure we have one thread even if not using any CPUs
     num_threads = max(1, num_cores)
-
-    # gpus = tensorflow.config.experimental.list_physical_devices('GPU')  # Get GPU list
-    # tensorflow.config.experimental.set_memory_growth(True)
-
-    # print(tensorflow.config.experimental.list_physical_devices('GPU'))
 
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
     print(f'Found: {len(gpus)} using: {first_gpu} - {first_gpu + num_gpus}.')
@@ -78,24 +43,8 @@ def make_strategy(first_socket, num_sockets, first_core, num_cores, first_gpu, n
     tensorflow.config.threading.set_intra_op_parallelism_threads(
         int(math.ceil(num_cores / max(1, num_sockets))))
     tensorflow.config.threading.set_inter_op_parallelism_threads(num_sockets)
-    # tensorflow.config.set_visible_devices(devices)
 
-    # gpu_options = tensorflow.GPUOptions(per_process_gpu_memory_fraction=0.995)
-    # cpu_options = tensorflow.CPU
-    # config = tensorflow.ConfigProto(gpu_options=gpu_options)
-
-    # print(f'num_cpu {num_cpu}, num_gpu {num_gpu}, num_threads {num_threads}')
-
-    # if len(devices) == 1:
-    #     # if num_gpu > 1:
-    #     strategy = tensorflow.distribute.OneDeviceStrategy(device=devices[0])
-    #     # else:
-    #     #     strategy = tensorflow.distribute.get_strategy()  # the default strategy
-    # else:
-    # strategy = tensorflow.distribute.MirroredStrategy(devices=devices)
     strategy = tensorflow.distribute.get_strategy()  # the default strategy
-
-    # print('num_replicas_in_sync: {}'.format(strategy.num_replicas_in_sync))
     return strategy
 
 
