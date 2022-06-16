@@ -33,7 +33,7 @@ def run_worker(run_script, project, queue, workers, config):
         command = [
             f'./{run_script}',
             num_nodes, num_cores, node_list, core_list,
-            'echo',
+            'echo',: cannot unpack non-iterable int object
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
             nodes[0], num_nodes, cores[0], num_cores, config[2], config[3], config[4], project, queue]
@@ -82,7 +82,7 @@ def main():
         cpus = sorted(cpus)
         cpu_groups = []
         cpu_group = None
-        for i, c in cpus:
+        for i, c in enumerate(cpus):
             if i == 0 or c - cpus[i-1] > 1:
                 cpu_group = []
                 cpu_groups.append(cpu_group)
