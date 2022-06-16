@@ -313,16 +313,16 @@ for i in {0..128}; do sbatch -J pt_12_1 -q regular --time=12:00:00 --nodes=1 --n
 
 
 
-for i in {0..32}; do sbatch -J pc_128 -q regular --time=6:00:00 --nodes=128 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..16}; do sbatch -J pc_128 -q regular --time=6:00:00 --nodes=128 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..16}; do sbatch -J pc_96 -q regular --time=6:00:00 --nodes=96 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
-for i in {0..16}; do sbatch -J pc_72 -q regular --time=6:00:00 --nodes=72 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
-for i in {0..128}; do sbatch -J pc_64 -q regular --time=6:00:00 --nodes=64 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..32}; do sbatch -J pc_72 -q regular --time=6:00:00 --nodes=72 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..32}; do sbatch -J pc_64 -q regular --time=6:00:00 --nodes=64 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..16}; do sbatch -J pc_32 -q regular --time=6:00:00 --nodes=32 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..16}; do sbatch -J pc_16 -q regular --time=6:00:00 --nodes=16 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 for i in {0..16}; do sbatch -J pc_8 -q regular --time=6:00:00 --nodes=8 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
-for i in {0..32}; do sbatch -J pc_4 -q regular --time=6:00:00 --nodes=4 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
-for i in {0..64}; do sbatch -J pc_2 -q regular --time=6:00:00 --nodes=2 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
-for i in {0..128}; do sbatch -J pc_1 -q regular --time=6:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..16}; do sbatch -J pc_4 -q regular --time=6:00:00 --nodes=4 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..16}; do sbatch -J pc_2 -q regular --time=6:00:00 --nodes=2 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
+for i in {0..16}; do sbatch -J pc_1 -q regular --time=6:00:00 --nodes=1 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
 
 
 for i in {0..32}; do sbatch -J pc_12_128 -q regular --time=12:00:00 --nodes=128 --ntasks-per-node=1 --account=m3772 --constraint=cpu -c 256  slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done;
@@ -365,9 +365,11 @@ squeue -u ctripp -h | grep -P ".*\s+\(JobHeldUser\)" | awk '{print $1}' | xargs 
 squeue -u ctripp -h | grep -P ".*\s+R\s+" | awk '{print $1}' | xargs scancel
 
 sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
+for i in {1..128}; do sbatch --partition=gpu -J g_3 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
+for i in {1..128}; do sbatch -J c_4 -t1440 -n1 -c60 --partition=lg --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
 for i in {1..512}; do sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
-for i in {1..32}; do sbatch -J c_4 -t1440 -n1 -c60 --partition=lg --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
-for i in {1..32}; do sbatch --partition=gpu -J g_3 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
+
+
 
 
 for i in {1..40}; do sbatch -J gx_1 -N1 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done

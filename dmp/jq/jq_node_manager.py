@@ -33,7 +33,7 @@ def run_worker(run_script, project, queue, workers, config):
         command = [
             f'./{run_script}',
             num_nodes, num_cores, node_list, core_list,
-            'echo',: cannot unpack non-iterable int object
+            'echo',
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
             nodes[0], num_nodes, cores[0], num_cores, config[2], config[3], config[4], project, queue]
