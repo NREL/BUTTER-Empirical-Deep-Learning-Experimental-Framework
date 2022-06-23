@@ -46,12 +46,14 @@ def do_parameter_sweep(sweep_config, task_handler):
 
 def main():
     default_config = {
-        'repetitions': 10,
-        'base_priority': 20000000,
+        'repetitions': 20,
+        'base_priority': 3000000,
         'queue': 1,
         'sweep_values': {
             'batch': ['optimizer_1'],
-            'dataset': ['201_pol', '529_pollen', '537_houses',  'connect_4', 'mnist', 'sleep', 'wine_quality_white', ],
+            # 'dataset': ['201_pol', '529_pollen', '537_houses',  'connect_4', 'mnist', 'sleep', 'wine_quality_white', ],
+            # 'dataset': ['adult', 'nursery', 'splice', '294_satellite_image', 'banana', '505_tecator', 'poker'],
+            'dataset': ['201_pol', '529_pollen', '537_houses',  'connect_4', 'mnist', 'sleep', 'wine_quality_white', 'adult', 'nursery', 'splice', '294_satellite_image', 'banana', '505_tecator', 'poker'],
             'input_activation': ['relu'],
             'activation': ['relu'],
             'optimizer': [

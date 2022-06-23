@@ -1070,31 +1070,94 @@ where s.id = d.id and queue = 1 and status IN (0,1,3)
 group by status, queue, batch, shape, dataset
 order by status asc, min_priority asc, queue, batch, shape, dataset;
 
-
-
-select 
-    queue, min(priority) min_priority, max(priority) max_priority, command->'batch' batch, command->'shape' shape, status, count(*)
+(select 
+    queue, status, min(priority) min_priority, max(priority) max_priority, count(*) num, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, max(update_time) last_update
 from 
     job_status s,
     job_data d
-where s.id = d.id
-    and command->>'batch' = 'fixed_3k_1'
-group by status, queue, batch, shape
-order by queue, status asc, min_priority asc, batch, shape;
+where s.id = d.id and queue = 1 and status = 0 --and status IN (0,1,3)
+group by status, queue, batch, shape, dataset
+order by status asc, min_priority asc, queue, batch, shape, dataset)
+union all
+(select 
+    queue, status, min(priority) min_priority, max(priority) max_priority, count(*) num, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, max(update_time) last_update
+from 
+    job_status s,
+    job_data d
+where s.id = d.id and queue = 1 and status > 0 and status < 4
+group by status, queue, batch, shape, dataset
+order by status asc, queue, batch, shape, dataset
+);
 
-select (command->'size')::bigint size, (now()::timestamp - start_time) runtime, * from
-job_status s,
-job_data d
-where s.id = d.id and queue = 1 and status = 1 and (now()::timestamp - start_time) > '3 days'
-order by runtime desc
-;
+(select 
+    queue, 0 status_, min(priority) min_priority, max(priority) max_priority, count(*) num, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, 
+    command->'depth' depth, 
+    command->'optimizer'->'class_name' optimizer,
+    command->'optimizer'->'config'->'learning_rate' learning_rate,
+    command->'run_config'->'batch_size' batch_size,
+    max(update_time) last_update
+from 
+    job_status s,
+    job_data d
+where s.id = d.id and queue = 1 and status = 0 --and status IN (0,1,3)
+group by status_, queue, batch, shape, depth, dataset, optimizer, learning_rate, batch_size
+order by status_ asc, min_priority asc, queue, batch, shape, depth, dataset, optimizer, learning_rate, batch_size)
+union all
+(select 
+    queue, (CASE 
+            WHEN status = 1 THEN 1
+            ELSE 2
+            END
+           ) status_, min(priority) min_priority, max(priority) max_priority, count(*) num, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, 
+            command->'depth' depth, 
+            command->'optimizer'->'class_name' optimizer,
+            command->'optimizer'->'config'->'learning_rate' learning_rate,
+            command->'run_config'->'batch_size' batch_size,
+            max(update_time) last_update
+from 
+    job_status s,
+    job_data d
+where s.id = d.id and queue = 1 and status > 0
+group by status_, queue, batch, shape, dataset, depth, optimizer, learning_rate, batch_size
+order by status_ asc, queue, batch, shape, dataset, depth, optimizer, learning_rate, batch_size
+);
+
+
+select command->'batch' batch, command->'dataset' dataset, command->'size' size, command->'depth' depth, command->'shape' shape, command->'optimizer'->'class_name' optimizer,
+            command->'optimizer'->'config'->'learning_rate' learning_rate, command->'run_config'->'batch_size' batch_size,  s.*, d.* 
+from job_status s inner join job_data d on (s.id = d.id)
+where queue = 1 and status = 0 order by priority asc limit 1000;
+
+select command->'batch' batch, command->'dataset' dataset, command->'size' size, command->'depth' depth, command->'shape' shape, command->'optimizer'->'class_name' optimizer,
+            command->'optimizer'->'config'->'learning_rate' learning_rate, command->'run_config'->'batch_size' batch_size,  s.*, d.* 
+from job_status s inner join job_data d on (s.id = d.id)
+where queue = 1 and status = 1 order by update_time desc limit 1000;
+
+select r.hostname, r.platform, r.slurm_job_id, (update_time - start_time) runtime, command->'batch' batch, command->'dataset' dataset, command->'size' size, command->'depth' depth, command->'shape' shape, command->'optimizer'->'class_name' optimizer,
+            command->'optimizer'->'config'->'learning_rate' learning_rate, command->'run_config'->'batch_size' batch_size,  s.*, d.* 
+from job_status s inner join job_data d on (s.id = d.id) left outer join run_ r on (s.id = r.run_id)
+where queue = 1 and status = 2 order by update_time desc limit 1000;
+
+
+select command->'batch' batch, command->'dataset', command->'size', command->'shape' shape, (update_time - start_time) runtime, * 
+from job_status s inner join job_data d on (s.id = d.id)
+where queue = 1 and status = 3 order by update_time desc limit 1000;
 
 update job_status s
 set status = 0, start_time = NULL, update_time = NULL
 where queue = 1 and status = 1 and (now()::timestamp - start_time) > '2 days';
 
 select * from job_status s
-where queue = 1 and status = 3;
+where queue = 1 and status = 3
+order by update_time desc
+limit 4000;
+
+select error, count(error) num from job_status s
+where queue = 1 and status = 3
+-- order by update_time desc
+group by error
+order by num desc
+limit 4000;
 
 update job_status s
 set status = 0, start_time = NULL, update_time = NULL
@@ -1103,6 +1166,12 @@ where
     and s.error not like 'Could not find%'
 ;
 
+update job_status s
+set status = 4
+where 
+    queue = 1 and status = 3
+    and s.error like 'Could not find%'
+;
 
 select
     s.start_time,
@@ -1148,7 +1217,7 @@ from
             job_status s,
             job_data d
         where
-            s.id = d.id and queue = 1 and status <> 2
+            s.id = d.id and queue = 1 and status IN (0,1,3)
             and command @> jsonb_build_object(
                 'batch', 'l2_group_1')
 --                 'shape', 'trapezoid')
@@ -1161,6 +1230,7 @@ from
 --             )
 --         order by depth asc, lambda asc, dataset, floor(random() * 100)::smallint asc
         order by priority asc
+        for update
     ) ordered_job
 ) seq
 where
@@ -1175,7 +1245,7 @@ from
 select 
     job.sctid,
     job.id,
-    group_num * 100000 + element_num seq
+    group_num * 1000 + element_num seq
 from
     (
         select
@@ -1184,12 +1254,18 @@ from
         from
             (
             select 
-                min(priority) min_priority, command->'batch' batch, command->'shape' shape, command->'dataset' dataset
+                min(priority) min_priority, command->'batch' batch, 
+                command->'shape' shape, 
+                command->'dataset' dataset,
+                command->'depth' depth, 
+                command->'optimizer'->'class_name' optimizer,
+                command->'optimizer'->'config'->'learning_rate' learning_rate,
+                command->'run_config'->'batch_size' batch_size
             from 
                 job_status s,
                 job_data d
             where s.id = d.id and queue = 1 and status IN (0,1,3)
-            group by batch, shape, dataset
+            group by batch, shape, depth, dataset, optimizer, learning_rate, batch_size
             order by min_priority asc
             ) grp
     ) pq,
@@ -1209,13 +1285,60 @@ from
                 and command @> jsonb_build_object(
                     'batch', pq.batch,
                     'shape', pq.shape,
-                    'dataset', pq.dataset)
+                    'dataset', pq.dataset,
+                    'depth', pq.depth,
+                    'optimizer', jsonb_build_object('class_name', pq.optimizer, 'config', jsonb_build_object( 'learning_rate', pq.learning_rate)),
+                    'run_config', jsonb_build_object('batch_size', pq.batch_size)
+                )::jsonb
             order by priority asc
             ) job
     ) job
 ) seq
 where
 stat.ctid = seq.sctid
+;
+
+update job_status stat
+    set priority = seq + 2000000
+from
+(
+    select ROW_NUMBER() OVER() seq, ordered_job.id id, sctid
+    from
+    (   
+        select * from ( select floor( group_sequence / 5) group_number, * from (select (row_number() over( partition by depth, dataset, optimizer, learning_rate, batch_size)) group_sequence, * from (
+        select 
+            (command->'depth')::bigint depth,
+            (command->'seed')::bigint seed,
+            (command->>'dataset') dataset,
+            (command->'optimizer'->'class_name')::text optimizer,
+            (command->'optimizer'->'config'->'learning_rate')::real learning_rate,
+            (command->'run_config'->'batch_size')::bigint batch_size,
+            s.id,
+            s.ctid sctid
+        from
+            job_status s,
+            job_data d
+        where
+            s.id = d.id and queue = 1 and status IN (0,1,2,3)
+--             and command->>'shape' like '%x_residual'
+            and command @> jsonb_build_object(
+                'batch', 'optimizer_1')
+--             and command->>'shape' like '%x_residual'
+--                 'shape', 'trapezoid')
+--             and command->>'shape' in (
+--                 'rectangle',
+--                 'exponential',
+--                 'trapezoid',
+--                 'wide_first_2x',
+--                 'rectangle_residual'
+--             )
+         for update
+        ) x ) x ) x
+        order by group_number asc, abs(depth-3.1) asc, abs(log(batch_size) - log(256 - .1)) asc, abs(log(learning_rate) - log(0.00011)) asc, group_sequence asc, floor(random() * 16000)::smallint 
+    ) ordered_job
+) seq
+where
+seq.sctid = stat.ctid
 ;
 
 
