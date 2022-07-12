@@ -1145,7 +1145,7 @@ where queue = 1 and status = 3 order by update_time desc limit 1000;
 
 update job_status s
 set status = 0, start_time = NULL, update_time = NULL
-where queue = 1 and status = 1 and (now()::timestamp - start_time) > '2 days';
+where queue = 1 and status = 1 and (now()::timestamp - start_time) > '1 days';
 
 select * from job_status s
 where queue = 1 and status = 3

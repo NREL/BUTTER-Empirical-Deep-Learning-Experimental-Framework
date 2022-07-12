@@ -114,16 +114,16 @@ def main():
     # cores_per_socket = int(num_cores / num_sockets)
     # gpu_mems = [16*1024,]
 
-    min_gpu_mem_per_worker = 6.5 * 1024
-    worker_gpu_mem_overhead = 1024
+    min_gpu_mem_per_worker = 4.5 * 1024
+    worker_gpu_mem_overhead = 700
     min_total_worker_gpu_mem = min_gpu_mem_per_worker + worker_gpu_mem_overhead
 
-    min_gpu_mem_buffer = 500
+    min_gpu_mem_buffer = 350
     max_worker_per_gpu = 4
 
-    cores_per_gpu_worker = 2
+    cores_per_gpu_worker = 1
     min_cores_per_cpu_worker = 4
-    target_cores_per_cpu_worker = 64
+    target_cores_per_cpu_worker = 32
 
     # cores_allocated_per_node = [0 for _ in range(num_nodes)]
     cores_avaliable = numa_cores

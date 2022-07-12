@@ -90,8 +90,6 @@ class AspectTestExecutor(AspectTestTask):
             self.output_activation,
             self.size,
             widths_factory(shape)(num_outputs, self.depth),
-            self.depth,
-            shape,
             layer_args,
         )
 

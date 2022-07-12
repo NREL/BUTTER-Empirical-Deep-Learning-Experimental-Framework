@@ -31,8 +31,7 @@ class Worker:
         # run task
         result = task()
 
-        # log task run
-        
+        # log task run        
         self._result_logger.log(
             [
                 (

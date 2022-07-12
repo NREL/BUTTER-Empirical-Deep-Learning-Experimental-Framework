@@ -10,3 +10,4 @@ class NDense(NetworkModule):
     kernel_regularizer : Optional[dict] = None
     bias_regularizer : Optional[dict] = None
     activity_regularizer : Optional[dict] = None
+    kernel_initializer: Optional[dict] = 'glorot_uniform'

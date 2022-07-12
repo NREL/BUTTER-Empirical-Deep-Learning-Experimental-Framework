@@ -98,17 +98,26 @@ def prepare_dataset(
     return run_config
 
 
-def count_trainable_parameters_in_keras_model(model: Model) -> int:
+def count_vars_in_keras_model(model: Model, var_getter) -> int:
     count = 0
-    for var in model.trainable_variables:
-        # print('ctp {}'.format(var.get_shape()))
+    for var in var_getter(model):
         acc = 1
         for dim in var.get_shape():
             acc *= int(dim)
-        # print('ctp acc {}'.format(acc))
         count += acc
-    # print('ctp total {}'.format(count))
     return count
+
+
+def count_trainable_parameters_in_keras_model(model: Model) -> int:
+    return count_vars_in_keras_model(model, lambda m: m.trainable_variables)
+
+
+def count_parameters_in_keras_model(model: Model) -> int:
+    return count_vars_in_keras_model(model, lambda m: m.variables)
+
+
+def count_non_trainable_parameters_in_keras_model(model: Model) -> int:
+    return count_vars_in_keras_model(model, lambda m: m.non_trainable_variables)
 
 
 def count_num_free_parameters(target: NetworkModule) -> int:
@@ -149,8 +158,6 @@ def make_network(
         input_activation: str,
         internal_activation: str,
         output_activation: str,
-        depth: int,
-        shape: str,
         layer_args: dict,
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
@@ -160,14 +167,13 @@ def make_network(
                          shape=list(inputs.shape[1:]))
     current = input_layer
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
-    for d in range(depth):
-        layer_width = widths[d]
+    for d, layer_width in enumerate(widths):
 
         # Activation functions may be different for input, output, and hidden layers
         activation = internal_activation
         if d == 0:
             activation = input_activation
-        elif d == depth - 1:
+        elif d == len(widths) - 1:
             activation = output_activation
 
         # Fully connected layer
@@ -267,6 +273,7 @@ class MakeKerasLayersFromNetwork:
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer,
             activity_regularizer=activity_regularizer,
+            kernel_initializer=target.kernel_initializer,
         )(*keras_inputs)
 
     @_visit_raw.register
@@ -349,8 +356,6 @@ def find_best_layout_for_budget_and_depth(
         output_activation,
         size,
         make_widths: Callable[[int], List[int]],
-        depth,
-        shape,
         layer_args
 ) -> Tuple[int, List[int], NetworkModule]:
     best = (math.inf, None, None)
@@ -364,8 +369,6 @@ def find_best_layout_for_budget_and_depth(
                                input_activation,
                                internal_activation,
                                output_activation,
-                               depth,
-                               shape,
                                layer_args
                                )
         delta = count_num_free_parameters(network) - size
