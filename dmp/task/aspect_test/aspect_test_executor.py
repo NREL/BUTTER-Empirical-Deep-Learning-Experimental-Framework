@@ -83,7 +83,7 @@ class AspectTestExecutor(AspectTestTask):
 
         # Build NetworkModule network
         delta, widths, self.network_structure = find_best_layout_for_budget_and_depth(
-            self.inputs,
+            self.inputs.shape,
             residual_mode,
             self.input_activation,
             self.activation,

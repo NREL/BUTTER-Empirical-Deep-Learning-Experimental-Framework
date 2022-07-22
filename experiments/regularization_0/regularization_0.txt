@@ -397,4 +397,9 @@ for i in {1..40}; do sbatch -J gx_2 -N2 -t2880 --gres=gpu:2 --account=dmpscale -
 for i in {1..40}; do sbatch -J gx_3 -N3 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 for i in {1..40}; do sbatch -J gx_4 -N4 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 for i in {1..40}; do sbatch -J gx_8 -N8 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
-for i in {1..10}; do sbatch -J gx_10 -N10 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..40}; do sbatch -J gx_10 -N10 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
+for i in {1..8}; do sbatch -J lgx_1 -N1 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..8}; do sbatch -J lgx_2 -N2 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..8}; do sbatch -J lgx_4 -N4 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..8}; do sbatch -J lgx_8 -N8 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
