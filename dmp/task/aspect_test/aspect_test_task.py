@@ -57,7 +57,7 @@ class AspectTestTask(Task):
 
     @property
     def version(self) -> int:
-        return 3
+        return 4
 
     @property
     def parameters(self) -> ParameterDict:
