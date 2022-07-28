@@ -51,7 +51,7 @@ class AspectTestTask(Task):
     early_stopping: Optional[dict] = None
     save_every_epochs: Optional[int] = None
 
-    def __call__(self) -> Dict[str, any]:
+    def __call__(self) -> Dict[str, Any]:
         from .aspect_test_executor import AspectTestExecutor
         return AspectTestExecutor(*dataclasses.astuple(self))(self)
 

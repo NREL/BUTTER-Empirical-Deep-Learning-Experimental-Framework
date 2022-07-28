@@ -39,7 +39,7 @@ class AspectTestExecutor(AspectTestTask):
     outputs: Optional[numpy.ndarray] = None
 
     def __call__(self, parent: AspectTestTask) \
-            -> Tuple[Dict[str, Parameter], Dict[str, any]]:
+            -> Tuple[Dict[str, Parameter], Dict[str, Any]]:
         # Configure hardware
         if self.tensorflow_strategy is None:
             self.tensorflow_strategy = tensorflow.distribute.get_strategy()
