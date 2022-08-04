@@ -202,7 +202,7 @@ squeue -u ctripp -A dmpapps -h | grep -P ".*\s+c_\d\s+.*\(.*\)" | awk '{print $1
 squeue -u ctripp -A dmpapps -h | grep -P "\s+g_\d+\s+.*" | awk '{print $1}' | xargs scancel
 squeue -u ctripp -A dmpapps -h | grep -P "\s+gs12_1\s+.*" | awk '{print $1}' | xargs scontrol release
 
-squeue -u ctripp -A dmpapps -h | grep -P "\s+\(.*\)" | awk '{print $1}' | xargs scancel
+squeue -u ctripp -h | grep -P ".*\s+flx_\s+.*\(.*\)" | awk '{print $1}' | xargs scancel
 
 
 

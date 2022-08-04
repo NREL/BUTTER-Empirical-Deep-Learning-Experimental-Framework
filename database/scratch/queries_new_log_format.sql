@@ -1133,10 +1133,13 @@ select command->'batch' batch, command->'dataset' dataset, command->'size' size,
 from job_status s inner join job_data d on (s.id = d.id)
 where queue = 1 and status = 1 order by update_time desc limit 1000;
 
-select  (now()-update_time) age, (update_time - start_time) runtime, r.hostname, r.platform, r.slurm_job_id, (command->'size')::bigint * (command->'run_config'->'epochs')::bigint effort, (command->'size')::bigint * (command->'run_config'->'epochs')::bigint / EXTRACT(epoch FROM (update_time-start_time)) effort_rate, command->'batch' batch, command->'dataset' dataset, command->'size' size, command->'depth' depth, command->'shape' shape, command->'optimizer'->'class_name' optimizer,
+select  (now()-update_time) age, (update_time - start_time) runtime, r.hostname, r.platform, r.slurm_job_id, tensorflow_version.string_value tensorflow_version, python_version.string_value python_version, (command->'size')::bigint * (command->'run_config'->'epochs')::bigint effort, ((command->'size')::bigint * (command->'run_config'->'epochs')::bigint / EXTRACT(epoch FROM (update_time-start_time)))::bigint effort_rate, command->'batch' batch, command->'dataset' dataset, command->'size' size, command->'depth' depth, command->'shape' shape, command->'optimizer'->'class_name' optimizer,
             command->'optimizer'->'config'->'learning_rate' learning_rate, command->'run_config'->'batch_size' batch_size,  s.*, d.* 
-from job_status s inner join job_data d on (s.id = d.id) left outer join run_ r on (s.id = r.run_id)
+from job_status s inner join job_data d on (s.id = d.id) left outer join run_ r on (s.id = r.run_id) 
+left outer join parameter_ tensorflow_version on (tensorflow_version.kind='tensorflow_version' and r.run_parameters @> array[tensorflow_version.id])
+left outer join parameter_ python_version on (python_version.kind='python_version' and r.run_parameters @> array[python_version.id])
 where queue = 1 and status = 2 order by update_time desc limit 1000;
+
 
 select(now()-update_time) age, (update_time - start_time) runtime,  command->'batch' batch, command->'dataset', command->'size', command->'shape' shape, (update_time - start_time) runtime, * 
 from job_status s inner join job_data d on (s.id = d.id) 
