@@ -1,6 +1,7 @@
 import argparse
 import gc
 import math
+import sys
 import uuid
 
 import jobqueue.connect as connect
@@ -14,8 +15,9 @@ import tensorflow
 
 from .common import jobqueue_marshal
 
-def make_strategy(first_socket, num_sockets, first_core, num_cores, first_gpu, num_gpus, gpu_mem):
-    
+
+def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
+
     devices = []
     devices.extend(['/GPU:' + str(i)
                    for i in range(first_gpu, first_gpu + num_gpus)])
@@ -49,36 +51,47 @@ def make_strategy(first_socket, num_sockets, first_core, num_cores, first_gpu, n
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('first_socket', type=int,
-                        help='first socket id to use')
-    parser.add_argument('num_sockets', type=int, help='num sockets to use')
-    parser.add_argument('first_core', type=int, help='first core id to use')
-    parser.add_argument('num_cores', type=int, help='num cores to use')
-    parser.add_argument('first_gpu', type=int, help='first GPU id to use')
-    parser.add_argument('num_gpus', type=int, help='num GPUs to use')
-    parser.add_argument('gpu_mem', type=int, help='GPU RAM to allocate')
-    parser.add_argument(
-        'database', help='database/project identifier in your jobqueue.json file')
-    parser.add_argument('queue', help='queue id to use (smallint)')
-    args = parser.parse_args()
-
+    a = sys.argv
     strategy = make_strategy(
-        args.first_socket, args.num_sockets,
-        args.first_core, args.num_cores,
-        args.first_gpu, args.num_gpus,
-        args.gpu_mem)
+        int(a[4]),
+        int(a[5]),
+        int(a[6]),
+        int(a[7]))
+
+    queue = int(a[9])
+    database = a[10]
+
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('first_socket', type=int,
+    #                     help='first socket id to use')
+    # parser.add_argument('num_sockets', type=int, help='num sockets to use')
+    # parser.add_argument('first_core', type=int, help='first core id to use')
+    # parser.add_argument('num_cores', type=int, help='num cores to use')
+    # parser.add_argument('first_gpu', type=int, help='first GPU id to use')
+    # parser.add_argument('num_gpus', type=int, help='num GPUs to use')
+    # parser.add_argument('gpu_mem', type=int, help='GPU RAM to allocate')
+    # parser.add_argument(
+    #     'database', help='database/project identifier in your jobqueue.json file')
+    # parser.add_argument('queue', help='queue id to use (smallint)')
+    # args = parser.parse_args()
+
+    # strategy = make_strategy(
+    #     args.first_socket, args.num_sockets,
+    #     args.first_core, args.num_cores,
+    #     args.first_gpu, args.num_gpus,
+    #     args.gpu_mem)
 
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     print('\n', flush=True)
 
-    queue = args.queue
+    # queue = args.queue
+
     if not isinstance(queue, int):
         queue = 1
 
     print(f'Worker id {worker_id} load credentials...\n', flush=True)
-    credentials = connect.load_credentials('dmp')
+    credentials = connect.load_credentials(database)
     print(f'Worker id {worker_id} create job queue...\n', flush=True)
     job_queue = JobQueue(credentials, int(queue), check_table=False)
     print(f'Worker id {worker_id} create result logger..\n', flush=True)

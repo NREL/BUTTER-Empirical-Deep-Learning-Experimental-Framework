@@ -34,22 +34,13 @@ def run_worker(worker_id, config, project, queue):
     num_cpus = len(cpu_numbers)
     cpus_string = ','.join([str(i) for i in cpu_numbers])
     node_string = ','.join([str(i) for i in nodes])
-
-    if queue == 0:
-        command = [
-            f'./{run_script}',
-            num_nodes, num_cpus, node_string, cpus_string,
-            'echo',
-            'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
-            'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-            nodes[0], num_nodes, cpus[0], num_cpus, config[2], config[3], config[4], project, queue]
-    else:
-        command = [
-            f'./{run_script}',
-            num_nodes, num_cpus, node_string, cpus_string,
-            'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
-            'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-            nodes[0], num_nodes, cpus[0], num_cpus, config[2], config[3], config[4], project, queue]
+#python -u -m dmp.jobqueue_interface.worker 0 4 (0, 0, 0, 0) 64 0 0 0 dmp 1"
+    command = [
+        f'./{run_script}',
+        num_nodes, num_cpus, node_string, cpus_string,
+        'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
+        'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
+        nodes[0], num_nodes, cpu_numbers[0], num_cpus, config[2], config[3], config[4], project, queue]
 
     return make_worker_process(worker_id, command)
 
