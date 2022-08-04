@@ -15,9 +15,8 @@ import tensorflow
 
 from .common import jobqueue_marshal
 
-
 def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
-
+    
     devices = []
     devices.extend(['/GPU:' + str(i)
                    for i in range(first_gpu, first_gpu + num_gpus)])
@@ -59,8 +58,8 @@ if __name__ == "__main__":
         int(a[7]))
 
     queue = int(a[9])
-    database = a[10]
-
+    database = a[8]
+    
     # parser = argparse.ArgumentParser()
     # parser.add_argument('first_socket', type=int,
     #                     help='first socket id to use')
@@ -86,10 +85,11 @@ if __name__ == "__main__":
     print('\n', flush=True)
 
     # queue = args.queue
-
+    
     if not isinstance(queue, int):
         queue = 1
 
+    
     print(f'Worker id {worker_id} load credentials...\n', flush=True)
     credentials = connect.load_credentials(database)
     print(f'Worker id {worker_id} create job queue...\n', flush=True)
