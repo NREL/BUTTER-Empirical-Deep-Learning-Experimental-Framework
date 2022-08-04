@@ -38,42 +38,46 @@ def main():
     ]
 
     parameter_columns = [
-        pyarrow.field('dataset', pyarrow.string(), nullable=True),
-        pyarrow.field('shape', pyarrow.string(), nullable=True),
-        pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
-        pyarrow.field('batch_size', pyarrow.uint32(), nullable=True),
-        pyarrow.field('kernel_regularizer.type',
-                      pyarrow.string(), nullable=True),
-        pyarrow.field('label_noise', pyarrow.float32(), nullable=True),
-        pyarrow.field('depth', pyarrow.uint8(), nullable=True),
-        pyarrow.field('epochs', pyarrow.uint32(), nullable=True),
-        pyarrow.field('size', pyarrow.uint64(), nullable=True),
-        pyarrow.field('batch', pyarrow.string(), nullable=True),
-        pyarrow.field('early_stopping', pyarrow.string(), nullable=True),
         pyarrow.field('activation', pyarrow.string(), nullable=True),
+        pyarrow.field('activity_regularizer', pyarrow.string(), nullable=True),
+        pyarrow.field('activity_regularizer_l2', pyarrow.string(), nullable=True),
+        pyarrow.field('activity_regularizer_type', pyarrow.string(), nullable=True),
+        pyarrow.field('batch', pyarrow.string(), nullable=True),
+        pyarrow.field('batch_size', pyarrow.uint32(), nullable=True),
+        pyarrow.field('bias_regularizer', pyarrow.string(), nullable=True),
+        pyarrow.field('bias_regularizer_l2', pyarrow.string(), nullable=True),
+        pyarrow.field('bias_regularizer_type', pyarrow.string(), nullable=True),
+        pyarrow.field('dataset', pyarrow.string(), nullable=True),
+        pyarrow.field('depth', pyarrow.uint8(), nullable=True),
+        pyarrow.field('early_stopping', pyarrow.string(), nullable=True),
+        pyarrow.field('epochs', pyarrow.uint32(), nullable=True),
         pyarrow.field('input_activation', pyarrow.string(), nullable=True),
-        pyarrow.field('output_activation', pyarrow.string(), nullable=True),
         pyarrow.field('kernel_regularizer', pyarrow.string(), nullable=True),
-        pyarrow.field('kernel_regularizer.l1',
-                      pyarrow.float32(), nullable=True),
-        pyarrow.field('kernel_regularizer.l2',
-                      pyarrow.float32(), nullable=True),
+        pyarrow.field('kernel_regularizer_l1', pyarrow.float32(), nullable=True),
+        pyarrow.field('kernel_regularizer_l2', pyarrow.float32(), nullable=True),
+        pyarrow.field('kernel_regularizer_type', pyarrow.string(), nullable=True),
+        pyarrow.field('label_noise', pyarrow.float32(), nullable=True),
+        pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
-        pyarrow.field('task', pyarrow.string(), nullable=True),
-        pyarrow.field('test_split', pyarrow.float32(), nullable=True),
-
-
+        pyarrow.field('optimizer.config.momentum', pyarrow.string(), nullable=True),
+        pyarrow.field('optimizer.config.nesterov', pyarrow.string(), nullable=True),
+        pyarrow.field('output_activation', pyarrow.string(), nullable=True),
         pyarrow.field('python_version', pyarrow.string(), nullable=True),
-        
+        pyarrow.field('run_config.shuffle', pyarrow.string(), nullable=True),
+        pyarrow.field('shape', pyarrow.string(), nullable=True),
+        pyarrow.field('size', pyarrow.uint64(), nullable=True),
+        pyarrow.field('task', pyarrow.string(), nullable=True),
         pyarrow.field('task_version', pyarrow.uint16(), nullable=True),
         pyarrow.field('tensorflow_version', pyarrow.string(), nullable=True),
+        pyarrow.field('test_split', pyarrow.float32(), nullable=True),
+        pyarrow.field('test_split_method', pyarrow.string(), nullable=True),
     ]
 
     partition_cols = [
         'dataset',
         'learning_rate',
         'batch_size',
-        'kernel_regularizer.type',
+        'kernel_regularizer_type',
         'label_noise',
         'epochs',
         'shape',
@@ -129,6 +133,7 @@ def main():
         pyarrow.field('train_cosine_similarity', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('test_kullback_leibler_divergence', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('train_kullback_leibler_divergence', pyarrow.list_(pyarrow.float32())),
+
     ]
 
     column_name_mapping = {
@@ -152,10 +157,21 @@ def main():
         'cosine_similarity' : 'train_cosine_similarity',
         'val_kullback_leibler_divergence' : 'test_kullback_leibler_divergence',
         'kullback_leibler_divergence' : 'train_kullback_leibler_divergence',
+        'activity_regularizer.l2' : 'activity_regularizer_l2',
+        'activity_regularizer.type':'activity_regularizer_type',
+        'bias_regularizer.l2' : 'bias_regularizer_l2',
+        'bias_regularizer.type' : 'bias_regularizer_type',
+        'kernel_regularizer.l1' : 'kernel_regularizer_l1',
+        'kernel_regularizer.l2' : 'kernel_regularizer_l2',
+        'kernel_regularizer.type' : 'kernel_regularizer_type',
+        'optimizer.config.momentum' : 'optimizer_config_momentum',
+        'optimizer.config.nesterov' : 'nesterov',
+        'run_config.shuffle' : 'run_config_shuffle',
     }
 
     inverse_column_name_mapping = {v: k for k, v in column_name_mapping.items()}
-            
+    partition_cols_source = [inverse_column_name_mapping.get(c,c) for c in partition_cols]
+
     parameter_column_names = [f.name for f in parameter_columns]
     parameter_column_names_set = set(parameter_column_names)
     data_column_names = [f.name for f in data_columns]
@@ -188,12 +204,12 @@ def main():
         q = sql.SQL('SELECT run_id, ')
         q += sql.SQL(', ').join(
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
-             for p in partition_cols]
+             for p in partition_cols_source]
         )
         q += sql.SQL(' FROM run_ r ')
         q += sql.SQL(' ').join(
             [sql.SQL(' left join parameter_ {} on ({}.kind = {} and r.run_parameters @> array[{}.id]) ').format(
-                sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols])
+                sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols_source])
 
         where = False
 
@@ -215,7 +231,7 @@ def main():
 
         q += sql.SQL(' ORDER BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
-                                  for p in partition_cols] + [sql.SQL('experiment_id'), sql.SQL('run_id')])
+                                  for p in partition_cols_source] + [sql.SQL('experiment_id'), sql.SQL('run_id')])
         q += sql.SQL(' ;')
 
         x = cursor.mogrify(q)
@@ -225,7 +241,7 @@ def main():
         chunk = []
         chunk_partition = None
         for row in cursor:
-            partition = [row[i+1] for i in range(len(partition_cols))]
+            partition = [row[i+1] for i in range(len(partition_cols_source))]
             if len(chunk) >= chunk_size or partition != chunk_partition:
                 chunk_partition = partition
                 chunk = []
@@ -276,6 +292,7 @@ def main():
                     result_block[name].append(None)
 
                 for kind, value in parameter_map.parameter_from_id(row[0]):
+                    kind = column_name_mapping.get(kind, kind)
                     if kind in parameter_column_names_set:
                         result_block[kind][row_number] = value
 
@@ -309,7 +326,7 @@ def main():
                 partition_cols=partition_cols,
                 # data_page_size=128 * 1024,
                 compression='BROTLI',
-                compression_level=6,
+                compression_level=8,
                 use_dictionary=use_dictionary,
                 use_byte_stream_split=use_byte_stream_split,
                 data_page_version='2.0',
