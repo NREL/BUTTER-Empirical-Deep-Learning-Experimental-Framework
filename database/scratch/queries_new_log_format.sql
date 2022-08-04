@@ -1133,14 +1133,13 @@ select command->'batch' batch, command->'dataset' dataset, command->'size' size,
 from job_status s inner join job_data d on (s.id = d.id)
 where queue = 1 and status = 1 order by update_time desc limit 1000;
 
-select r.hostname, r.platform, r.slurm_job_id, (update_time - start_time) runtime, command->'batch' batch, command->'dataset' dataset, command->'size' size, command->'depth' depth, command->'shape' shape, command->'optimizer'->'class_name' optimizer,
+select  (now()-update_time) age, (update_time - start_time) runtime, r.hostname, r.platform, r.slurm_job_id, (command->'size')::bigint * (command->'run_config'->'epochs')::bigint effort, (command->'size')::bigint * (command->'run_config'->'epochs')::bigint / EXTRACT(epoch FROM (update_time-start_time)) effort_rate, command->'batch' batch, command->'dataset' dataset, command->'size' size, command->'depth' depth, command->'shape' shape, command->'optimizer'->'class_name' optimizer,
             command->'optimizer'->'config'->'learning_rate' learning_rate, command->'run_config'->'batch_size' batch_size,  s.*, d.* 
 from job_status s inner join job_data d on (s.id = d.id) left outer join run_ r on (s.id = r.run_id)
 where queue = 1 and status = 2 order by update_time desc limit 1000;
 
-
-select command->'batch' batch, command->'dataset', command->'size', command->'shape' shape, (update_time - start_time) runtime, * 
-from job_status s inner join job_data d on (s.id = d.id)
+select(now()-update_time) age, (update_time - start_time) runtime,  command->'batch' batch, command->'dataset', command->'size', command->'shape' shape, (update_time - start_time) runtime, * 
+from job_status s inner join job_data d on (s.id = d.id) 
 where queue = 1 and status = 3 order by update_time desc limit 1000;
 
 update job_status s

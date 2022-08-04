@@ -380,10 +380,10 @@ squeue -u ctripp -h | grep -P "\spc_128\s.*\s\([^)]+\)" | awk '{print $1}' | xar
 squeue -u ctripp -h | grep -P ".*\s+\(JobHeldUser\)" | awk '{print $1}' | xargs scontrol release
 squeue -u ctripp -h | grep -P ".*\s+R\s+" | awk '{print $1}' | xargs scancel
 
-sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1
-for i in {1..128}; do sbatch --partition=gpu -J g_3 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
-for i in {1..128}; do sbatch -J c_4 -t1440 -n1 -c60 --partition=lg --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
-for i in {1..512}; do sbatch -J c_5 -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
+
+for i in {1..128}; do sbatch --partition=gpu -J gpu -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
+for i in {1..256}; do sbatch -J large -t1440 -n1 -c60 --partition=lg --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
+for i in {1..1024}; do sbatch -J small -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
 
 
 
