@@ -39,10 +39,10 @@ def make_strategy(first_socket, num_sockets, first_core, num_cores, first_gpu, n
     # print(f'cpus: {cpus}')
     visible_devices.extend(cpus)
     tensorflow.config.set_visible_devices(visible_devices)
+    tensorflow.config.set_soft_device_placement(True)
 
-    tensorflow.config.threading.set_intra_op_parallelism_threads(
-        int(math.ceil(num_cores / max(1, num_sockets))))
-    tensorflow.config.threading.set_inter_op_parallelism_threads(num_sockets)
+    tensorflow.config.threading.set_intra_op_parallelism_threads(num_cores)
+    tensorflow.config.threading.set_inter_op_parallelism_threads(num_cores)
 
     strategy = tensorflow.distribute.get_strategy()  # the default strategy
     return strategy

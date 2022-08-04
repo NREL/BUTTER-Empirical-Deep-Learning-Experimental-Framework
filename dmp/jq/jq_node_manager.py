@@ -5,6 +5,9 @@ import select
 import sys
 import subprocess
 import os
+from typing import Any, Dict, List, Tuple
+
+from numpy import append
 
 
 def get_run_script(default_script, custom_script):
@@ -20,38 +23,53 @@ def make_worker_process(rank, command):
         command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         close_fds=True)
 
+def run_worker(worker_id, config, project, queue):
+    run_script = config[0]
+    cpus = config[1]
 
-def run_worker(run_script, project, queue, workers, config):
-    nodes = config[0]
-    cores = config[1]
+    nodes = sorted({cpu[-3] for cpu in cpus})
+    cpu_numbers = [cpu[-1] for cpu in cpus]
+
     num_nodes = len(nodes)
-    num_cores = len(cores)
-    core_list = ','.join([str(i) for i in cores])
-    node_list = ','.join([str(i) for i in nodes])
+    num_cpus = len(cpu_numbers)
+    cpus_string = ','.join([str(i) for i in cpu_numbers])
+    node_string = ','.join([str(i) for i in nodes])
 
     if queue == 0:
         command = [
             f'./{run_script}',
-            num_nodes, num_cores, node_list, core_list,
+            num_nodes, num_cpus, node_string, cpus_string,
             'echo',
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-            nodes[0], num_nodes, cores[0], num_cores, config[2], config[3], config[4], project, queue]
+            nodes[0], num_nodes, cpus[0], num_cpus, config[2], config[3], config[4], project, queue]
     else:
         command = [
             f'./{run_script}',
-            num_nodes, num_cores, node_list, core_list,
+            num_nodes, num_cpus, node_string, cpus_string,
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker_manager',
             'python', '-u', '-m', 'dmp.jobqueue_interface.worker',
-            nodes[0], num_nodes, cores[0], num_cores, config[2], config[3], config[4], project, queue]
+            nodes[0], num_nodes, cpus[0], num_cpus, config[2], config[3], config[4], project, queue]
 
-    return make_worker_process(len(workers), command)
+    return make_worker_process(worker_id, command)
 
 
 def main():
     args = sys.argv
     project = args[1]
     queue = args[2]
+
+    min_gpu_mem_per_worker = 6.5 * 1024
+    worker_gpu_mem_overhead = 1024
+    min_total_worker_gpu_mem = min_gpu_mem_per_worker + worker_gpu_mem_overhead
+
+    min_gpu_mem_buffer = 500
+    max_worker_per_gpu = 2
+
+    cpus_per_gpu_worker = 1
+    min_cpus_per_cpu_worker = 64
+
+    smt_level = 1  # maximum number of SMT's (a.k.a. "CPUs") per core to use
 
     host = platform.node()
 
@@ -64,75 +82,120 @@ def main():
     # num_sockets = int(subprocess.check_output(
     #     'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True))
 
-    numa_hardware_output = subprocess.check_output(
-        'numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii')
+    # numa_hardware_output = subprocess.check_output(
+    #     'numactl --hardware | grep -P "node \d+ cpus:"', shell=True).decode('ascii')
 
-    numa_nodes = [s for s in numa_hardware_output.split(
-        '\n') if s.startswith('node ')]
+    # numa_nodes = [s for s in numa_hardware_output.split(
+    #     '\n') if s.startswith('node ')]
 
     numa_physcpubind_output = subprocess.check_output(
         'numactl --show | grep -P "physcpubind"', shell=True).decode('ascii')
-    numa_cpus = {int(i) for i in [i.replace('\n', '').strip()
-                                  for i in numa_physcpubind_output[len('physcpubind: '):].split(' ')]
-                 if len(i) > 0}
+    avaliable_cpus = {int(i) for i in [i.replace('\n', '').strip()
+                                       for i in numa_physcpubind_output[len('physcpubind: '):].split(' ')]
+                      if len(i) > 0}
+    print(f'Avaliable CPUs: {avaliable_cpus}')
 
-    # numa_node_numbers = [int(re.search(r'\d+', numa_nodes[0]).group()) for s in numa_nodes]
+    def get_or_add(d: Dict[Any, Dict], k) -> Dict:
+        if k in d:
+            return d[k]
+        r = {}
+        d[k] = r
+        return r
 
-    def group_hyperthreads(cpus):
-        cpus = sorted(cpus)
-        cpu_groups = []
-        cpu_group = None
-        for i, c in enumerate(cpus):
-            if i == 0 or c - cpus[i-1] > 1:
-                cpu_group = []
-                cpu_groups.append(cpu_group)
-            cpu_group.append(c)
-        return [v for p in zip(*cpu_groups) for v in p]
+    topology_depth = 4
+    topology_index = {}
+    lscpu_output = subprocess.check_output(
+        'lscpu --all --parse', shell=True).decode('ascii').split('\n')
+    for line in lscpu_output:
+        if len(line) >= 8 and line[0].isdigit():
+            cols = [int(e) for e in line.split(',')[0:topology_depth]]
+            cpu, core, socket, node = cols
+            get_or_add(get_or_add(get_or_add(topology_index, socket), node), core)[
+                cpu] = (socket, node, core, cpu)
 
+    print(f'Detected CPU topology: {topology_index}')
 
-    numa_cores = [[i for i in
-                   group_hyperthreads([int(i) for i in [i.replace('\n', '').strip()
-                                     for i in n.split('cpus: ')[1].split(' ')] if len(i) > 0])
-                   if i in numa_cpus]
-                  for n in numa_nodes]
+    def build_cpu_index(
+        level_indicies: List,
+        level_dict: Dict,
+    ) -> Tuple[int, List]:
+        if len(level_indicies) + 1 >= topology_depth:
+            basic_cpu_list = [
+                cpu_index
+                for cpu, cpu_index in level_dict.items()
+                if cpu in avaliable_cpus]
+            basic_cpu_list.sort(reverse=True)
+            result = [(1, cpu_index)
+                      for cpu_index in basic_cpu_list[-smt_level:]]
+            return len(result), result
 
-    print(f'numactl --hardware output: "{numa_hardware_output}".\n' +
-          f'numactl --show output: "{numa_hardware_output}"\n' +
-          f'NUMA topology: {numa_cores}',
-          flush=True)
+        result = []
+        acc = 0
+        level_items = sorted(level_dict.items(), reverse=True)
+        level_indicies.append(None)
+        for group, group_dict in level_items:
+            level_indicies[-1] = group
+            result.append(build_cpu_index(level_indicies, group_dict))
+            acc += result[-1][0]
+        level_indicies.pop()
+        return acc, result
 
-    # cores_per_node = len(numa_cores[0])
+    num_cpus, top_level_cpu_index = build_cpu_index([], topology_index)
 
+    print(f'Usable CPUs: {(num_cpus, top_level_cpu_index)}')
+
+    def allocate_cpus(max_num_groups, min_group_size):
+        nonlocal num_cpus, top_level_cpu_index
+
+        def allocate_group():
+            nonlocal num_cpus, top_level_cpu_index
+
+            allocated = []
+            def do_allocate_group(size, level):
+                nonlocal allocated
+                if isinstance(level, list):
+                    while len(level) > 0 and \
+                        (len(allocated) < min_group_size or
+                         (len(groups) < max_num_groups and
+                            size < min_group_size)):
+                        sublevel_size, sublevel = level[-1]
+                        new_sublevel_size, new_sublevel = do_allocate_group(
+                            sublevel_size, sublevel)
+                        if new_sublevel_size <= 0:
+                            level.pop()
+                        else:
+                            level[-1] = (new_sublevel_size, new_sublevel)
+                        size += (new_sublevel_size - sublevel_size)
+
+                    return size, level
+                else:
+                    allocated.append(level)
+                    return 0, None
+            num_cpus, top_level = \
+                do_allocate_group(num_cpus, top_level_cpu_index)
+            return allocated
+
+        groups = []
+        while len(groups) < max_num_groups and num_cpus > 0:
+            groups.append(allocate_group())
+
+        return groups
+
+    # allocate GPU workers
+    gpu_run_script = get_run_script(
+        'gpu_run_script.sh', 'custom_gpu_run_script.sh')
     gpu_mems = []
     try:
         gpu_mems = [int(i) for i in subprocess.check_output(
             'nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader', shell=True).splitlines()]
     except subprocess.CalledProcessError:
-        pass
-    # num_cores = 32
-    # num_sockets = 2
-    # cores_per_socket = int(num_cores / num_sockets)
-    # gpu_mems = [16*1024,]
+        print('No GPUs detected using nvidia-smi.')
 
-    min_gpu_mem_per_worker = 6.5 * 1024
-    worker_gpu_mem_overhead = 1024
-    min_total_worker_gpu_mem = min_gpu_mem_per_worker + worker_gpu_mem_overhead
-
-    min_gpu_mem_buffer = 500
-    max_worker_per_gpu = 4
-
-    cores_per_gpu_worker = 2
-    min_cores_per_cpu_worker = 4
-    target_cores_per_cpu_worker = 64
-
-    # cores_allocated_per_node = [0 for _ in range(num_nodes)]
-    cores_avaliable = numa_cores
-
-    node = len(cores_avaliable) - 1
-    gpu_worker_configs = []
+    worker_configs = []
     for gpu_number, gpu_mem in enumerate(gpu_mems):
         mem_avail = gpu_mem - min_gpu_mem_buffer
         if mem_avail < 0:
+            print(f'No GPU memory free for GPU {gpu_number}.')
             continue
 
         num_workers = min(max_worker_per_gpu,
@@ -141,53 +204,29 @@ def main():
         mem_per_worker = int((mem_avail / num_workers) -
                              worker_gpu_mem_overhead)
 
-        for _ in range(num_workers):
-            cores_avail_in_node = None
-            next_node = node
-            while True:
-                next_node = (next_node + 1) % len(cores_avaliable)
-                cores_avail_in_node = cores_avaliable[next_node]
-                if len(cores_avail_in_node) >= cores_per_gpu_worker or next_node == node:
-                    break
-            if len(cores_avail_in_node) < cores_per_gpu_worker:
-                break
-            node = next_node
+        print(f'Allocating {num_workers} workers to GPU {gpu_number} with {mem_per_worker} MB GPU memory each.')
+        cpu_groups = allocate_cpus(num_workers, cpus_per_gpu_worker)
+        print(f'GPU {gpu_number} worker groups: {cpu_groups}')
+        for cpu_group in cpu_groups:
+            worker_configs.append(
+                [gpu_run_script, cpu_group, gpu_number, 1, mem_per_worker])
 
-            worker_cores = [
-                cores_avail_in_node.pop(-1) for i in range(cores_per_gpu_worker)]
-            gpu_worker_configs.append(
-                [[node], worker_cores, gpu_number, 1, mem_per_worker])
-
-    cpu_worker_configs = []
-    for node, cores_avail_in_node in enumerate(cores_avaliable):
-        while True:
-            cores_remaining = len(cores_avail_in_node)
-            if cores_remaining < min_cores_per_cpu_worker:
-                break
-
-            num_workers = \
-                max(1, int(round(cores_remaining / target_cores_per_cpu_worker)))
-            num_cores = int(round(cores_remaining / num_workers))
-            if cores_remaining < (num_cores + min_cores_per_cpu_worker):
-                num_cores = cores_remaining
-
-            worker_cores = [
-                cores_avail_in_node.pop(-1) for i in range(num_cores)]
-            cpu_worker_configs.append([[node], worker_cores, 0, 0, 0])
-
-    gpu_run_script = get_run_script(
-        'gpu_run_script.sh', 'custom_gpu_run_script.sh')
+    # allocate CPU workers
     cpu_run_script = get_run_script(
         'cpu_run_script.sh', 'custom_cpu_run_script.sh')
+    cpu_groups = allocate_cpus(1000000000, min_cpus_per_cpu_worker)
+    print(f'CPU groups: {cpu_groups}')
+    worker_configs.extend(([cpu_run_script, cpu_group, 0, 0, 0]
+                          for cpu_group in cpu_groups))
 
-    workers = []
-    for config in gpu_worker_configs:
-        workers.append(run_worker(gpu_run_script, project, queue,
-                       workers, config))
-
-    for config in cpu_worker_configs:
-        workers.append(run_worker(cpu_run_script, project, queue,
-                       workers, config))
+    # start workers
+    workers = [
+        run_worker(
+            i,
+            config,
+            project,
+            queue,)
+        for i, config in enumerate(worker_configs)]
 
     streams = [w.stdout for w in workers]
     stream_name_map = {id(s): f'{i}:' for i, s in enumerate(streams)}
