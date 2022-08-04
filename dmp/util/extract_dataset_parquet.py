@@ -105,6 +105,9 @@ def main():
         pyarrow.field('label_noise_sweep', pyarrow.bool_()),
         pyarrow.field('batch_size_sweep', pyarrow.bool_()),
         pyarrow.field('regularization_sweep', pyarrow.bool_()),
+        pyarrow.field('learning_rate_batch_size_sweep', pyarrow.bool_()),
+        pyarrow.field('size_adjusted_regularization_sweep', pyarrow.bool_()),
+        pyarrow.field('optimizer_sweep', pyarrow.bool_()),
 
         pyarrow.field('num_free_parameters', pyarrow.uint64()),
         pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),

@@ -1,35 +1,40 @@
 update experiment_ x
 set primary_sweep = (
-    (core_shape or secondary_shape) 
+    (core_shape or secondary_shape)
+    and secondary_depth
+    and (core_dataset or secondary_dataset or tertiary_dataset)
     and core_epochs
     and core_regularization
     and core_label_noise
     and core_learning_rate
     and core_batch_size
+    and core_optimizer
 ),
    "300_epoch_sweep" = (secondary_epochs),
    "30k_epoch_sweep" = (tertiary_epochs),
    "learning_rate_sweep" = (
        core_shape 
        and core_dataset
---        and (core_depth or secondary_depth)
+       and (secondary_depth)
        and core_size 
        and core_epochs 
        and core_regularization 
        and core_label_noise 
-       and (core_learning_rate or secondary_learning_rate or tertiary_learning_rate)
+       and tertiary_learning_rate
        and core_batch_size
+       and core_optimizer
    ),
    "label_noise_sweep" = (
        core_shape 
        and core_dataset
---        and (core_depth or secondary_depth)
+       and (secondary_depth)
        and core_size 
        and core_epochs 
        and core_regularization 
        and (core_label_noise or secondary_label_noise)
        and (core_learning_rate or secondary_learning_rate)
        and core_batch_size
+       and core_optimizer
    ),
    "batch_size_sweep" = (
        rectangle_shape 
@@ -40,7 +45,8 @@ set primary_sweep = (
        and core_regularization 
        and (core_label_noise)
        and (core_learning_rate)
-       and (core_batch_size or secondary_batch_size)
+       and (secondary_batch_size)
+       and core_optimizer
    ),
    "regularization_sweep" = (
        rectangle_shape 
@@ -52,7 +58,35 @@ set primary_sweep = (
        and (core_label_noise)
        and (core_learning_rate)
        and (core_batch_size)
-   )
+       and core_optimizer
+   ),
+   "learning_rate_batch_size_sweep" = (
+        rectangle_shape
+        and core_epochs
+        and (core_label_noise)
+        and (core_dataset or secondary_dataset)
+        and (reduced_core_depth_2)
+        and (core_size)
+        and (batch_learning_rate_x_batch_size or core_regularization)
+        and lr_batch_size_learning_rate
+        and secondary_batch_size
+        and core_optimizer
+   ),
+   "optimizer_sweep" = (
+        rectangle_shape
+        and core_epochs
+        and core_regularization
+        and (core_label_noise)
+        and (core_dataset or secondary_dataset or tertiary_dataset)
+        and (reduced_core_depth)
+        and (core_size)
+        and (batch_optimizer_1
+            or (core_optimizer 
+                and (lr_batch_size_learning_rate)
+                and (secondary_batch_size)
+            ))
+   ),
+   "size_adjusted_regularization_sweep" = batch_size_adjusted_regularization_sweep
 from
 (
     select 
@@ -85,9 +119,10 @@ from
             '505_tecator'
             ,'294_satellite_images'
         )) tertiary_dataset,
-     ("depth".integer_value in (2,3,4,5,7,8,9,10)) core_depth,
-    ("depth".integer_value in (12,14,16,18,20)) secondary_depth,
-    ("depth".integer_value in (6)) tertiary_depth,
+        ("depth".integer_value in (2,3,4,5,6)) reduced_core_depth,
+        ("depth".integer_value in (2,3,4,5,6,7)) reduced_core_depth_2,
+     ("depth".integer_value in (2,3,4,5,6,7,8,9,10)) core_depth,
+    ("depth".integer_value in (2,3,4,5,7,8,9,10,12,14,16,18,20)) secondary_depth,
     ("size".integer_value in (32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
                      32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
                      8388608, 16777216)) core_size,
@@ -99,13 +134,19 @@ from
     ("label_noise".real_value = 0.0::real) core_label_noise,
     ("label_noise".real_value > 0.0::real) secondary_label_noise,
     ("batch_size".integer_value = 256) core_batch_size,
-    ("batch_size".integer_value <> 256) secondary_batch_size,
+    ("batch_size".integer_value IN (32, 64, 128, 256, 512, 1024)) secondary_batch_size,
     ("learning_rate".real_value = 0.0001::real) core_learning_rate,
     ("learning_rate".real_value = 0.001::real) secondary_learning_rate,
-    ("learning_rate".real_value not in (0.0001::real, 0.0001::real)) tertiary_learning_rate,
+    ("learning_rate".real_value in (0.01::real, 0.001::real, 0.0001::real, 0.00001::real)) tertiary_learning_rate,
+    ("learning_rate".real_value in (2.5e-05::real, 5e-05::real, 0.0001::real, 0.0002::real, 0.0004::real, 0.0008::real)) lr_batch_size_learning_rate,    
     ("epochs".integer_value = 3000) core_epochs,
     ("epochs".integer_value = 300) secondary_epochs,
     ("epochs".integer_value = 30000) tertiary_epochs,
+    ("optimizer".string_value in ('adam')) core_optimizer,
+    ("optimizer".string_value in ('adam', 'RMSProp', 'SGD')) secondary_optimizer,
+    ("batch".string_value = 'learning_rate_x_batch_size') batch_learning_rate_x_batch_size,
+    ("batch".string_value = 'optimizer_1') batch_optimizer_1,
+    ("batch".string_value in ('l2_group_1', 'l1_group_1')) batch_size_adjusted_regularization_sweep,
         e.*
     from
         experiment_ e
@@ -121,6 +162,7 @@ from
         right join parameter_ "shape" on (e.experiment_parameters @> array["shape".id] and "shape".kind = 'shape')
         right join parameter_ "depth" on (e.experiment_parameters @> array["depth".id] and "depth".kind = 'depth')
         right join parameter_ "size" on (e.experiment_parameters @> array["size".id] and "size".kind = 'size')
+        right join parameter_ "optimizer" on (e.experiment_parameters @> array["optimizer".id] and "optimizer".kind = 'optimizer')
     where 
         batch.string_value in (
             'fixed_3k_1',
@@ -128,7 +170,11 @@ from
             'l1_group_0',
             'l2_group_0',
             'fixed_300_1',
-            'fixed_30k_1'
+            'fixed_30k_1',
+            'learning_rate_x_batch_size',
+            'optimizer_1',
+            'l2_group_1',
+            'l1_group_1'
         )
 ) e
 where
@@ -142,6 +188,9 @@ alter table experiment_ add column "learning_rate_sweep" bool not null default F
 alter table experiment_ add column "label_noise_sweep" bool not null default False;
 alter table experiment_ add column "batch_size_sweep" bool not null default False;
 alter table experiment_ add column "regularization_sweep" bool not null default False;
+alter table experiment_ add column "learning_rate_batch_size_sweep" bool not null default False;
+alter table experiment_ add column "optimizer_sweep" bool not null default False;
+alter table experiment_ add column "size_adjusted_regularization_sweep" bool not null default False;
 
 
 
@@ -153,6 +202,9 @@ alter table experiment_summary_ add column "learning_rate_sweep" bool not null d
 alter table experiment_summary_ add column "label_noise_sweep" bool not null default False;
 alter table experiment_summary_ add column "batch_size_sweep" bool not null default False;
 alter table experiment_summary_ add column "regularization_sweep" bool not null default False;
+alter table experiment_summary_ add column "learning_rate_batch_size_sweep" bool not null default False;
+alter table experiment_summary_ add column "optimizer_sweep" bool not null default False;
+alter table experiment_summary_ add column "size_adjusted_regularization_sweep" bool not null default False;
 
 update experiment_summary_ s set 
     "primary_sweep" = e."primary_sweep",
@@ -161,7 +213,10 @@ update experiment_summary_ s set
     "learning_rate_sweep" = e."learning_rate_sweep",
     "label_noise_sweep" = e."label_noise_sweep",
     "batch_size_sweep" = e."batch_size_sweep",
-    "regularization_sweep" = e."regularization_sweep"
+    "regularization_sweep" = e."regularization_sweep",
+    "learning_rate_batch_size_sweep" = e."learning_rate_batch_size_sweep",
+    "optimizer_sweep" = e."optimizer_sweep",
+    "size_adjusted_regularization_sweep" = e."size_adjusted_regularization_sweep"
 from experiment_ e
 where e.experiment_id = s.experiment_id
 AND
@@ -171,7 +226,11 @@ AND
     s.learning_rate_sweep <> e.learning_rate_sweep OR
     s.label_noise_sweep <> e.label_noise_sweep OR
     s.batch_size_sweep <> e.batch_size_sweep OR
-    s.regularization_sweep <> e.regularization_sweep);
+    s.regularization_sweep <> e.regularization_sweep OR
+    s.learning_rate_batch_size_sweep <> e.learning_rate_batch_size_sweep OR
+    s.optimizer_sweep <> e.optimizer_sweep OR
+    s.size_adjusted_regularization_sweep <> e.size_adjusted_regularization_sweep
+    );
 
 
 select 
