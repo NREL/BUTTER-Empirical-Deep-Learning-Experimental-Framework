@@ -20,7 +20,7 @@ The BUTTER Empirical Framework enables researchers to run high volumes of comput
 + If relevant, also cite our [BUTTER Dataset](https://data.openei.org/submissions/5708) generated using this framework:
     Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, & Lunacek, Monte. *BUTTER - Empirical Deep Learning Dataset.* United States. https://data.openei.org/submissions/5708
 
-+ Examples of plotting data from the dataset are available [here](https://github.nrel.gov/DMP/BUTTER-Neurips2022-Dataset-Paper).
++ Examples of plotting data from the dataset are available [here](https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results).
 
 
 ## The BUTTER Empirical Deep Learning Dataset

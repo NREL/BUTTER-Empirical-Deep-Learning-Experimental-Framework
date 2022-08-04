@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import collections as collections
+import collections.abc
 from dataclasses import dataclass
 import os
 import platform
@@ -74,9 +75,9 @@ class Task:
                 extracted[p] = target
                 return
 
-            if isinstance(target, collections.Mapping):
+            if isinstance(target, collections.abc.Mapping):
                 target = target.items()
-            elif isinstance(target, collections.Iterable):
+            elif isinstance(target, collections.abc.Iterable):
                 raise NotImplementedError()
             else:
                 target = vars(target).items()
