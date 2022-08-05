@@ -14,8 +14,9 @@ import numpy
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
 import sys
 
+
 def main():
-    sweep = None
+    sweep = 'butter'
     if len(sys.argv) >= 2:
         sweep = str(sys.argv[1])
 
@@ -24,14 +25,9 @@ def main():
     with CursorManager(credentials) as cursor:
         parameter_map = PostgresParameterMap(cursor)
 
-    # base_path = '/projects/dmpapps/jperrsau/datasets/2022_05_20_fixed_3k_1/'
-    # base_path = '/home/ctripp/scratch/'
     dataset_path = '../experiment/'
     if sweep is not None:
         dataset_path = f'../{sweep}/'
-    # file_name = os.path.join(base_path, 'fixed_3k_1.pq')
-
-    # fixed_3k_1_meta.csv.gz
 
     fixed_parameters = [
         # ('batch', 'fixed_3k_1'),
@@ -40,27 +36,35 @@ def main():
     parameter_columns = [
         pyarrow.field('activation', pyarrow.string(), nullable=True),
         pyarrow.field('activity_regularizer', pyarrow.string(), nullable=True),
-        pyarrow.field('activity_regularizer_l2', pyarrow.string(), nullable=True),
-        pyarrow.field('activity_regularizer_type', pyarrow.string(), nullable=True),
+        pyarrow.field('activity_regularizer_l2',
+                      pyarrow.string(), nullable=True),
+        pyarrow.field('activity_regularizer_type',
+                      pyarrow.string(), nullable=True),
         pyarrow.field('batch', pyarrow.string(), nullable=True),
         pyarrow.field('batch_size', pyarrow.uint32(), nullable=True),
         pyarrow.field('bias_regularizer', pyarrow.string(), nullable=True),
         pyarrow.field('bias_regularizer_l2', pyarrow.string(), nullable=True),
-        pyarrow.field('bias_regularizer_type', pyarrow.string(), nullable=True),
+        pyarrow.field('bias_regularizer_type',
+                      pyarrow.string(), nullable=True),
         pyarrow.field('dataset', pyarrow.string(), nullable=True),
         pyarrow.field('depth', pyarrow.uint8(), nullable=True),
         pyarrow.field('early_stopping', pyarrow.string(), nullable=True),
         pyarrow.field('epochs', pyarrow.uint32(), nullable=True),
         pyarrow.field('input_activation', pyarrow.string(), nullable=True),
         pyarrow.field('kernel_regularizer', pyarrow.string(), nullable=True),
-        pyarrow.field('kernel_regularizer_l1', pyarrow.float32(), nullable=True),
-        pyarrow.field('kernel_regularizer_l2', pyarrow.float32(), nullable=True),
-        pyarrow.field('kernel_regularizer_type', pyarrow.string(), nullable=True),
+        pyarrow.field('kernel_regularizer_l1',
+                      pyarrow.float32(), nullable=True),
+        pyarrow.field('kernel_regularizer_l2',
+                      pyarrow.float32(), nullable=True),
+        pyarrow.field('kernel_regularizer_type',
+                      pyarrow.string(), nullable=True),
         pyarrow.field('label_noise', pyarrow.float32(), nullable=True),
         pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
-        pyarrow.field('optimizer.config.momentum', pyarrow.string(), nullable=True),
-        pyarrow.field('optimizer.config.nesterov', pyarrow.string(), nullable=True),
+        pyarrow.field('optimizer.config.momentum',
+                      pyarrow.string(), nullable=True),
+        pyarrow.field('optimizer.config.nesterov',
+                      pyarrow.string(), nullable=True),
         pyarrow.field('output_activation', pyarrow.string(), nullable=True),
         pyarrow.field('python_version', pyarrow.string(), nullable=True),
         pyarrow.field('run_config.shuffle', pyarrow.string(), nullable=True),
@@ -84,17 +88,30 @@ def main():
         'depth',
     ]
 
+    if sweep is None:
+        partition_cols.extend([
+            'primary_sweep',
+            '300_epoch_sweep',
+            '30k_epoch_sweep',
+            'learning_rate_sweep',
+            'label_noise_sweep',
+            'batch_size_sweep',
+            'regularization_sweep',
+            'learning_rate_batch_size_sweep',
+            'size_adjusted_regularization_sweep',
+            'optimizer_sweep', ])
+
     data_columns = [
         pyarrow.field('run_id', pyarrow.string()),
         pyarrow.field('experiment_id', pyarrow.uint32()),
 
-        pyarrow.field('primary_sweep',pyarrow.bool_()),
-        pyarrow.field('300_epoch_sweep',pyarrow.bool_()),
-        pyarrow.field('30k_epoch_sweep',pyarrow.bool_()),
-        pyarrow.field('learning_rate_sweep',pyarrow.bool_()),
-        pyarrow.field('label_noise_sweep',pyarrow.bool_()),
-        pyarrow.field('batch_size_sweep',pyarrow.bool_()),
-        pyarrow.field('regularization_sweep',pyarrow.bool_()),
+        pyarrow.field('primary_sweep', pyarrow.bool_()),
+        pyarrow.field('300_epoch_sweep', pyarrow.bool_()),
+        pyarrow.field('30k_epoch_sweep', pyarrow.bool_()),
+        pyarrow.field('learning_rate_sweep', pyarrow.bool_()),
+        pyarrow.field('label_noise_sweep', pyarrow.bool_()),
+        pyarrow.field('batch_size_sweep', pyarrow.bool_()),
+        pyarrow.field('regularization_sweep', pyarrow.bool_()),
         pyarrow.field('learning_rate_batch_size_sweep', pyarrow.bool_()),
         pyarrow.field('size_adjusted_regularization_sweep', pyarrow.bool_()),
         pyarrow.field('optimizer_sweep', pyarrow.bool_()),
@@ -120,60 +137,74 @@ def main():
         pyarrow.field('train_loss', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('test_accuracy', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('train_accuracy', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_mean_squared_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('train_mean_squared_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_mean_absolute_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('train_mean_absolute_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_root_mean_squared_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('train_root_mean_squared_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_mean_squared_logarithmic_error', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('train_mean_squared_logarithmic_error', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_mean_squared_error',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_mean_squared_error',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_mean_absolute_error',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_mean_absolute_error',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_root_mean_squared_error',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_root_mean_squared_error',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_mean_squared_logarithmic_error',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_mean_squared_logarithmic_error',
+                      pyarrow.list_(pyarrow.float32())),
         pyarrow.field('test_hinge', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('train_hinge', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('test_squared_hinge', pyarrow.list_(pyarrow.float32())),
         pyarrow.field('train_squared_hinge', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_cosine_similarity', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('train_cosine_similarity', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_kullback_leibler_divergence', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('train_kullback_leibler_divergence', pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_cosine_similarity',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_cosine_similarity',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('test_kullback_leibler_divergence',
+                      pyarrow.list_(pyarrow.float32())),
+        pyarrow.field('train_kullback_leibler_divergence',
+                      pyarrow.list_(pyarrow.float32())),
 
     ]
 
     column_name_mapping = {
-        'val_loss' : 'test_loss',
-        'loss' : 'train_loss',
-        'val_accuracy' : 'test_accuracy',
-        'accuracy' : 'train_accuracy',
-        'val_mean_squared_error' : 'test_mean_squared_error',
-        'mean_squared_error' : 'train_mean_squared_error',
-        'val_mean_absolute_error' : 'test_mean_absolute_error',
-        'mean_absolute_error' : 'train_mean_absolute_error',
-        'val_root_mean_squared_error' : 'test_root_mean_squared_error',
-        'root_mean_squared_error' : 'train_root_mean_squared_error',
-        'val_mean_squared_logarithmic_error' : 'test_mean_squared_logarithmic_error',
-        'mean_squared_logarithmic_error' : 'train_mean_squared_logarithmic_error',
-        'val_hinge' : 'test_hinge',
-        'hinge' : 'train_hinge',
-        'val_squared_hinge' : 'test_squared_hinge',
-        'squared_hinge' : 'train_squared_hinge',
-        'val_cosine_similarity' : 'test_cosine_similarity',
-        'cosine_similarity' : 'train_cosine_similarity',
-        'val_kullback_leibler_divergence' : 'test_kullback_leibler_divergence',
-        'kullback_leibler_divergence' : 'train_kullback_leibler_divergence',
-        'activity_regularizer.l2' : 'activity_regularizer_l2',
-        'activity_regularizer.type':'activity_regularizer_type',
-        'bias_regularizer.l2' : 'bias_regularizer_l2',
-        'bias_regularizer.type' : 'bias_regularizer_type',
-        'kernel_regularizer.l1' : 'kernel_regularizer_l1',
-        'kernel_regularizer.l2' : 'kernel_regularizer_l2',
-        'kernel_regularizer.type' : 'kernel_regularizer_type',
-        'optimizer.config.momentum' : 'optimizer_config_momentum',
-        'optimizer.config.nesterov' : 'nesterov',
-        'run_config.shuffle' : 'run_config_shuffle',
+        'val_loss': 'test_loss',
+        'loss': 'train_loss',
+        'val_accuracy': 'test_accuracy',
+        'accuracy': 'train_accuracy',
+        'val_mean_squared_error': 'test_mean_squared_error',
+        'mean_squared_error': 'train_mean_squared_error',
+        'val_mean_absolute_error': 'test_mean_absolute_error',
+        'mean_absolute_error': 'train_mean_absolute_error',
+        'val_root_mean_squared_error': 'test_root_mean_squared_error',
+        'root_mean_squared_error': 'train_root_mean_squared_error',
+        'val_mean_squared_logarithmic_error': 'test_mean_squared_logarithmic_error',
+        'mean_squared_logarithmic_error': 'train_mean_squared_logarithmic_error',
+        'val_hinge': 'test_hinge',
+        'hinge': 'train_hinge',
+        'val_squared_hinge': 'test_squared_hinge',
+        'squared_hinge': 'train_squared_hinge',
+        'val_cosine_similarity': 'test_cosine_similarity',
+        'cosine_similarity': 'train_cosine_similarity',
+        'val_kullback_leibler_divergence': 'test_kullback_leibler_divergence',
+        'kullback_leibler_divergence': 'train_kullback_leibler_divergence',
+        'activity_regularizer.l2': 'activity_regularizer_l2',
+        'activity_regularizer.type': 'activity_regularizer_type',
+        'bias_regularizer.l2': 'bias_regularizer_l2',
+        'bias_regularizer.type': 'bias_regularizer_type',
+        'kernel_regularizer.l1': 'kernel_regularizer_l1',
+        'kernel_regularizer.l2': 'kernel_regularizer_l2',
+        'kernel_regularizer.type': 'kernel_regularizer_type',
+        'optimizer.config.momentum': 'optimizer_config_momentum',
+        'optimizer.config.nesterov': 'nesterov',
+        'run_config.shuffle': 'run_config_shuffle',
     }
 
-    inverse_column_name_mapping = {v: k for k, v in column_name_mapping.items()}
-    partition_cols_source = [inverse_column_name_mapping.get(c,c) for c in partition_cols]
+    inverse_column_name_mapping = {
+        v: k for k, v in column_name_mapping.items()}
+    partition_cols_source = [
+        inverse_column_name_mapping.get(c, c) for c in partition_cols]
 
     parameter_column_names = [f.name for f in parameter_columns]
     parameter_column_names_set = set(parameter_column_names)
@@ -200,7 +231,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 64
+    chunk_size = 128
     chunks = []
     with CursorManager(credentials) as cursor:
 
@@ -214,23 +245,13 @@ def main():
             [sql.SQL(' left join parameter_ {} on ({}.kind = {} and r.run_parameters @> array[{}.id]) ').format(
                 sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols_source])
 
-        where = False
+        q += sql.SQL(' WHERE ')
+        q += sql.SQL('EXISTS (SELECT * FROM experiment_ e WHERE e.experiment_id = r.experiment_id AND e.{}) ').format(sql.Identifier(sweep))
 
         if len(fixed_parameters) > 0:
-            where = True
-            q += sql.SQL(' WHERE ')
-
+            q += sql.SQL(' AND ')
             q += sql.SQL(' r.run_parameters @> array[{}]::smallint[] ').format(
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
-
-        if sweep is not None:
-            if where:
-                q += sql.SQL(' AND ')
-            else:
-                where = True
-                q += sql.SQL(' WHERE ')
-
-            q += sql.SQL('EXISTS (SELECT * FROM experiment_ e WHERE e.experiment_id = r.experiment_id AND e.{}) ').format(sql.Identifier(sweep))
 
         q += sql.SQL(' ORDER BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
@@ -260,7 +281,7 @@ def main():
 
         q = sql.SQL('SELECT run_parameters, ')
 
-        q += sql.SQL(', ').join([sql.Identifier(inverse_column_name_mapping.get(c,c))
+        q += sql.SQL(', ').join([sql.Identifier(inverse_column_name_mapping.get(c, c))
                                 for c in data_column_names])
         q += sql.SQL(' FROM ( ')
         q += sql.SQL(' SELECT r.*, e.num_free_parameters num_free_parameters, e.widths widths, e.network_structure network_structure, EXTRACT(epoch FROM s.start_time) start_time, EXTRACT(epoch FROM s.update_time) update_time, d.command command, ')

@@ -180,7 +180,11 @@ from
 where
     x.ctid = e.experiment_ctid
 ;
+
+update experiment_ set butter = ("300_epoch_sweep" OR "30k_epoch_sweep" OR batch_size_sweep OR label_noise_sweep OR learning_rate_batch_size_sweep OR learning_rate_sweep OR optimizer_sweep OR primary_sweep OR regularization_sweep OR size_adjusted_regularization_sweep);
+
     
+alter table experiment_ add column butter boolean default False;
 alter table experiment_ add column "primary_sweep" bool not null default False;
 alter table experiment_ add column "300_epoch_sweep" bool not null default False;
 alter table experiment_ add column "30k_epoch_sweep" bool not null default False;
@@ -194,7 +198,7 @@ alter table experiment_ add column "size_adjusted_regularization_sweep" bool not
 
 
 
-
+alter table experiment_summary_ add column butter boolean default False;
 alter table experiment_summary_ add column "primary_sweep" bool not null default False;
 alter table experiment_summary_ add column "300_epoch_sweep" bool not null default False;
 alter table experiment_summary_ add column "30k_epoch_sweep" bool not null default False;
@@ -207,6 +211,7 @@ alter table experiment_summary_ add column "optimizer_sweep" bool not null defau
 alter table experiment_summary_ add column "size_adjusted_regularization_sweep" bool not null default False;
 
 update experiment_summary_ s set 
+    "butter" = e."butter",
     "primary_sweep" = e."primary_sweep",
     "300_epoch_sweep" = e."300_epoch_sweep",
     "30k_epoch_sweep" = e."30k_epoch_sweep",
@@ -220,7 +225,9 @@ update experiment_summary_ s set
 from experiment_ e
 where e.experiment_id = s.experiment_id
 AND
-(    s.primary_sweep <> e.primary_sweep OR
+(  
+    s.butter <> e.butter OR
+    s.primary_sweep <> e.primary_sweep OR
     s."300_epoch_sweep" <> e."300_epoch_sweep" OR
     s."30k_epoch_sweep" <> e."30k_epoch_sweep" OR
     s.learning_rate_sweep <> e.learning_rate_sweep OR

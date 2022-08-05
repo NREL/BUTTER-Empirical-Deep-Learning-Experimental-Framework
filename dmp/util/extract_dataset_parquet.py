@@ -17,7 +17,7 @@ import sys
 
 def main():
 
-    sweep = None
+    sweep = 'butter'
     if len(sys.argv) >= 2:
         sweep = str(sys.argv[1])
 
@@ -26,15 +26,9 @@ def main():
     with CursorManager(credentials) as cursor:
         parameter_map = PostgresParameterMap(cursor)
 
-    # base_path = '/projects/dmpapps/jperrsau/datasets/2022_05_20_fixed_3k_1/'
-    # base_path = '/home/ctripp/scratch/'
     dataset_path = '../experiment_summary/'
     if sweep is not None:
         dataset_path = f'../{sweep}_summary/'
-
-    # file_name = os.path.join(base_path, 'fixed_3k_1.pq')
-
-    # fixed_3k_1_meta.csv.gz
 
     fixed_parameters = [
         # ('batch', 'fixed_3k_1'),
@@ -97,17 +91,16 @@ def main():
 
     if sweep is None:
         partition_cols.extend([
-        'primary_sweep',
-        '300_epoch_sweep',
-        '30k_epoch_sweep',
-        'learning_rate_sweep',
-        'label_noise_sweep',
-        'batch_size_sweep',
-        'regularization_sweep',
-        'learning_rate_batch_size_sweep',
-        'size_adjusted_regularization_sweep',
-        'optimizer_sweep',])
-        
+            'primary_sweep',
+            '300_epoch_sweep',
+            '30k_epoch_sweep',
+            'learning_rate_sweep',
+            'label_noise_sweep',
+            'batch_size_sweep',
+            'regularization_sweep',
+            'learning_rate_batch_size_sweep',
+            'size_adjusted_regularization_sweep',
+            'optimizer_sweep', ])
 
     data_columns = [
         pyarrow.field('experiment_id', pyarrow.uint32()),
@@ -178,101 +171,101 @@ def main():
         pyarrow.field('train_kullback_leibler_divergence_median',
                       pyarrow.list_(pyarrow.float32())),
 
-        pyarrow.field('val_loss_min_min_epoch',
+        pyarrow.field('test_loss_min_epoch_min',
                       pyarrow.uint32(), nullable=True),
-        pyarrow.field('val_loss_min_max_epoch',
+        pyarrow.field('test_loss_min_epoch_max',
                       pyarrow.uint32(), nullable=True),
-        pyarrow.field('val_loss_min_avg_epoch',
+        pyarrow.field('test_loss_min_epoch_avg',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_epoch_q1',
+        pyarrow.field('test_loss_min_epoch_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_epoch_median',
+        pyarrow.field('test_loss_min_epoch_median',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_epoch_q3',
+        pyarrow.field('test_loss_min_epoch_q3',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_min_value',
+        pyarrow.field('test_loss_min_value_min',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_max_value',
+        pyarrow.field('test_loss_min_value_max',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_avg_value',
+        pyarrow.field('test_loss_min_value_avg',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_value_q1',
+        pyarrow.field('test_loss_min_value_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_value_median',
+        pyarrow.field('test_loss_min_value_median',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_loss_min_value_q3',
+        pyarrow.field('test_loss_min_value_q3',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_min_epoch',
+        pyarrow.field('test_accuracy_max_epoch_min',
                       pyarrow.uint32(), nullable=True),
-        pyarrow.field('val_accuracy_max_max_epoch',
+        pyarrow.field('test_accuracy_max_epoch_max',
                       pyarrow.uint32(), nullable=True),
-        pyarrow.field('val_accuracy_max_avg_epoch',
+        pyarrow.field('test_accuracy_max_epoch_avg',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_epoch_q1',
+        pyarrow.field('test_accuracy_max_epoch_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_epoch_median',
+        pyarrow.field('test_accuracy_max_epoch_median',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_epoch_q3',
+        pyarrow.field('test_accuracy_max_epoch_q3',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_min_value',
+        pyarrow.field('test_accuracy_max_value_min',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_max_value',
+        pyarrow.field('test_accuracy_max_value_max',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_avg_value',
+        pyarrow.field('test_accuracy_max_value_avg',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_value_q1',
+        pyarrow.field('test_accuracy_max_value_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_value_median',
+        pyarrow.field('test_accuracy_max_value_median',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_accuracy_max_value_q3',
+        pyarrow.field('test_accuracy_max_value_q3',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_min_epoch',
+        pyarrow.field('test_mean_squared_error_min_epoch_min',
                       pyarrow.uint32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_max_epoch',
+        pyarrow.field('test_mean_squared_error_min_epoch_max',
                       pyarrow.uint32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_avg_epoch',
+        pyarrow.field('test_mean_squared_error_min_epoch_avg',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_epoch_q1',
+        pyarrow.field('test_mean_squared_error_min_epoch_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_epoch_median',
+        pyarrow.field('test_mean_squared_error_min_epoch_median',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_epoch_q3',
+        pyarrow.field('test_mean_squared_error_min_epoch_q3',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_min_value',
+        pyarrow.field('test_mean_squared_error_min_value_min',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_max_value',
+        pyarrow.field('test_mean_squared_error_min_value_max',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_avg_value',
+        pyarrow.field('test_mean_squared_error_min_value_avg',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_value_q1',
+        pyarrow.field('test_mean_squared_error_min_value_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_value_median',
+        pyarrow.field('test_mean_squared_error_min_value_median',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_mean_squared_error_min_value_q3',
+        pyarrow.field('test_mean_squared_error_min_value_q3',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_min_epoch',
+        pyarrow.field('test_kullback_leibler_divergence_min_epoch_min',
                       pyarrow.uint32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_max_epoch',
+        pyarrow.field('test_kullback_leibler_divergence_min_epoch_max',
                       pyarrow.uint32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_avg_epoch',
+        pyarrow.field('test_kullback_leibler_divergence_min_epoch_avg',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_epoch_q1',
+        pyarrow.field('test_kullback_leibler_divergence_min_epoch_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_epoch_median',
+        pyarrow.field('test_kullback_leibler_divergence_min_epoch_median',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_epoch_q3',
+        pyarrow.field('test_kullback_leibler_divergence_min_epoch_q3',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_min_value',
+        pyarrow.field('test_kullback_leibler_divergence_min_value_min',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_max_value',
+        pyarrow.field('test_kullback_leibler_divergence_min_value_max',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_avg_value',
+        pyarrow.field('test_kullback_leibler_divergence_min_value_avg',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_value_q1',
+        pyarrow.field('test_kullback_leibler_divergence_min_value_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_value_median',
+        pyarrow.field('test_kullback_leibler_divergence_min_value_median',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('val_kullback_leibler_divergence_min_value_q3',
+        pyarrow.field('test_kullback_leibler_divergence_min_value_q3',
                       pyarrow.float32(), nullable=True),
     ]
 
@@ -318,51 +311,51 @@ def main():
         'optimizer.config.nesterov': 'nesterov',
         'run_config.shuffle': 'run_config_shuffle',
 
-        'val_loss_min_min_epoch': 'test_loss_min_min_epoch',
-        'val_loss_min_max_epoch': 'test_loss_min_max_epoch',
-        'val_loss_min_avg_epoch': 'test_loss_min_avg_epoch',
+        'val_loss_min_epoch_min': 'test_loss_min_epoch_min',
+        'val_loss_min_epoch_max': 'test_loss_min_epoch_max',
+        'val_loss_min_epoch_avg': 'test_loss_min_epoch_avg',
         'val_loss_min_epoch_q1': 'test_loss_min_epoch_q1',
         'val_loss_min_epoch_median': 'test_loss_min_epoch_median',
         'val_loss_min_epoch_q3': 'test_loss_min_epoch_q3',
-        'val_loss_min_min_value': 'test_loss_min_min_value',
-        'val_loss_min_max_value': 'test_loss_min_max_value',
-        'val_loss_min_avg_value': 'test_loss_min_avg_value',
+        'val_loss_min_value_min': 'test_loss_min_value_min',
+        'val_loss_min_value_max': 'test_loss_min_value_max',
+        'val_loss_min_value_avg': 'test_loss_min_value_avg',
         'val_loss_min_value_q1': 'test_loss_min_value_q1',
         'val_loss_min_value_median': 'test_loss_min_value_median',
         'val_loss_min_value_q3': 'test_loss_min_value_q3',
-        'val_accuracy_max_min_epoch': 'test_accuracy_max_min_epoch',
-        'val_accuracy_max_max_epoch': 'test_accuracy_max_max_epoch',
-        'val_accuracy_max_avg_epoch': 'test_accuracy_max_avg_epoch',
+        'val_accuracy_max_epoch_min': 'test_accuracy_max_epoch_min',
+        'val_accuracy_max_epoch_max': 'test_accuracy_max_epoch_max',
+        'val_accuracy_max_epoch_avg': 'test_accuracy_max_epoch_avg',
         'val_accuracy_max_epoch_q1': 'test_accuracy_max_epoch_q1',
         'val_accuracy_max_epoch_median': 'test_accuracy_max_epoch_median',
         'val_accuracy_max_epoch_q3': 'test_accuracy_max_epoch_q3',
-        'val_accuracy_max_min_value': 'test_accuracy_max_min_value',
-        'val_accuracy_max_max_value': 'test_accuracy_max_max_value',
-        'val_accuracy_max_avg_value': 'test_accuracy_max_avg_value',
+        'val_accuracy_max_value_min': 'test_accuracy_max_value_min',
+        'val_accuracy_max_value_max': 'test_accuracy_max_value_max',
+        'val_accuracy_max_value_avg': 'test_accuracy_max_value_avg',
         'val_accuracy_max_value_q1': 'test_accuracy_max_value_q1',
         'val_accuracy_max_value_median': 'test_accuracy_max_value_median',
         'val_accuracy_max_value_q3': 'test_accuracy_max_value_q3',
-        'val_mean_squared_error_min_min_epoch': 'test_mean_squared_error_min_min_epoch',
-        'val_mean_squared_error_min_max_epoch': 'test_mean_squared_error_min_max_epoch',
-        'val_mean_squared_error_min_avg_epoch': 'test_mean_squared_error_min_avg_epoch',
+        'val_mean_squared_error_min_epoch_min': 'test_mean_squared_error_min_epoch_min',
+        'val_mean_squared_error_min_epoch_max': 'test_mean_squared_error_min_epoch_max',
+        'val_mean_squared_error_min_epoch_avg': 'test_mean_squared_error_min_epoch_avg',
         'val_mean_squared_error_min_epoch_q1': 'test_mean_squared_error_min_epoch_q1',
         'val_mean_squared_error_min_epoch_median': 'test_mean_squared_error_min_epoch_median',
         'val_mean_squared_error_min_epoch_q3': 'test_mean_squared_error_min_epoch_q3',
-        'val_mean_squared_error_min_min_value': 'test_mean_squared_error_min_min_value',
-        'val_mean_squared_error_min_max_value': 'test_mean_squared_error_min_max_value',
-        'val_mean_squared_error_min_avg_value': 'test_mean_squared_error_min_avg_value',
+        'val_mean_squared_error_min_value_min': 'test_mean_squared_error_min_value_min',
+        'val_mean_squared_error_min_value_max': 'test_mean_squared_error_min_value_max',
+        'val_mean_squared_error_min_value_avg': 'test_mean_squared_error_min_value_avg',
         'val_mean_squared_error_min_value_q1': 'test_mean_squared_error_min_value_q1',
         'val_mean_squared_error_min_value_median': 'test_mean_squared_error_min_value_median',
         'val_mean_squared_error_min_value_q3': 'test_mean_squared_error_min_value_q3',
-        'val_kullback_leibler_divergence_min_min_epoch': 'test_kullback_leibler_divergence_min_min_epoch',
-        'val_kullback_leibler_divergence_min_max_epoch': 'test_kullback_leibler_divergence_min_max_epoch',
-        'val_kullback_leibler_divergence_min_avg_epoch': 'test_kullback_leibler_divergence_min_avg_epoch',
+        'val_kullback_leibler_divergence_min_epoch_min': 'test_kullback_leibler_divergence_min_epoch_min',
+        'val_kullback_leibler_divergence_min_epoch_max': 'test_kullback_leibler_divergence_min_epoch_max',
+        'val_kullback_leibler_divergence_min_epoch_avg': 'test_kullback_leibler_divergence_min_epoch_avg',
         'val_kullback_leibler_divergence_min_epoch_q1': 'test_kullback_leibler_divergence_min_epoch_q1',
         'val_kullback_leibler_divergence_min_epoch_median': 'test_kullback_leibler_divergence_min_epoch_median',
         'val_kullback_leibler_divergence_min_epoch_q3': 'test_kullback_leibler_divergence_min_epoch_q3',
-        'val_kullback_leibler_divergence_min_min_value': 'test_kullback_leibler_divergence_min_min_value',
-        'val_kullback_leibler_divergence_min_max_value': 'test_kullback_leibler_divergence_min_max_value',
-        'val_kullback_leibler_divergence_min_avg_value': 'test_kullback_leibler_divergence_min_avg_value',
+        'val_kullback_leibler_divergence_min_value_min': 'test_kullback_leibler_divergence_min_value_min',
+        'val_kullback_leibler_divergence_min_value_max': 'test_kullback_leibler_divergence_min_value_max',
+        'val_kullback_leibler_divergence_min_value_avg': 'test_kullback_leibler_divergence_min_value_avg',
         'val_kullback_leibler_divergence_min_value_q1': 'test_kullback_leibler_divergence_min_value_q1',
         'val_kullback_leibler_divergence_min_value_median': 'test_kullback_leibler_divergence_min_value_median',
         'val_kullback_leibler_divergence_min_value_q3': 'test_kullback_leibler_divergence_min_value_q3',
@@ -371,7 +364,8 @@ def main():
 
     inverse_column_name_mapping = {
         v: k for k, v in column_name_mapping.items()}
-    partition_cols_source = [inverse_column_name_mapping.get(c,c) for c in partition_cols]
+    partition_cols_source = [
+        inverse_column_name_mapping.get(c, c) for c in partition_cols]
 
     parameter_column_names = [f.name for f in parameter_columns]
     parameter_column_names_set = set(parameter_column_names)
@@ -398,7 +392,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 128
+    chunk_size = 256
     chunks = []
     with CursorManager(credentials) as cursor:
 
@@ -412,23 +406,13 @@ def main():
             [sql.SQL(' left join parameter_ {} on ({}.kind = {} and s.experiment_parameters @> array[{}.id]) ').format(
                 sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols_source])
 
-        where = False
+        q += sql.SQL(' WHERE ')
+        q += sql.SQL(' {} ').format(sql.Identifier(sweep))
 
         if len(fixed_parameters) > 0:
-            where = True
-            q += sql.SQL(' WHERE ')
-
+            q += sql.SQL(' AND ')
             q += sql.SQL(' s.experiment_parameters @> array[{}]::smallint[] ').format(
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
-
-        if sweep is not None:
-            if where:
-                q += sql.SQL(' AND ')
-            else:
-                where = True
-                q += sql.SQL(' WHERE ')
-
-            q += sql.SQL(' {} ').format(sql.Identifier(sweep))
 
         q += sql.SQL(' ORDER BY ')
         q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
