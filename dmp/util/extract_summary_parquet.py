@@ -190,8 +190,8 @@ def main():
         # pyarrow.field('train_kullback_leibler_divergence_q1', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_kullback_leibler_divergence_q3', pyarrow.list_(pyarrow.float32())),
 
-        pyarrow.field('test_loss_min_epoch_min',
-                      pyarrow.uint32(), nullable=True),
+        # pyarrow.field('test_loss_min_epoch_min',
+        #               pyarrow.uint32(), nullable=True),
         # pyarrow.field('test_loss_min_epoch_max',
         #               pyarrow.uint32(), nullable=True),
         # pyarrow.field('test_loss_min_epoch_avg',
