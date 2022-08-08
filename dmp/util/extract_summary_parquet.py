@@ -28,9 +28,15 @@ def main():
     with CursorManager(credentials) as cursor:
         parameter_map = PostgresParameterMap(cursor)
 
-    dataset_path = '../experiment_summary/'
-    if sweep is not None:
-        dataset_path = f'../{sweep}_summary/'
+
+    if simple:
+        dataset_path = '../simple_experiment_summary/'
+        if sweep != 'butter':
+            dataset_path = f'../simple_{sweep}_summary/'
+    else:    
+        dataset_path = '../experiment_summary/'
+        if sweep != 'butter':
+            dataset_path = f'../{sweep}_summary/'
 
     fixed_parameters = [
         # ('batch', 'fixed_3k_1'),
