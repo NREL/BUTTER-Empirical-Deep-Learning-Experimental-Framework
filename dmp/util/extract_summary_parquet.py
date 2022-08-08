@@ -634,15 +634,16 @@ def main():
                 row_number += 1
 
         if row_number > 0:
-
-            result_block['network_structure'] = \
-                [json.dumps(js, separators=(',', ':'))
-                 for js in result_block['network_structure']]
+            if 'network_structure' in result_block:
+                result_block['network_structure'] = \
+                    [json.dumps(js, separators=(',', ':'))
+                    for js in result_block['network_structure']]
+            print(result_block)
             record_batch = pyarrow.Table.from_pydict(
                 result_block,
                 schema=schema,
             )
-            print(result_block)
+            
             
 
             parquet.write_to_dataset(
