@@ -20,7 +20,7 @@ def main():
     sweep = 'butter'
     if len(sys.argv) >= 2:
         sweep = str(sys.argv[1])
-    
+
     simple = len(sys.argv) >= 3
 
     credentials = connect.load_credentials('dmp')
@@ -28,12 +28,11 @@ def main():
     with CursorManager(credentials) as cursor:
         parameter_map = PostgresParameterMap(cursor)
 
-
     if simple:
         dataset_path = '../simple_experiment_summary/'
         if sweep != 'butter':
             dataset_path = f'../simple_{sweep}_summary/'
-    else:    
+    else:
         dataset_path = '../experiment_summary/'
         if sweep != 'butter':
             dataset_path = f'../{sweep}_summary/'
@@ -97,7 +96,7 @@ def main():
         'depth',
     ]
 
-    if sweep is None:
+    if sweep == 'butter':
         partition_cols.extend([
             'primary_sweep',
             '300_epoch_sweep',
@@ -108,8 +107,8 @@ def main():
             'regularization_sweep',
             'learning_rate_batch_size_sweep',
             'size_adjusted_regularization_sweep',
-            'optimizer_sweep', 
-            ])
+            'optimizer_sweep',
+        ])
 
     data_columns = [
         pyarrow.field('experiment_id', pyarrow.uint32()),
@@ -154,13 +153,13 @@ def main():
         #               pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('test_accuracy_median',
         #               pyarrow.list_(pyarrow.float32())),
-        
+
         # pyarrow.field('train_accuracy_avg', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_accuracy_stddev', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_accuracy_median', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_accuracy_q1', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_accuracy_q3', pyarrow.list_(pyarrow.float32())),
-        
+
         # pyarrow.field('test_mean_squared_error_avg',
         #               pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('test_mean_squared_error_stddev',
@@ -176,7 +175,7 @@ def main():
         # pyarrow.field('train_mean_squared_error_median', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_mean_squared_error_q1', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_mean_squared_error_q3', pyarrow.list_(pyarrow.float32())),
-        
+
         # pyarrow.field('test_kullback_leibler_divergence_avg', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('test_kullback_leibler_divergence_stddev', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('test_kullback_leibler_divergence_median', pyarrow.list_(pyarrow.float32())),
@@ -199,7 +198,8 @@ def main():
                       pyarrow.float32(), nullable=True),
         pyarrow.field('test_loss_min_epoch_q1',
                       pyarrow.float32(), nullable=True),
-        pyarrow.field('test_loss_min_epoch_median', pyarrow.float32(), nullable=True),
+        pyarrow.field('test_loss_min_epoch_median',
+                      pyarrow.float32(), nullable=True),
         pyarrow.field('test_loss_min_epoch_q3',
                       pyarrow.float32(), nullable=True),
         pyarrow.field('test_loss_min_value_min',
@@ -291,64 +291,87 @@ def main():
     if not simple:
         data_columns += [
             pyarrow.field('test_loss_num_finite',
-                      pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_loss_avg', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_loss_stddev', pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_loss_stddev',
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_loss_min', pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_loss_max', pyarrow.list_(pyarrow.float32())),
             # pyarrow.field('test_loss_median', pyarrow.list_(pyarrow.float32())),
             # pyarrow.field('test_loss_q1', pyarrow.list_(pyarrow.float32())),
             # pyarrow.field('test_loss_q3', pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_loss_num_finite',
-                        pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_loss_avg', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_loss_stddev', pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_loss_stddev',
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_loss_min', pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_loss_max', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_loss_median', pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_loss_median',
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_loss_q1', pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_loss_q3', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_accuracy_avg', pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_accuracy_avg',
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_accuracy_stddev',
-                        pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_accuracy_median',
-                        pyarrow.list_(pyarrow.float32())),
-            
-            pyarrow.field('train_accuracy_avg', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_accuracy_stddev', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_accuracy_median', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_accuracy_q1', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_accuracy_q3', pyarrow.list_(pyarrow.float32())),
-            
+                          pyarrow.list_(pyarrow.float32())),
+
+            pyarrow.field('train_accuracy_avg',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_accuracy_stddev',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_accuracy_median',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_accuracy_q1',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_accuracy_q3',
+                          pyarrow.list_(pyarrow.float32())),
+
             pyarrow.field('test_mean_squared_error_avg',
-                        pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_mean_squared_error_stddev',
-                        pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_mean_squared_error_median',pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_mean_squared_error_q1',pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_mean_squared_error_q3',pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_mean_squared_error_median',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_mean_squared_error_q1',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_mean_squared_error_q3',
+                          pyarrow.list_(pyarrow.float32())),
 
             pyarrow.field('train_mean_squared_error_avg',
-                        pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_mean_squared_error_stddev',
-                        pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_mean_squared_error_median', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_mean_squared_error_q1', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_mean_squared_error_q3', pyarrow.list_(pyarrow.float32())),
-            
-            pyarrow.field('test_kullback_leibler_divergence_avg', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_kullback_leibler_divergence_stddev', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_kullback_leibler_divergence_median', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_kullback_leibler_divergence_q1', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('test_kullback_leibler_divergence_q3', pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_mean_squared_error_median',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_mean_squared_error_q1',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_mean_squared_error_q3',
+                          pyarrow.list_(pyarrow.float32())),
+
+            pyarrow.field('test_kullback_leibler_divergence_avg',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_kullback_leibler_divergence_stddev',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_kullback_leibler_divergence_median',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_kullback_leibler_divergence_q1',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_kullback_leibler_divergence_q3',
+                          pyarrow.list_(pyarrow.float32())),
 
             pyarrow.field('train_kullback_leibler_divergence_avg',
-                        pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_kullback_leibler_divergence_stddev',
-                        pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_kullback_leibler_divergence_median', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_kullback_leibler_divergence_q1', pyarrow.list_(pyarrow.float32())),
-            pyarrow.field('train_kullback_leibler_divergence_q3', pyarrow.list_(pyarrow.float32())),
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_kullback_leibler_divergence_median',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_kullback_leibler_divergence_q1',
+                          pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('train_kullback_leibler_divergence_q3',
+                          pyarrow.list_(pyarrow.float32())),
         ]
 
     column_name_mapping = {
@@ -375,7 +398,7 @@ def main():
         'val_accuracy_median': 'test_accuracy_median',
         'val_accuracy_q1': 'test_accuracy_q1',
         'val_accuracy_q3': 'test_accuracy_q3',
-        
+
         'accuracy_avg': 'train_accuracy_avg',
         'accuracy_stddev': 'train_accuracy_stddev',
         'accuracy_median': 'train_accuracy_median',
@@ -614,11 +637,12 @@ def main():
             result_block['network_structure'] = \
                 [json.dumps(js, separators=(',', ':'))
                  for js in result_block['network_structure']]
-
+            print(f'rb: {result_block}')
             record_batch = pyarrow.Table.from_pydict(
                 result_block,
                 schema=schema,
             )
+            
 
             parquet.write_to_dataset(
                 record_batch,
