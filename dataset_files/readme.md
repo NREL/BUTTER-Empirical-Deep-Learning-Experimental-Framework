@@ -185,7 +185,14 @@ The complete raw dataset is available in the /all_runs/ partitioned parquet data
 /regularization_sweep_summary/ contains summary experiment statistics for the regularization sweep
 /regularization_sweep_summary.tar is a tarball of /regularization_sweep_summary/
  
+/learning_rate_batch_size_sweep_summary/ contains summary experiment statistics for the learning rate x batch size sweep
+/learning_rate_batch_size_sweep_summary.tar is a tarball of /learning_rate_batch_size_sweep_summary/
 
+/size_adjusted_regularization_sweep_summary/ contains summary experiment statistics for the size-adjusted regularization sweep
+/size_adjusted_regularization_sweep_summary.tar is a tarball of /size_adjusted_regularization_sweep_summary/
+
+/optimizer_sweep_summary/ contains summary experiment statistics for the optimizer sweep
+/optimizer_sweep_summary.tar is a tarball of /optimizer_sweep_summary/
  
 ### Experiment Summary Schema
  
