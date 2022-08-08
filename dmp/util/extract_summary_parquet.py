@@ -111,7 +111,7 @@ def main():
     #     ])
 
     data_columns = [
-        # pyarrow.field('experiment_id', pyarrow.uint32()),
+        pyarrow.field('experiment_id', pyarrow.uint32()),
 
         # pyarrow.field('primary_sweep', pyarrow.bool_()),
         # pyarrow.field('300_epoch_sweep', pyarrow.bool_()),
