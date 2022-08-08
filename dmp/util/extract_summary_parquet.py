@@ -94,19 +94,19 @@ def main():
         'depth',
     ]
 
-    # if sweep == 'butter':
-    #     partition_cols.extend([
-    #         'primary_sweep',
-    #         '300_epoch_sweep',
-    #         '30k_epoch_sweep',
-    #         'learning_rate_sweep',
-    #         'label_noise_sweep',
-    #         'batch_size_sweep',
-    #         'regularization_sweep',
-    #         'learning_rate_batch_size_sweep',
-    #         'size_adjusted_regularization_sweep',
-    #         'optimizer_sweep',
-    #     ])
+    if sweep == 'butter':
+        partition_cols.extend([
+            'primary_sweep',
+            '300_epoch_sweep',
+            '30k_epoch_sweep',
+            'learning_rate_sweep',
+            'label_noise_sweep',
+            'batch_size_sweep',
+            'regularization_sweep',
+            'learning_rate_batch_size_sweep',
+            'size_adjusted_regularization_sweep',
+            'optimizer_sweep',
+        ])
 
     data_columns = [
         pyarrow.field('experiment_id', pyarrow.uint32()),
