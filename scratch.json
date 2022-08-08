@@ -1,0 +1,149 @@
+{'activation': ['relu'
+    ], 'batch': ['fixed_3k_1'
+    ], 'batch_size': [
+        256
+    ], 'dataset': ['201_pol'
+    ], 'depth': [
+        3
+    ], 'epochs': [
+        3000
+    ], 'input_activation': ['relu'
+    ], 'kernel_regularizer': [None
+    ], 'kernel_regularizer_l1': [None
+    ], 'kernel_regularizer_l2': [None
+    ], 'kernel_regularizer_type': [None
+    ], 'label_noise': [
+        0.0
+    ], 'learning_rate': [
+        1e-05
+    ], 'optimizer': ['adam'
+    ], 'momentum': [None
+    ], 'nesterov': [None
+    ], 'output_activation': [None
+    ], 'shape': ['rectangle'
+    ], 'size': [
+        16777216
+    ], 'task': ['AspectTestTask'
+    ], 'test_split': [
+        0.2
+    ], 'experiment_id': [
+        2085870
+    ], 'primary_sweep': [False
+    ], '300_epoch_sweep': [False
+    ], '30k_epoch_sweep': [False
+    ], 'learning_rate_sweep': [True
+    ], 'label_noise_sweep': [False
+    ], 'batch_size_sweep': [False
+    ], 'regularization_sweep': [False
+    ], 'learning_rate_batch_size_sweep': [False
+    ], 'size_adjusted_regularization_sweep': [False
+    ], 'optimizer_sweep': [False
+    ], 'num_free_parameters': [
+        16780943
+    ], 'widths': [
+        [
+            4077,
+            4077,
+            11
+        ]
+    ], 'network_structure': ['null'
+    ], 'num_runs': [
+        10
+    ], 'test_loss_min_epoch_min': [
+        1192
+    ], 'test_loss_min_epoch_max': [
+        1696
+    ], 'test_loss_min_epoch_avg': [
+        1419.9
+    ], 'test_loss_min_epoch_q1': [
+        1245.5
+    ], 'test_loss_min_epoch_median': [
+        1369.5
+    ], 'test_loss_min_epoch_q3': [
+        1621.25
+    ], 'test_loss_min_value_min': [
+        0.17026663
+    ], 'test_loss_min_value_max': [
+        0.21678501
+    ], 'test_loss_min_value_avg': [
+        0.19795923
+    ], 'test_loss_min_value_q1': [
+        0.18464188
+    ], 'test_loss_min_value_median': [
+        0.19865131
+    ], 'test_loss_min_value_q3': [
+        0.2123826
+    ], 'test_accuracy_max_epoch_min': [
+        1760
+    ], 'test_accuracy_max_epoch_max': [
+        2930
+    ], 'test_accuracy_max_epoch_avg': [
+        2530.2
+    ], 'test_accuracy_max_epoch_q1': [
+        2326.5
+    ], 'test_accuracy_max_epoch_median': [
+        2614.0
+    ], 'test_accuracy_max_epoch_q3': [
+        2823.25
+    ], 'test_accuracy_max_value_min': [
+        0.9356667
+    ], 'test_accuracy_max_value_max': [
+        0.9443333
+    ], 'test_accuracy_max_value_avg': [
+        0.94013333
+    ], 'test_accuracy_max_value_q1': [
+        0.93791664
+    ], 'test_accuracy_max_value_median': [
+        0.9395
+    ], 'test_accuracy_max_value_q3': [
+        0.94266665
+    ], 'test_mean_squared_error_min_epoch_min': [
+        1997
+    ], 'test_mean_squared_error_min_epoch_max': [
+        2967
+    ], 'test_mean_squared_error_min_epoch_avg': [
+        2515.5
+    ], 'test_mean_squared_error_min_epoch_q1': [
+        2349.75
+    ], 'test_mean_squared_error_min_epoch_median': [
+        2516.5
+    ], 'test_mean_squared_error_min_epoch_q3': [
+        2685.5
+    ], 'test_mean_squared_error_min_value_min': [
+        0.008065137
+    ], 'test_mean_squared_error_min_value_max': [
+        0.009062889
+    ], 'test_mean_squared_error_min_value_avg': [
+        0.0085391905
+    ], 'test_mean_squared_error_min_value_q1': [
+        0.008248835
+    ], 'test_mean_squared_error_min_value_median': [
+        0.00845825
+    ], 'test_mean_squared_error_min_value_q3': [
+        0.008858622
+    ], 'test_kullback_leibler_divergence_min_epoch_min': [
+        1238
+    ], 'test_kullback_leibler_divergence_min_epoch_max': [
+        1707
+    ], 'test_kullback_leibler_divergence_min_epoch_avg': [
+        1504.0
+    ], 'test_kullback_leibler_divergence_min_epoch_q1': [
+        1388.0
+    ], 'test_kullback_leibler_divergence_min_epoch_median': [
+        1494.0
+    ], 'test_kullback_leibler_divergence_min_epoch_q3': [
+        1640.75
+    ], 'test_kullback_leibler_divergence_min_value_min': [
+        0.1702655
+    ], 'test_kullback_leibler_divergence_min_value_max': [
+        0.21028478
+    ], 'test_kullback_leibler_divergence_min_value_avg': [
+        0.19526024
+    ], 'test_kullback_leibler_divergence_min_value_q1': [
+        0.1846407
+    ], 'test_kullback_leibler_divergence_min_value_median': [
+        0.1975247
+    ], 'test_kullback_leibler_divergence_min_value_q3': [
+        0.20650563
+    ]
+}
