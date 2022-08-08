@@ -4,7 +4,7 @@
  
 This dataset represents an empirical study of the deep learning phenomena on dense fully connected networks, scanning across thirteen datasets, eight network shapes, fourteen depths, twenty-three network sizes (number of trainable parameters), four learning rates, six minibatch sizes, four levels of label noise, and fourteen levels of L1 and L2 regularization each. Multiple repetitions (typically 30, sometimes 10) of each combination of hyperparameters were preformed, and statistics including training and test loss (using a 80% / 20% shuffled train-test split) are recorded at the end of each training epoch. In total, this dataset covers 178 thousand distinct hyperparameter settings ("experiments"), 3.55 million individual training runs (an average of 20 repetitions of each experiments), and a total of 13.3 billion training epochs (three thousand epochs were covered by most runs). Accumulating this dataset consumed 5,448.4 CPU core-years, 17.8 GPU-years, and 111.2 node-years.
  
-For each training epoch of each run we recorded 20 performance statistics, and the complete record of these raw values are stored here. For convenience, we additionally include multiple per-experiment summary statistics aggregated over every repetition of that experiment as the "summary" dataset, and also provide several useful slices of the summary data scanning along salient dimensions such as minibatch size and learning rate.
+For each training epoch of each repetition we recorded 20 performance statistics, and the complete record of these raw values are stored here. For convenience, we additionally include multiple per-experiment summary statistics aggregated over every repetition of that experiment as the "summary" dataset, and also provide several useful slices of the summary data scanning along salient dimensions such as minibatch size and learning rate.
  
 ## Citing This Dataset
 **If you use this dataset, please cite our upcoming dataset publication, which is currently under review for NeurIPS 2022.**
@@ -35,7 +35,7 @@ This is a list of the values of each hyperparameter we swept across in this data
    + 294_satellite_image: regression, 36 features, 1 response variable, 6435 observations
    + splice: classification, 60 features, 3 classes, 3188 observations
    + banana: regression, 2 features, 1 response variable, 5300 observations
-+ shape: Network shape, which in combination with depth and size determines the neural network topology used.
++ shape: Network shape, which in combination with depth and number of trainable parameters determines the neural network topology used.
    + **rectangle**: All layers except for the output layer have the same width.
    + **trapezoid**: Layer widths linearly decrease from input to output.
    + **exponential**: Layer widths exponentially decay from input to output.
@@ -71,7 +71,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + typical repetitions: **30**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult, 505_tecator, 294_satellite_images, splice, banana}
    + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**, rectangle_residual, wide_first_4x, wide_first_8x, wide_first_16x}
-   + size: {**2^5, 2^6, ... 2^24**, 2^25}
+   + \# of trainable parameters: {**2^5, 2^6, ... 2^24**, 2^25}
    + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
    + learning rate: **.0001**
    + minibatch size: **256**
@@ -82,7 +82,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + typical repetitions: 10 for rectangle, 0-10 for other shapes
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
    + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
-   + size: {2^25, 2^26, 2^27}
+   + \# of trainable parameters: {2^25, 2^26, 2^27}
    + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
    + learning rate: **.0001**
    + minibatch size: **256**
@@ -93,7 +93,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + typical repetitions: 10 for rectangle, 0-10 for other shapes
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
    + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
-   + size: {**2^5, 2^6 .. 2^18**}
+   + \# of trainable parameters: {**2^5, 2^6 .. 2^18**}
    + depth: {**2**,**3**,**4**,**5**,6,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
    + learning rate: **.0001**
    + minibatch size: **256**
@@ -104,7 +104,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + typical repetitions: **20**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
    + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
-   + size: {**2^5, 2^6, ... 2^24**}
+   + \# of trainable parameters: {**2^5, 2^6, ... 2^24**}
    + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
    + learning rate: {0.01, 0.001, **0.0001**, 0.00001}
    + minibatch size: **256**
@@ -115,7 +115,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + typical repetitions: **30**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**}
    + shapes: {**rectangle, trapezoid, exponential, wide_first_2x**}
-   + size: {**2^5, 2^6, ... 2^24**}
+   + \# of trainable parameters: {**2^5, 2^6, ... 2^24**}
    + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**, 12, 14, 16, 18, 20}
    + learning rate: {0.001, **0.0001**}
    + minibatch size: **256**
@@ -128,7 +128,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + typical repetitions: **30**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
    + shape: **rectangle**
-   + size: {**2^5, 2^6, ... 2^24**}
+   + \# of trainable parameters: {**2^5, 2^6, ... 2^24**}
    + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**}
    + learning rate: **0.0001**
    + minibatch size: {32, 64, 128, **256**, 512, 1024}
@@ -139,7 +139,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + typical repetitions: **30**
    + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult}
    + shape: **rectangle**
-   + size: {**2^5, 2^6, ... 2^24**, 2^25}
+   + \# of trainable parameters: {**2^5, 2^6, ... 2^24**, 2^25}
    + depth: {**2**,**3**,**4**,**5**,**7**,**8**,**9**,**10**}
    + learning rate: **0.0001**
    + minibatch size: **256**
@@ -148,7 +148,7 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
      + L2: {**0.0**, .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5}
    + label noise: **0**
  
- 
+ ***************TODO: ADD NEW SWEEPS HERE *************
  
  
 If the dataset is made up of multiple files a description of how they are/will
@@ -156,12 +156,12 @@ be stored in relation to each other.
  
 ## Data Format
  
-The complete raw dataset is available in the /all_runs/ partitioned parquet dataset. Each row in this dataset is a record of one training run of a network. Several statistics were recorded at the end of each training epoch, and those records are stored in this row as arrays indexed by training epoch. For convenience, we also provide the /complete_summary/ partitioned parquet dataset which contains statistics aggregated over all repetitions of the same experiment including average and median test and training losses at the end of each training epoch. Distinct experiments are uniquely and consistently identified in both datasets by an 'experiment_id'. Additionally, we have created separate raw run and summary datasets for each experimental sweep so that they can be downloaded and queried separately if the entire dataset is not needed. _The schemas of summary and run datasets are the same for every sweep._
+The complete raw dataset is available in the /all_runs/ partitioned parquet dataset. Each row in this dataset is a record of one training repetition of a network. Several statistics were recorded at the end of each training epoch, and those records are stored in this row as arrays indexed by training epoch. For convenience, we also provide the /complete_summary/ partitioned parquet dataset which contains statistics aggregated over all repetitions of the same experiment including average and median test and training losses at the end of each training epoch. Distinct experiments are uniquely and consistently identified in both datasets by an 'experiment_id'. Additionally, we have created separate raw repetition and summary datasets for each experimental sweep so that they can be downloaded and queried separately if the entire dataset is not needed. _The schemas of summary and repetition datasets are the same for every sweep._
  
 ### File Hierarchy and Descriptions
  
-/all_runs/ contains all of the experimental run records for all sweeps
-/complete_summary/ contains per-experiment statistics aggregated over every run of each distinct experiment for all sweeps
+/all_runs/ contains all of the experimental repetition records for all sweeps
+/complete_summary/ contains per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps
 /complete_summary.tar is a tarball of /experiment_summary/
  
 /primary_sweep_summary/ contains summary experiment statistics for the primary sweep
@@ -189,83 +189,173 @@ The complete raw dataset is available in the /all_runs/ partitioned parquet data
  
 ### Experiment Summary Schema
  
-For preliminary analysis, we recommend using the summary dataset as it is smaller and more convenient to work with than the full run dataset. However, the entire record of every repetition of every experiment is stored in the run dataset, allowing other statistics to be computed from the raw data. Each experiment has a unique experiment_id value, which matches run records in the runs dataset. Summary data is partitioned by dataset, shape, learning rate, batch size, kernel regularizer, label noise, depth, and number of training epochs.
+For preliminary analysis, we recommend using the summary dataset as it is smaller and more convenient to work with than the full repetition dataset. However, the entire record of every repetition of every experiment is stored in the repetition dataset, allowing other statistics to be computed from the raw data. Each experiment has a unique experiment_id value, which matches repetition records in the runs dataset. Summary data is partitioned by dataset, shape, learning rate, batch size, kernel regularizer, label noise, depth, and number of training epochs.
  
 #### The columns of the summary dataset are:
+
++ Columns Describing Each Experiment:
+  + experiment_id the unique id for this experiment
+  + primary_sweep: bool, true iff this experiment is part of the primary sweep
+  + 300_epoch_sweep: bool, true iff this experiment is part of the 300 epoch sweep
+  + 30k_epoch_sweep: bool, true iff this experiment is part of the 30k epoch sweep
+  + learning_rate_sweep: bool, true iff this experiment is part of the learning rate sweep
+  + label_noise_sweep: bool, true iff this experiment is part of the label noise sweep
+  + batch_size_sweep: bool, true iff this experiment is part of the batch size sweep
+  + regularization_sweep: bool, true iff this experiment is part of the regularization sweep
+  + learning_rate_batch_size_sweep: bool, true iff this experiment is part of the learning rate x batch size sweep
+  + size_adjusted_regularization_sweep: bool, true iff this experiment is part of the size-adjusted regularization sweep
+  + optimizer_sweep: bool, true iff this experiment is part of the optimizer sweep
+  + activation: string, the activation function used for hidden layers
+  + batch: string, a nickname for the experimental batch this experiment belongs to
+  + batch_size: uint32, minibatch size
+  + dataset: string, name of the dataset used
+  + depth: uint8, number of layers
+  + early_stopping: string, early stopping policy
+  + epochs: uint32, number of training epochs in this repetition
+  + input_activation: string, input activation function
+  + kernel_regularizer: string, null if no regularizer is used
+  + kernel_regularizer_l1: float32, L1 regularization penalty coefficient
+  + kernel_regularizer_l2: float32, L2 regularization penalty coefficient
+  + kernel_regularizer_type: string, name of kernel regularizer used (null if none used)
+  + label_noise: float32, amount of label noise applied to dataset before training (.05 means 5% label noise)
+  + learning_rate: float32, learning rate used
+  + optimizer: string, name of the optimizer used
+  + output_activation: string, activation function for output layer
+  + shape: string, network shape
+  + size: uint64, approximate number of trainable parameters used
+  + task: string, name of training task
+  + test_split: float32, test split proportion
+  + num_free_parameters: uint64, exact number of trainable parameters
+  + widths: [uint32], list of layer widths used
+  + network_structure: string, marshaled json representation of network structure used
+  + num_runs: uint8, number of runs aggregated in this summary record  
++ Columns Describing Overall Training Trajectories for Each Experiment:
+  + num: [uint8], number of runs aggregated in this summary record at each epoch
+  + Test Loss Trajectory Statistics:
+    + test_loss_num_finite: [uint8], number of finite test losses at each epoch
+    + test_loss_min: [float32], minimum test loss at each epoch
+    + test_loss_q1: [float32], first quartile test loss at each epoch
+    + test_loss_median: [float32], median test loss at each epoch
+    + test_loss_q3: [float32], third quartile test loss at each epoch
+    + test_loss_max: [float32], maximum test loss at each epoch
+    + test_loss_avg: [float32], average test loss at each epoch
+    + test_loss_stddev: [float32], standard deviation of the test loss at each epoch
+  + Training Loss Trajectory Statistics:
+    + train_loss_num_finite: [uint8], number of finite training losses at each epoch
+    + train_loss_min: [float32], minimum training loss at each epoch
+    + train_loss_q1: [float32], first quartile training loss at each epoch
+    + train_loss_median: [float32], median training loss at each epoch
+    + train_loss_q3: [float32], third quartile training loss at each epoch
+    + train_loss_max: [float32], maximum training loss at each epoch
+    + train_loss_avg: [float32], average training loss at each epoch
+    + train_loss_stddev: [float32], standard deviation of training losses at each epoch
+  + Test Accuracy Trajectory Statistics:
+    + test_accuracy_q1: [float32], first quartile test accuracy at each epoch
+    + test_accuracy_median: [float32], median test accuracy at each epoch
+    + test_accuracy_q3: [float32], third quartile test accuracy at each epoch
+    + test_accuracy_avg: [float32], average test accuracy at each epoch
+    + test_accuracy_stddev: [float32], test accuracy standard deviation accuracy at each epoch
+  + Training Accuracy Trajectory Statistics:
+    + train_accuracy_q1: [float32], first quartile training accuracy at each epoch
+    + train_accuracy_median: [float32], median training accuracy at each epoch
+    + train_accuracy_q3: [float32], third quartile training accuracy at each epoch
+    + train_accuracy_avg: [float32], average training accuracy at each epoch
+    + train_accuracy_stddev: [float32], standard deviation of the training accuracy at each epoch
+  + Test Mean Squared Error (MSE) Trajectory Statistics:
+    + test_mean_squared_error_q1: [float32], first quartile test MSE at each epoch
+    + test_mean_squared_error_median: [float32], median test MSE at each epoch
+    + test_mean_squared_error_q3: [float32], third quartile test MSE at each epoch
+    + test_mean_squared_error_avg: [float32], test MSE at each epoch
+    + test_mean_squared_error_stddev: [float32], test MSE standard deviation at each epoch
+  + Training Mean Squared Error (MSE) Trajectory Statistics:
+    + train_mean_squared_error_q1: [float32], first quartile training MSE at each epoch
+    + train_mean_squared_error_median: [float32], median training MSE at each epoch
+    + train_mean_squared_error_q3: [float32], third quartile training MSE at each epoch
+    + train_mean_squared_error_avg: [float32], average training MSE at each epoch
+    + train_mean_squared_error_stddev: [float32], training MSE standard deviation at each epoch
+  + Test Kullback-Leibler Divergence (KL-Divergence) Trajectory Statistics:
+    + test_kullback_leibler_divergence_q1: [float32], first quartile test KL-Divergence at each epoch
+    + test_kullback_leibler_divergence_median: [float32], median test KL-Divergence at each epoch
+    + test_kullback_leibler_divergence_q3: [float32], third quartile test KL-Divergence at each epoch
+    + test_kullback_leibler_divergence_avg: [float32], average test KL-Divergence at each epoch
+    + test_kullback_leibler_divergence_stddev: [float32], test KL-Divergence standard deviation at each epoch
+  + Training Kullback-Leibler Divergence (KL-Divergence) Trajectory Statistics:
+    + train_kullback_leibler_divergence_q1: [float32], first quartile training KL-Divergence at each epoch
+    + train_kullback_leibler_divergence_median: [float32], median training KL-Divergence at each epoch
+    + train_kullback_leibler_divergence_q3: [float32], third quartile training KL-Divergence at each epoch
+    + train_kullback_leibler_divergence_avg: [float32], average training KL-Divergence at each epoch
+    + train_kullback_leibler_divergence_stddev: [float32], training KL-Divergence standard deviation at each epoch  
++ Columns Describing Performance at the Epoch that Minimized a Statistic (e.x.: the epoch that achieved the lowest test loss)
+  + Statistics about Per-Repetition Points of Minimum Test Loss
+    + Distribution of the Epoch of Minimum Test Loss of each Repetition:
+      + test_loss_min_epoch_min: [float32], earliest epoch at which test loss was minimized among all repetitions of the experiment
+      + test_loss_min_epoch_q1: [float32], first quartile of the epoch at which test loss was minimized 
+      + test_loss_min_epoch_median: [float32], median epoch at which test loss was minimized 
+      + test_loss_min_epoch_q3: [float32], third quartile of the epoch at which test loss was minimized 
+      + test_loss_min_epoch_max: [float32], latest epoch at which test loss was minimized among all repetitions of the experiment
+      + test_loss_min_epoch_avg: [float32], average epoch at which test loss was minimized over all repetitions of the experiment  
+    + Distribution of the Value of the Minimum Test Loss of each Repetition:
+      + test_loss_min_value_min: [float32], lowest minimum test loss
+      + test_loss_min_value_q1: [float32], first quartile minimum test loss 
+      + test_loss_min_value_median: [float32], median minimum test loss 
+      + test_loss_min_value_q3: [float32], third quartile minimum test loss
+      + test_loss_min_value_max: [float32], highest minimum test loss 
+      + test_loss_min_value_avg: [float32], average minimum test loss 
+  + Statistics about Per-Repetition Points of Maximum Test Accuracy:
+    + Distribution of the Epoch of Maximum Test Accuracy of each Repetition:
+      + test_accuracy_max_epoch_min: [float32], earliest epoch at which test loss was minimized among all repetitions of the experiment
+      + test_accuracy_max_epoch_q1: [float32], first quartile of the epoch at which test loss was minimized 
+      + test_accuracy_max_epoch_median: [float32], median epoch at which test loss was minimized 
+      + test_accuracy_max_epoch_q3: [float32], third quartile of the epoch at which test loss was minimized 
+      + test_accuracy_max_epoch_max: [float32], latest epoch at which test loss was minimized among all repetitions of the experiment
+      + test_accuracy_max_epoch_avg: [float32], average epoch at which test loss was minimized over all repetitions of the experiment
+    + Distribution of the Value of the Maximum Test Accuracy of each Repetition:
+      + test_accuracy_max_value_min: [float32], lowest minimum test loss
+      + test_accuracy_max_value_q1: [float32], first quartile minimum test loss 
+      + test_accuracy_max_value_median: [float32], median minimum test loss 
+      + test_accuracy_max_value_q3: [float32], third quartile minimum test loss 
+      + test_accuracy_max_value_max: [float32], highest minimum test loss 
+      + test_accuracy_max_value_avg: [float32], average minimum test loss 
+  + Statistics about Per-Repetition Points of Minimum Test MSE:
+    + Distribution of the Epoch of Minimum Test MSE of each Repetition:
+      + test_mean_squared_error_min_epoch_min: [float32], earliest epoch at which test MSE was minimized among all repetitions of the experiment
+      + test_mean_squared_error_min_epoch_q1: [float32], first quartile of the epoch at which test MSE was minimized 
+      + test_mean_squared_error_min_epoch_median: [float32], median epoch at which test MSE was minimized 
+      + test_mean_squared_error_min_epoch_q3: [float32], third quartile of the epoch at which test MSE was minimized 
+      + test_mean_squared_error_min_epoch_max: [float32], latest epoch at which test MSE was minimized among all repetitions of the experiment
+      + test_mean_squared_error_min_epoch_avg: [float32], average epoch at which test MSE was minimized over all repetitions of the experiment  
+    + Distribution of the Value of the Minimum MSE of each Repetition:
+      + test_mean_squared_error_min_value_min: [float32], lowest minimum test MSE
+      + test_mean_squared_error_min_value_q1: [float32], first quartile minimum test MSE 
+      + test_mean_squared_error_min_value_median: [float32], median minimum test MSE 
+      + test_mean_squared_error_min_value_q3: [float32], third quartile minimum test MSE 
+      + test_mean_squared_error_min_value_max: [float32], highest minimum test MSE 
+      + test_mean_squared_error_min_value_avg: [float32], average minimum test MSE 
+  + Statistics about Per-Repetition Points of Minimum KL-Divergence:
+    + Distribution of the Epoch of Minimum Test KL-Divergence of each Repetition:
+      + test_kullback_leibler_divergence_min_epoch_min: [float32], earliest epoch at which test KL-divergence was minimized among all repetitions of the experiment
+      + test_kullback_leibler_divergence_min_epoch_q1: [float32], first quartile of the epoch at which test KL-divergence was minimized 
+      + test_kullback_leibler_divergence_min_epoch_median: [float32], median epoch at which test KL-divergence was minimized 
+      + test_kullback_leibler_divergence_min_epoch_q3: [float32], third quartile of the epoch at which test KL-divergence was minimized 
+      + test_kullback_leibler_divergence_min_epoch_max: [float32], latest epoch at which test KL-divergence was minimized among all repetitions of the experiment
+      + test_kullback_leibler_divergence_min_epoch_avg: [float32], average epoch at which test KL-divergence was minimized over all repetitions of the experiment  
+    + Distribution of the Value of the Minimum KL-Divergence of each Repetition:
+      + test_kullback_leibler_divergence_min_value_min: [float32], lowest minimum test KL-divergence
+      + test_kullback_leibler_divergence_min_value_q1: [float32], first quartile minimum test KL-divergence 
+      + test_kullback_leibler_divergence_min_value_median: [float32], median minimum test KL-divergence 
+      + test_kullback_leibler_divergence_min_value_q3: [float32], third quartile minimum test KL-divergence 
+      + test_kullback_leibler_divergence_min_value_max: [float32], highest minimum test KL-divergence 
+      + test_kullback_leibler_divergence_min_value_avg: [float32], average minimum test KL-divergence 
+
+
+### Repetition Schema
  
-+ experiment_id the unique id for this experiment
-+ primary_sweep: bool, true iff this experiment is part of the primary sweep
-+ 300_epoch_sweep: bool, true iff this experiment is part of the 300 epoch sweep
-+ 30k_epoch_sweep: bool, true iff this experiment is part of the 30k epoch sweep
-+ learning_rate_sweep: bool, true iff this experiment is part of the learning rate sweep
-+ label_noise_sweep: bool, true iff this experiment is part of the label noise sweep
-+ batch_size_sweep: bool, true iff this experiment is part of the batch size sweep
-+ regularization_sweep: bool, true iff this experiment is part of the regularization sweep
-+ activation: string, the activation function used for hidden layers
-+ batch: string, a nickname for the experimental batch this experiment belongs to
-+ batch_size: uint32, minibatch size
-+ dataset: string, name of the dataset used
-+ depth: uint8, number of layers
-+ early_stopping: string, early stopping policy
-+ epochs: uint32, number of training epochs in this run
-+ input_activation: string, input activation function
-+ kernel_regularizer: string, null if no regularizer is used
-+ kernel_regularizer.l1: float32, L1 regularization penalty coefficient
-+ kernel_regularizer.l2: float32, L2 regularization penalty coefficient
-+ kernel_regularizer.type: string, name of kernel regularizer used (null if none used)
-+ label_noise: float32, amount of label noise applied to dataset before training (.05 means 5% label noise)
-+ learning_rate: float32, learning rate used
-+ optimizer: string, name of the optimizer used
-+ output_activation: string, activation function for output layer
-+ shape: string, network shape
-+ size: uint64, approximate number of trainable parameters used
-+ task: string, name of training task
-+ test_split: float32, test split proportion
-+ test_split_method: string, test split method
-+ num_free_parameters: uint64, exact number of trainable parameters
-+ widths: [uint32], list of layer widths used
-+ network_structure: string, marshaled json representation of network structure used
-+ num_runs: uint8, number of runs aggregated in this summary record
-+ num: [uint8], number of runs aggregated in this summary record at each epoch
-+ test_loss_num_finite: [uint8], number of finite test losses at each epoch
-+ test_loss_avg: [float32], average test loss at each epoch
-+ test_loss_stddev: [float32], standard deviation of the test loss at each epoch
-+ test_loss_min: [float32], minimum test loss at each epoch
-+ test_loss_max: [float32], maximum test loss at each epoch
-+ test_loss_median: [float32], median test loss at each epoch
-+ train_loss_num_finite: [uint8], number of finite training losses at each epoch
-+ train_loss_avg: [float32], average training loss at each epoch
-+ train_loss_stddev: [float32], standard deviation of training losses at each epoch
-+ train_loss_min: [float32], minimum training loss at each epoch
-+ train_loss_max: [float32], maximum training loss at each epoch
-+ train_loss_median: [float32], median training loss at each epoch
-+ test_accuracy_avg: [float32], average test accuracy at each epoch
-+ test_accuracy_stddev: [float32], test accuracy standard deviation accuracy at each epoch
-+ test_accuracy_median: [float32], median test accuracy at each epoch
-+ train_accuracy_avg: [float32], average training accuracy at each epoch
-+ train_accuracy_stddev: [float32], standard deviation of the training accuracy at each epoch
-+ train_accuracy_median: [float32], median training accuracy at each epoch
-+ test_mean_squared_error_avg: [float32], test MSE at each epoch
-+ test_mean_squared_error_stddev: [float32], test MSE standard deviation at each epoch
-+ test_mean_squared_error_median: [float32], median test MSE at each epoch
-+ train_mean_squared_error_avg: [float32], average training MSE at each epoch
-+ train_mean_squared_error_stddev: [float32], training MSE standard deviation at each epoch
-+ train_mean_squared_error_median: [float32], median training MSE at each epoch
-+ test_kullback_leibler_divergence_avg: [float32], average test KL-Divergence at each epoch
-+ test_kullback_leibler_divergence_stddev: [float32], test KL-Divergence standard deviation at each epoch
-+ test_kullback_leibler_divergence_median: [float32], median test KL-Divergence at each epoch
-+ train_kullback_leibler_divergence_avg: [float32], average training KL-Divergence at each epoch
-+ train_kullback_leibler_divergence_stddev: [float32], training KL-Divergence standard deviation at each epoch
-+ train_kullback_leibler_divergence_median: [float32], median training KL-Divergence at each epoch
+Each row of the repetition dataset represents a single training run. Each repetition was instrumented to record various statistics at the end of each training epoch, and those statistics are stored as epoch-indexed arrays in each row. Runs are labeled with an 'experiment_id' which was used to aggregate repetitions of the same experimental parameters together in the summary dataset. An experiment_id in the experiment dataset correspond to the same experiment_id in the summary dataset.
  
-### Run Schema
- 
-Each row of the run dataset represents a single training run. Each training run was instrumented to record various statistics at the end of each training epoch, and those statistics are stored as epoch-indexed arrays in each row. Runs are labeled with an 'experiment_id' which was used to aggregate repetitions of the same experimental parameters together in the summary dataset. An experiment_id in the experiment dataset correspond to the same experiment_id in the summary dataset.
- 
-#### The columns of the run dataset are:
+#### The columns of the repetition dataset are:
  
 + experiment_id: uint32, id of the experiment this run was a repetition of
-+ run_id: string, unique id of this run
++ run_id: string, unique id of this repetition
 + primary_sweep: bool, true iff this experiment is part of the primary sweep
 + 300_epoch_sweep: bool, true iff this experiment is part of the 300 epoch sweep
 + 30k_epoch_sweep: bool, true iff this experiment is part of the 30k epoch sweep
@@ -273,18 +363,21 @@ Each row of the run dataset represents a single training run. Each training run 
 + label_noise_sweep: bool, true iff this experiment is part of the label noise sweep
 + batch_size_sweep: bool, true iff this experiment is part of the batch size sweep
 + regularization_sweep: bool, true iff this experiment is part of the regularization sweep
++ learning_rate_batch_size_sweep: bool, true iff this experiment is part of the learning rate x batch size sweep
++ size_adjusted_regularization_sweep: bool, true iff this experiment is part of the size-adjusted regularization sweep
++ optimizer_sweep: bool, true iff this experiment is part of the optimizer sweep
 + activation: string, the activation function used for hidden layers
 + batch: string, a nickname for the experimental batch this experiment belongs to
 + batch_size: uint32, minibatch size
 + dataset: string, name of the dataset used
 + depth: uint8, number of layers
 + early_stopping: string, early stopping policy
-+ epochs: uint32, number of training epochs in this run
++ epochs: uint32, number of training epochs in this repetition
 + input_activation: string, input activation function
 + kernel_regularizer: string, null if no regularizer is used
-+ kernel_regularizer.l1: float32, L1 regularization penalty coefficient
-+ kernel_regularizer.l2: float32, L2 regularization penalty coefficient
-+ kernel_regularizer.type: string, name of kernel regularizer used (null if none used)
++ kernel_regularizer_l1: float32, L1 regularization penalty coefficient
++ kernel_regularizer_l2: float32, L2 regularization penalty coefficient
++ kernel_regularizer_type: string, name of kernel regularizer used (null if none used)
 + label_noise: float32, amount of label noise applied to dataset before training (.05 means 5% label noise)
 + learning_rate: float32, learning rate used
 + optimizer: string, name of the optimizer used
@@ -300,14 +393,14 @@ Each row of the run dataset represents a single training run. Each training run 
 + num_free_parameters: uint64, exact number of trainable parameters
 + widths: [uint32], list of layer widths used
 + network_structure: string, marshaled json representation of network structure used
-+ platform: string, platform run executed on
++ platform: string, platform repetition executed on
 + git_hash: string, git hash of version of experimental framework used
-+ hostname: string, hostname of system that executed this run
-+ seed: int64, random seed used to initialize this run
-+ start_time: int64, unix timestamp of start time of this run
-+ update_time: int64, unix timestamp of completion time of this run
-+ command: string, complete marshaled json representation of this run's settings
-+ network_structure: string, marshaled json representation of this run's network configuration
++ hostname: string, hostname of system that executed this repetition
++ seed: int64, random seed used to initialize this repetition
++ start_time: int64, unix timestamp of start time of this repetition
++ update_time: int64, unix timestamp of completion time of this repetition
++ command: string, complete marshaled json representation of this repetition's settings
++ network_structure: string, marshaled json representation of this repetition's network configuration
 + widths: uint32, list of layer widths for the network used
 + num_free_parameters: uint64, exact number of free parameters in the tested network
 + val_loss: [float32], test loss at the end of each epoch
