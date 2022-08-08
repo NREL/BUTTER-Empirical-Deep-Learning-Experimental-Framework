@@ -128,7 +128,7 @@ def main():
         pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
         pyarrow.field('network_structure', pyarrow.string()),
         pyarrow.field('num_runs', pyarrow.uint8()),
-        pyarrow.field('num', pyarrow.list_(pyarrow.uint8())),
+        
 
         # pyarrow.field('test_loss_num_finite',
         #               pyarrow.list_(pyarrow.float32())),
@@ -136,9 +136,9 @@ def main():
         # pyarrow.field('test_loss_stddev', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('test_loss_min', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('test_loss_max', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_loss_median', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_loss_q1', pyarrow.list_(pyarrow.float32())),
-        pyarrow.field('test_loss_q3', pyarrow.list_(pyarrow.float32())),
+        # pyarrow.field('test_loss_median', pyarrow.list_(pyarrow.float32())),
+        # pyarrow.field('test_loss_q1', pyarrow.list_(pyarrow.float32())),
+        # pyarrow.field('test_loss_q3', pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_loss_num_finite',
         #               pyarrow.list_(pyarrow.float32())),
         # pyarrow.field('train_loss_avg', pyarrow.list_(pyarrow.float32())),
@@ -290,6 +290,7 @@ def main():
 
     if not simple:
         data_columns += [
+            pyarrow.field('num', pyarrow.list_(pyarrow.uint8())),
             pyarrow.field('test_loss_num_finite',
                           pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_loss_avg', pyarrow.list_(pyarrow.float32())),
@@ -297,9 +298,9 @@ def main():
                           pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_loss_min', pyarrow.list_(pyarrow.float32())),
             pyarrow.field('test_loss_max', pyarrow.list_(pyarrow.float32())),
-            # pyarrow.field('test_loss_median', pyarrow.list_(pyarrow.float32())),
-            # pyarrow.field('test_loss_q1', pyarrow.list_(pyarrow.float32())),
-            # pyarrow.field('test_loss_q3', pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_loss_median', pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_loss_q1', pyarrow.list_(pyarrow.float32())),
+            pyarrow.field('test_loss_q3', pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_loss_num_finite',
                           pyarrow.list_(pyarrow.float32())),
             pyarrow.field('train_loss_avg', pyarrow.list_(pyarrow.float32())),
@@ -521,7 +522,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 256
+    chunk_size = 1
     chunks = []
     with CursorManager(credentials) as cursor:
 
@@ -637,11 +638,11 @@ def main():
             result_block['network_structure'] = \
                 [json.dumps(js, separators=(',', ':'))
                  for js in result_block['network_structure']]
-            print(f'rb: {result_block}')
             record_batch = pyarrow.Table.from_pydict(
                 result_block,
                 schema=schema,
             )
+            print(result_block)
             
 
             parquet.write_to_dataset(
