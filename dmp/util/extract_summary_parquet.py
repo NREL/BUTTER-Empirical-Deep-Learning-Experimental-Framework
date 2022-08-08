@@ -113,21 +113,21 @@ def main():
     data_columns = [
         pyarrow.field('experiment_id', pyarrow.uint32()),
 
-        # pyarrow.field('primary_sweep', pyarrow.bool_()),
-        # pyarrow.field('300_epoch_sweep', pyarrow.bool_()),
-        # pyarrow.field('30k_epoch_sweep', pyarrow.bool_()),
-        # pyarrow.field('learning_rate_sweep', pyarrow.bool_()),
-        # pyarrow.field('label_noise_sweep', pyarrow.bool_()),
-        # pyarrow.field('batch_size_sweep', pyarrow.bool_()),
-        # pyarrow.field('regularization_sweep', pyarrow.bool_()),
-        # pyarrow.field('learning_rate_batch_size_sweep', pyarrow.bool_()),
-        # pyarrow.field('size_adjusted_regularization_sweep', pyarrow.bool_()),
-        # pyarrow.field('optimizer_sweep', pyarrow.bool_()),
+        pyarrow.field('primary_sweep', pyarrow.bool_()),
+        pyarrow.field('300_epoch_sweep', pyarrow.bool_()),
+        pyarrow.field('30k_epoch_sweep', pyarrow.bool_()),
+        pyarrow.field('learning_rate_sweep', pyarrow.bool_()),
+        pyarrow.field('label_noise_sweep', pyarrow.bool_()),
+        pyarrow.field('batch_size_sweep', pyarrow.bool_()),
+        pyarrow.field('regularization_sweep', pyarrow.bool_()),
+        pyarrow.field('learning_rate_batch_size_sweep', pyarrow.bool_()),
+        pyarrow.field('size_adjusted_regularization_sweep', pyarrow.bool_()),
+        pyarrow.field('optimizer_sweep', pyarrow.bool_()),
 
-        # pyarrow.field('num_free_parameters', pyarrow.uint64()),
+        pyarrow.field('num_free_parameters', pyarrow.uint64()),
         # pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
         # pyarrow.field('network_structure', pyarrow.string()),
-        # pyarrow.field('num_runs', pyarrow.uint8()),
+        pyarrow.field('num_runs', pyarrow.uint8()),
         
 
         # pyarrow.field('test_loss_num_finite',
