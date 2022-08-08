@@ -69,10 +69,8 @@ def main():
         pyarrow.field('label_noise', pyarrow.float32(), nullable=True),
         pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
-        pyarrow.field('momentum',
-                      pyarrow.string(), nullable=True),
-        pyarrow.field('nesterov',
-                      pyarrow.string(), nullable=True),
+        pyarrow.field('momentum', pyarrow.float32(), nullable=True),
+        pyarrow.field('nesterov', pyarrow.bool_(), nullable=True),
         pyarrow.field('output_activation', pyarrow.string(), nullable=True),
         # pyarrow.field('python_version', pyarrow.string(), nullable=True),
         # pyarrow.field('run_config.shuffle', pyarrow.string(), nullable=True),
@@ -125,8 +123,8 @@ def main():
         pyarrow.field('optimizer_sweep', pyarrow.bool_()),
 
         pyarrow.field('num_free_parameters', pyarrow.uint64()),
-        # pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
-        # pyarrow.field('network_structure', pyarrow.string()),
+        pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
+        pyarrow.field('network_structure', pyarrow.string()),
         pyarrow.field('num_runs', pyarrow.uint8()),
         
 
