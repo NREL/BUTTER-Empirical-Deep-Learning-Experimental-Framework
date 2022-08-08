@@ -125,8 +125,8 @@ def main():
         pyarrow.field('optimizer_sweep', pyarrow.bool_()),
 
         pyarrow.field('num_free_parameters', pyarrow.uint64()),
-        pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
-        pyarrow.field('network_structure', pyarrow.string()),
+        # pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
+        # pyarrow.field('network_structure', pyarrow.string()),
         pyarrow.field('num_runs', pyarrow.uint8()),
         
 
