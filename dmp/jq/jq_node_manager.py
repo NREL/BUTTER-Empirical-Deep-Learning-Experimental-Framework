@@ -23,6 +23,7 @@ def make_worker_process(rank, command):
         command, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         close_fds=True)
 
+
 def run_worker(worker_id, config, project, queue):
     run_script = config[0]
     cpus = config[1]
@@ -34,7 +35,7 @@ def run_worker(worker_id, config, project, queue):
     num_cpus = len(cpu_numbers)
     cpus_string = ','.join([str(i) for i in cpu_numbers])
     node_string = ','.join([str(i) for i in nodes])
-#python -u -m dmp.jobqueue_interface.worker 0 4 (0, 0, 0, 0) 64 0 0 0 dmp 1"
+# python -u -m dmp.jobqueue_interface.worker 0 4 (0, 0, 0, 0) 64 0 0 0 dmp 1"
     command = [
         f'./{run_script}',
         num_nodes, num_cpus, node_string, cpus_string,
@@ -50,15 +51,15 @@ def main():
     project = args[1]
     queue = args[2]
 
-    min_gpu_mem_per_worker = 6.5 * 1024
+    min_gpu_mem_per_worker = 4 * 1024
     worker_gpu_mem_overhead = 1024
     min_total_worker_gpu_mem = min_gpu_mem_per_worker + worker_gpu_mem_overhead
 
     min_gpu_mem_buffer = 500
-    max_worker_per_gpu = 2
+    max_worker_per_gpu = 4
 
     cpus_per_gpu_worker = 1
-    min_cpus_per_cpu_worker = 128
+    min_cpus_per_cpu_worker = 8
 
     smt_level = 1  # maximum number of SMT's (a.k.a. "CPUs") per core to use
 
@@ -142,27 +143,30 @@ def main():
             nonlocal num_cpus, top_level_cpu_index
 
             allocated = []
+
             def do_allocate_group(size, level):
                 nonlocal allocated
                 if isinstance(level, list):
+                    # recursive case: allocate from largest sublevel
                     while len(level) > 0 and \
                         (len(allocated) < min_group_size or
                          (len(groups) < max_num_groups and
                             size < min_group_size)):
-                        sublevel_size, sublevel = level[-1]
-                        new_sublevel_size, new_sublevel = do_allocate_group(
-                            sublevel_size, sublevel)
-                        if new_sublevel_size <= 0:
-                            level.pop()
-                        else:
-                            level[-1] = (new_sublevel_size, new_sublevel)
+                        sublevel_size, sublevel = level.pop()
+                        new_sublevel_size, new_sublevel = \
+                            do_allocate_group(sublevel_size, sublevel)
+                        if new_sublevel_size > 0:
+                            # could be more efficient here
+                            level.append((new_sublevel_size, new_sublevel))
+                            level.sort(key=lambda e: e[0])
                         size += (new_sublevel_size - sublevel_size)
 
                     return size, level
                 else:
+                    # base case: allocate this cpu
                     allocated.append(level)
                     return 0, None
-            num_cpus, top_level = \
+            num_cpus, top_level_cpu_index = \
                 do_allocate_group(num_cpus, top_level_cpu_index)
             return allocated
 
@@ -195,7 +199,8 @@ def main():
         mem_per_worker = int((mem_avail / num_workers) -
                              worker_gpu_mem_overhead)
 
-        print(f'Allocating {num_workers} workers to GPU {gpu_number} with {mem_per_worker} MB GPU memory each.')
+        print(
+            f'Allocating {num_workers} workers to GPU {gpu_number} with {mem_per_worker} MB GPU memory each.')
         cpu_groups = allocate_cpus(num_workers, cpus_per_gpu_worker)
         print(f'GPU {gpu_number} worker groups: {cpu_groups}')
         for cpu_group in cpu_groups:

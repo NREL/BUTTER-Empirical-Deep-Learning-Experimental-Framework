@@ -156,11 +156,11 @@ be stored in relation to each other.
  
 ## Data Format
  
-The complete raw dataset is available in the /all_runs/ partitioned parquet dataset. Each row in this dataset is a record of one training repetition of a network. Several statistics were recorded at the end of each training epoch, and those records are stored in this row as arrays indexed by training epoch. For convenience, we also provide the /complete_summary/ partitioned parquet dataset which contains statistics aggregated over all repetitions of the same experiment including average and median test and training losses at the end of each training epoch. Distinct experiments are uniquely and consistently identified in both datasets by an 'experiment_id'. Additionally, we have created separate raw repetition and summary datasets for each experimental sweep so that they can be downloaded and queried separately if the entire dataset is not needed. _The schemas of summary and repetition datasets are the same for every sweep._
+The complete raw dataset is available in the /all_runs/ partitioned parquet dataset. Each row in this dataset is a record of one training repetition of a network. Several statistics were recorded at the end of each training epoch, and those records are stored in this row as arrays indexed by training epoch. For convenience, we also provide the /complete_summary/ partitioned parquet dataset which contains statistics aggregated over all repetitions of the same experiment including average and median test and training losses at the end of each training epoch. Distinct experiments are uniquely and consistently identified in both datasets by an 'experiment_id'. Additionally, we have created separate full (containing all repetitions) and per-experiment summary datasets for each experimental sweep so that they can be downloaded and queried separately if the entire dataset is not needed. _The schemas of summary and full datasets are the same for every sweep._
  
 ### File Hierarchy and Descriptions
  
-/all_runs/ contains all of the experimental repetition records for all sweeps
+/all_runs/ contains all of the full experimental repetition records for all sweeps
 /complete_summary/ contains per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps
 /complete_summary.tar is a tarball of /experiment_summary/
  
@@ -196,7 +196,7 @@ The complete raw dataset is available in the /all_runs/ partitioned parquet data
  
 ### Experiment Summary Schema
  
-For preliminary analysis, we recommend using the summary dataset as it is smaller and more convenient to work with than the full repetition dataset. However, the entire record of every repetition of every experiment is stored in the repetition dataset, allowing other statistics to be computed from the raw data. Each experiment has a unique experiment_id value, which matches repetition records in the runs dataset. Summary data is partitioned by dataset, shape, learning rate, batch size, kernel regularizer, label noise, depth, and number of training epochs.
+For preliminary analysis, we recommend using the summary dataset as it is smaller and more convenient to work with than the full repetition dataset. However, the entire record of every repetition of every experiment is stored in the full dataset, allowing other statistics to be computed from the raw data. Each experiment has a unique experiment_id value, which matches repetition records in the runs dataset. Summary data is partitioned by dataset, shape, learning rate, batch size, kernel regularizer, label noise, depth, and number of training epochs.
  
 #### The columns of the summary dataset are:
 
@@ -218,7 +218,7 @@ For preliminary analysis, we recommend using the summary dataset as it is smalle
   + dataset: string, name of the dataset used
   + depth: uint8, number of layers
   + early_stopping: string, early stopping policy
-  + epochs: uint32, number of training epochs in this repetition
+  + epochs: uint32, number of training epochs in this experiment
   + input_activation: string, input activation function
   + kernel_regularizer: string, null if no regularizer is used
   + kernel_regularizer_l1: float32, L1 regularization penalty coefficient
@@ -359,7 +359,7 @@ For preliminary analysis, we recommend using the summary dataset as it is smalle
  
 Each row of the repetition dataset represents a single training run. Each repetition was instrumented to record various statistics at the end of each training epoch, and those statistics are stored as epoch-indexed arrays in each row. Runs are labeled with an 'experiment_id' which was used to aggregate repetitions of the same experimental parameters together in the summary dataset. An experiment_id in the experiment dataset correspond to the same experiment_id in the summary dataset.
  
-#### The columns of the repetition dataset are:
+#### The columns of the full dataset are:
  
 + experiment_id: uint32, id of the experiment this run was a repetition of
 + run_id: string, unique id of this repetition

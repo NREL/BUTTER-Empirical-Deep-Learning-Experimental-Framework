@@ -9,9 +9,10 @@ set primary_sweep = (
     and core_learning_rate
     and core_batch_size
     and core_optimizer
+    and batch = 'fixed_3k_1'
 ),
-   "300_epoch_sweep" = (secondary_epochs),
-   "30k_epoch_sweep" = (tertiary_epochs),
+   "300_epoch_sweep" = (secondary_epochs and batch = 'fixed_300_1'),
+   "30k_epoch_sweep" = (tertiary_epochs and batch = 'fixed_30k_1'),
    "learning_rate_sweep" = (
        core_shape 
        and core_dataset
@@ -35,6 +36,7 @@ set primary_sweep = (
        and (core_learning_rate or secondary_learning_rate)
        and core_batch_size
        and core_optimizer
+       and batch IN ('fixed_3k_1')
    ),
    "batch_size_sweep" = (
        rectangle_shape 
@@ -47,6 +49,7 @@ set primary_sweep = (
        and (core_learning_rate)
        and (secondary_batch_size)
        and core_optimizer
+       and batch IN ('fixed_3k_1', 'batch_size_1')
    ),
    "regularization_sweep" = (
        rectangle_shape 
@@ -59,6 +62,7 @@ set primary_sweep = (
        and (core_learning_rate)
        and (core_batch_size)
        and core_optimizer
+       and batch IN ('fixed_3k_1', 'l1_group_0', 'l2_group_0')
    ),
    "learning_rate_batch_size_sweep" = (
         rectangle_shape
@@ -67,7 +71,7 @@ set primary_sweep = (
         and (core_dataset or secondary_dataset)
         and (reduced_core_depth_2)
         and (core_size)
-        and (batch_learning_rate_x_batch_size or core_regularization)
+        and (batch_learning_rate_x_batch_size or (batch = 'fixed_3k_1' and core_regularization))
         and lr_batch_size_learning_rate
         and secondary_batch_size
         and core_optimizer
@@ -81,16 +85,31 @@ set primary_sweep = (
         and (reduced_core_depth)
         and (core_size)
         and (batch_optimizer_1
-            or (core_optimizer 
+            or (batch = 'fixed_3k_1' and core_optimizer 
                 and (lr_batch_size_learning_rate)
                 and (secondary_batch_size)
             ))
    ),
-   "size_adjusted_regularization_sweep" = batch_size_adjusted_regularization_sweep
+   "size_adjusted_regularization_sweep" = 
+        (rectangle_shape
+            and core_depth
+            and (core_dataset or secondary_dataset)
+            and core_epochs
+            and core_label_noise
+            and core_learning_rate
+            and core_batch_size
+            and core_optimizer
+            and (batch_size_adjusted_regularization_sweep 
+            OR (
+                batch = 'fixed_3k_1'
+                and core_regularization
+                )))
+        
 from
 (
     select 
         e.ctid experiment_ctid,
+    "batch".string_value batch,
     (shape.string_value = 'rectangle') rectangle_shape,
         (shape.string_value in (
     'rectangle'
@@ -144,6 +163,8 @@ from
     ("epochs".integer_value = 30000) tertiary_epochs,
     ("optimizer".string_value in ('adam')) core_optimizer,
     ("optimizer".string_value in ('adam', 'RMSProp', 'SGD')) secondary_optimizer,
+    ("batch".string_value = 'fixed_3k_1') fixed_3k_1_batch,
+    ("batch".string_value = 'learning_rate') fixed_3k_1_batch,
     ("batch".string_value = 'learning_rate_x_batch_size') batch_learning_rate_x_batch_size,
     ("batch".string_value = 'optimizer_1') batch_optimizer_1,
     ("batch".string_value in ('l2_group_1', 'l1_group_1')) batch_size_adjusted_regularization_sweep,
