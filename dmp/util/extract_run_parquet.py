@@ -100,21 +100,23 @@ def main():
             'optimizer_sweep', ])
 
     data_columns = [
-        pyarrow.field('run_id', pyarrow.string()),
-        pyarrow.field('experiment_id', pyarrow.uint32()),
+        pyarrow.field('run_id', pyarrow.string(), nullable=False),
+        pyarrow.field('experiment_id', pyarrow.uint32(), nullable=False),
 
-        pyarrow.field('primary_sweep', pyarrow.bool_()),
-        pyarrow.field('300_epoch_sweep', pyarrow.bool_()),
-        pyarrow.field('30k_epoch_sweep', pyarrow.bool_()),
-        pyarrow.field('learning_rate_sweep', pyarrow.bool_()),
-        pyarrow.field('label_noise_sweep', pyarrow.bool_()),
-        pyarrow.field('batch_size_sweep', pyarrow.bool_()),
-        pyarrow.field('regularization_sweep', pyarrow.bool_()),
-        pyarrow.field('learning_rate_batch_size_sweep', pyarrow.bool_()),
-        pyarrow.field('size_adjusted_regularization_sweep', pyarrow.bool_()),
-        pyarrow.field('optimizer_sweep', pyarrow.bool_()),
+        pyarrow.field('primary_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('300_epoch_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('30k_epoch_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('learning_rate_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('label_noise_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('batch_size_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('regularization_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('learning_rate_batch_size_sweep',
+                      pyarrow.bool_(), nullable=False),
+        pyarrow.field('size_adjusted_regularization_sweep',
+                      pyarrow.bool_(), nullable=False),
+        pyarrow.field('optimizer_sweep', pyarrow.bool_(), nullable=False),
 
-        pyarrow.field('num_free_parameters', pyarrow.uint64()),
+        pyarrow.field('num_free_parameters', pyarrow.uint64(), nullable=False),
         pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
         pyarrow.field('network_structure', pyarrow.string(), nullable=True),
 
@@ -229,7 +231,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 128
+    chunk_size = 32
     chunks = []
     with CursorManager(credentials) as cursor:
 
@@ -272,96 +274,103 @@ def main():
             chunk.append(row[0])
 
     def download_chunk(chunk):
-        # print(f'Begin chunk {chunk}.')
+        while True:
+            try:
+                # print(f'Begin chunk {chunk}.')
 
-        result_block = {name: [] for name in column_names}
-        row_number = 0
+                result_block = {name: [] for name in column_names}
+                row_number = 0
 
-        q = sql.SQL('SELECT run_parameters, ')
+                q = sql.SQL('SELECT run_parameters, ')
 
-        q += sql.SQL(', ').join([sql.Identifier(inverse_column_name_mapping.get(c, c))
-                                for c in data_column_names])
-        q += sql.SQL(' FROM ( ')
-        q += sql.SQL(' SELECT r.*, e.num_free_parameters num_free_parameters, e.widths widths, e.network_structure network_structure, EXTRACT(epoch FROM s.start_time) start_time, EXTRACT(epoch FROM s.update_time) update_time, d.command command, ')
-        q += sql.SQL(' e."primary_sweep" "primary_sweep", ')
-        q += sql.SQL(' e."300_epoch_sweep" "300_epoch_sweep", ')
-        q += sql.SQL(' e."30k_epoch_sweep" "30k_epoch_sweep", ')
-        q += sql.SQL(' e."learning_rate_sweep" "learning_rate_sweep", ')
-        q += sql.SQL(' e."label_noise_sweep" "label_noise_sweep", ')
-        q += sql.SQL(' e."batch_size_sweep" "batch_size_sweep", ')
-        q += sql.SQL(' e."regularization_sweep" "regularization_sweep", ')
+                q += sql.SQL(', ').join([sql.Identifier(inverse_column_name_mapping.get(c, c))
+                                        for c in data_column_names])
+                q += sql.SQL(' FROM ( ')
+                q += sql.SQL(' SELECT r.*, e.num_free_parameters num_free_parameters, e.widths widths, e.network_structure network_structure, EXTRACT(epoch FROM s.start_time) start_time, EXTRACT(epoch FROM s.update_time) update_time, d.command command, ')
+                q += sql.SQL(' e."primary_sweep" "primary_sweep", ')
+                q += sql.SQL(' e."300_epoch_sweep" "300_epoch_sweep", ')
+                q += sql.SQL(' e."30k_epoch_sweep" "30k_epoch_sweep", ')
+                q += sql.SQL(' e."learning_rate_sweep" "learning_rate_sweep", ')
+                q += sql.SQL(' e."label_noise_sweep" "label_noise_sweep", ')
+                q += sql.SQL(' e."batch_size_sweep" "batch_size_sweep", ')
+                q += sql.SQL(' e."regularization_sweep" "regularization_sweep", ')
 
-        q += sql.SQL(' e."learning_rate_batch_size_sweep" "learning_rate_batch_size_sweep", ')
-        q += sql.SQL(' e."size_adjusted_regularization_sweep" "size_adjusted_regularization_sweep", ')
-        q += sql.SQL(' e."optimizer_sweep" "optimizer_sweep" ')
+                q += sql.SQL(' e."learning_rate_batch_size_sweep" "learning_rate_batch_size_sweep", ')
+                q += sql.SQL(' e."size_adjusted_regularization_sweep" "size_adjusted_regularization_sweep", ')
+                q += sql.SQL(' e."optimizer_sweep" "optimizer_sweep" ')
 
-        q += sql.SQL(' FROM run_ r JOIN experiment_ e ON (r.experiment_id = e.experiment_id) ')
-        q += sql.SQL(' LEFT JOIN job_status s ON (s.id = r.run_id) ')
-        q += sql.SQL(' LEFT JOIN job_data d ON (d.id = r.run_id) ')
-        q += sql.SQL(' WHERE r.run_id IN ( ')
-        q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
+                q += sql.SQL(' FROM run_ r JOIN experiment_ e ON (r.experiment_id = e.experiment_id) ')
+                q += sql.SQL(' LEFT JOIN job_status s ON (s.id = r.run_id) ')
+                q += sql.SQL(' LEFT JOIN job_data d ON (d.id = r.run_id) ')
+                q += sql.SQL(' WHERE r.run_id IN ( ')
+                q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
 
-        q += sql.SQL(') ')
-        q += sql.SQL(') x ')
-        q += sql.SQL(' ;')
+                q += sql.SQL(') ')
+                q += sql.SQL(') x ')
+                q += sql.SQL(' ;')
 
-        with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
-            cursor.itersize = 8
+                with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
+                    cursor.itersize = 8
 
-            cursor.execute(q)
-            # if cursor.description is None:
-            #     print(cursor.mogrify(q))
-            #     continue
+                    cursor.execute(q)
+                    # if cursor.description is None:
+                    #     print(cursor.mogrify(q))
+                    #     continue
 
-            for row in cursor:
-                for name in column_names:
-                    result_block[name].append(None)
+                    for row in cursor:
+                        for name in column_names:
+                            result_block[name].append(None)
 
-                for kind, value in parameter_map.parameter_from_id(row[0]):
-                    kind = column_name_mapping.get(kind, kind)
-                    if kind in parameter_column_names_set:
-                        result_block[kind][row_number] = value
+                        for kind, value in parameter_map.parameter_from_id(row[0]):
+                            kind = column_name_mapping.get(kind, kind)
+                            if kind in parameter_column_names_set:
+                                result_block[kind][row_number] = value
 
-                for i in range(len(data_column_names)):
-                    result_block[data_column_names[i]
-                                 ][row_number] = row[i+1]
+                        for i in range(len(data_column_names)):
+                            result_block[data_column_names[i]
+                                         ][row_number] = row[i+1]
 
-                row_number += 1
+                        row_number += 1
 
-        if row_number > 0:
+                if row_number > 0:
 
-            result_block['network_structure'] = \
-                [json.dumps(js, separators=(',', ':'))
-                 for js in result_block['network_structure']]
+                    result_block['network_structure'] = \
+                        [json.dumps(js, separators=(',', ':'))
+                         for js in result_block['network_structure']]
 
-            result_block['run_id'] = [str(e) for e in result_block['run_id']]
+                    result_block['run_id'] = [str(e)
+                                              for e in result_block['run_id']]
 
-            result_block['command'] = \
-                [json.dumps(js, separators=(',', ':'))
-                 for js in result_block['command']]
+                    result_block['command'] = \
+                        [json.dumps(js, separators=(',', ':'))
+                         for js in result_block['command']]
 
-            record_batch = pyarrow.Table.from_pydict(
-                result_block,
-                schema=schema,
-            )
+                    record_batch = pyarrow.Table.from_pydict(
+                        result_block,
+                        schema=schema,
+                    )
 
-            parquet.write_to_dataset(
-                record_batch,
-                root_path=dataset_path,
-                schema=schema,
-                partition_cols=partition_cols,
-                # data_page_size=128 * 1024,
-                compression='BROTLI',
-                compression_level=8,
-                use_dictionary=use_dictionary,
-                use_byte_stream_split=use_byte_stream_split,
-                data_page_version='2.0',
-                existing_data_behavior='overwrite_or_ignore',
-                use_legacy_dataset=False,
-                # write_batch_size=64,
-                # dictionary_pagesize_limit=64*1024,
-            )
-        # print(f'End chunk {chunk}.')
+                    parquet.write_to_dataset(
+                        record_batch,
+                        root_path=dataset_path,
+                        schema=schema,
+                        partition_cols=partition_cols,
+                        # data_page_size=128 * 1024,
+                        compression='BROTLI',
+                        compression_level=8,
+                        use_dictionary=use_dictionary,
+                        use_byte_stream_split=use_byte_stream_split,
+                        data_page_version='2.0',
+                        existing_data_behavior='overwrite_or_ignore',
+                        use_legacy_dataset=False,
+                        # write_batch_size=64,
+                        # dictionary_pagesize_limit=64*1024,
+                    )
+                # print(f'End chunk {chunk}.')
+                break
+            except BaseException as e:
+                print(f'Exception on chunk {chunk}: {e}')
+
         return row_number, chunk
 
     # with parquet.ParquetWriter(
@@ -385,14 +394,16 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(38) as pool:
-        results = pool.uimap(download_chunk, chunks)
-        for num_rows, chunk in results:
-            num_stored += 1
-            print(
-                f'Stored {num_rows}, chunk {num_stored} / {len(chunks)}.')
-            # writer.write_batch(record_batch)
-
+    pool = multiprocessing.ProcessPool(multiprocessing.cpu_count())
+    results = pool.uimap(download_chunk, chunks)
+    for num_rows, chunk in results:
+        num_stored += 1
+        print(
+            f'Stored {num_rows}, chunk {num_stored} / {len(chunks)}.')
+        # writer.write_batch(record_batch)
+    pool.close()
+    pool.join()
+    
     print('Done.')
 
 
