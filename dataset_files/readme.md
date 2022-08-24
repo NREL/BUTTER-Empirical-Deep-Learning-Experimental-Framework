@@ -2,7 +2,7 @@
  
 ## Summary
  
-This dataset represents an empirical study of the deep learning phenomena on dense fully connected networks, scanning across thirteen datasets, eight network shapes, fourteen depths, twenty-three network sizes (number of trainable parameters), four learning rates, six minibatch sizes, four levels of label noise, and fourteen levels of L1 and L2 regularization each. Multiple repetitions (typically 30, sometimes 10) of each combination of hyperparameters were preformed, and statistics including training and test loss (using a 80% / 20% shuffled train-test split) are recorded at the end of each training epoch. In total, this dataset covers 386 thousand distinct hyperparameter settings ("experiments"), 9.30 million individual training runs (an average of 24 repetitions of each experiments), and a total of 34.3 billion training epochs (three thousand epochs were covered by most runs). Accumulating this dataset utilized 11,200 CPU core-years, 72.3 GPU-years, and 163 node-years.
+This dataset represents an empirical study of the deep learning phenomena on dense fully connected networks, scanning across thirteen datasets, eight network shapes, fourteen depths, twenty-three network sizes (number of trainable parameters), four learning rates, six minibatch sizes, four levels of label noise, and fourteen levels of L1 and L2 regularization each. Multiple repetitions (typically 30, sometimes 10) of each combination of hyperparameters were preformed, and statistics including training and test loss (using a 80% / 20% shuffled train-test split) are recorded at the end of each training epoch. In total, this dataset covers 386 thousand distinct hyperparameter settings ("experiments"), 9.30 million individual training runs (an average of 24 repetitions of each experiments), and a total of 34.3 billion training epochs (three thousand epochs were covered by most runs). Accumulating this 880GB dataset utilized 11,200 CPU core-years, 72.3 GPU-years, and 163 node-years.
  
 For each training epoch of each repetition we recorded 20 performance statistics, and the complete record of these raw values are stored here. For convenience, we additionally include multiple per-experiment summary statistics aggregated over every repetition of that experiment as the "summary" dataset, and also provide several useful slices of the summary data scanning along salient dimensions such as minibatch size and learning rate.
  
@@ -183,52 +183,37 @@ The complete raw dataset is available in the /all_runs/ partitioned parquet data
  
 ### File Hierarchy and Descriptions
 
-/complete_executive_summary/ contains a minimal set of per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps. This file has the same schema as the summary datasets, except it does not include any per-epoch statistic columns except for test_loss_q1, test_loss_median, and test_loss_q3. *This file is intended to provide a simple, small dataset that can be more easily and quickly downloaded, queried, and analyzed than the summary or run datasets and provides an easy starting point for using this dataset.*
-/complete_executive_summary.tar.xz is a compressed tarball of /complete_executive_summary/
+**/complete_executive_summary/** *This file is intended to provide a simple, small dataset that can be more easily and quickly downloaded, queried, and analyzed than the summary or run datasets and provides an easy starting point for using this dataset.* It contains a minimal set of per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps. This file has the same schema as the summary datasets, except it does not include any per-epoch statistic columns except for test_loss_q1, test_loss_median, and test_loss_q3. 
+**/complete_executive_summary.tar.xz** is a compressed tarball of /complete_executive_summary/
 
 /complete_summary/ contains per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps
 /complete_summary.tar.xz is a compressed tarball of /complete_summary/
+
 /all_repetitions/ contains all of the repetition records in all sweeps
 /all_repetitions.tar.xz is a compressed tarball of /all_repetitions/
  
 /primary_sweep_summary/ contains summary experiment statistics for the primary sweep
 /primary_sweep_summary.tar.xz is a compressed tarball of /primary_sweep_summary/
-/primary_sweep/ contains all primary sweep repetition records
-/primary_sweep.tar.xz is a compressed tarball of /primary_sweep/
 
 /300_epoch_sweep_summary/ contains summary experiment statistics for the 300 epoch sweep
-/300_epoch_sweep_summary.tar.xz is a compressed tarball of /300_epoch_sweep_summary/
-/300_epoch_sweep_summary/ contains all 300 epoch sweep repetition records
 /300_epoch_sweep_summary.tar.xz is a compressed tarball of /300_epoch_sweep_summary/
  
 /30k_epoch_sweep_summary/ contains summary experiment statistics for the 30k epoch sweep
 /30k_epoch_sweep_summary.tar.xz is a compressed tarball of /30k_epoch_sweep_summary/
-/30k_epoch_sweep_summary/ contains all 30k epoch sweep repetition records
-/30k_epoch_sweep_summary.tar.xz is a compressed tarball of /30k_epoch_sweep_summary/
  
 /learning_rate_sweep_summary/ contains summary experiment statistics for the learning rate sweep
-/learning_rate_sweep_summary.tar.xz is a compressed tarball of /learning_rate_sweep_summary/
-/learning_rate_sweep_summary/ contains all learning rate sweep repetition records
 /learning_rate_sweep_summary.tar.xz is a compressed tarball of /learning_rate_sweep_summary/
  
 /label_noise_sweep_summary/ contains summary experiment statistics for the label noise sweep
 /label_noise_sweep_summary.tar.xz is a compressed tarball of /label_noise_sweep_summary/
-/label_noise_sweep_summary/ contains all label noise sweep repetition records
-/label_noise_sweep_summary.tar.xz is a compressed tarball of /label_noise_sweep_summary/
  
 /batch_size_sweep_summary/ contains summary experiment statistics for the batch size sweep
-/batch_size_sweep_summary.tar.xz is a compressed tarball of /batch_size_sweep_summary/
-/batch_size_sweep_summary/ contains all batch size sweep repetition records
 /batch_size_sweep_summary.tar.xz is a compressed tarball of /batch_size_sweep_summary/
  
 /regularization_sweep_summary/ contains summary experiment statistics for the regularization sweep
 /regularization_sweep_summary.tar.xz is a compressed tarball of /regularization_sweep_summary/
-/regularization_sweep_summary/ contains all regularization sweep repetition records
-/regularization_sweep_summary.tar.xz is a compressed tarball of /regularization_sweep_summary/
  
 /optimizer_sweep_summary/ contains summary experiment statistics for the optimizer sweep
-/optimizer_sweep_summary.tar.xz is a compressed tarball of /optimizer_sweep_summary/
-/optimizer_sweep_summary/ contains all optimizer sweep repetition records
 /optimizer_sweep_summary.tar.xz is a compressed tarball of /optimizer_sweep_summary/
  
 ### Experiment Summary Schema
