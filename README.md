@@ -10,9 +10,6 @@ The BUTTER Empirical Framework enables researchers to run high volumes of comput
 
 **If you benefit from this code or concept, please cite these resources:**
 
-## Citing This Dataset
-**If you use this code or the related BUTTER dataset, please cite our upcoming dataset publication, which is currently under review for NeurIPS 2022.**
-
 [The paper](https://arxiv.org/abs/2207.12547):
 
   Tripp, C. E., Perr-Sauer, J., Hayne, L., & Lunacek, M. (2022). An Empirical Deep Dive into Deep Learning's Driving Dynamics. *arXiv preprint arXiv:2207.12547.*
