@@ -9,6 +9,17 @@ For each training epoch of each repetition we recorded 20 performance statistics
 ## Citing This Dataset
 **If you use this dataset, please cite our upcoming dataset publication, which is currently under review for NeurIPS 2022.**
 
+Tripp, C. E., Perr-Sauer, J., Hayne, L., & Lunacek, M. (2022). An Empirical Deep Dive into Deep Learning's Driving Dynamics. *arXiv preprint arXiv:2207.12547.*
+
+BibTex:
+
+    @article{tripp2022empirical,
+      title={An Empirical Deep Dive into Deep Learning's Driving Dynamics},
+      author={Tripp, Charles Edison and Perr-Sauer, Jordan and Hayne, Lucas and Lunacek, Monte},
+      journal={arXiv preprint arXiv:2207.12547},
+      year={2022}
+    }
+
 ## Additional Resources
 + [Example Jupyter notebooks](https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results) which plot from the online dataset and produce figures in our publication can be found here: [https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results](https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results).
 + The source code for the [empirical machine learning framework](https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework) used to generate this dataset is available here: [https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework](https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework).
