@@ -294,6 +294,8 @@ count(distinct "kernel_regularizer.l2".real_value) rum_l2,
     count(distinct "dataset".string_value) num_datasets
 from
     experiment_summary_ s
+    left join parameter_ "optimizer" on (s.experiment_parameters @> array["optimizer".id] and "optimizer".kind = 'optimizer')
+    left join parameter_ "momentum" on (s.experiment_parameters @> array["optimizer".id] and "momentum".kind = 'optimizer.config.momentum')
     left join parameter_ "batch" on (s.experiment_parameters @> array["batch".id] and "batch".kind = 'batch')
     left join parameter_ "dataset" on (s.experiment_parameters @> array["dataset".id] and "dataset".kind = 'dataset')
     left join parameter_ "learning_rate" on (s.experiment_parameters @> array["learning_rate".id] and "learning_rate".kind = 'learning_rate')

@@ -86,7 +86,7 @@ def main():
         'depth',
     ]
 
-    if sweep is None:
+    if sweep is None or sweep == 'butter':
         partition_cols.extend([
             'primary_sweep',
             '300_epoch_sweep',
