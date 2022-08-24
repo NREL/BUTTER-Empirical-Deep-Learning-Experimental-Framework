@@ -5,7 +5,7 @@
 The BUTTER Empirical Framework enables researchers to run high volumes of computational experiments, including machine learning experiments, in a highly distributed asynchronous way. The BUTTER Framework was designed for asynchronous, unpredictable, and occasionally unreliable worker jobs to execute on any number of computing systems including laptops, servers, cloud resources, clusters, and high-performance supercomputers (HPC systems). 
 
 + Examples of plotting data from the dataset are available [here](https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results).
-+ 
+
 ## Using and Citing this Code
 
 **If you benefit from this code or concept, please cite these resources:**
