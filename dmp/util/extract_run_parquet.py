@@ -289,7 +289,11 @@ def main():
         q += sql.SQL(' e."learning_rate_sweep" "learning_rate_sweep", ')
         q += sql.SQL(' e."label_noise_sweep" "label_noise_sweep", ')
         q += sql.SQL(' e."batch_size_sweep" "batch_size_sweep", ')
-        q += sql.SQL(' e."regularization_sweep" "regularization_sweep" ')
+        q += sql.SQL(' e."regularization_sweep" "regularization_sweep", ')
+
+        q += sql.SQL(' e."learning_rate_batch_size_sweep" "learning_rate_batch_size_sweep", ')
+        q += sql.SQL(' e."size_adjusted_regularization_sweep" "size_adjusted_regularization_sweep", ')
+        q += sql.SQL(' e."optimizer_sweep" "optimizer_sweep" ')
 
         q += sql.SQL(' FROM run_ r JOIN experiment_ e ON (r.experiment_id = e.experiment_id) ')
         q += sql.SQL(' LEFT JOIN job_status s ON (s.id = r.run_id) ')

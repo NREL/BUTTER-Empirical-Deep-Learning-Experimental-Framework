@@ -160,7 +160,8 @@ The complete raw dataset is available in the /all_runs/ partitioned parquet data
  
 ### File Hierarchy and Descriptions
  
-/all_runs/ contains all of the full experimental repetition records for all sweeps
+/all_repetitions/ contains all of the repetition records in all sweeps
+
 /complete_summary/ contains per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps
 /complete_summary.tar is a tarball of /experiment_summary/
  
