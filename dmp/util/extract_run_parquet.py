@@ -25,7 +25,7 @@ def main():
     with CursorManager(credentials) as cursor:
         parameter_map = PostgresParameterMap(cursor)
 
-    dataset_path = '../experiment/'
+    dataset_path = '../all_repetitions/'
     if sweep is not None:
         dataset_path = f'../{sweep}/'
 
@@ -75,7 +75,22 @@ def main():
         # pyarrow.field('test_split_method', pyarrow.string(), nullable=True),
     ]
 
-    partition_cols = [
+    experiment_partition_cols = []
+    # if sweep is None or sweep == 'butter':
+    #     experiment_partition_cols.extend([
+    #         'primary_sweep',
+    #         '300_epoch_sweep',
+    #         '30k_epoch_sweep',
+    #         'learning_rate_sweep',
+    #         'label_noise_sweep',
+    #         'batch_size_sweep',
+    #         'regularization_sweep',
+    #         'learning_rate_batch_size_sweep',
+    #         'size_adjusted_regularization_sweep',
+    #         'optimizer_sweep',
+    #     ])
+
+    parameter_partition_cols = [
         'dataset',
         'learning_rate',
         'batch_size',
@@ -86,18 +101,9 @@ def main():
         'depth',
     ]
 
-    if sweep is None or sweep == 'butter':
-        partition_cols.extend([
-            'primary_sweep',
-            '300_epoch_sweep',
-            '30k_epoch_sweep',
-            'learning_rate_sweep',
-            'label_noise_sweep',
-            'batch_size_sweep',
-            'regularization_sweep',
-            'learning_rate_batch_size_sweep',
-            'size_adjusted_regularization_sweep',
-            'optimizer_sweep', ])
+    partition_cols = []
+    partition_cols.extend(experiment_partition_cols)
+    partition_cols.extend(parameter_partition_cols)
 
     data_columns = [
         pyarrow.field('run_id', pyarrow.string(), nullable=False),
@@ -203,6 +209,10 @@ def main():
 
     inverse_column_name_mapping = {
         v: k for k, v in column_name_mapping.items()}
+    experiment_partition_cols_source = [
+        inverse_column_name_mapping.get(c, c) for c in experiment_partition_cols]
+    parameter_partition_cols_source = [
+        inverse_column_name_mapping.get(c, c) for c in parameter_partition_cols]
     partition_cols_source = [
         inverse_column_name_mapping.get(c, c) for c in partition_cols]
 
@@ -231,19 +241,22 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 32
+    chunk_size = 64
     chunks = []
     with CursorManager(credentials) as cursor:
 
-        q = sql.SQL('SELECT run_id, ')
+        q = sql.SQL('SELECT r.run_id, r.experiment_id, ')
+
         q += sql.SQL(', ').join(
+            [sql.SQL('s.{} {}').format(sql.Identifier(p), sql.Identifier(p))
+             for p in experiment_partition_cols_source] +
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
-             for p in partition_cols_source]
-        )
+             for p in parameter_partition_cols_source])
+        
         q += sql.SQL(' FROM run_ r ')
         q += sql.SQL(' ').join(
             [sql.SQL(' left join parameter_ {} on ({}.kind = {} and r.run_parameters @> array[{}.id]) ').format(
-                sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols_source])
+                sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in parameter_partition_cols_source])
 
         q += sql.SQL(' WHERE ')
         q += sql.SQL('EXISTS (SELECT * FROM experiment_ e WHERE e.experiment_id = r.experiment_id AND e.{}) ').format(sql.Identifier(sweep))
@@ -254,8 +267,14 @@ def main():
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
 
         q += sql.SQL(' ORDER BY ')
-        q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
-                                  for p in partition_cols_source] + [sql.SQL('experiment_id'), sql.SQL('run_id')])
+        
+        q += sql.SQL(' , ').join(
+            [sql.SQL('s.{}').format(sql.Identifier(p))
+             for p in experiment_partition_cols_source] +
+            [sql.SQL('{}.id').format(sql.Identifier(p))
+             for p in parameter_partition_cols_source] +
+            [sql.SQL('experiment_id'), sql.SQL('run_id')])
+
         q += sql.SQL(' ;')
 
         x = cursor.mogrify(q)
@@ -265,7 +284,7 @@ def main():
         chunk = []
         chunk_partition = None
         for row in cursor:
-            partition = [row[i+1] for i in range(len(partition_cols_source))]
+            partition = [row[i+2] for i in range(len(partition_cols_source))]
             if len(chunk) >= chunk_size or partition != chunk_partition:
                 chunk_partition = partition
                 chunk = []
@@ -403,7 +422,7 @@ def main():
         # writer.write_batch(record_batch)
     pool.close()
     pool.join()
-    
+
     print('Done.')
 
 

@@ -29,11 +29,11 @@ def main():
         parameter_map = PostgresParameterMap(cursor)
 
     if simple:
-        dataset_path = '../simple_experiment_summary/'
+        dataset_path = '../complete_executive_summary/'
         if sweep != 'butter':
             dataset_path = f'../simple_{sweep}_summary/'
     else:
-        dataset_path = '../experiment_summary/'
+        dataset_path = '../complete_summary/'
         if sweep != 'butter':
             dataset_path = f'../{sweep}_summary/'
 
@@ -83,7 +83,22 @@ def main():
         # pyarrow.field('test_split_method', pyarrow.string(), nullable=True),
     ]
 
-    partition_cols = [
+    experiment_partition_cols = []
+    # if sweep is None or sweep == 'butter':
+    #     experiment_partition_cols.extend([
+    #         'primary_sweep',
+    #         '300_epoch_sweep',
+    #         '30k_epoch_sweep',
+    #         'learning_rate_sweep',
+    #         'label_noise_sweep',
+    #         'batch_size_sweep',
+    #         'regularization_sweep',
+    #         'learning_rate_batch_size_sweep',
+    #         'size_adjusted_regularization_sweep',
+    #         'optimizer_sweep',
+    #     ])
+
+    parameter_partition_cols = [
         'dataset',
         'learning_rate',
         'batch_size',
@@ -92,21 +107,13 @@ def main():
         'epochs',
         'shape',
         'depth',
+        'optimizer',
+        'momentum',
     ]
 
-    if sweep is None or sweep == 'butter':
-        partition_cols.extend([
-            'primary_sweep',
-            '300_epoch_sweep',
-            '30k_epoch_sweep',
-            'learning_rate_sweep',
-            'label_noise_sweep',
-            'batch_size_sweep',
-            'regularization_sweep',
-            'learning_rate_batch_size_sweep',
-            'size_adjusted_regularization_sweep',
-            'optimizer_sweep',
-        ])
+    partition_cols = []
+    partition_cols.extend(experiment_partition_cols)
+    partition_cols.extend(parameter_partition_cols)
 
     data_columns = [
         pyarrow.field('experiment_id', pyarrow.uint32(), nullable=False),
@@ -118,15 +125,17 @@ def main():
         pyarrow.field('label_noise_sweep', pyarrow.bool_(), nullable=False),
         pyarrow.field('batch_size_sweep', pyarrow.bool_(), nullable=False),
         pyarrow.field('regularization_sweep', pyarrow.bool_(), nullable=False),
-        pyarrow.field('learning_rate_batch_size_sweep', pyarrow.bool_(), nullable=False),
-        pyarrow.field('size_adjusted_regularization_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('learning_rate_batch_size_sweep',
+                      pyarrow.bool_(), nullable=False),
+        pyarrow.field('size_adjusted_regularization_sweep',
+                      pyarrow.bool_(), nullable=False),
         pyarrow.field('optimizer_sweep', pyarrow.bool_(), nullable=False),
 
         pyarrow.field('num_free_parameters', pyarrow.uint64(), nullable=False),
         pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
         pyarrow.field('network_structure', pyarrow.string()),
         pyarrow.field('num_runs', pyarrow.uint8(), nullable=False),
-        
+
 
         # pyarrow.field('test_loss_num_finite',
         #               pyarrow.list_(pyarrow.float32())),
@@ -492,6 +501,10 @@ def main():
 
     inverse_column_name_mapping = {
         v: k for k, v in column_name_mapping.items()}
+    experiment_partition_cols_source = [
+        inverse_column_name_mapping.get(c, c) for c in experiment_partition_cols]
+    parameter_partition_cols_source = [
+        inverse_column_name_mapping.get(c, c) for c in parameter_partition_cols]
     partition_cols_source = [
         inverse_column_name_mapping.get(c, c) for c in partition_cols]
 
@@ -525,14 +538,17 @@ def main():
     with CursorManager(credentials) as cursor:
 
         q = sql.SQL('SELECT experiment_id, ')
+
         q += sql.SQL(', ').join(
+            [sql.SQL('s.{} {}').format(sql.Identifier(p), sql.Identifier(p))
+             for p in experiment_partition_cols_source] +
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
-             for p in partition_cols_source]
-        )
+             for p in parameter_partition_cols_source])  
+        
         q += sql.SQL(' FROM experiment_summary_ s ')
         q += sql.SQL(' ').join(
             [sql.SQL(' left join parameter_ {} on ({}.kind = {} and s.experiment_parameters @> array[{}.id]) ').format(
-                sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in partition_cols_source])
+                sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in parameter_partition_cols_source])
 
         q += sql.SQL(' WHERE ')
         q += sql.SQL(' {} ').format(sql.Identifier(sweep))
@@ -543,8 +559,14 @@ def main():
                 sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
 
         q += sql.SQL(' ORDER BY ')
-        q += sql.SQL(' , ').join([sql.SQL('{}.id').format(sql.Identifier(p))
-                                  for p in partition_cols_source] + [sql.SQL('experiment_id')])
+
+        q += sql.SQL(' , ').join(
+            [sql.SQL('s.{}').format(sql.Identifier(p))
+             for p in experiment_partition_cols_source] +
+            [sql.SQL('{}.id').format(sql.Identifier(p))
+             for p in parameter_partition_cols_source] +
+            [sql.SQL('experiment_id')])
+
         q += sql.SQL(' ;')
 
         x = cursor.mogrify(q)
@@ -629,7 +651,7 @@ def main():
 
                         for i in range(len(data_column_names)):
                             result_block[data_column_names[i]
-                                        ][row_number] = row[i+1]
+                                         ][row_number] = row[i+1]
 
                         row_number += 1
 
@@ -637,7 +659,7 @@ def main():
                     if 'network_structure' in result_block:
                         result_block['network_structure'] = \
                             [json.dumps(js, separators=(',', ':'))
-                            for js in result_block['network_structure']]
+                             for js in result_block['network_structure']]
                     record_batch = pyarrow.Table.from_pydict(
                         result_block,
                         schema=schema,
@@ -650,7 +672,7 @@ def main():
                         partition_cols=partition_cols,
                         # data_page_size=128 * 1024,
                         compression='BROTLI',
-                        compression_level=6,
+                        compression_level=8,
                         use_dictionary=use_dictionary,
                         use_byte_stream_split=use_byte_stream_split,
                         data_page_version='2.0',
@@ -662,7 +684,7 @@ def main():
                 break
             except BaseException as e:
                 print(f'Exception on chunk {chunk}: {e}')
-            
+
         print(f'End chunk {chunk}.')
         return row_number, chunk
 
@@ -694,8 +716,8 @@ def main():
         num_stored += 1
         print(
             f'Stored {num_rows} in chunk {chunk}, {num_stored} / {len(chunks)}.')
-            # writer.write_batch(record_batch)
-    
+        # writer.write_batch(record_batch)
+
     pool.close()
     pool.join()
     print('Done.')
