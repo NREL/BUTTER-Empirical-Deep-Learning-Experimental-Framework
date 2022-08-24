@@ -687,14 +687,16 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(multiprocessing.cpu_count()) as pool:
-        results = pool.uimap(download_chunk, chunks)
-        for num_rows, chunk in results:
-            num_stored += 1
-            print(
-                f'Stored {num_rows} in chunk {chunk}, {num_stored} / {len(chunks)}.')
+    # with multiprocessing.ProcessPool(multiprocessing.cpu_count()) as pool:
+    pool = multiprocessing.ProcessPool(multiprocessing.cpu_count())
+    results = pool.uimap(download_chunk, chunks)
+    for num_rows, chunk in results:
+        num_stored += 1
+        print(
+            f'Stored {num_rows} in chunk {chunk}, {num_stored} / {len(chunks)}.')
             # writer.write_batch(record_batch)
-
+    pool.join()
+    pool.close()
     print('Done.')
 
 
