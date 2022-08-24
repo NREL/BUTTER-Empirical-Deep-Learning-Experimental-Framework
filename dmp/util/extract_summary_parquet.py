@@ -695,8 +695,9 @@ def main():
         print(
             f'Stored {num_rows} in chunk {chunk}, {num_stored} / {len(chunks)}.')
             # writer.write_batch(record_batch)
-    pool.join()
+    
     pool.close()
+    pool.join()
     print('Done.')
 
 
