@@ -84,12 +84,10 @@ set primary_sweep = (
         and (core_dataset or secondary_dataset or tertiary_dataset)
         and (reduced_core_depth)
         and (core_size)
-        and (batch_optimizer_1
-            or (batch = 'fixed_3k_1' and core_optimizer 
-                and (lr_batch_size_learning_rate)
-                and (secondary_batch_size)
-            ))
-   ),
+        and tertiary_learning_rate
+        and secondary_batch_size
+        and batch in ('fixed_3k_1', 'learning_rate', 'batch_size', 'optimizer_1')
+    ),
    "size_adjusted_regularization_sweep" = 
         (rectangle_shape
             and core_depth
@@ -202,34 +200,7 @@ where
     x.ctid = e.experiment_ctid
 ;
 
-update experiment_ set butter = ("300_epoch_sweep" OR "30k_epoch_sweep" OR batch_size_sweep OR label_noise_sweep OR learning_rate_batch_size_sweep OR learning_rate_sweep OR optimizer_sweep OR primary_sweep OR regularization_sweep OR size_adjusted_regularization_sweep);
-
-    
-alter table experiment_ add column butter boolean default False;
-alter table experiment_ add column "primary_sweep" bool not null default False;
-alter table experiment_ add column "300_epoch_sweep" bool not null default False;
-alter table experiment_ add column "30k_epoch_sweep" bool not null default False;
-alter table experiment_ add column "learning_rate_sweep" bool not null default False;
-alter table experiment_ add column "label_noise_sweep" bool not null default False;
-alter table experiment_ add column "batch_size_sweep" bool not null default False;
-alter table experiment_ add column "regularization_sweep" bool not null default False;
-alter table experiment_ add column "learning_rate_batch_size_sweep" bool not null default False;
-alter table experiment_ add column "optimizer_sweep" bool not null default False;
-alter table experiment_ add column "size_adjusted_regularization_sweep" bool not null default False;
-
-
-
-alter table experiment_summary_ add column butter boolean default False;
-alter table experiment_summary_ add column "primary_sweep" bool not null default False;
-alter table experiment_summary_ add column "300_epoch_sweep" bool not null default False;
-alter table experiment_summary_ add column "30k_epoch_sweep" bool not null default False;
-alter table experiment_summary_ add column "learning_rate_sweep" bool not null default False;
-alter table experiment_summary_ add column "label_noise_sweep" bool not null default False;
-alter table experiment_summary_ add column "batch_size_sweep" bool not null default False;
-alter table experiment_summary_ add column "regularization_sweep" bool not null default False;
-alter table experiment_summary_ add column "learning_rate_batch_size_sweep" bool not null default False;
-alter table experiment_summary_ add column "optimizer_sweep" bool not null default False;
-alter table experiment_summary_ add column "size_adjusted_regularization_sweep" bool not null default False;
+update experiment_ set butter = ("300_epoch_sweep" OR "30k_epoch_sweep" OR batch_size_sweep OR label_noise_sweep OR learning_rate_sweep OR optimizer_sweep OR primary_sweep OR regularization_sweep);
 
 update experiment_summary_ s set 
     "butter" = e."butter",
@@ -261,31 +232,64 @@ AND
     );
 
 
+    
+alter table experiment_ add column butter boolean default False;
+alter table experiment_ add column "primary_sweep" bool not null default False;
+alter table experiment_ add column "300_epoch_sweep" bool not null default False;
+alter table experiment_ add column "30k_epoch_sweep" bool not null default False;
+alter table experiment_ add column "learning_rate_sweep" bool not null default False;
+alter table experiment_ add column "label_noise_sweep" bool not null default False;
+alter table experiment_ add column "batch_size_sweep" bool not null default False;
+alter table experiment_ add column "regularization_sweep" bool not null default False;
+alter table experiment_ add column "learning_rate_batch_size_sweep" bool not null default False;
+alter table experiment_ add column "optimizer_sweep" bool not null default False;
+alter table experiment_ add column "size_adjusted_regularization_sweep" bool not null default False;
+
+
+
+alter table experiment_summary_ add column butter boolean default False;
+alter table experiment_summary_ add column "primary_sweep" bool not null default False;
+alter table experiment_summary_ add column "300_epoch_sweep" bool not null default False;
+alter table experiment_summary_ add column "30k_epoch_sweep" bool not null default False;
+alter table experiment_summary_ add column "learning_rate_sweep" bool not null default False;
+alter table experiment_summary_ add column "label_noise_sweep" bool not null default False;
+alter table experiment_summary_ add column "batch_size_sweep" bool not null default False;
+alter table experiment_summary_ add column "regularization_sweep" bool not null default False;
+alter table experiment_summary_ add column "learning_rate_batch_size_sweep" bool not null default False;
+alter table experiment_summary_ add column "optimizer_sweep" bool not null default False;
+alter table experiment_summary_ add column "size_adjusted_regularization_sweep" bool not null default False;
+
+
 select 
     count(*) num_experiments,
     sum(s.num_runs) num_runs,
-    "batch".string_value "batch",
+    avg(s.num_runs) avg_reps,
+--     "batch".string_value "batch",
+--     "optimizer".string_value "optimizer",
+    count(distinct "optimizer".string_value) num_optimizer,
+--     "momentum".string_value "momentum",
+    count(distinct "momentum".real_value) num_momentum,
 --     count(distinct "batch".string_value) num_batches,
 --     "dataset".string_value "dataset",    
-    "learning_rate".real_value "learning_rate",
---     count(distinct "learning_rate".real_value) num_learning_rates,
-    "batch_size".integer_value "batch_size",
--- count(distinct "batch_size".integer_value) num_batch_sizes,
-    "kernel_regularizer.type".string_value "kernel_regularizer.type",
--- count(distinct "kernel_regularizer.type".string_value) num_regularizers,
+--     "learning_rate".real_value "learning_rate",
+    count(distinct "learning_rate".real_value) num_learning_rates,
+--     "batch_size".integer_value "batch_size",
+count(distinct "batch_size".integer_value) num_batch_sizes,
+--     "kernel_regularizer.type".string_value "kernel_regularizer.type",
+count(distinct "kernel_regularizer.type".string_value) num_regularizers,
 --     "kernel_regularizer.l1".real_value "kernel_regularizer.l1",
 -- count(distinct "kernel_regularizer.l1".real_value) rum_l1,
 --     "kernel_regularizer.l2".real_value "kernel_regularizer.l2",
 count(distinct "kernel_regularizer.l2".real_value) rum_l2,
-    "label_noise".real_value "label_noise",
---     count(distinct "label_noise".real_value) num_label_noise,
-    "epochs".real_value "epochs",
---     count(distinct "epochs".integer_value) num_epochs,
+--     "label_noise".real_value "label_noise",
+    count(distinct "label_noise".real_value) num_label_noise,
+--     "epochs".real_value "epochs",
+    count(distinct "epochs".integer_value) num_epochs,
 --     "shape".string_value "shape",
     count(distinct "shape".string_value) num_shapes,
-    "size".integer_value "size",
---     count(distinct size.integer_value) sizes,
-    depth.integer_value depth,
+--     "size".integer_value "size",
+    count(distinct size.integer_value) sizes,
+--     "depth".integer_value depth,
     count(distinct depth.integer_value) depths,
     min(size.integer_value) min_size,
     max(size.integer_value) max_size,
@@ -318,42 +322,48 @@ where
 -- --        ,'rectangle_residual'
 --     )
 --     and
-    batch.string_value IN (
-        'fixed_300_1'
---         'fixed_3k_1'
---         ,'batch_size_1'
---         ,'l1_group_0'
---         ,'l2_group_0'
-    )
-    and label_noise.real_value = 0.0::real
-    and learning_rate.real_value = 0.0001::real
-    and batch_size.integer_value = 256
-group by 
-    "batch"
+--     batch.string_value IN (
+--         'optimizer_1'
+-- --         'fixed_300_1'
+-- --         'fixed_3k_1'
+-- --         ,'batch_size_1'
+-- --         ,'l1_group_0'
+-- --         ,'l2_group_0'
+--     )
+--     and label_noise.real_value = 0.0::real
+--     and learning_rate.real_value = 0.0001::real
+--     and batch_size.integer_value = 256
+--        "30k_epoch_sweep"
+        optimizer_sweep
+-- group by 
+--     "batch"
 --     ,"dataset"
-    ,"learning_rate"
-    ,"batch_size"
-    ,"kernel_regularizer.type"
+--     "optimizer"
+--     ,"momentum"
+--     ,"learning_rate"
+--     ,"batch_size"
+--     ,"kernel_regularizer.type"
 --     ,"kernel_regularizer.l1"
 --     ,"kernel_regularizer.l2"
-    ,"label_noise"
-    ,"epochs"
+--     ,"label_noise"
+--     ,"epochs"
 --     "shape"
-    ,"size".integer_value
-    ,"depth"
+--     ,"size".integer_value
+--     ,"depth"
 order by
-    
-    "batch"
+--     "batch"
+--     "optimizer"
+--     ,"momentum"
 --     ,"dataset"
-    ,"learning_rate"
-    ,"batch_size"
-    ,"kernel_regularizer.type"
+--     ,"learning_rate"
+--     ,"batch_size"
+--     ,"kernel_regularizer.type"
 --     ,"kernel_regularizer.l1"
 --     ,"kernel_regularizer.l2"
-    ,"label_noise"
-    ,"epochs"
+--     ,"label_noise"
+--     ,"epochs"
 --     ,"shape"
-    ,"depth"
-    ,"size".integer_value
-    ,num_experiments desc
+--     ,"depth"
+--     ,"size".integer_value
+    num_experiments desc
 ;

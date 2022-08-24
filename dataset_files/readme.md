@@ -2,7 +2,7 @@
  
 ## Summary
  
-This dataset represents an empirical study of the deep learning phenomena on dense fully connected networks, scanning across thirteen datasets, eight network shapes, fourteen depths, twenty-three network sizes (number of trainable parameters), four learning rates, six minibatch sizes, four levels of label noise, and fourteen levels of L1 and L2 regularization each. Multiple repetitions (typically 30, sometimes 10) of each combination of hyperparameters were preformed, and statistics including training and test loss (using a 80% / 20% shuffled train-test split) are recorded at the end of each training epoch. In total, this dataset covers 178 thousand distinct hyperparameter settings ("experiments"), 3.55 million individual training runs (an average of 20 repetitions of each experiments), and a total of 13.3 billion training epochs (three thousand epochs were covered by most runs). Accumulating this dataset consumed 5,448.4 CPU core-years, 17.8 GPU-years, and 111.2 node-years.
+This dataset represents an empirical study of the deep learning phenomena on dense fully connected networks, scanning across thirteen datasets, eight network shapes, fourteen depths, twenty-three network sizes (number of trainable parameters), four learning rates, six minibatch sizes, four levels of label noise, and fourteen levels of L1 and L2 regularization each. Multiple repetitions (typically 30, sometimes 10) of each combination of hyperparameters were preformed, and statistics including training and test loss (using a 80% / 20% shuffled train-test split) are recorded at the end of each training epoch. In total, this dataset covers 386 thousand distinct hyperparameter settings ("experiments"), 9.30 million individual training runs (an average of 24 repetitions of each experiments), and a total of 34.3 billion training epochs (three thousand epochs were covered by most runs). Accumulating this dataset utilized 11,200 CPU core-years, 72.3 GPU-years, and 163 node-years.
  
 For each training epoch of each repetition we recorded 20 performance statistics, and the complete record of these raw values are stored here. For convenience, we additionally include multiple per-experiment summary statistics aggregated over every repetition of that experiment as the "summary" dataset, and also provide several useful slices of the summary data scanning along salient dimensions such as minibatch size and learning rate.
  
@@ -55,7 +55,8 @@ This is a list of the values of each hyperparameter we swept across in this data
 + training epochs: {300, **3000**, 30000}
 + repetitions: {10, **30**}
    + The number of times each identical experiment was repeated with different random seeds.
-+ optimizer: **ADAM**
++ optimizer: {**adam**, RMSprop, SGD}
+   + momentum: {**0**, 0.9}
 + hidden layer activation function: **ReLU**
 + train-test split: **80% training set, 20% test set**
  
@@ -77,6 +78,8 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + minibatch size: **256**
    + regularization: **none**
    + label noise: **0**
+   + optimizer: {**adam**}
+   + momentum: {**0**}
  
 + 300 epoch sweep: This sweep extends the primary sweep to larger sizes for 300 training epochs.
    + typical repetitions: 10 for rectangle, 0-10 for other shapes
@@ -88,6 +91,8 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + minibatch size: **256**
    + regularization: **none**
    + label noise: **0**
+   + optimizer: {**adam**}
+   + momentum: {**0**}
  
 + 30k epoch sweep: This sweep extends the primary sweep to 30 thousand training epochs for smaller sizes.
    + typical repetitions: 10 for rectangle, 0-10 for other shapes
@@ -99,6 +104,8 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + minibatch size: **256**
    + regularization: **none**
    + label noise: **0**
+   + optimizer: {**adam**}
+   + momentum: {**0**}
  
 + learning rate sweep: This sweep scans the core shapes over several learning rates.
    + typical repetitions: **20**
@@ -110,6 +117,8 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + minibatch size: **256**
    + regularization: **none**
    + label noise: **0**
+   + optimizer: {**adam**}
+   + momentum: {**0**}
   
  + label noise sweep: This sweep scans the core shapes over several label noise levels at two different learning rates.
    + typical repetitions: **30**
@@ -123,6 +132,8 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + label noise:
      + {**0**, 0.05} at learning rate 0.001
      + {**0.0**, 0.05, .1, .15, .2} at learning rate **0.0001**
+   + optimizer: {**adam**}
+   + momentum: {**0**}
  
 + batch size sweep: This sweep scans rectangular networks of the core depths over several batch sizes.
    + typical repetitions: **30**
@@ -134,6 +145,8 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
    + minibatch size: {32, 64, 128, **256**, 512, 1024}
    + regularization: **none**
    + label noise: **0**
+   + optimizer: {**adam**}
+   + momentum: {**0**}
  
 + regularization sweep: This sweep scans rectangular networks of the core depths over several L1 and L2 regularization levels.
    + typical repetitions: **30**
@@ -147,53 +160,76 @@ Sweeping the entire hypercube of eight hyperparameter dimensions would require e
      + L1: {**0.0**, .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5}
      + L2: {**0.0**, .32, .16, .08, .04, .02, .01, .005, .0025, .00125, .000625, .0003125, .00015625, 7.8125e-5}
    + label noise: **0**
+   + optimizer: {**adam**}
+   + momentum: {**0**}
  
- ***************TODO: ADD NEW SWEEPS HERE *************
- 
- 
-If the dataset is made up of multiple files a description of how they are/will
-be stored in relation to each other.
+ + optimizer sweep: This sweep scans rectangular networks over several optimizers, learning rates, and batch sizes
+   + typical repetitions: **20**
+   + datasets: {**529_pollen, connect_4, 537_houses, mnist, 201_pol, sleep, wine_quality_white**, nursery, adult, 505_tecator, 294_satellite_images, splice, banana}
+   + shapes: {**rectangle**}
+   + \# of trainable parameters: {**2^5, 2^6, ... 2^24**}
+   + depth: {**2**,**3**,**4**,**5**, 6}
+   + learning rate: {0.01, 0.001, **0.0001**, 0.00001}
+   + minibatch size: {32, 64, 128, **256**}
+   + regularization: **none**
+   + label noise: **0**
+   + optimizer: {**adam**, RMSprop, SGD}
+   + momentum: {**0**, **0.9**}
+
  
 ## Data Format
  
 The complete raw dataset is available in the /all_runs/ partitioned parquet dataset. Each row in this dataset is a record of one training repetition of a network. Several statistics were recorded at the end of each training epoch, and those records are stored in this row as arrays indexed by training epoch. For convenience, we also provide the /complete_summary/ partitioned parquet dataset which contains statistics aggregated over all repetitions of the same experiment including average and median test and training losses at the end of each training epoch. Distinct experiments are uniquely and consistently identified in both datasets by an 'experiment_id'. Additionally, we have created separate full (containing all repetitions) and per-experiment summary datasets for each experimental sweep so that they can be downloaded and queried separately if the entire dataset is not needed. _The schemas of summary and full datasets are the same for every sweep._
  
 ### File Hierarchy and Descriptions
- 
-/all_repetitions/ contains all of the repetition records in all sweeps
+
+/complete_executive_summary/ contains a minimal set of per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps. This file has the same schema as the summary datasets, except it does not include any per-epoch statistic columns except for test_loss_q1, test_loss_median, and test_loss_q3. *This file is intended to provide a simple, small dataset that can be more easily and quickly downloaded, queried, and analyzed than the summary or run datasets and provides an easy starting point for using this dataset.*
+/complete_executive_summary.tar.xz is a compressed tarball of /complete_executive_summary/
 
 /complete_summary/ contains per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps
-/complete_summary.tar is a tarball of /experiment_summary/
+/complete_summary.tar.xz is a compressed tarball of /complete_summary/
+/all_repetitions/ contains all of the repetition records in all sweeps
+/all_repetitions.tar.xz is a compressed tarball of /all_repetitions/
  
 /primary_sweep_summary/ contains summary experiment statistics for the primary sweep
-/primary_sweep_summary.tar is a tarball of /primary_sweep_summary/
+/primary_sweep_summary.tar.xz is a compressed tarball of /primary_sweep_summary/
+/primary_sweep/ contains all primary sweep repetition records
+/primary_sweep.tar.xz is a compressed tarball of /primary_sweep/
 
 /300_epoch_sweep_summary/ contains summary experiment statistics for the 300 epoch sweep
-/300_epoch_sweep_summary.tar is a tarball of /300_epoch_sweep_summary/
+/300_epoch_sweep_summary.tar.xz is a compressed tarball of /300_epoch_sweep_summary/
+/300_epoch_sweep_summary/ contains all 300 epoch sweep repetition records
+/300_epoch_sweep_summary.tar.xz is a compressed tarball of /300_epoch_sweep_summary/
  
 /30k_epoch_sweep_summary/ contains summary experiment statistics for the 30k epoch sweep
-/30k_epoch_sweep_summary.tar is a tarball of /30k_epoch_sweep_summary/
+/30k_epoch_sweep_summary.tar.xz is a compressed tarball of /30k_epoch_sweep_summary/
+/30k_epoch_sweep_summary/ contains all 30k epoch sweep repetition records
+/30k_epoch_sweep_summary.tar.xz is a compressed tarball of /30k_epoch_sweep_summary/
  
 /learning_rate_sweep_summary/ contains summary experiment statistics for the learning rate sweep
-/learning_rate_sweep_summary.tar is a tarball of /learning_rate_sweep_summary/
+/learning_rate_sweep_summary.tar.xz is a compressed tarball of /learning_rate_sweep_summary/
+/learning_rate_sweep_summary/ contains all learning rate sweep repetition records
+/learning_rate_sweep_summary.tar.xz is a compressed tarball of /learning_rate_sweep_summary/
  
 /label_noise_sweep_summary/ contains summary experiment statistics for the label noise sweep
-/label_noise_sweep_summary.tar is a tarball of /label_noise_sweep_summary/
+/label_noise_sweep_summary.tar.xz is a compressed tarball of /label_noise_sweep_summary/
+/label_noise_sweep_summary/ contains all label noise sweep repetition records
+/label_noise_sweep_summary.tar.xz is a compressed tarball of /label_noise_sweep_summary/
  
 /batch_size_sweep_summary/ contains summary experiment statistics for the batch size sweep
-/batch_size_sweep_summary.tar is a tarball of /batch_size_sweep_summary/
+/batch_size_sweep_summary.tar.xz is a compressed tarball of /batch_size_sweep_summary/
+/batch_size_sweep_summary/ contains all batch size sweep repetition records
+/batch_size_sweep_summary.tar.xz is a compressed tarball of /batch_size_sweep_summary/
  
 /regularization_sweep_summary/ contains summary experiment statistics for the regularization sweep
-/regularization_sweep_summary.tar is a tarball of /regularization_sweep_summary/
+/regularization_sweep_summary.tar.xz is a compressed tarball of /regularization_sweep_summary/
+/regularization_sweep_summary/ contains all regularization sweep repetition records
+/regularization_sweep_summary.tar.xz is a compressed tarball of /regularization_sweep_summary/
  
-/learning_rate_batch_size_sweep_summary/ contains summary experiment statistics for the learning rate x batch size sweep
-/learning_rate_batch_size_sweep_summary.tar is a tarball of /learning_rate_batch_size_sweep_summary/
-
-/size_adjusted_regularization_sweep_summary/ contains summary experiment statistics for the size-adjusted regularization sweep
-/size_adjusted_regularization_sweep_summary.tar is a tarball of /size_adjusted_regularization_sweep_summary/
-
 /optimizer_sweep_summary/ contains summary experiment statistics for the optimizer sweep
-/optimizer_sweep_summary.tar is a tarball of /optimizer_sweep_summary/
+/optimizer_sweep_summary.tar.xz is a compressed tarball of /optimizer_sweep_summary/
+/optimizer_sweep_summary/ contains all optimizer sweep repetition records
+/optimizer_sweep_summary.tar.xz is a compressed tarball of /optimizer_sweep_summary/
  
 ### Experiment Summary Schema
  
