@@ -9,17 +9,48 @@ For each training epoch of each repetition we recorded 20 performance statistics
 ## Citing This Dataset
 **If you use this dataset, please cite our upcoming dataset publication, which is currently under review for NeurIPS 2022.**
 
-Tripp, C. E., Perr-Sauer, J., Hayne, L., & Lunacek, M. (2022). An Empirical Deep Dive into Deep Learning's Driving Dynamics. *arXiv preprint arXiv:2207.12547.*
+[The paper](https://arxiv.org/abs/2207.12547):
+
+  Tripp, C. E., Perr-Sauer, J., Hayne, L., & Lunacek, M. (2022). An Empirical Deep Dive into Deep Learning's Driving Dynamics. *arXiv preprint arXiv:2207.12547.*
 
 BibTex:
 
-    @article{tripp2022empirical,
+    @article{butter_publication,
       title={An Empirical Deep Dive into Deep Learning's Driving Dynamics},
       author={Tripp, Charles Edison and Perr-Sauer, Jordan and Hayne, Lucas and Lunacek, Monte},
       journal={arXiv preprint arXiv:2207.12547},
       year={2022}
     }
 
+[The dataset](https://dx.doi.org/10.25984/1872441):
+
+  Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, & Lunacek, Monte. *BUTTER - Empirical Deep Learning Dataset*. United States. https://dx.doi.org/10.25984/1872441
+
+    @div{butter_dataset, 
+      title = {BUTTER - Empirical Deep Learning Dataset}, 
+      author = {Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, and Lunacek, Monte.}, 
+      doi = {10.25984/1872441}, 
+      url = {https://data.openei.org/submissions/5708},
+      place = {United States}, 
+      year = {2022}, 
+      month = {05}
+    }
+
+[The Code](https://doi.org/10.11578/dc.20220608.2)
+
+  Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *BUTTER: An Empirical Deep Learning Experimental Framework*. [Computer software]. https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework. https://doi.org/10.11578/dc.20220608.2.
+
+
+    @misc{butter_code,
+      title = {BUTTER: An Empirical Deep Learning Experimental Framework},
+      author = {Tripp, Charles and Perr-Sauer, Jordan and Lunacek, Monte and Hayne, Lucas},
+      abstractNote = {BUTTER is a system with which empirical deep learning experiments can be conducted and their results, including training and model performance characteristics, can be accumulated for further analysis.},
+      doi = {10.11578/dc.20220608.2},
+      url = {https://doi.org/10.11578/dc.20220608.2},
+      howpublished = {[Computer Software] \url{https://doi.org/10.11578/dc.20220608.2}},
+      year = {2022},
+      month = {may}
+    }
 ## Additional Resources
 + [Example Jupyter notebooks](https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results) which plot from the online dataset and produce figures in our publication can be found here: [https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results](https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results).
 + The source code for the [empirical machine learning framework](https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework) used to generate this dataset is available here: [https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework](https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework).

@@ -4,24 +4,77 @@
 
 The BUTTER Empirical Framework enables researchers to run high volumes of computational experiments, including machine learning experiments, in a highly distributed asynchronous way. The BUTTER Framework was designed for asynchronous, unpredictable, and occasionally unreliable worker jobs to execute on any number of computing systems including laptops, servers, cloud resources, clusters, and high-performance supercomputers (HPC systems). 
 
++ Examples of plotting data from the dataset are available [here](https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results).
++ 
 ## Using and Citing this Code
 
 **If you benefit from this code or concept, please cite these resources:**
 
-+ Our upcoming dataset publication, which is currently under review for the [NeurIPS 2022 Datasets and Benchmarks Track](https://neurips.cc/Conferences/2022/CallForDatasetsBenchmarks).
+## Citing This Dataset
+**If you use this code or the related BUTTER dataset, please cite our upcoming dataset publication, which is currently under review for NeurIPS 2022.**
 
-+ The Framework's [DOE Code record](https://www.osti.gov/doecode/biblio/74457): 
+[The paper](https://arxiv.org/abs/2207.12547):
 
-    Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *BUTTER Empirical Deep Learning Experimental Framework.* [Computer software]. https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework.  https://doi.org/10.11578/dc.20220608.2.
+  Tripp, C. E., Perr-Sauer, J., Hayne, L., & Lunacek, M. (2022). An Empirical Deep Dive into Deep Learning's Driving Dynamics. *arXiv preprint arXiv:2207.12547.*
 
-+ The [DOE Code record for JobQueue](https://www.osti.gov/doecode/biblio/74434) which powers BUTTER:
+BibTex:
+
+    @article{butter_publication,
+      title={An Empirical Deep Dive into Deep Learning's Driving Dynamics},
+      author={Tripp, Charles Edison and Perr-Sauer, Jordan and Hayne, Lucas and Lunacek, Monte},
+      journal={arXiv preprint arXiv:2207.12547},
+      year={2022}
+    }
+
+[The dataset](https://dx.doi.org/10.25984/1872441):
+
+  Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, & Lunacek, Monte. *BUTTER - Empirical Deep Learning Dataset*. United States. https://dx.doi.org/10.25984/1872441
+
+    @div{butter_dataset, 
+      title = {BUTTER - Empirical Deep Learning Dataset}, 
+      author = {Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, and Lunacek, Monte.}, 
+      doi = {10.25984/1872441}, 
+      url = {https://data.openei.org/submissions/5708},
+      place = {United States}, 
+      year = {2022}, 
+      month = {05}
+    }
+
+[The Code](https://doi.org/10.11578/dc.20220608.2)
+
+  Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *BUTTER: An Empirical Deep Learning Experimental Framework*. [Computer software]. https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework. https://doi.org/10.11578/dc.20220608.2.
+
+
+    @misc{butter_code,
+      title = {BUTTER: An Empirical Deep Learning Experimental Framework},
+      author = {Tripp, Charles and Perr-Sauer, Jordan and Lunacek, Monte and Hayne, Lucas},
+      abstractNote = {BUTTER is a system with which empirical deep learning experiments can be conducted and their results, including training and model performance characteristics, can be accumulated for further analysis.},
+      doi = {10.11578/dc.20220608.2},
+      url = {https://doi.org/10.11578/dc.20220608.2},
+      howpublished = {[Computer Software] \url{https://doi.org/10.11578/dc.20220608.2}},
+      year = {2022},
+      month = {may}
+    }
+
+The [DOE Code record for JobQueue](https://www.osti.gov/doecode/biblio/74434) which powers BUTTER:
+
     Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *JobQueue: (A Task Queue for Coordinating Varied Tasks Across Multiple HPC Resources and HPC Jobs)*. [Computer software]. https://github.com/NREL/E-Queue-HPC. https://doi.org/10.11578/dc.20220608.1.
 
-+ If relevant, also cite our [BUTTER Dataset](https://data.openei.org/submissions/5708) generated using this framework:
+        @misc{jobqueue_code,
+            title = {JobQueue-PG: A Task Queue for Coordinating Varied Tasks Across Multiple HPC Resources and HPC Jobs},
+            author = {Tripp, Charles and Perr-Sauer, Jordan and Lunacek, Monte and Hayne, Lucas},
+            abstractNote = {The software allows for queueing and dispatch of tasks of small, varied, or uncertain runtimes across multiple HPC jobs, resources, and other computing systems. The software was designed to allow scientists to enqueue, run, and accumulate results from computational experiments in an efficient, manageable manner. For example, the software can be used to enqueue many small computational experiments and run them using several long-running multi-node HPC jobs that may or may not run simultaneously.},
+            doi = {10.11578/dc.20220608.1},
+            url = {https://doi.org/10.11578/dc.20220608.1},
+            howpublished = {[Computer Software] \url{https://doi.org/10.11578/dc.20220608.1}},
+            year = {2022},
+            month = {may}
+        }
+
+            
+
+If relevant, also cite our [BUTTER Dataset](https://data.openei.org/submissions/5708) generated using this framework:
     Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, & Lunacek, Monte. *BUTTER - Empirical Deep Learning Dataset.* United States. https://data.openei.org/submissions/5708
-
-+ Examples of plotting data from the dataset are available [here](https://github.com/NREL/BUTTER-Better-Understanding-of-Training-Topologies-through-Empirical-Results).
-
 
 ## The BUTTER Empirical Deep Learning Dataset
 
@@ -123,13 +176,51 @@ Will run a worker for queue #1 using the first 4 cores of the first NUMA node (t
 
     python -u -m dmp.jobqueue_interface.worker 0 1 0 1 0 1 8192 1
 
-Will run a worker for queue #1 using the first cores of the first NUMA node in the system and also use 8GB of the first (zeroth) GPU. You can use the [numactl utility](https://linux.die.net/man/8/numactl) to inspect the CPU numbering and NUMA architecture:
+Will run a worker for queue #1 using the first cores of the first NUMA node in the system and also use 8GB of the first (zeroth) GPU. You can use the [numactl utility](https://linux.die.net/man/8/numactl) to inspect the CPU n## Citing This Dataset
+**If you use this dataset, please cite our upcoming dataset publication, which is currently under review for NeurIPS 2022.**
 
-    numactl --hardware
+[The paper](https://arxiv.org/abs/2207.12547):
+
+  Tripp, C. E., Perr-Sauer, J., Hayne, L., & Lunacek, M. (2022). An Empirical Deep Dive into Deep Learning's Driving Dynamics. *arXiv preprint arXiv:2207.12547.*
+
+BibTex:
+
+    @article{butter_publication,
+      title={An Empirical Deep Dive into Deep Learning's Driving Dynamics},
+      author={Tripp, Charles Edison and Perr-Sauer, Jordan and Hayne, Lucas and Lunacek, Monte},
+      journal={arXiv preprint arXiv:2207.12547},
+      year={2022}
+    }
+
+[The dataset](https://dx.doi.org/10.25984/1872441):
+
+  Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, & Lunacek, Monte. *BUTTER - Empirical Deep Learning Dataset*. United States. https://dx.doi.org/10.25984/1872441
+
+    @div{butter_dataset, 
+      title = {BUTTER - Empirical Deep Learning Dataset}, 
+      author = {Tripp, Charles, Perr-Sauer, Jordan, Hayne, Lucas, and Lunacek, Monte.}, 
+      doi = {10.25984/1872441}, 
+      url = {https://data.openei.org/submissions/5708},
+      place = {United States}, 
+      year = {2022}, 
+      month = {05}
+    }
+
+[The Code](https://doi.org/10.11578/dc.20220608.2)
+
+  Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *BUTTER: An Empirical Deep Learning Experimental Framework*. [Computer software]. https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework. https://doi.org/10.11578/dc.20220608.2.
 
 
-## Running A Full Node of Workers
-
+    @misc{butter_code,
+      title = {BUTTER: An Empirical Deep Learning Experimental Framework},
+      author = {Tripp, Charles and Perr-Sauer, Jordan and Lunacek, Monte and Hayne, Lucas},
+      abstractNote = {BUTTER is a system with which empirical deep learning experiments can be conducted and their results, including training and model performance characteristics, can be accumulated for further analysis.},
+      doi = {10.11578/dc.20220608.2},
+      url = {https://doi.org/10.11578/dc.20220608.2},
+      howpublished = {[Computer Software] \url{https://doi.org/10.11578/dc.20220608.2}},
+      year = {2022},
+      month = {may}
+    }
 The framework also has a [node manager script](dmp/jq/jq_node_manager.py) that will allocate workers over the hardware in a reasonable manner for many deep learning experiments. In order to use the node manager, the system must be linux-like, supporting bash scripts and the numactl utility must be installed and working.
 
 One worker will be allocated for up to every 64 cores of each NUMA node, and two cores from the same NUMA node will be allocated for each GPU worker in the system, evenly distributed over the NUMA nodes. A GPU worker will be allocated for approximately every 6.5GB of GPU memory available, up to 4 workers per GPU. These parameters can be changed by editing the script.
