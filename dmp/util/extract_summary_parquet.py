@@ -687,7 +687,7 @@ def main():
     results = None
 
     num_stored = 0
-    with multiprocessing.ProcessPool(38) as pool:
+    with multiprocessing.ProcessPool(multiprocessing.cpu_count()) as pool:
         results = pool.uimap(download_chunk, chunks)
         for num_rows, chunk in results:
             num_stored += 1
