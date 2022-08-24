@@ -109,23 +109,23 @@ def main():
         ])
 
     data_columns = [
-        pyarrow.field('experiment_id', pyarrow.uint32()),
+        pyarrow.field('experiment_id', pyarrow.uint32(), nullable=False),
 
-        pyarrow.field('primary_sweep', pyarrow.bool_()),
-        pyarrow.field('300_epoch_sweep', pyarrow.bool_()),
-        pyarrow.field('30k_epoch_sweep', pyarrow.bool_()),
-        pyarrow.field('learning_rate_sweep', pyarrow.bool_()),
-        pyarrow.field('label_noise_sweep', pyarrow.bool_()),
-        pyarrow.field('batch_size_sweep', pyarrow.bool_()),
-        pyarrow.field('regularization_sweep', pyarrow.bool_()),
-        pyarrow.field('learning_rate_batch_size_sweep', pyarrow.bool_()),
-        pyarrow.field('size_adjusted_regularization_sweep', pyarrow.bool_()),
-        pyarrow.field('optimizer_sweep', pyarrow.bool_()),
+        pyarrow.field('primary_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('300_epoch_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('30k_epoch_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('learning_rate_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('label_noise_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('batch_size_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('regularization_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('learning_rate_batch_size_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('size_adjusted_regularization_sweep', pyarrow.bool_(), nullable=False),
+        pyarrow.field('optimizer_sweep', pyarrow.bool_(), nullable=False),
 
-        pyarrow.field('num_free_parameters', pyarrow.uint64()),
+        pyarrow.field('num_free_parameters', pyarrow.uint64(), nullable=False),
         pyarrow.field('widths', pyarrow.list_(pyarrow.uint32())),
         pyarrow.field('network_structure', pyarrow.string()),
-        pyarrow.field('num_runs', pyarrow.uint8()),
+        pyarrow.field('num_runs', pyarrow.uint8(), nullable=False),
         
 
         # pyarrow.field('test_loss_num_finite',
@@ -520,7 +520,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 128
+    chunk_size = 256
     chunks = []
     with CursorManager(credentials) as cursor:
 
@@ -570,95 +570,99 @@ def main():
     #     for chunk in range(int(numpy.ceil(len(experiment_ids) / chunk_size)))]
 
     def download_chunk(chunk):
-        print(f'Begin chunk {chunk}.')
-        # chunk = sorted(chunk)
-        # non_null_params = sorted([c for c in chunk if c is not None])
-        # null_kinds = [partition_cols[i]
-        #               for i, c in enumerate(chunk) if c is None]
+        while True:
+            try:
+                print(f'Begin chunk {chunk}.')
+                # chunk = sorted(chunk)
+                # non_null_params = sorted([c for c in chunk if c is not None])
+                # null_kinds = [partition_cols[i]
+                #               for i, c in enumerate(chunk) if c is None]
 
-        result_block = {name: [] for name in column_names}
-        row_number = 0
+                result_block = {name: [] for name in column_names}
+                row_number = 0
 
-        q = sql.SQL('SELECT experiment_parameters, ')
+                q = sql.SQL('SELECT experiment_parameters, ')
 
-        q += sql.SQL(', ').join([sql.Identifier(inverse_column_name_mapping.get(c, c))
-                                for c in data_column_names])
+                q += sql.SQL(', ').join([sql.Identifier(inverse_column_name_mapping.get(c, c))
+                                        for c in data_column_names])
 
-        q += sql.SQL(' FROM experiment_summary_ s ')
-        q += sql.SQL(' WHERE s.experiment_id IN ( ')
-        q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
-        q += sql.SQL(' );')
+                q += sql.SQL(' FROM experiment_summary_ s ')
+                q += sql.SQL(' WHERE s.experiment_id IN ( ')
+                q += sql.SQL(', ').join([sql.Literal(eid) for eid in chunk])
+                q += sql.SQL(' );')
 
-        # q += sql.SQL(' WHERE s.experiment_parameters @> array[')
-        # q += sql.SQL(', ').join([sql.Literal(p)
-        #                             for p in non_null_params])
-        # q += sql.SQL(']::smallint[] ')
+                # q += sql.SQL(' WHERE s.experiment_parameters @> array[')
+                # q += sql.SQL(', ').join([sql.Literal(p)
+                #                             for p in non_null_params])
+                # q += sql.SQL(']::smallint[] ')
 
-        # if len(null_kinds) > 0:
-        #     q += sql.SQL(' AND NOT (s.experiment_parameters && (')
-        #     q += sql.SQL(' SELECT array_agg(id) FROM (')
-        #     q += sql.SQL(' UNION ALL ').join([
-        #         sql.SQL(' SELECT id from parameter_ where kind = {} ').
-        #         format(sql.Literal(k))
-        #         for k in null_kinds])
-        #     q += sql.SQL(') u )) ')
+                # if len(null_kinds) > 0:
+                #     q += sql.SQL(' AND NOT (s.experiment_parameters && (')
+                #     q += sql.SQL(' SELECT array_agg(id) FROM (')
+                #     q += sql.SQL(' UNION ALL ').join([
+                #         sql.SQL(' SELECT id from parameter_ where kind = {} ').
+                #         format(sql.Literal(k))
+                #         for k in null_kinds])
+                #     q += sql.SQL(') u )) ')
 
-        # if len(fixed_parameters) > 0:
-        #     q += sql.SQL(' AND s.experiment_parameters @> array[{}]::smallint[] ').format(
-        #         sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
-        # q += sql.SQL(';')
+                # if len(fixed_parameters) > 0:
+                #     q += sql.SQL(' AND s.experiment_parameters @> array[{}]::smallint[] ').format(
+                #         sql.SQL(' , ').join([sql.Literal(p) for p in parameter_map.to_parameter_ids(fixed_parameters)]))
+                # q += sql.SQL(';')
 
-        with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
-            cursor.itersize = 8
+                with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
+                    cursor.itersize = 8
 
-            cursor.execute(q)
-            # if cursor.description is None:
-            #     print(cursor.mogrify(q))
-            #     continue
+                    cursor.execute(q)
+                    # if cursor.description is None:
+                    #     print(cursor.mogrify(q))
+                    #     continue
 
-            for row in cursor:
-                for name in column_names:
-                    result_block[name].append(None)
+                    for row in cursor:
+                        for name in column_names:
+                            result_block[name].append(None)
 
-                for kind, value in parameter_map.parameter_from_id(row[0]):
-                    kind = column_name_mapping.get(kind, kind)
-                    if kind in parameter_column_names_set:
-                        result_block[kind][row_number] = value
+                        for kind, value in parameter_map.parameter_from_id(row[0]):
+                            kind = column_name_mapping.get(kind, kind)
+                            if kind in parameter_column_names_set:
+                                result_block[kind][row_number] = value
 
-                for i in range(len(data_column_names)):
-                    result_block[data_column_names[i]
-                                 ][row_number] = row[i+1]
+                        for i in range(len(data_column_names)):
+                            result_block[data_column_names[i]
+                                        ][row_number] = row[i+1]
 
-                row_number += 1
+                        row_number += 1
 
-        if row_number > 0:
-            if 'network_structure' in result_block:
-                result_block['network_structure'] = \
-                    [json.dumps(js, separators=(',', ':'))
-                    for js in result_block['network_structure']]
-            record_batch = pyarrow.Table.from_pydict(
-                result_block,
-                schema=schema,
-            )
+                if row_number > 0:
+                    if 'network_structure' in result_block:
+                        result_block['network_structure'] = \
+                            [json.dumps(js, separators=(',', ':'))
+                            for js in result_block['network_structure']]
+                    record_batch = pyarrow.Table.from_pydict(
+                        result_block,
+                        schema=schema,
+                    )
+
+                    parquet.write_to_dataset(
+                        record_batch,
+                        root_path=dataset_path,
+                        schema=schema,
+                        partition_cols=partition_cols,
+                        # data_page_size=128 * 1024,
+                        compression='BROTLI',
+                        compression_level=6,
+                        use_dictionary=use_dictionary,
+                        use_byte_stream_split=use_byte_stream_split,
+                        data_page_version='2.0',
+                        existing_data_behavior='overwrite_or_ignore',
+                        use_legacy_dataset=False,
+                        # write_batch_size=64,
+                        # dictionary_pagesize_limit=64*1024,
+                    )
+                break
+            except BaseException as e:
+                print(f'Exception on chunk {chunk}: {e}')
             
-            
-
-            parquet.write_to_dataset(
-                record_batch,
-                root_path=dataset_path,
-                schema=schema,
-                partition_cols=partition_cols,
-                # data_page_size=128 * 1024,
-                compression='BROTLI',
-                compression_level=8,
-                use_dictionary=use_dictionary,
-                use_byte_stream_split=use_byte_stream_split,
-                data_page_version='2.0',
-                existing_data_behavior='overwrite_or_ignore',
-                use_legacy_dataset=False,
-                # write_batch_size=64,
-                # dictionary_pagesize_limit=64*1024,
-            )
         print(f'End chunk {chunk}.')
         return row_number, chunk
 

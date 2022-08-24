@@ -37,7 +37,7 @@ BibTex:
       month = {05}
     }
 
-[The Code](https://doi.org/10.11578/dc.20220608.2)
+[The Code](https://doi.org/10.11578/dc.20220608.2):
 
   Tripp, Charles, Perr-Sauer, Jordan, Lunacek, Monte, & Hayne, Lucas. (2022, May 13). *BUTTER: An Empirical Deep Learning Experimental Framework*. [Computer software]. https://github.com/NREL/BUTTER-Empirical-Deep-Learning-Experimental-Framework. https://doi.org/10.11578/dc.20220608.2.
 
