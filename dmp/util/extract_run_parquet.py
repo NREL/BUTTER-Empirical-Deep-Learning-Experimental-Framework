@@ -241,7 +241,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 1024
+    chunk_size = 64
     chunks = []
     with CursorManager(credentials) as cursor:
 
