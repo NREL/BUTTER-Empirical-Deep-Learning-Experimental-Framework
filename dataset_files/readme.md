@@ -228,11 +228,11 @@ The complete raw dataset is available in the /all_runs/ partitioned parquet data
 **/complete_executive_summary/** *This file is intended to provide a simple, small dataset that can be more easily and quickly downloaded, queried, and analyzed than the summary or run datasets and provides an easy starting point for using this dataset.* It contains a minimal set of per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps. This file has the same schema as the summary datasets, except it does not include any per-epoch statistic columns except for test_loss_q1, test_loss_median, and test_loss_q3. 
 **/complete_executive_summary.tar.xz** is a compressed tarball of /complete_executive_summary/
 
-/complete_summary/ contains per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps
+**/complete_summary/** contains per-experiment statistics aggregated over every repetition of each distinct experiment for all sweeps. This complete summary dataset is designed for easy analysis of aggregate statistics without the need to query individual repetitions. If the executive summary doesn't have everything you need (for example you want to see the KL-Divergence history for regularized experiments), the summary dataset likely is what you want to use.
 /complete_summary.tar.xz is a compressed tarball of /complete_summary/
 
-/all_repetitions/ contains all of the repetition records in all sweeps
-/all_repetitions.tar.xz is a compressed tarball of /all_repetitions/
+**/all_repetitions/** contains all of the repetition records in all sweeps. This dataset contains all of the raw data logged during every repetition of every experiment. It is well-partitioned, but even so, it can be cumbersome to work with. Use the executive summary or summary datasets if you can. If you need the raw data, though, it's in here.
+/all_repetitions.tar is a tarball of /all_repetitions/
  
 /primary_sweep_summary/ contains summary experiment statistics for the primary sweep
 /primary_sweep_summary.tar.xz is a compressed tarball of /primary_sweep_summary/
