@@ -106,7 +106,7 @@ from
                 s.experiment_id = r.experiment_id and 
                     (s.update_timestamp > r.record_timestamp)
         ))
-    limit 16
+    limit 128
     for update
     skip locked
 ) e,

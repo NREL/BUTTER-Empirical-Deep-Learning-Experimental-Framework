@@ -84,19 +84,19 @@ def main():
     ]
 
     experiment_partition_cols = []
-    # if sweep is None or sweep == 'butter':
-    #     experiment_partition_cols.extend([
-    #         'primary_sweep',
-    #         '300_epoch_sweep',
-    #         '30k_epoch_sweep',
-    #         'learning_rate_sweep',
-    #         'label_noise_sweep',
-    #         'batch_size_sweep',
-    #         'regularization_sweep',
-    #         'learning_rate_batch_size_sweep',
-    #         'size_adjusted_regularization_sweep',
-    #         'optimizer_sweep',
-    #     ])
+    if sweep is None or sweep == 'butter':
+        experiment_partition_cols.extend([
+            'primary_sweep',
+            '300_epoch_sweep',
+            '30k_epoch_sweep',
+            'learning_rate_sweep',
+            'label_noise_sweep',
+            'batch_size_sweep',
+            'regularization_sweep',
+            'learning_rate_batch_size_sweep',
+            'size_adjusted_regularization_sweep',
+            'optimizer_sweep',
+        ])
 
     parameter_partition_cols = [
         'dataset',

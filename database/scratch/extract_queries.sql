@@ -84,9 +84,9 @@ set primary_sweep = (
         and (core_dataset or secondary_dataset or tertiary_dataset)
         and (reduced_core_depth)
         and (core_size)
-        and tertiary_learning_rate
-        and secondary_batch_size
-        and batch in ('fixed_3k_1', 'learning_rate', 'batch_size', 'optimizer_1')
+        -- and tertiary_learning_rate
+        -- and secondary_batch_size
+        and batch in ('fixed_3k_1', 'learning_rate_x_batch_size', 'batch_size_1', 'optimizer_1')
     ),
    "size_adjusted_regularization_sweep" = 
         (rectangle_shape
@@ -134,7 +134,9 @@ from
         )) secondary_dataset,
     (dataset.string_value in (
             '505_tecator'
-            ,'294_satellite_images'
+            ,'294_satellite_image'
+            ,'banana'
+            ,'splice'
         )) tertiary_dataset,
         ("depth".integer_value in (2,3,4,5,6)) reduced_core_depth,
         ("depth".integer_value in (2,3,4,5,6,7)) reduced_core_depth_2,
