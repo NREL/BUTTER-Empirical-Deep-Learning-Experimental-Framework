@@ -271,7 +271,7 @@ def main():
         q += sql.SQL(' ORDER BY ')
         
         q += sql.SQL(' , ').join(
-            [sql.SQL('s.{}').format(sql.Identifier(p))
+            [sql.SQL('e.{}').format(sql.Identifier(p))
              for p in experiment_partition_cols_source] +
             [sql.SQL('{}.id').format(sql.Identifier(p))
              for p in parameter_partition_cols_source] +
