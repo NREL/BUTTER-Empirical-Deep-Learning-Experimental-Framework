@@ -361,7 +361,7 @@ def main():
                                               for e in result_block['run_id']]
 
                     result_block['command'] = \
-                        [json.dumps(js, separators=(',', ':'))
+                        [None if js is None else json.dumps(js, separators=(',', ':'))
                          for js in result_block['command']]
 
                     record_batch = pyarrow.Table.from_pydict(
@@ -376,10 +376,10 @@ def main():
                         partition_cols=partition_cols,
                         # data_page_size=128 * 1024,
                         compression='BROTLI',
-                        compression_level=6,
+                        compression_level=7,
                         use_dictionary=use_dictionary,
                         use_byte_stream_split=use_byte_stream_split,
-                        data_page_version='2.0',
+                        # data_page_version='2.0',
                         existing_data_behavior='overwrite_or_ignore',
                         use_legacy_dataset=False,
                         # write_batch_size=64,
