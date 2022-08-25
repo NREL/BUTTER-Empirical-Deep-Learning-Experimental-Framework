@@ -543,8 +543,8 @@ def main():
             [sql.SQL('s.{} {}').format(sql.Identifier(p), sql.Identifier(p))
              for p in experiment_partition_cols_source] +
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
-             for p in parameter_partition_cols_source])  
-        
+             for p in parameter_partition_cols_source])
+
         q += sql.SQL(' FROM experiment_summary_ s ')
         q += sql.SQL(' ').join(
             [sql.SQL(' left join parameter_ {} on ({}.kind = {} and s.experiment_parameters @> array[{}.id]) ').format(
@@ -650,15 +650,15 @@ def main():
                                 result_block[kind][row_number] = value
 
                         for i in range(len(data_column_names)):
-                            result_block[data_column_names[i]
-                                         ][row_number] = row[i+1]
+                            result_block[data_column_names[i]][row_number] = \
+                                row[i+1]
 
                         row_number += 1
 
                 if row_number > 0:
                     if 'network_structure' in result_block:
                         result_block['network_structure'] = \
-                            [json.dumps(js, separators=(',', ':'))
+                            [None if js is None else json.dumps(js, separators=(',', ':'))
                              for js in result_block['network_structure']]
                     record_batch = pyarrow.Table.from_pydict(
                         result_block,
@@ -672,10 +672,10 @@ def main():
                         partition_cols=partition_cols,
                         # data_page_size=128 * 1024,
                         compression='BROTLI',
-                        compression_level=8,
-                        use_dictionary=use_dictionary,
-                        use_byte_stream_split=use_byte_stream_split,
-                        data_page_version='2.0',
+                        compression_level=7,
+                        # use_dictionary=use_dictionary,
+                        # use_byte_stream_split=use_byte_stream_split,
+                        # data_page_version='2.0',
                         existing_data_behavior='overwrite_or_ignore',
                         use_legacy_dataset=False,
                         # write_batch_size=64,
@@ -688,18 +688,6 @@ def main():
         print(f'End chunk {chunk}.')
         return row_number, chunk
 
-    # with parquet.ParquetWriter(
-    #         file_name,
-    #         schema=schema,
-    #         use_dictionary=parameter_column_names,
-    #         # data_page_size=256 * 1024,
-    #         compression='BROTLI',
-    #         compression_level=8,
-    #         use_byte_stream_split=data_column_names,
-    #         data_page_version='2.0',
-    #         # write_batch_size=64,
-    #         # dictionary_pagesize_limit=64*1024,
-    #     ) as writer:
     print(f'Created {len(chunks)} chunks.')
 
     import pathos.multiprocessing as multiprocessing

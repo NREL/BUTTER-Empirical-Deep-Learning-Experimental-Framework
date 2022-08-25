@@ -354,7 +354,7 @@ def main():
                 if row_number > 0:
 
                     result_block['network_structure'] = \
-                        [json.dumps(js, separators=(',', ':'))
+                        [None if js is None else json.dumps(js, separators=(',', ':'))
                          for js in result_block['network_structure']]
 
                     result_block['run_id'] = [str(e)
