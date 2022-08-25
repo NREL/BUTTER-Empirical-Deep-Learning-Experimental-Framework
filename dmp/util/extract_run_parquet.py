@@ -241,7 +241,7 @@ def main():
     parquet.write_metadata(
         schema, dataset_path + '_common_metadata')
 
-    chunk_size = 64
+    chunk_size = 1024
     chunks = []
     with CursorManager(credentials) as cursor:
 
@@ -275,7 +275,7 @@ def main():
              for p in experiment_partition_cols_source] +
             [sql.SQL('{}.id').format(sql.Identifier(p))
              for p in parameter_partition_cols_source] +
-            [sql.SQL('experiment_id'), sql.SQL('run_id')])
+            [sql.SQL('r.experiment_id'), sql.SQL('r.run_id')])
 
         q += sql.SQL(' ;')
 
