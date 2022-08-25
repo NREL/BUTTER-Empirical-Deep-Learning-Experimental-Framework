@@ -26,7 +26,7 @@ def main():
         parameter_map = PostgresParameterMap(cursor)
 
     dataset_path = '../all_repetitions/'
-    if sweep is not None:
+    if sweep is not None and sweep != 'butter':
         dataset_path = f'../{sweep}/'
 
     fixed_parameters = [
