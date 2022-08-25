@@ -273,8 +273,6 @@ For preliminary analysis, we recommend using the summary dataset as it is smalle
   + label_noise_sweep: bool, true iff this experiment is part of the label noise sweep
   + batch_size_sweep: bool, true iff this experiment is part of the batch size sweep
   + regularization_sweep: bool, true iff this experiment is part of the regularization sweep
-  + learning_rate_batch_size_sweep: bool, true iff this experiment is part of the learning rate x batch size sweep
-  + size_adjusted_regularization_sweep: bool, true iff this experiment is part of the size-adjusted regularization sweep
   + optimizer_sweep: bool, true iff this experiment is part of the optimizer sweep
   + activation: string, the activation function used for hidden layers
   + batch: string, a nickname for the experimental batch this experiment belongs to
@@ -434,8 +432,6 @@ Each row of the repetition dataset represents a single training run. Each repeti
 + label_noise_sweep: bool, true iff this experiment is part of the label noise sweep
 + batch_size_sweep: bool, true iff this experiment is part of the batch size sweep
 + regularization_sweep: bool, true iff this experiment is part of the regularization sweep
-+ learning_rate_batch_size_sweep: bool, true iff this experiment is part of the learning rate x batch size sweep
-+ size_adjusted_regularization_sweep: bool, true iff this experiment is part of the size-adjusted regularization sweep
 + optimizer_sweep: bool, true iff this experiment is part of the optimizer sweep
 + activation: string, the activation function used for hidden layers
 + batch: string, a nickname for the experimental batch this experiment belongs to

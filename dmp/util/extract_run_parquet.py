@@ -62,7 +62,7 @@ def main():
         pyarrow.field('learning_rate', pyarrow.float32(), nullable=True),
         pyarrow.field('optimizer', pyarrow.string(), nullable=True),
         pyarrow.field('momentum', pyarrow.float32(), nullable=True),
-        pyarrow.field('nesterov', pyarrow.bool_(), nullable=True),
+        # pyarrow.field('nesterov', pyarrow.bool_(), nullable=True),
         pyarrow.field('output_activation', pyarrow.string(), nullable=True),
         pyarrow.field('python_version', pyarrow.string(), nullable=True),
         # pyarrow.field('run_config.shuffle', pyarrow.string(), nullable=True),
@@ -314,8 +314,8 @@ def main():
                 q += sql.SQL(' e."batch_size_sweep" "batch_size_sweep", ')
                 q += sql.SQL(' e."regularization_sweep" "regularization_sweep", ')
 
-                q += sql.SQL(' e."learning_rate_batch_size_sweep" "learning_rate_batch_size_sweep", ')
-                q += sql.SQL(' e."size_adjusted_regularization_sweep" "size_adjusted_regularization_sweep", ')
+                # q += sql.SQL(' e."learning_rate_batch_size_sweep" "learning_rate_batch_size_sweep", ')
+                # q += sql.SQL(' e."size_adjusted_regularization_sweep" "size_adjusted_regularization_sweep", ')
                 q += sql.SQL(' e."optimizer_sweep" "optimizer_sweep" ')
 
                 q += sql.SQL(' FROM run_ r JOIN experiment_ e ON (r.experiment_id = e.experiment_id) ')
@@ -378,7 +378,7 @@ def main():
                         compression='BROTLI',
                         compression_level=7,
                         # use_dictionary=use_dictionary,
-                        use_byte_stream_split=use_byte_stream_split,
+                        # use_byte_stream_split=use_byte_stream_split,
                         # data_page_version='2.0',
                         existing_data_behavior='overwrite_or_ignore',
                         use_legacy_dataset=False,
