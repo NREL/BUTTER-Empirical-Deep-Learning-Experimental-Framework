@@ -93,8 +93,8 @@ def main():
             'label_noise_sweep',
             'batch_size_sweep',
             'regularization_sweep',
-            'learning_rate_batch_size_sweep',
-            'size_adjusted_regularization_sweep',
+            # 'learning_rate_batch_size_sweep',
+            # 'size_adjusted_regularization_sweep',
             'optimizer_sweep',
         ])
 
