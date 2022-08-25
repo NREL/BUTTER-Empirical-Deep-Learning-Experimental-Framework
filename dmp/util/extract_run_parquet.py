@@ -248,18 +248,20 @@ def main():
         q = sql.SQL('SELECT r.run_id, r.experiment_id, ')
 
         q += sql.SQL(', ').join(
-            [sql.SQL('s.{} {}').format(sql.Identifier(p), sql.Identifier(p))
+            [sql.SQL('e.{} {}').format(sql.Identifier(p), sql.Identifier(p))
              for p in experiment_partition_cols_source] +
             [sql.SQL('{}.id {}').format(sql.Identifier(p), sql.Identifier(p))
              for p in parameter_partition_cols_source])
         
         q += sql.SQL(' FROM run_ r ')
+        q += sql.SQL(' RIGHT JOIN experiment_ e ON (e.experiment_id = r.experiment_id) ')
         q += sql.SQL(' ').join(
             [sql.SQL(' left join parameter_ {} on ({}.kind = {} and r.run_parameters @> array[{}.id]) ').format(
                 sql.Identifier(p), sql.Identifier(p), sql.Literal(p), sql.Identifier(p)) for p in parameter_partition_cols_source])
 
         q += sql.SQL(' WHERE ')
-        q += sql.SQL('EXISTS (SELECT * FROM experiment_ e WHERE e.experiment_id = r.experiment_id AND e.{}) ').format(sql.Identifier(sweep))
+        q += sql.SQL('e.{}').format(sql.Identifier(sweep))
+        # q += sql.SQL('EXISTS (SELECT * FROM experiment_ e WHERE e.experiment_id = r.experiment_id AND e.{}) ').format(sql.Identifier(sweep))
 
         if len(fixed_parameters) > 0:
             q += sql.SQL(' AND ')
