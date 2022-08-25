@@ -675,7 +675,7 @@ def main():
                         # data_page_size=128 * 1024,
                         compression='BROTLI',
                         compression_level=9,
-                        use_dictionary=use_dictionary,
+                        # use_dictionary=use_dictionary,
                         use_byte_stream_split=use_byte_stream_split,
                         # data_page_version='2.0',
                         existing_data_behavior='overwrite_or_ignore',
