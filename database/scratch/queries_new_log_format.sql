@@ -1091,17 +1091,17 @@ order by status asc, queue, batch, shape, dataset
 
 (select 
     queue, 0 status_, min(priority) min_priority, max(priority) max_priority, count(*) num, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, 
-    command->'depth' depth, 
-    command->'optimizer'->'class_name' optimizer,
-    command->'optimizer'->'config'->'learning_rate' learning_rate,
-    command->'run_config'->'batch_size' batch_size,
+--     command->'depth' depth, 
+--     command->'optimizer'->'class_name' optimizer,
+--     command->'optimizer'->'config'->'learning_rate' learning_rate,
+--     command->'run_config'->'batch_size' batch_size,
     max(update_time) last_update
 from 
     job_status s,
     job_data d
 where s.id = d.id and queue = 1 and status = 0 --and status IN (0,1,3)
-group by status_, queue, batch, shape, depth, dataset, optimizer, learning_rate, batch_size
-order by status_ asc, min_priority asc, queue, batch, shape, depth, dataset, optimizer, learning_rate, batch_size)
+group by status_, queue, batch, shape, dataset
+order by status_ asc, min_priority asc, queue, batch, shape, dataset)
 union all
 (select 
     queue, (CASE 
@@ -1109,17 +1109,17 @@ union all
             ELSE 2
             END
            ) status_, min(priority) min_priority, max(priority) max_priority, count(*) num, command->'batch' batch, command->'shape' shape, command->'dataset' dataset, 
-            command->'depth' depth, 
-            command->'optimizer'->'class_name' optimizer,
-            command->'optimizer'->'config'->'learning_rate' learning_rate,
-            command->'run_config'->'batch_size' batch_size,
+--             command->'depth' depth, 
+--             command->'optimizer'->'class_name' optimizer,
+--             command->'optimizer'->'config'->'learning_rate' learning_rate,
+--             command->'run_config'->'batch_size' batch_size,
             max(update_time) last_update
 from 
     job_status s,
     job_data d
 where s.id = d.id and queue = 1 and status > 0
-group by status_, queue, batch, shape, dataset, depth, optimizer, learning_rate, batch_size
-order by status_ asc, queue, batch, shape, dataset, depth, optimizer, learning_rate, batch_size
+group by status_, queue, batch, shape, dataset
+order by status_ asc, queue, batch, shape, dataset
 );
 
 

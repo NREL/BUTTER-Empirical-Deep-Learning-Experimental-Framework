@@ -214,6 +214,8 @@ squeue -u ctripp -h | grep -P "\(JobHeldUser\)" | awk '{print $1}' | xargs scont
 hold
 
 
+squeue -u ctripp -h | awk '{print $1}' | xargs scontrol hold
+
 
 ------- executed:
 

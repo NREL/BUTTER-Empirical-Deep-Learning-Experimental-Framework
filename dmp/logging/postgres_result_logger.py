@@ -77,6 +77,7 @@ class PostgresResultLogger(ResultLogger):
             ('cosine_similarity', 'real[]'),
             ('val_kullback_leibler_divergence', 'real[]'),
             ('kullback_leibler_divergence', 'real[]'),
+            ('parameter_count', 'bigint[]'),
         ] if run_columns is None else run_columns
 
         experiment_columns, cast_experiment_columns = \
@@ -99,7 +100,8 @@ WITH v as (
             cast_run_columns=cast_run_columns,
         )
 
-        self._log_query_suffix = sql.SQL(""" ) AS t (
+        self._log_query_suffix = sql.SQL(
+""" ) AS t (
             job_id,
             run_id,
             experiment_parameters,
@@ -111,12 +113,7 @@ WITH v as (
 exp_to_insert as (
     SELECT * FROM
     (
-        SELECT distinct experiment_parameters
-        FROM v
-        WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
-    ) d,
-    lateral (
-        SELECT {experiment_columns}
+        SELECT distinct _result_loggernt_columns}
         FROM v
         WHERE v.experiment_parameters = d.experiment_parameters
         LIMIT 1
@@ -168,10 +165,7 @@ SELECT
     job_id,
     run_parameters,
     {run_columns}
-FROM
-    x
-ON CONFLICT DO NOTHING
-;""").format(
+FROM_result_logger
             experiment_columns=experiment_columns,
             run_columns=run_columns,
             experiment_table=sql.Identifier(experiment_table),
@@ -223,10 +217,7 @@ ON CONFLICT DO NOTHING
             self._parameter_map.to_sorted_parameter_ids(
                 experiment_parameters, cursor)
 
-        return (
-            job_id,
-            run_id,
-            experiment_parameter_ids,
+        return (_result_loggerrameter_ids,
             run_parameter_ids,
             *experiment_column_values,
             *run_column_values,
@@ -250,3 +241,5 @@ ON CONFLICT DO NOTHING
             cursor.mogrify(
                 '(' + (','.join(['%s' for _ in e])) + ')', e).decode("utf-8")
             for e in values)))
+"""
+
