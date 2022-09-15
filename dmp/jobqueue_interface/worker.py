@@ -65,8 +65,8 @@ if __name__ == "__main__":
     database = a[8]
     queue = int(a[9])
 
-    nodes = json.loads(a[10])
-    cpus = json.loads(a[11])
+    nodes = [int(e) for e in a[10].split(',')]
+    cpus = [int(e) for e in a[11].split(',')]
 
     gpus = list(range(first_gpu, first_gpu + num_gpus))
 
