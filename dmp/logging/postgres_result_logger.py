@@ -9,7 +9,7 @@ from jobqueue.cursor_manager import CursorManager
 
 from psycopg2 import sql
 
-from typing import Dict, Iterable, Optional, Tuple, List
+from typing import Any, Dict, Iterable, Optional, Tuple, List
 
 import simplejson
 import psycopg2
@@ -19,19 +19,18 @@ psycopg2.extras.register_default_jsonb(loads=simplejson.loads, globally=True)
 psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
 
 class PostgresResultLogger(ResultLogger):
-    _credentials: Dict[str, any]
+    _credentials: Dict[str, Any]
     _run_columns: List[Tuple[str, str]]
-    _log_query_prefix: sql.SQL
-    _log_query_suffix: sql.SQL
+    _log_query_prefix: sql.Composed
+    _log_query_suffix: sql.Composed
     _parameter_map: PostgresParameterMap
 
     def __init__(self,
-                 credentials: Dict[str, any],
+                 credentials: Dict[str, Any],
                  experiment_table: str = 'experiment_',
                  run_table: str = 'run_',
                  experiment_columns: Optional[List[Tuple[str, str]]] = None,
                  run_columns: Optional[List[Tuple[str, str]]] = None,
-                 result_columns: Optional[List[Tuple[str, str]]] = None,
                  ) -> None:
         super().__init__()
         self._credentials = credentials
@@ -54,6 +53,15 @@ class PostgresResultLogger(ResultLogger):
             ('git_hash', 'text'),
             ('hostname', 'text'),
             ('slurm_job_id', 'text'),
+            
+            ('num_gpus', 'integer'),
+            ('num_nodes', 'integer'),
+            ('num_cpus', 'integer'),
+            ('gpu_memory', 'integer'),            
+            ('nodes', 'text'),
+            ('cpus', 'text'),
+            ('gpus', 'text'),
+            ('strategy', 'text'),
 
             ('seed', 'bigint'),
             ('save_every_epochs', 'smallint'),
@@ -80,9 +88,9 @@ class PostgresResultLogger(ResultLogger):
             ('parameter_count', 'bigint[]'),
         ] if run_columns is None else run_columns
 
-        experiment_columns, cast_experiment_columns = \
+        experiment_columns_sql, cast_experiment_columns_sql = \
             self.make_column_sql(self._experiment_columns)
-        run_columns, cast_run_columns = \
+        run_columns_sql, cast_run_columns_sql = \
             self.make_column_sql(self._run_columns)
 
         self._log_query_prefix = sql.SQL("""
@@ -96,12 +104,11 @@ WITH v as (
         {cast_run_columns}
     FROM
         (VALUES """).format(
-            cast_experiment_columns=cast_experiment_columns,
-            cast_run_columns=cast_run_columns,
+            cast_experiment_columns=cast_experiment_columns_sql,
+            cast_run_columns=cast_run_columns_sql,
         )
 
-        self._log_query_suffix = sql.SQL(
-""" ) AS t (
+        self._log_query_suffix = sql.SQL(""" ) AS t (
             job_id,
             run_id,
             experiment_parameters,
@@ -113,7 +120,12 @@ WITH v as (
 exp_to_insert as (
     SELECT * FROM
     (
-        SELECT distinct _result_loggernt_columns}
+        SELECT distinct experiment_parameters
+        FROM v
+        WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
+    ) d,
+    lateral (
+        SELECT {experiment_columns}
         FROM v
         WHERE v.experiment_parameters = d.experiment_parameters
         LIMIT 1
@@ -165,9 +177,13 @@ SELECT
     job_id,
     run_parameters,
     {run_columns}
-FROM_result_logger
-            experiment_columns=experiment_columns,
-            run_columns=run_columns,
+FROM
+    x
+ON CONFLICT DO NOTHING
+;
+        """).format(
+            experiment_columns=experiment_columns_sql,
+            run_columns=run_columns_sql,
             experiment_table=sql.Identifier(experiment_table),
             run_table=sql.Identifier(run_table),
         )
@@ -195,7 +211,7 @@ FROM_result_logger
         cursor,
         job_id: UUID,
         run_id: UUID,
-        result: Dict[str, any],
+        result: Dict[str, Any],
     ):
         def extract_values(columns):
             return [result.pop(c[0], None) for c in columns]
@@ -217,7 +233,10 @@ FROM_result_logger
             self._parameter_map.to_sorted_parameter_ids(
                 experiment_parameters, cursor)
 
-        return (_result_loggerrameter_ids,
+        return (
+            job_id,
+            run_id,
+            experiment_parameter_ids,
             run_parameter_ids,
             *experiment_column_values,
             *run_column_values,
@@ -226,7 +245,7 @@ FROM_result_logger
     def make_column_sql(
         self,
         columns: List[Tuple[str, str]],
-    ) -> Tuple[sql.SQL, sql.SQL]:
+    ) -> Tuple[sql.Composed, sql.Composed]:
         columns_sql = sql.SQL(',').join(
             [sql.Identifier(x[0]) for x in columns])
         cast_columns_sql = sql.SQL(',').join(
@@ -241,5 +260,4 @@ FROM_result_logger
             cursor.mogrify(
                 '(' + (','.join(['%s' for _ in e])) + ')', e).decode("utf-8")
             for e in values)))
-"""
 

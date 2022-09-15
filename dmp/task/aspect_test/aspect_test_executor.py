@@ -3,6 +3,7 @@ import json
 import os
 import platform
 import subprocess
+from typing import Any
 
 from pytest import param
 
@@ -38,8 +39,8 @@ class AspectTestExecutor(AspectTestTask):
     inputs: Optional[numpy.ndarray] = None
     outputs: Optional[numpy.ndarray] = None
 
-    def __call__(self, parent: AspectTestTask) \
-            -> Tuple[Dict[str, Parameter], Dict[str, any]]:
+    def __call__(self, parent: AspectTestTask, worker, *args, **kwargs) \
+            -> Dict[str, Any]:
         # Configure hardware
         if self.tensorflow_strategy is None:
             self.tensorflow_strategy = tensorflow.distribute.get_strategy()
@@ -57,7 +58,7 @@ class AspectTestExecutor(AspectTestTask):
             self.test_split,
             self.label_noise,
             self.run_config,
-            self.dataset_series['Task'],
+            str(self.dataset_series['Task']),
             self.inputs,
             self.outputs,
         )
@@ -99,16 +100,17 @@ class AspectTestExecutor(AspectTestTask):
         delta = count_num_free_parameters(self.network_structure) - self.size
         relative_error = delta / self.size
         if numpy.abs(relative_error) > .2:
-            raise ValueError(f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
+            raise ValueError(
+                f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
 
         # Create and execute network using Keras
-        with self.tensorflow_strategy.scope():
+        with self.tensorflow_strategy.scope():  # type: ignore
             # Build Keras model
             self.keras_model = make_keras_network_from_network_module(
                 self.network_structure)
-            if len(self.keras_model.inputs) != 1:
+            if len(self.keras_model.inputs) != 1:  # type: ignore
                 print(
-                    f'weird error: {len(self.keras_model.inputs)}, {json.dumps(jobqueue_marshal.marshal(self.network_structure))}')
+                    f'weird error: {len(self.keras_model.inputs)}, {json.dumps(jobqueue_marshal.marshal(self.network_structure))}')  # type: ignore
                 raise ValueError('Wrong number of keras inputs generated')
 
             # Compile Keras Model
@@ -173,14 +175,14 @@ class AspectTestExecutor(AspectTestTask):
             # but ResumableModel objects returns History.history. This smooths
             # out that incompatibility.
             if self.save_every_epochs is None or self.save_every_epochs == 0:
-                history = history.history
+                history = history.history  # type: ignore
 
             # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
             # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
             # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
             # model.save(f'./log/models/{run_name}.h5', save_format='h5')
 
-            parameters: Dict[str, any] = parent.parameters
+            parameters: Dict[str, Any] = parent.parameters
             parameters['output_activation'] = self.output_activation
             parameters['widths'] = widths
             parameters['num_free_parameters'] = num_free_parameters
@@ -188,7 +190,8 @@ class AspectTestExecutor(AspectTestTask):
             parameters['network_structure'] = \
                 jobqueue_marshal.marshal(self.network_structure)
 
-            parameters.update(history)
-
+            parameters.update(history)  # type: ignore
+            parameters.update(worker.worker_info)
+            
             # return the result record
             return parameters

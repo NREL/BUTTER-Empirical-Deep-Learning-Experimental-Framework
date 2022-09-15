@@ -1,5 +1,6 @@
 import argparse
 import gc
+import json
 import math
 import sys
 import uuid
@@ -15,8 +16,9 @@ import tensorflow
 
 from .common import jobqueue_marshal
 
+
 def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
-    
+
     devices = []
     devices.extend(['/GPU:' + str(i)
                    for i in range(first_gpu, first_gpu + num_gpus)])
@@ -45,51 +47,45 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     tensorflow.config.threading.set_intra_op_parallelism_threads(num_cores)
     tensorflow.config.threading.set_inter_op_parallelism_threads(num_cores)
 
-    strategy = tensorflow.distribute.get_strategy()  # the default strategy
+    if num_gpus > 1:
+        strategy = tensorflow.distribute.MirroredStrategy()
+    else:
+        strategy = tensorflow.distribute.get_strategy()
     return strategy
 
 
 if __name__ == "__main__":
     a = sys.argv
-    strategy = make_strategy(
-        int(a[4]),
-        int(a[5]),
-        int(a[6]),
-        int(a[7]))
 
-    queue = int(a[9])
+    num_cores = int(a[4])
+    first_gpu = int(a[5])
+    num_gpus = int(a[6])
+    gpu_memory = int(a[7])
+
     database = a[8]
-    
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('first_socket', type=int,
-    #                     help='first socket id to use')
-    # parser.add_argument('num_sockets', type=int, help='num sockets to use')
-    # parser.add_argument('first_core', type=int, help='first core id to use')
-    # parser.add_argument('num_cores', type=int, help='num cores to use')
-    # parser.add_argument('first_gpu', type=int, help='first GPU id to use')
-    # parser.add_argument('num_gpus', type=int, help='num GPUs to use')
-    # parser.add_argument('gpu_mem', type=int, help='GPU RAM to allocate')
-    # parser.add_argument(
-    #     'database', help='database/project identifier in your jobqueue.json file')
-    # parser.add_argument('queue', help='queue id to use (smallint)')
-    # args = parser.parse_args()
+    queue = int(a[9])
 
-    # strategy = make_strategy(
-    #     args.first_socket, args.num_sockets,
-    #     args.first_core, args.num_cores,
-    #     args.first_gpu, args.num_gpus,
-    #     args.gpu_mem)
+    nodes = json.loads(a[10])
+    cpus = json.loads(a[11])
+
+    gpus = list(range(first_gpu, first_gpu + num_gpus))
+
+    strategy = make_strategy(
+        num_cores,
+        first_gpu,
+        num_gpus,
+        gpu_memory,
+    )
 
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     print('\n', flush=True)
 
     # queue = args.queue
-    
+
     if not isinstance(queue, int):
         queue = 1
 
-    
     print(f'Worker id {worker_id} load credentials...\n', flush=True)
     credentials = connect.load_credentials(database)
     print(f'Worker id {worker_id} create job queue...\n', flush=True)
@@ -97,7 +93,19 @@ if __name__ == "__main__":
     print(f'Worker id {worker_id} create result logger..\n', flush=True)
     result_logger = PostgresResultLogger(credentials)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
-    worker = Worker(job_queue, result_logger)
+    worker = Worker(
+        job_queue,
+        result_logger,
+        {
+            'nodes': nodes,
+            'cpus': cpus,
+            'gpus': gpus,
+            'num_cpus': len(cpus),
+            'num_nodes': len(nodes),
+            'gpu_memory': gpu_memory,
+            'strategy': str(type(strategy)),
+        },
+    )
     print(f'Worker id {worker_id} start Worker object...\n', flush=True)
     worker()  # runs the work loop on the worker
     print(f'Worker id {worker_id} Worker exited.\n', flush=True)

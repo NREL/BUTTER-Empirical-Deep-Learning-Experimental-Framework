@@ -5,11 +5,12 @@ from dataclasses import dataclass
 import os
 import platform
 import subprocess
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import tensorflow
 
-ParameterValue = Union[bool, int, float, str]
+
+ParameterValue = Union[None, bool, int, float, str]
 ParameterDict = Dict[str, "Parameter"]
 Parameter = Union[ParameterValue, ParameterDict]
 FlatParameterDict = Dict[str, ParameterValue]
@@ -22,9 +23,9 @@ class Task:
     batch: str
 
     @abstractmethod
-    def __call__(self, *args, **kwargs
+    def __call__(self, worker, *args, **kwargs
                  # TODO: fix the history part of this return type
-                 ) -> Tuple[ParameterDict, Dict[str, any]]:
+                 ) -> Dict[str, Any]:
         pass
 
     @property
@@ -48,12 +49,13 @@ class Task:
                 cwd=os.path.dirname(__file__)).strip().decode()
         except:
             pass
+
         parameters['git_hash'] = git_hash
 
         parameters['hostname'] = str(platform.node())
         parameters['slurm_job_id'] = os.getenv("SLURM_JOB_ID")
  
-        return parameters
+        return parameters  # type: ignore
 
     def extract_parameters(
         self,
