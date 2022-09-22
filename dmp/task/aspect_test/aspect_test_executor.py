@@ -188,6 +188,7 @@ class AspectTestExecutor(AspectTestTask):
             y = numpy.expand_dims(y,axis=0)
             ds = tensorflow.data.Dataset.from_tensor_slices((x, y))
             ds = ds.with_options(dataset_options)
+            ds = ds.batch(self.run_config['batch_size'])
             print(f'ds inspection: {ds.element_spec}')
             return ds
 
