@@ -114,21 +114,21 @@ class AspectTestExecutor(AspectTestTask):
                     f'weird error: {len(self.keras_model.inputs)}, {json.dumps(jobqueue_marshal.marshal(self.network_structure))}')  # type: ignore
                 raise ValueError('Wrong number of keras inputs generated')
 
-        # Compile Keras Model
-        run_metrics = [
-            # metrics.CategoricalAccuracy(),
-            'accuracy',
-            metrics.CosineSimilarity(),
-            metrics.Hinge(),
-            metrics.KLDivergence(),
-            metrics.MeanAbsoluteError(),
-            metrics.MeanSquaredError(),
-            metrics.MeanSquaredLogarithmicError(),
-            metrics.RootMeanSquaredError(),
-            metrics.SquaredHinge(),
-        ]
+            # Compile Keras Model
+            run_metrics = [
+                # metrics.CategoricalAccuracy(),
+                'accuracy',
+                metrics.CosineSimilarity(),
+                metrics.Hinge(),
+                metrics.KLDivergence(),
+                metrics.MeanAbsoluteError(),
+                metrics.MeanSquaredError(),
+                metrics.MeanSquaredLogarithmicError(),
+                metrics.RootMeanSquaredError(),
+                metrics.SquaredHinge(),
+            ]
 
-        run_optimizer = tensorflow.keras.optimizers.get(self.optimizer)
+            run_optimizer = tensorflow.keras.optimizers.get(self.optimizer)
 
         self.keras_model.compile(
             # loss='binary_crossentropy', # binary classification
