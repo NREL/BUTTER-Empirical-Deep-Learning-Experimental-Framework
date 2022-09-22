@@ -52,18 +52,6 @@ class AspectTestExecutor(AspectTestTask):
         self.dataset_series, self.inputs, self.outputs =  \
             pmlb_loader.load_dataset(_datasets, self.dataset)
 
-
-        # setup datasets
-        dataset_options = tensorflow.data.Options()
-        dataset_options.experimental_distribute.auto_shard_policy = \
-            tensorflow.data.experimental.AutoShardPolicy.DATA
-
-        inputs_dataset = tensorflow.data.Dataset.from_tensor_slices(self.inputs)
-        inputs_dataset = inputs_dataset.with_options(dataset_options)
-
-        outputs_dataset = tensorflow.data.Dataset.from_tensor_slices(self.outputs)        
-        outputs_dataset = outputs_dataset.with_options(dataset_options)
-
         # prepare dataset shuffle, split, and label noise:
         prepared_config = prepare_dataset(
             self.test_split_method,
@@ -71,8 +59,8 @@ class AspectTestExecutor(AspectTestTask):
             self.label_noise,
             self.run_config,
             str(self.dataset_series['Task']),
-            inputs_dataset,
-            outputs_dataset,
+            self.inputs,
+            self.outputs,
         )
 
         # Generate neural network architecture
@@ -178,6 +166,31 @@ class AspectTestExecutor(AspectTestTask):
         #         self.keras_model,
         #         save_every_epochs=self.save_every_epochs,
         #         to_path=save_path)
+
+        # setup datasets
+        dataset_options = tensorflow.data.Options()
+        dataset_options.experimental_distribute.auto_shard_policy = \
+            tensorflow.data.experimental.AutoShardPolicy.DATA
+
+        inputs_dataset = tensorflow.data.Dataset.from_tensor_slices(self.inputs)
+        inputs_dataset = inputs_dataset.with_options(dataset_options)
+
+        outputs_dataset = tensorflow.data.Dataset.from_tensor_slices(self.outputs)        
+        outputs_dataset = outputs_dataset.with_options(dataset_options)
+
+        def make_tensorflow_dataset(source):
+            ds = tensorflow.data.Dataset.from_tensor_slices(self.outputs)
+            ds = ds.with_options(dataset_options)
+            return ds
+
+        prepared_config['x'] = make_tensorflow_dataset(prepared_config['x'])
+        prepared_config['y'] = make_tensorflow_dataset(prepared_config['y'])
+
+        val_data = prepared_config['validation_data']
+        prepared_config['validation_data'] = (
+            make_tensorflow_dataset(val_data[0]),
+            make_tensorflow_dataset(val_data[1]),
+        )
 
         # fit / train model
         history = self.keras_model.fit(
