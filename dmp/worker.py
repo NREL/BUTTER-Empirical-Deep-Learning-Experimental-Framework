@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 import uuid
 from jobqueue.job import Job
@@ -7,21 +8,19 @@ from dmp.task.task import Task
 
 from dmp.jobqueue_interface.common import jobqueue_marshal
 from lmarshal.src.marshal import Marshal
+import tensorflow
 
 
+@dataclass
 class Worker:
     _job_queue: JobQueue
     _result_logger: ResultLogger
-    _worker_info : Dict
+    _strategy: tensorflow.distribute.Strategy
+    _worker_info: Dict
 
-    def __init__(self,
-                 job_queue: JobQueue,
-                 result_logger: ResultLogger,
-                 worker_info: Dict,
-                 ) -> None:
-        self._job_queue = job_queue
-        self._result_logger = result_logger
-        self._worker_info = worker_info
+    @property
+    def strategy(self) -> tensorflow.distribute.Strategy:
+        return self._strategy
 
     @property
     def worker_info(self) -> Dict:

@@ -100,20 +100,21 @@ if __name__ == "__main__":
     print(f'Worker id {worker_id} create result logger..\n', flush=True)
     result_logger = PostgresResultLogger(credentials)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
-    with strategy.scope():
-        worker = Worker(
-            job_queue,
-            result_logger,
-            {
-                'nodes': nodes,
-                'cpus': cpus,
-                'gpus': gpus,
-                'num_cpus': len(cpus),
-                'num_nodes': len(nodes),
-                'gpu_memory': gpu_memory,
-                'strategy': str(type(strategy)),
-            },
-        )
+    
+    worker = Worker(
+        job_queue,
+        result_logger,
+        strategy,
+        {
+            'nodes': nodes,
+            'cpus': cpus,
+            'gpus': gpus,
+            'num_cpus': len(cpus),
+            'num_nodes': len(nodes),
+            'gpu_memory': gpu_memory,
+            'strategy': str(type(strategy)),
+        },
+    )
     print(f'Worker id {worker_id} start Worker object...\n', flush=True)
     worker()  # runs the work loop on the worker
     print(f'Worker id {worker_id} Worker exited.\n', flush=True)

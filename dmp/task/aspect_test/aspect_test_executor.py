@@ -31,7 +31,7 @@ class AspectTestExecutor(AspectTestTask):
     '''
 
     output_activation: Optional[str] = None
-    tensorflow_strategy: Optional[tensorflow.distribute.Strategy] = None
+    # tensorflow_strategy: Optional[tensorflow.distribute.Strategy] = None
     keras_model: Optional[tensorflow.keras.Model] = None
     run_loss: Optional[tensorflow.keras.losses.Loss] = None
     network_structure: Optional[NetworkModule] = None
@@ -41,9 +41,9 @@ class AspectTestExecutor(AspectTestTask):
 
     def __call__(self, parent: AspectTestTask, worker, *args, **kwargs) \
             -> Dict[str, Any]:
-        # Configure hardware
-        if self.tensorflow_strategy is None:
-            self.tensorflow_strategy = tensorflow.distribute.get_strategy()
+        # # Configure hardware
+        # if self.tensorflow_strategy is None:
+        #     self.tensorflow_strategy = tensorflow.distribute.get_strategy()
 
         # Set random seeds
         self.seed = set_random_seeds(self.seed)
@@ -104,7 +104,7 @@ class AspectTestExecutor(AspectTestTask):
                 f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
 
         # Create and execute network using Keras
-        with self.tensorflow_strategy.scope() as s:  # type: ignore
+        with worker.strategy.scope() as s:  # type: ignore
             print(f'Tensorflow scope: {s}')
             # Build Keras model
             self.keras_model = make_keras_network_from_network_module(

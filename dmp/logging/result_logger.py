@@ -15,6 +15,6 @@ class ResultLogger(ABC):
     @abstractmethod
     def log(
         self,
-        results: List[Tuple[UUID, UUID, Dict, Dict, Dict, Dict]],
+        results: List[Tuple[UUID, UUID, Dict]],
     ) -> None:
         pass
