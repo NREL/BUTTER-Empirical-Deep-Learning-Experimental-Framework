@@ -172,25 +172,25 @@ class AspectTestExecutor(AspectTestTask):
         dataset_options.experimental_distribute.auto_shard_policy = \
             tensorflow.data.experimental.AutoShardPolicy.DATA
 
-        inputs_dataset = tensorflow.data.Dataset.from_tensor_slices(self.inputs)
+        inputs_dataset = tensorflow.data.Dataset.from_tensor_slices(
+            self.inputs)
         inputs_dataset = inputs_dataset.with_options(dataset_options)
 
-        outputs_dataset = tensorflow.data.Dataset.from_tensor_slices(self.outputs)        
+        outputs_dataset = tensorflow.data.Dataset.from_tensor_slices(
+            self.outputs)
         outputs_dataset = outputs_dataset.with_options(dataset_options)
 
-        def make_tensorflow_dataset(source):
-            ds = tensorflow.data.Dataset.from_tensor_slices(self.outputs)
+        def make_tensorflow_dataset(x, y):
+            ds = tensorflow.data.Dataset.from_tensor_slices((x, y))
             ds = ds.with_options(dataset_options)
             return ds
 
-        prepared_config['x'] = make_tensorflow_dataset(prepared_config['x'])
-        prepared_config['y'] = make_tensorflow_dataset(prepared_config['y'])
+        prepared_config['x'] = make_tensorflow_dataset(
+            prepared_config['x'], prepared_config['y'])
+        del prepared_config['y']
 
         val_data = prepared_config['validation_data']
-        prepared_config['validation_data'] = (
-            make_tensorflow_dataset(val_data[0]),
-            make_tensorflow_dataset(val_data[1]),
-        )
+        prepared_config['validation_data'] = make_tensorflow_dataset(*val_data)
 
         # fit / train model
         history = self.keras_model.fit(
@@ -219,6 +219,6 @@ class AspectTestExecutor(AspectTestTask):
 
         parameters.update(history)  # type: ignore
         parameters.update(worker.worker_info)
-        
+
         # return the result record
         return parameters
