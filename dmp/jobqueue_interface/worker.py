@@ -29,7 +29,7 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     num_threads = max(1, num_cores)
 
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
-    print(f'Found: {len(gpus)} using: {first_gpu} - {first_gpu + num_gpus}.')
+    print(f'Found: {len(gpus)} GPUs. Using: {first_gpu} - {first_gpu + num_gpus}.')
     visible_devices = []
     for i in range(first_gpu, first_gpu + num_gpus):
         gpu = gpus[i]
@@ -93,19 +93,20 @@ if __name__ == "__main__":
     print(f'Worker id {worker_id} create result logger..\n', flush=True)
     result_logger = PostgresResultLogger(credentials)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
-    worker = Worker(
-        job_queue,
-        result_logger,
-        {
-            'nodes': nodes,
-            'cpus': cpus,
-            'gpus': gpus,
-            'num_cpus': len(cpus),
-            'num_nodes': len(nodes),
-            'gpu_memory': gpu_memory,
-            'strategy': str(type(strategy)),
-        },
-    )
+    with strategy.scope():
+        worker = Worker(
+            job_queue,
+            result_logger,
+            {
+                'nodes': nodes,
+                'cpus': cpus,
+                'gpus': gpus,
+                'num_cpus': len(cpus),
+                'num_nodes': len(nodes),
+                'gpu_memory': gpu_memory,
+                'strategy': str(type(strategy)),
+            },
+        )
     print(f'Worker id {worker_id} start Worker object...\n', flush=True)
     worker()  # runs the work loop on the worker
     print(f'Worker id {worker_id} Worker exited.\n', flush=True)
