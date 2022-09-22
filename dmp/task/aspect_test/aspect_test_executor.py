@@ -137,6 +137,7 @@ class AspectTestExecutor(AspectTestTask):
             # optimizer='rmsprop',
             # metrics=['accuracy'],
             metrics=run_metrics,
+            run_eagerly=False,
         )
 
         num_free_parameters = count_trainable_parameters_in_keras_model(
