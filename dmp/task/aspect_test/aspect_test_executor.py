@@ -182,10 +182,11 @@ class AspectTestExecutor(AspectTestTask):
 
         def make_tensorflow_dataset(x, y):
             print(f' make_tf_ds {x.shape}, {y.shape}')
-            x = x.astype('float32')
-            y = y.astype('float32')
-            ds = tensorflow.data.Dataset.from_tensor_slices((x, y))
+            # x = x.astype('float32')
+            # y = y.astype('float32')
+            ds = tensorflow.data.Dataset.from_tensor_slices((x.transpose, y.transpose))
             ds = ds.with_options(dataset_options)
+            print(f'ds inspection: {ds.element_spec}')
             return ds
 
         prepared_config['x'] = make_tensorflow_dataset(
