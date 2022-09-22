@@ -181,6 +181,9 @@ class AspectTestExecutor(AspectTestTask):
         outputs_dataset = outputs_dataset.with_options(dataset_options)
 
         def make_tensorflow_dataset(x, y):
+            print(f' make_tf_ds {x.shape}, {y.shape}')
+            x = x.astype('float32')
+            y = y.astype('float32')
             ds = tensorflow.data.Dataset.from_tensor_slices((x, y))
             ds = ds.with_options(dataset_options)
             return ds
