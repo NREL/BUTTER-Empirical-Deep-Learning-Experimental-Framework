@@ -52,6 +52,18 @@ class AspectTestExecutor(AspectTestTask):
         self.dataset_series, self.inputs, self.outputs =  \
             pmlb_loader.load_dataset(_datasets, self.dataset)
 
+
+        # setup datasets
+        dataset_options = tensorflow.data.Options()
+        dataset_options.experimental_distribute.auto_shard_policy = \
+            tensorflow.data.experimental.AutoShardPolicy.DATA
+
+        inputs_dataset = tensorflow.data.Dataset.from_tensor_slices(self.inputs)
+        inputs_dataset = inputs_dataset.with_options(dataset_options)
+
+        outputs_dataset = tensorflow.data.Dataset.from_tensor_slices(self.outputs)        
+        outputs_dataset = outputs_dataset.with_options(dataset_options)
+
         # prepare dataset shuffle, split, and label noise:
         prepared_config = prepare_dataset(
             self.test_split_method,
@@ -59,8 +71,8 @@ class AspectTestExecutor(AspectTestTask):
             self.label_noise,
             self.run_config,
             str(self.dataset_series['Task']),
-            self.inputs,
-            self.outputs,
+            inputs_dataset,
+            outputs_dataset,
         )
 
         # Generate neural network architecture

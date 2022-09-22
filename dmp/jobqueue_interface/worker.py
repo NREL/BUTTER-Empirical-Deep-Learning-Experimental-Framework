@@ -58,10 +58,6 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
         #      all_reduce_alg="hierarchical_copy")
     else:
         strategy = tensorflow.distribute.get_strategy()
-
-
-    tensorflow.data.Options().experimental_distribute.auto_shard_policy = \
-        tensorflow.data.experimental.AutoShardPolicy.DATA
     return strategy
 
 
