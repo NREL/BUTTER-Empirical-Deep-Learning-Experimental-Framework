@@ -49,6 +49,7 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     tensorflow.config.threading.set_inter_op_parallelism_threads(num_cores)
 
     if num_gpus > 1:
+        print(visible_devices)
         strategy = tensorflow.distribute.MirroredStrategy(
             devices=visible_devices)
         #   cross_device_ops=tensorflow.contrib.distribute.AllReduceCrossDeviceOps(
