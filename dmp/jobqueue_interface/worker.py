@@ -29,7 +29,8 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     num_threads = max(1, num_cores)
 
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
-    print(f'Found: {len(gpus)} GPUs. Using: {first_gpu} - {first_gpu + num_gpus}.')
+    print(
+        f'Found: {len(gpus)} GPUs. Using: {first_gpu} - {first_gpu + num_gpus}.')
     visible_devices = []
     for i in range(first_gpu, first_gpu + num_gpus):
         gpu = gpus[i]
@@ -48,7 +49,10 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     tensorflow.config.threading.set_inter_op_parallelism_threads(num_cores)
 
     if num_gpus > 1:
-        strategy = tensorflow.distribute.MirroredStrategy()
+        strategy = tensorflow.distribute.MirroredStrategy(
+            devices=visible_devices)
+        #   cross_device_ops=tensorflow.contrib.distribute.AllReduceCrossDeviceOps(
+        #      all_reduce_alg="hierarchical_copy")
     else:
         strategy = tensorflow.distribute.get_strategy()
     return strategy
