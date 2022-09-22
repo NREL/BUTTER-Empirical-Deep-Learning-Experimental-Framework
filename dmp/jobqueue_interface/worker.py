@@ -31,16 +31,17 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
     print(
         f'Found: {len(gpus)} GPUs. Using: {first_gpu} - {first_gpu + num_gpus}.')
-    visible_devices = []
+    gpu_devices = []
     for i in range(first_gpu, first_gpu + num_gpus):
         gpu = gpus[i]
-        visible_devices.append(gpu)
+        gpu_devices.append(gpu)
         tensorflow.config.experimental.set_virtual_device_configuration(
             gpu,
             [tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=gpu_mem)])
 
     cpus = tensorflow.config.experimental.list_physical_devices('CPU')
     # print(f'cpus: {cpus}')
+    visible_devices = gpu_devices.copy()
     visible_devices.extend(cpus)
     tensorflow.config.set_visible_devices(visible_devices)
     tensorflow.config.set_soft_device_placement(True)
@@ -50,8 +51,9 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
 
     if num_gpus > 1:
         print(visible_devices)
+        print(gpu_devices)
         strategy = tensorflow.distribute.MirroredStrategy(
-            devices=[d.name[len('/physical_device:'):] for d in visible_devices])
+            devices=[d.name[len('/physical_device:'):] for d in gpu_devices])
         #   cross_device_ops=tensorflow.contrib.distribute.AllReduceCrossDeviceOps(
         #      all_reduce_alg="hierarchical_copy")
     else:
