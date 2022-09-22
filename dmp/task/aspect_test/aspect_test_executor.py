@@ -104,7 +104,8 @@ class AspectTestExecutor(AspectTestTask):
                 f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
 
         # Create and execute network using Keras
-        with self.tensorflow_strategy.scope():  # type: ignore
+        with self.tensorflow_strategy.scope() as s:  # type: ignore
+            print(f'Tensorflow scope: {s}')
             # Build Keras model
             self.keras_model = make_keras_network_from_network_module(
                 self.network_structure)
