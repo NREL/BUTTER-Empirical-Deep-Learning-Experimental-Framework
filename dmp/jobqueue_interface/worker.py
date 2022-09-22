@@ -51,7 +51,7 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     if num_gpus > 1:
         print(visible_devices)
         strategy = tensorflow.distribute.MirroredStrategy(
-            devices=[d.name for d in visible_devices])
+            devices=[d.name[len('/physical_device:'):] for d in visible_devices])
         #   cross_device_ops=tensorflow.contrib.distribute.AllReduceCrossDeviceOps(
         #      all_reduce_alg="hierarchical_copy")
     else:
