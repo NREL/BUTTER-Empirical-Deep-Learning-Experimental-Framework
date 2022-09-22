@@ -113,85 +113,85 @@ class AspectTestExecutor(AspectTestTask):
                     f'weird error: {len(self.keras_model.inputs)}, {json.dumps(jobqueue_marshal.marshal(self.network_structure))}')  # type: ignore
                 raise ValueError('Wrong number of keras inputs generated')
 
-            # Compile Keras Model
-            run_metrics = [
-                # metrics.CategoricalAccuracy(),
-                'accuracy',
-                metrics.CosineSimilarity(),
-                metrics.Hinge(),
-                metrics.KLDivergence(),
-                metrics.MeanAbsoluteError(),
-                metrics.MeanSquaredError(),
-                metrics.MeanSquaredLogarithmicError(),
-                metrics.RootMeanSquaredError(),
-                metrics.SquaredHinge(),
-            ]
+        # Compile Keras Model
+        run_metrics = [
+            # metrics.CategoricalAccuracy(),
+            'accuracy',
+            metrics.CosineSimilarity(),
+            metrics.Hinge(),
+            metrics.KLDivergence(),
+            metrics.MeanAbsoluteError(),
+            metrics.MeanSquaredError(),
+            metrics.MeanSquaredLogarithmicError(),
+            metrics.RootMeanSquaredError(),
+            metrics.SquaredHinge(),
+        ]
 
-            run_optimizer = tensorflow.keras.optimizers.get(self.optimizer)
+        run_optimizer = tensorflow.keras.optimizers.get(self.optimizer)
 
-            self.keras_model.compile(
-                # loss='binary_crossentropy', # binary classification
-                # loss='categorical_crossentropy', # categorical classification (one hot)
-                loss=self.run_loss,  # regression
-                optimizer=run_optimizer,
-                # optimizer='rmsprop',
-                # metrics=['accuracy'],
-                metrics=run_metrics,
-            )
+        self.keras_model.compile(
+            # loss='binary_crossentropy', # binary classification
+            # loss='categorical_crossentropy', # categorical classification (one hot)
+            loss=self.run_loss,  # regression
+            optimizer=run_optimizer,
+            # optimizer='rmsprop',
+            # metrics=['accuracy'],
+            metrics=run_metrics,
+        )
 
-            num_free_parameters = count_trainable_parameters_in_keras_model(
-                self.keras_model)
-            assert count_num_free_parameters(self.network_structure) == num_free_parameters, \
-                'Wrong number of trainable parameters'
+        num_free_parameters = count_trainable_parameters_in_keras_model(
+            self.keras_model)
+        assert count_num_free_parameters(self.network_structure) == num_free_parameters, \
+            'Wrong number of trainable parameters'
 
-            # Configure Keras Callbacks
-            run_callbacks = []
-            if self.early_stopping is not None:
-                run_callbacks.append(
-                    callbacks.EarlyStopping(**self.early_stopping))
+        # Configure Keras Callbacks
+        run_callbacks = []
+        if self.early_stopping is not None:
+            run_callbacks.append(
+                callbacks.EarlyStopping(**self.early_stopping))
 
-            # # optionally enable checkpoints
-            # if self.save_every_epochs is not None and self.save_every_epochs > 0:
-            #     DMP_CHECKPOINT_DIR = os.getenv(
-            #         'DMP_CHECKPOINT_DIR', default='checkpoints')
-            #     if not os.path.exists(DMP_CHECKPOINT_DIR):
-            #         os.makedirs(DMP_CHECKPOINT_DIR)
+        # # optionally enable checkpoints
+        # if self.save_every_epochs is not None and self.save_every_epochs > 0:
+        #     DMP_CHECKPOINT_DIR = os.getenv(
+        #         'DMP_CHECKPOINT_DIR', default='checkpoints')
+        #     if not os.path.exists(DMP_CHECKPOINT_DIR):
+        #         os.makedirs(DMP_CHECKPOINT_DIR)
 
-            #     save_path = os.path.join(
-            #         DMP_CHECKPOINT_DIR, self.job_id + '.h5')
+        #     save_path = os.path.join(
+        #         DMP_CHECKPOINT_DIR, self.job_id + '.h5')
 
-            #     self.keras_model = ResumableModel(
-            #         self.keras_model,
-            #         save_every_epochs=self.save_every_epochs,
-            #         to_path=save_path)
+        #     self.keras_model = ResumableModel(
+        #         self.keras_model,
+        #         save_every_epochs=self.save_every_epochs,
+        #         to_path=save_path)
 
-            # fit / train model
-            history = self.keras_model.fit(
-                callbacks=run_callbacks,
-                **prepared_config,
-            )
+        # fit / train model
+        history = self.keras_model.fit(
+            callbacks=run_callbacks,
+            **prepared_config,
+        )
 
-            # Tensorflow models return a History object from their fit function,
-            # but ResumableModel objects returns History.history. This smooths
-            # out that incompatibility.
-            if self.save_every_epochs is None or self.save_every_epochs == 0:
-                history = history.history  # type: ignore
+        # Tensorflow models return a History object from their fit function,
+        # but ResumableModel objects returns History.history. This smooths
+        # out that incompatibility.
+        if self.save_every_epochs is None or self.save_every_epochs == 0:
+            history = history.history  # type: ignore
 
-            # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
-            # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
-            # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
-            # model.save(f'./log/models/{run_name}.h5', save_format='h5')
+        # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
+        # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
+        # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
+        # model.save(f'./log/models/{run_name}.h5', save_format='h5')
 
-            parameters: Dict[str, Any] = parent.parameters
-            parameters['output_activation'] = self.output_activation
-            parameters['widths'] = widths
-            parameters['num_free_parameters'] = num_free_parameters
-            parameters['output_activation'] = self.output_activation
-            parameters['network_structure'] = \
-                jobqueue_marshal.marshal(self.network_structure)
+        parameters: Dict[str, Any] = parent.parameters
+        parameters['output_activation'] = self.output_activation
+        parameters['widths'] = widths
+        parameters['num_free_parameters'] = num_free_parameters
+        parameters['output_activation'] = self.output_activation
+        parameters['network_structure'] = \
+            jobqueue_marshal.marshal(self.network_structure)
 
-            parameters.update(history)  # type: ignore
-            parameters.update(worker.worker_info)
-            
-            # return the result record
-            return parameters
+        parameters.update(history)  # type: ignore
+        parameters.update(worker.worker_info)
+        
+        # return the result record
+        return parameters
