@@ -105,6 +105,7 @@ class AspectTestExecutor(AspectTestTask):
 
         # Create and execute network using Keras
         with worker.strategy.scope() as s:  # type: ignore
+            tensorflow.config.optimizer.set_jit(True)
             print(f'Tensorflow scope: {s}')
             # Build Keras model
             self.keras_model = make_keras_network_from_network_module(
@@ -182,8 +183,8 @@ class AspectTestExecutor(AspectTestTask):
 
         def make_tensorflow_dataset(x, y):
             print(f' make_tf_ds {x.shape}, {y.shape}')
-            # x = x.astype('float32')
-            # y = y.astype('float32')
+            x = x.astype('float32')
+            y = y.astype('float32')
             # x = numpy.expand_dims(x,axis=0)
             # y = numpy.expand_dims(y,axis=0)
             ds = tensorflow.data.Dataset.from_tensor_slices((x, y))
