@@ -86,6 +86,7 @@ class PostgresResultLogger(ResultLogger):
             ('val_kullback_leibler_divergence', 'real[]'),
             ('kullback_leibler_divergence', 'real[]'),
             ('parameter_count', 'bigint[]'),
+            ('growth_points', 'smallint[]'),
         ] if run_columns is None else run_columns
 
         experiment_columns_sql, cast_experiment_columns_sql = \
