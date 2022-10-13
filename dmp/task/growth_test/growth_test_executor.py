@@ -63,7 +63,9 @@ class GrowthTestExecutor(GrowthTestTask):
             self.dataset_series['Task'],
             self.inputs,
             self.outputs,
+            self.val_split,
         )
+        test_data = (prepared_config['test_data'][0],prepared_config['test_data'][1],'test_data')
 
         # Generate neural network architecture
         num_outputs = self.outputs.shape[1]
@@ -164,8 +166,11 @@ class GrowthTestExecutor(GrowthTestTask):
             histories = dict()
             while num_free_parameters < self.max_size:
                 # Train
+                additional_history = growth_test_utils.AdditionalValidationSets([test_data],
+                                    batch_size=self.run_config['batch_size'])
                 history = self.keras_model.fit(
-                    callbacks=[getattr(sys.modules[__name__], self.growth_trigger)(**self.growth_trigger_params)],
+                    callbacks=[getattr(sys.modules[__name__], self.growth_trigger)(**self.growth_trigger_params),
+                               additional_history],
                     **prepared_config,
                 )
 
@@ -174,6 +179,9 @@ class GrowthTestExecutor(GrowthTestTask):
                 # out that incompatibility.
                 if self.save_every_epochs is None or self.save_every_epochs == 0:
                     history = history.history
+                
+                # Merge history dictionaries, adding metrics from evaluation on test set.
+                # history = {**additional_history.history, **history}
 
                 # Add num_free_parameters to history dictionary and append to master histories dictionary
                 history['parameter_count'] = [num_free_parameters for _ in range(len(history['loss']))]
@@ -217,9 +225,7 @@ class GrowthTestExecutor(GrowthTestTask):
                 self.keras_model = getattr(growth_test_utils, self.growth_method)(self.keras_model,config,**self.growth_method_params)
 
                 # Calculate number of parameters in grown network
-                num_free_parameters = count_trainable_parameters_in_keras_model(
-                self.keras_model)
-
+                num_free_parameters = count_trainable_parameters_in_keras_model(self.keras_model)
 
             # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
             # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.

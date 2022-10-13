@@ -74,6 +74,7 @@ def prepare_dataset(
     run_task: str,
     inputs,
     outputs,
+    val_portion: Optional[str]
 ) -> Dict[str, any]:
     run_config = deepcopy(run_config)
     if test_split_method == 'shuffled_train_test_split':
@@ -88,6 +89,28 @@ def prepare_dataset(
         add_label_noise(label_noise, run_task, train_outputs)
 
         run_config['validation_data'] = (test_inputs, test_outputs)
+        run_config['x'] = train_inputs
+        run_config['y'] = train_outputs
+    elif test_split_method == 'shuffled_train_val_test_split':
+
+        train_inputs, test_inputs, train_outputs, test_outputs = \
+            train_test_split(
+                inputs,
+                outputs,
+                test_size=split_portion,
+                shuffle=True,
+            )
+        train_inputs, val_inputs, train_outputs, val_outputs = \
+            train_test_split(
+                train_inputs,
+                train_outputs,
+                test_size=(val_portion/(1-split_portion)),
+                shuffle=True,
+            )
+        add_label_noise(label_noise, run_task, train_outputs)
+
+        run_config['test_data'] = (test_inputs, test_outputs)
+        run_config['validation_data'] = (val_inputs, val_outputs)
         run_config['x'] = train_inputs
         run_config['y'] = train_outputs
     else:

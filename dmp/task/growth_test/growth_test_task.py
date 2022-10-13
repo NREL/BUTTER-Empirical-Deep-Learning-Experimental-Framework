@@ -10,3 +10,4 @@ class GrowthTestTask(AspectTestTask):
     growth_method_params: Optional[dict] = None
     growth_scale: Optional[float] = None
     max_size: Optional[int] = None
+    val_split: Optional[float] = None
