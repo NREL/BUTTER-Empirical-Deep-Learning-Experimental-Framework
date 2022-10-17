@@ -1066,7 +1066,7 @@ select
 from 
     job_status s,
     job_data d
-where s.id = d.id and queue = 1 and status IN (0,1,3)
+where s.id = d.id and queue = 1 and status IN (0,1,2,3)
 group by status, queue, batch, shape, dataset
 order by status asc, min_priority asc, queue, batch, shape, dataset;
 

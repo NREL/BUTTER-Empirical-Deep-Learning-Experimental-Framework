@@ -387,6 +387,12 @@ squeue -u ctripp -h | grep -P "\spc_128\s.*\s\([^)]+\)" | awk '{print $1}' | xar
 squeue -u ctripp -h | grep -P ".*\s+\(JobHeldUser\)" | awk '{print $1}' | xargs scontrol release
 squeue -u ctripp -h | grep -P ".*\s+R\s+" | awk '{print $1}' | xargs scancel
 
+squeue -u ctripp -h | grep -P ".*\s+gc_g_1\s+" | awk '{print $1}' | xargs scancel
+
+
+squeue -u ctripp -h | grep -P ".*\s+gc_.+\s+" | awk '{print $1}' | xargs scancel
+
+
 
 for i in {1..128}; do sbatch --partition=gpu -J gpu -t1440 -n1 -c30 --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
 for i in {1..256}; do sbatch -J large -t1440 -n1 -c60 --partition=lg --account=dmpapps slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1 ; done
@@ -403,6 +409,18 @@ for i in {1..40}; do sbatch -J gx_8 -N8 -t2880 --gres=gpu:2 --account=dmpscale -
 for i in {1..10}; do sbatch -J gx_10 -N10 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 
 
+for i in {1..512}; do sbatch -J gc_g_1 -N1 -t2880 --gres=gpu:2 --account=gcomp --qos=standby ./custom_gpu_run_script.sh 1 2 0 0,1 python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 1 0 2 0 2 13312 dmp 2 0 0,1 ; done
+
+for i in {1..128}; do sbatch -J gc_gs_1 -N1 -t1440 --gres=gpu:2 --account=gcomp --qos=standby ./custom_gpu_run_script.sh 1 2 0 0,1 python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 1 0 2 0 2 13312 dmp 2 0 0,1 ; done
+for i in {1..32}; do sbatch -J gc_gl_1 -N1 -t14250 --gres=gpu:2 --account=gcomp --qos=standby ./custom_gpu_run_script.sh 1 2 0 0,1 python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 1 0 2 0 2 13312 dmp 2 0 0,1 ; done
 
 
-for i in {1..32}; do sbatch -J lgx_8 -N8 -t4000 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35
+
+for i in {1..1024}; do sbatch -J gc_c_1 -N1 -t2880 --account=gcomp --qos=standby  ./custom_cpu_run_script.sh 2 36 0,1 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 2 0 36 0 0 0 dmp 3 0,1 0,1 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 ; done
+
+for i in {1..1024}; do sbatch -J gc_cs_1 -N1 -t1440 --account=gcomp --qos=standby  ./custom_cpu_run_script.sh 2 36 0,1 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 2 0 36 0 0 0 dmp 3 0,1 0,1 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 ; done
+
+
+for i in {1..128}; do sbatch -J gc_cxl_1 -N1 -t14250 --account=gcomp --qos=standby ./custom_cpu_run_script.sh 2 36 0,1 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 2 0 36 0 0 0 dmp 3 0,1 0,1 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 ; done
+
