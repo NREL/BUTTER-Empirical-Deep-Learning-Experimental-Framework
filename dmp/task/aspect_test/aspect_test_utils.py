@@ -18,6 +18,10 @@ from dmp.structure.n_add import NAdd
 from dmp.structure.n_dense import NDense
 from dmp.structure.n_input import NInput
 from dmp.structure.network_module import NetworkModule
+from dmp.structure.n_conv import *
+from dmp.structure.n_cell import *
+from cnn.cell_structures import *
+from cnn.cnn_net import get_cell
 
 
 def set_random_seeds(seed: Optional[int]) -> int:
@@ -139,6 +143,86 @@ def count_num_free_parameters(target: NetworkModule) -> int:
         def _(self, target: NAdd) -> int:
             return 0
 
+        # CNN registers
+        @visit.register
+        def _(self, target: NCNNInput) -> int:
+            return 0
+
+        @visit.register
+        def _(self, target: NConv) -> int:
+            params = target.kernel_size ** 2 * target.channels
+            for i in target.inputs:
+                params *= i.channels
+            return params
+
+        @visit.register
+        def _(self, target: NSepConv) -> int:
+            params = 2 * target.kernel_size * target.channels
+            for i in target.inputs:
+                params *= i.channels
+            return params
+
+        @visit.register
+        def _(self, target: NMaxPool) -> int:
+            return 0
+
+        @visit.register
+        def _(self, target: NGlobalPool) -> int:
+            return 0
+
+        @visit.register
+        def _(self, target: NIdentity) -> int:
+            return 0
+
+        @visit.register
+        def _(self, target: NZeroize) -> int:
+            return 0
+
+        # CNN Cell Registers
+        @visit.register
+        def _(self, target: NConvStem) -> int:
+            return 9 * target.channels * target.input_channels
+
+        @visit.register
+        def _(self, target: NCell) -> int:
+            if target.cell_type == 'parallelconcat':
+                channels = [target.channels//target.nodes for _ in range(target.nodes)]
+                for i in range(target.channels % target.nodes):
+                    channels[i] += 1
+            else:
+                channels = [target.channels for _ in range(target.nodes)]
+            params = 0 
+            in_channels = target.inputs[0].channels
+            params_dict = {'conv3x3': 9, 'conv5x5': 25, 'sepconv3x3': 6, 'sepconv5x5': 10,
+                'conv1x1': 1, 'maxpool3x3': 0, 'avgpool3x3': 0, 'identity': 0,
+                'zeroize': 0, 'projection': 0}
+            for i in range(target.nodes):
+                num_channels = channels[i]
+                ops = target.operations[i]
+                for j in range(len(ops)):
+                    op = ops[j]
+                    if j > 0:
+                        params += params_dict[op] * num_channels**2 
+                    else:
+                        params += params_dict[op] * num_channels * in_channels
+            return params
+
+        @visit.register
+        def _(self, target: NDownsample) -> int:
+            params = 1
+            for i in target.inputs:
+                params *= i.channels
+            params *= target.channels
+            return params
+
+        @visit.register
+        def _(self, target: NFinalClassifier) -> int:
+            params = 1
+            for i in target.inputs:
+                params *= i.channels
+            params *= target.classes 
+            return params
+
     return sum((GetNumFreeParameters().visit(i) for i in build_set_of_modules(target)))
 
 
@@ -197,6 +281,78 @@ def make_network(
         current = layer
 
     return current
+
+def make_conv_network(
+    input_channels: int,
+    downsamples: int,
+    widths: List[int],
+    input_activation: str,
+    internal_activation: str,
+    output_activation: str,
+    cell_depth: int,
+    cell_type: str,
+    cell_nodes: int,
+    cell_ops: List[List[str]],
+    classes: int,
+    batch_norm: bool,
+) -> NetworkModule:
+    """ Construct CNN out of NetworkModules. """
+
+    # Determine internal structure 
+    layer_list = [] 
+    widths_list = []
+    cell_depths = [cell_depth//(downsamples+1) for _ in range(downsamples+1)]
+    for i in range(cell_depth%(downsamples+1)):
+        cell_depths[-i-1] += 1
+
+    for i in range(downsamples+1):
+        # Add downsampling layer
+        if i > 0:
+            layer_list.append('downsample')
+            widths_list.append(widths[i])
+        # Add cells
+        for _ in range(cell_depths[i]):
+            layer_list.append('cell')
+            widths_list.append(widths[i])
+    input_layer = NConvStem(
+        activation=internal_activation,
+        channels=widths[0],
+        batch_norm=batch_norm,
+        input_channels=input_channels,
+    )
+    current = input_layer 
+    # Loop through layers 
+    for i in range(len(layer_list)):
+        layer_width = widths_list[i]
+        layer_type = layer_list[i]
+        if layer_type == 'cell':
+            layer = NCell(
+                inputs=[current, ],
+                activation=internal_activation,
+                channels=layer_width,
+                batch_norm=batch_norm,
+                cell_type=cell_type,
+                nodes=cell_nodes,
+                operations=cell_ops,
+            )
+        elif layer_type == 'downsample':
+            layer = NDownsample(
+                inputs=[current, ],
+                activation=internal_activation,
+                channels=layer_width,
+                batch_norm=batch_norm,
+            )
+        else:
+            raise ValueError(f'Unknown layer type {layer_type}')
+        current = layer
+
+    # Add final classifier
+    final_classifier = NFinalClassifier(
+        inputs=[current, ],
+        activation=output_activation,
+        classes=classes,
+    )
+    return final_classifier
 
 
 def make_regularizer(regularization_settings: dict) \
@@ -272,6 +428,140 @@ class MakeKerasLayersFromNetwork:
     @_visit_raw.register
     def _(self, target: NAdd, keras_inputs) -> any:
         return tensorflow.keras.layers.add(keras_inputs)
+
+    # CNN visitors 
+    @_visit_raw.register
+    def _(self, target: NCNNInput, keras_inputs) -> any:
+        result = Input(shape=target.shape)
+        self._inputs.append(result)
+        return result
+
+    @_visit_raw.register
+    def _(self, target: NConv, keras_inputs) -> any:
+        kernel_regularizer = make_regularizer(target.kernel_regularizer)
+        bias_regularizer = make_regularizer(target.bias_regularizer)
+        activity_regularizer = make_regularizer(
+            target.activity_regularizer)
+
+        if target.kernel_size == 3:
+            cell = Conv3x3Operation 
+        elif target.kernel_size == 5:
+            cell = Conv5x5Operation
+        elif target.kernel_size == 1:
+            cell = Conv1x1Operation
+        
+        return cell(
+            target.channels,
+            activation=target.activation,
+            batch_norm=target.batch_norm,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NSepConv, keras_inputs) -> any:
+        kernel_regularizer = make_regularizer(target.kernel_regularizer)
+        bias_regularizer = make_regularizer(target.bias_regularizer)
+        activity_regularizer = make_regularizer(
+            target.activity_regularizer)
+
+        if target.kernel_size == 3:
+            cell = SepConv3x3Operation 
+        elif target.kernel_size == 5:
+            cell = SepConv5x5Operation
+        
+        return cell(
+            target.channels,
+            activation=target.activation,
+            batch_norm=target.batch_norm,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NMaxPool, keras_inputs) -> any:
+        return keras.layers.MaxPool2D(pool_size=target.kernel_size, 
+            strides=target.stride, 
+            padding=target.padding)(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NGlobalPool, keras_inputs) -> any:
+        return keras.layers.GlobalAveragePooling2D()(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NIdentity, keras_inputs) -> any:
+        return IdentityOperation()(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NZeroize, keras_inputs) -> any:
+        return ZeroizeOperation()(*keras_inputs)
+
+    #CNN Cell Registers
+    @_visit_raw.register
+    def _(self, target: NCell, keras_inputs) -> any:
+        kernel_regularizer = make_regularizer(target.kernel_regularizer)
+        bias_regularizer = make_regularizer(target.bias_regularizer)
+        activity_regularizer = make_regularizer(
+            target.activity_regularizer)
+
+        return get_cell(type=target.cell_type,
+            nodes=target.nodes,
+            operations=target.operations,
+            channels=target.channels,
+            batch_norm=target.batch_norm,
+            activation=target.activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NConvStem, keras_inputs) -> any:
+        kernel_regularizer = make_regularizer(target.kernel_regularizer)
+        bias_regularizer = make_regularizer(target.bias_regularizer)
+        activity_regularizer = make_regularizer(
+            target.activity_regularizer)
+
+        return ConvStem(
+            target.channels,
+            activation=target.activation,
+            batch_norm=target.batch_norm,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NDownsample, keras_inputs) -> any:
+        kernel_regularizer = make_regularizer(target.kernel_regularizer)
+        bias_regularizer = make_regularizer(target.bias_regularizer)
+        activity_regularizer = make_regularizer(
+            target.activity_regularizer)
+
+        return DownsampleCell(
+            target.channels,
+            activation=target.activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )(*keras_inputs)
+
+    @_visit_raw.register
+    def _(self, target: NFinalClassifier, keras_inputs) -> any:
+        kernel_regularizer = make_regularizer(target.kernel_regularizer)
+        bias_regularizer = make_regularizer(target.bias_regularizer)
+        activity_regularizer = make_regularizer(
+            target.activity_regularizer)
+
+        return FinalClassifier(
+            target.classes,
+            activation=target.activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )(*keras_inputs)
 
 
 def make_keras_network_from_network_module(target: NetworkModule) -> keras.Model:
