@@ -26,3 +26,4 @@ jobqueue_marshal.register_type(AspectTestTask)
 jobqueue_marshal.register_type(NInput)
 jobqueue_marshal.register_type(NDense)
 jobqueue_marshal.register_type(NAdd)
+

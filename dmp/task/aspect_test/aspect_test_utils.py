@@ -274,6 +274,7 @@ class MakeKerasLayersFromNetwork:
         return tensorflow.keras.layers.add(keras_inputs)
 
 
+
 def make_keras_network_from_network_module(target: NetworkModule) -> keras.Model:
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
