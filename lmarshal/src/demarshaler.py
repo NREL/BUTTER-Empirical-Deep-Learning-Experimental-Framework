@@ -1,5 +1,5 @@
 from functools import singledispatchmethod
-from typing import Dict, Mapping, Iterator, Union, Tuple, Type
+from typing import Dict, Mapping, Iterator, Union, Tuple, Type, Any
 
 from .common_marshaler import CommonMarshaler
 from .marshal_config import MarshalConfig
@@ -13,18 +13,18 @@ class Demarshaler(CommonMarshaler):
     def __init__(self,
                  config: MarshalConfig,
                  type_map: Dict[TypeCode, ObjectDemarshaler],
-                 source: any,
+                 source: Any,
                  ) -> None:
         super().__init__(config)
         self._type_map: Dict[TypeCode, ObjectDemarshaler] = type_map
-        self._reference_index: Dict[str, any] = {}
-        self._result: any = self.demarshal(source)
+        self._reference_index: Dict[str, Any] = {}
+        self._result: Any = self.demarshal(source)
 
-    def __call__(self) -> any:
+    def __call__(self) -> Any:
         return self._result
 
     @singledispatchmethod
-    def demarshal(self, source: any) -> any:
+    def demarshal(self, source: Any) -> Any:
         raise ValueError(f'Type has undefined demarshaling protocol: "{type(source)}".')
 
     @demarshal.register(type(None))
@@ -79,7 +79,7 @@ class Demarshaler(CommonMarshaler):
             lambda d, s: {},
             lambda d, s, r: r.update(self.dict_demarshaling_generator(s)))
 
-    def dict_demarshaling_generator(self, source: Mapping) -> Iterator[Tuple[any, any]]:
+    def dict_demarshaling_generator(self, source: Mapping) -> Iterator[Tuple[Any, Any]]:
         if self._config.flat_dict_key in source:  # demarshal flattened key value pairs
             items = self.demarshal(source[self._config.flat_dict_key])
             if not isinstance(items, list):
@@ -102,26 +102,26 @@ class Demarshaler(CommonMarshaler):
     @staticmethod
     def demarshal_typed(
             demarshaler: 'Demarshaler',
-            source: any,
+            source: Any,
             factory: DemarshalingFactory,
             initializer: DemarshalingInitializer,
-    ) -> any:
+    ) -> Any:
         result = factory(demarshaler, source)
         demarshaler._register_label(result)
         initialized_dest = initializer(demarshaler, source, result)
         return result if initialized_dest is None else initialized_dest
 
     @staticmethod
-    def default_object_factory(demarshaler: 'Demarshaler', source: any, target_type: Type) -> {}:
+    def default_object_factory(demarshaler: 'Demarshaler', source: Any, target_type: Type) -> {}:
         return target_type.__new__(target_type)
 
     @staticmethod
-    def default_object_initializer(demarshaler: 'Demarshaler', source: any, result: any) -> None:
+    def default_object_initializer(demarshaler: 'Demarshaler', source: Any, result: Any) -> None:
         for k, v in demarshaler.dict_demarshaling_generator(source):
             setattr(result, k, v)
 
     @staticmethod
-    def default_dataclass_initializer(demarshaler: 'Demarshaler', source: any, result: any) -> None:
+    def default_dataclass_initializer(demarshaler: 'Demarshaler', source: Any, result: Any) -> None:
         kwargs = dict(demarshaler.dict_demarshaling_generator(source))
         result.__init__(**kwargs)
 
@@ -129,7 +129,7 @@ class Demarshaler(CommonMarshaler):
     def initialize_type_map(type_map: Dict[TypeCode, ObjectDemarshaler], config: MarshalConfig) -> None:
         pass
 
-    def _register_label(self, element: any) -> any:
+    def _register_label(self, element: Any) -> Any:
         label = self._make_label(len(self._reference_index))
         self._reference_index[label] = element
         return element

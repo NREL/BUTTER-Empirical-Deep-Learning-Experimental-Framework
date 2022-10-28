@@ -1,6 +1,6 @@
 import ctypes
 import dataclasses
-from typing import Dict, Optional, Type
+from typing import Any, Dict, Optional, Type
 
 from .demarshaler import Demarshaler
 from .marshal_config import MarshalConfig
@@ -55,8 +55,9 @@ class Marshal:
             object_marshaler = Marshaler.default_object_marshaler
 
         if demarshaling_factory is None:
-            def demarshaling_factory(
+            def _demarshaling_factory(
                 d, s): return Demarshaler.default_object_factory(d, s, target_type)
+            demarshaling_factory = _demarshaling_factory
 
         if demarshaling_initializer is None:
             if dataclasses.is_dataclass(target_type):
@@ -64,17 +65,21 @@ class Marshal:
             else:
                 demarshaling_initializer = Demarshaler.default_object_initializer
 
+        if type_code is None:
+            raise NotImplementedError() # should never happen
+
         self._marshaler_type_map[target_type] = \
             lambda marshaler, source: Marshaler.marshal_typed(
                 marshaler, source, type_code, object_marshaler)
+        
         self._demarshaler_type_map[type_code] = \
             lambda demarshaler, source: Demarshaler.demarshal_typed(
-                demarshaler, source, demarshaling_factory, demarshaling_initializer)
+            demarshaler, source, demarshaling_factory, demarshaling_initializer)
 
-    def marshal(self, source: any) -> any:
+    def marshal(self, source: Any) -> Any:
         return Marshaler(self._config, self._marshaler_type_map, source)()
 
-    def demarshal(self, source: any) -> any:
+    def demarshal(self, source: Any) -> Any:
         return Demarshaler(self._config, self._demarshaler_type_map, source)()
 
     @staticmethod

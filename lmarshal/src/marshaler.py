@@ -1,4 +1,4 @@
-from typing import Dict, Iterable, Mapping, Set, Type
+from typing import Any, Dict, Iterable, Mapping, Set, Type
 
 from .common_marshaler import CommonMarshaler
 from .marshal_config import MarshalConfig
@@ -11,24 +11,24 @@ class Marshaler(CommonMarshaler):
     def __init__(self,
                  config: MarshalConfig,
                  type_map: Dict[Type, ObjectMarshaler],
-                 source: any,
+                 source: Any,
                  ) -> None:
         super().__init__(config)
         self._type_map: Dict[Type, ObjectMarshaler] = type_map
-        self._vertex_index: Dict[int, (str, any, any)] = {}
+        self._vertex_index: Dict[int, (str, Any, Any)] = {}
         self._string_index: Dict[str, str] = {}
         self._referenced: Set[int] = set()
-        self._result: any = self.marshal(source)
+        self._result: Any = self.marshal(source)
         if self._config.label_referenced and not self._config.label_all:
             for element_id in self._referenced:
                 label, _, element = self._vertex_index[element_id]
                 if isinstance(element, dict):
                     element[self._config.label_key] = label
 
-    def __call__(self) -> any:
+    def __call__(self) -> Any:
         return self._result
 
-    def marshal(self, source: any) -> any:
+    def marshal(self, source: Any) -> Any:
         # marshal source into a plain object
         source_type = type(source)
         if source_type not in self._type_map:
@@ -36,15 +36,15 @@ class Marshaler(CommonMarshaler):
         return self._type_map[source_type](self, source)
 
     @staticmethod
-    def marshal_passthrough(marshaler: 'Marshaler', source: any) -> any:
+    def marshal_passthrough(marshaler: 'Marshaler', source: Any) -> Any:
         return source
 
     @staticmethod
     def marshal_untyped(
         marshaler: 'Marshaler', 
-        source: any, 
+        source: Any, 
         object_marshaler: ObjectMarshaler,
-        ) -> any:
+        ) -> Any:
         vertex_index = marshaler._vertex_index
         source_id = id(source)
         if source_id in vertex_index:  # if source is already indexed, return its reference index
@@ -108,11 +108,11 @@ class Marshaler(CommonMarshaler):
     @staticmethod
     def marshal_typed(
             marshaler: 'Marshaler',
-            source: any,
+            source: Any,
             type_code: TypeCode,
             object_marshaler: ObjectMarshaler,
-    ) -> any:
-        def type_checked_object_marshaler(m: Marshaler, s: any) -> dict:
+    ) -> Any:
+        def type_checked_object_marshaler(m: Marshaler, s: Any) -> dict:
             result = object_marshaler(m, s)
             if not isinstance(result, dict):
                 raise TypeError(f'ObjectMarshaler for type {type(source)} returned a {type(result)} instead of a dict.')
@@ -122,7 +122,7 @@ class Marshaler(CommonMarshaler):
         return marshaler.marshal_untyped(marshaler, source, type_checked_object_marshaler)
 
     @staticmethod
-    def default_object_marshaler(marshaler: 'Marshaler', source: any) -> Dict:
+    def default_object_marshaler(marshaler: 'Marshaler', source: Any) -> Dict:
         return {marshaler.marshal_key(k): marshaler.marshal(v) for k, v in sorted(vars(source).items())}
 
     @staticmethod
