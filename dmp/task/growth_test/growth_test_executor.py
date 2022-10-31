@@ -16,11 +16,12 @@ from dmp.task.growth_test.growth_test_task import GrowthTestTask
 from dmp.task.aspect_test.aspect_test_utils import *
 import dmp.task.growth_test.growth_test_utils as growth_test_utils
 from dmp.task.task import Parameter
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 import pandas
 import numpy
 import sys
+import copy
 
 # from keras_buoy.models import ResumableModel
 
@@ -41,8 +42,8 @@ class GrowthTestExecutor(GrowthTestTask):
     inputs: Optional[numpy.ndarray] = None
     outputs: Optional[numpy.ndarray] = None
 
-    def __call__(self, parent: AspectTestTask) \
-            -> Tuple[Dict[str, Parameter], Dict[str, any]]:
+    def __call__(self, parent: GrowthTestTask, worker, *args, **kwargs) \
+            -> Dict[str, Any]:
         # Configure hardware
         if self.tensorflow_strategy is None:
             self.tensorflow_strategy = tensorflow.distribute.get_strategy()
@@ -63,9 +64,10 @@ class GrowthTestExecutor(GrowthTestTask):
             self.dataset_series['Task'],
             self.inputs,
             self.outputs,
-            self.val_split,
+            val_portion=self.val_split,
         )
         test_data = (prepared_config['test_data'][0],prepared_config['test_data'][1],'test_data')
+        del prepared_config['test_data']
 
         # Generate neural network architecture
         num_outputs = self.outputs.shape[1]
@@ -105,6 +107,15 @@ class GrowthTestExecutor(GrowthTestTask):
         relative_error = delta / self.size
         if numpy.abs(relative_error) > .2:
             raise ValueError(f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
+
+        # if parameters not passed, set to empty dict
+        if self.growth_trigger_params == None:
+            self.growth_trigger_params = {}
+        if self.growth_method_params == None:
+            self.growth_method_params = {}
+
+        # check to make sure the growth scale is larger than 1
+        assert self.growth_scale >= 1, 'Growth scale less than one.'
 
         # Create and execute network using Keras
         with self.tensorflow_strategy.scope():
@@ -165,6 +176,7 @@ class GrowthTestExecutor(GrowthTestTask):
             # fit / train model
             histories = dict()
             while num_free_parameters < self.max_size:
+                print(num_free_parameters)
                 # Train
                 additional_history = growth_test_utils.AdditionalValidationSets([test_data],
                                     batch_size=self.run_config['batch_size'])
@@ -173,6 +185,7 @@ class GrowthTestExecutor(GrowthTestTask):
                                additional_history],
                     **prepared_config,
                 )
+                print(additional_history.history.keys())
 
                 # Tensorflow models return a History object from their fit function,
                 # but ResumableModel objects returns History.history. This smooths
@@ -181,7 +194,7 @@ class GrowthTestExecutor(GrowthTestTask):
                     history = history.history
                 
                 # Merge history dictionaries, adding metrics from evaluation on test set.
-                # history = {**additional_history.history, **history}
+                history = {**additional_history.history, **history}
 
                 # Add num_free_parameters to history dictionary and append to master histories dictionary
                 history['parameter_count'] = [num_free_parameters for _ in range(len(history['loss']))]
@@ -200,10 +213,11 @@ class GrowthTestExecutor(GrowthTestTask):
 
                 # Extend histories dictionary
                 if len(histories.keys())==0:
-                    histories = history 
+                    histories = copy.deepcopy(history)
                 else:
                     for k in histories.keys():
-                        histories[k] = histories[k].extend(history[k])
+                        if type(histories[k]) is list:
+                            histories[k].extend(history[k])
 
                 # Calculate config to pass to growth function
                 old_widths = widths
@@ -220,9 +234,21 @@ class GrowthTestExecutor(GrowthTestTask):
                     layer_args,
                 )
                 config = {i:(w-old_widths[i]) for i,w in enumerate(widths)} # grow each layer by the difference between old and new widths
+                print(config)
 
                 # Grow
                 self.keras_model = getattr(growth_test_utils, self.growth_method)(self.keras_model,config,**self.growth_method_params)
+            
+                # Compile
+                self.keras_model.compile(
+                    # loss='binary_crossentropy', # binary classification
+                    # loss='categorical_crossentropy', # categorical classification (one hot)
+                    loss=self.run_loss,  # regression
+                    optimizer=run_optimizer,
+                    # optimizer='rmsprop',
+                    # metrics=['accuracy'],
+                    metrics=run_metrics,
+                )
 
                 # Calculate number of parameters in grown network
                 num_free_parameters = count_trainable_parameters_in_keras_model(self.keras_model)
@@ -240,7 +266,7 @@ class GrowthTestExecutor(GrowthTestTask):
             parameters['network_structure'] = \
                 jobqueue_marshal.marshal(self.network_structure)
 
-            parameters.update(history)
+            parameters.update(histories)
 
             # return the result record
             return parameters

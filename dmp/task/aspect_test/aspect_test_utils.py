@@ -74,7 +74,7 @@ def prepare_dataset(
     run_task: str,
     inputs,
     outputs,
-    val_portion: Optional[str]
+    val_portion: Optional[float],
 ) -> Dict[str, any]:
     run_config = deepcopy(run_config)
     if test_split_method == 'shuffled_train_test_split':

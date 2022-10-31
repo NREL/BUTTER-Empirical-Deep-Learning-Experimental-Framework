@@ -33,6 +33,7 @@ def do_parameter_sweep(sweep_config, task_handler):
         if key_index < 0:
             for rep in range(repetitions):
                 task_config['seed'] = seed
+                print(task_config)
                 task = GrowthTestTask(**task_config)
                 task_handler(task)
                 seed += 1
@@ -48,22 +49,22 @@ def main():
     default_config = {
         'repetitions': 1,
         'base_priority': 0,
-        'queue': 2,
+        'queue': -2,
         'sweep_values': {
             'batch': ['growth_test_1'],
             'dataset': ['201_pol'], # , '529_pollen', '537_houses', 'adult', 'connect_4', 'mnist', 'sleep', 'wine_quality_white',
             'input_activation': ['relu'],
             'activation': ['relu'],
-            'optimizer': [{'class_name': 'adam', 'config': {'learning_rate': 0.0001}}],
+            'optimizer': [{'class_name': 'adam', 'config': {'learning_rate': 0.001}}],
             'shape': ['rectangle'], # , 'exponential', 'trapezoid', 'rectangle_residual'
-            'size': [32],
+            'size': [256],
             'depth': [3],
             'test_split': [.2],
-            'val_split': [.1],
+            # 'val_split': [.1],
             'test_split_method': ['shuffled_train_test_split'],
             'run_config': [{
                 'shuffle': True,
-                'epochs': 1,
+                'epochs': 100,
                 'batch_size': 256,
                 'verbose': 0,
             }],
@@ -74,11 +75,11 @@ def main():
             'early_stopping': [None],
             'save_every_epochs': [None],
             'growth_trigger': ['EarlyStopping'],
-            'growth_trigger_params': [{'patience':0}],
+            'growth_trigger_params': [{'patience':10}],
             'growth_method': ['grow_network'],
             'growth_method_params': [None],
             'growth_scale': [0.0],
-            'max_size': [256],
+            'max_size': [2048],
         },
     }
 

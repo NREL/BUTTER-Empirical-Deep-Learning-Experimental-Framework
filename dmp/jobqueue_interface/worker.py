@@ -14,7 +14,7 @@ from dmp.worker import Worker
 import jobqueue
 import tensorflow
 
-from .common import jobqueue_marshal
+# from .common import jobqueue_marshal
 
 
 def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
@@ -63,7 +63,7 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
 
 if __name__ == "__main__":
     a = sys.argv
-
+    print(a)
     num_cores = int(a[4])
     first_gpu = int(a[5])
     num_gpus = int(a[6])
