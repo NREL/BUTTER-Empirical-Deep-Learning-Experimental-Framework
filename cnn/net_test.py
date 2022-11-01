@@ -9,7 +9,7 @@
 ########################################################################################
 
 import tensorflow as tf
-from cnn_net import make_net 
+from cnn.cnn_net import make_net 
 
 # set seed
 tf.random.set_seed(0)

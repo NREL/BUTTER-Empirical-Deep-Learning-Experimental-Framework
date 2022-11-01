@@ -13,7 +13,7 @@ import tensorflow.keras.layers as layers
 import tensorflow.keras.backend as K
 import tensorflow.keras.models as models
 import tensorflow.keras.regularizers as regularizers
-from cell_structures import make_graph_cell, make_parallel_concat_cell, make_parallel_add_cell, DownsampleCell, FinalClassifier, ConvStem
+from cnn.cell_structures import make_graph_cell, make_parallel_concat_cell, make_parallel_add_cell, DownsampleCell, FinalClassifier, ConvStem
 
 ########################################################################################
 #--------------------------------------------------------------------------------------#

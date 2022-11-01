@@ -177,6 +177,10 @@ def count_num_free_parameters(target: NetworkModule) -> int:
         @visit.register
         def _(self, target: NZeroize) -> int:
             return 0
+        
+        @visit.register
+        def _(self, target: NConcat) -> int:
+            return 0
 
         # CNN Cell Registers
         @visit.register
@@ -283,7 +287,7 @@ def make_network(
     return current
 
 def make_conv_network(
-    input_channels: int,
+    input_shape: List[int],
     downsamples: int,
     widths: List[int],
     input_activation: str,
@@ -297,7 +301,7 @@ def make_conv_network(
     batch_norm: bool,
 ) -> NetworkModule:
     """ Construct CNN out of NetworkModules. """
-
+    cell_setup = False
     # Determine internal structure 
     layer_list = [] 
     widths_list = []
@@ -314,44 +318,65 @@ def make_conv_network(
         for _ in range(cell_depths[i]):
             layer_list.append('cell')
             widths_list.append(widths[i])
-    input_layer = NConvStem(
-        activation=internal_activation,
-        channels=widths[0],
-        batch_norm=batch_norm,
-        input_channels=input_channels,
-    )
-    current = input_layer 
-    # Loop through layers 
-    for i in range(len(layer_list)):
-        layer_width = widths_list[i]
-        layer_type = layer_list[i]
-        if layer_type == 'cell':
-            layer = NCell(
-                inputs=[current, ],
-                activation=internal_activation,
-                channels=layer_width,
-                batch_norm=batch_norm,
-                cell_type=cell_type,
-                nodes=cell_nodes,
-                operations=cell_ops,
-            )
-        elif layer_type == 'downsample':
-            layer = NDownsample(
-                inputs=[current, ],
-                activation=internal_activation,
-                channels=layer_width,
-                batch_norm=batch_norm,
-            )
-        else:
-            raise ValueError(f'Unknown layer type {layer_type}')
-        current = layer
 
-    # Add final classifier
-    final_classifier = NFinalClassifier(
-        inputs=[current, ],
-        activation=output_activation,
-        classes=classes,
-    )
+    input_layer = NInput(label=0,
+                shape=input_shape,)
+    if not cell_setup:
+        current = generate_conv_stem(input_layer, widths[0], batch_norm)
+        # Loop through layers 
+        for i in range(len(layer_list)):
+            layer_width = widths_list[i]
+            layer_type = layer_list[i]
+            if layer_type == 'cell':
+                layer = generate_generic_cell(type=cell_type, inputs=current, nodes=cell_nodes,
+                    channels=layer_width, operations=cell_ops, batch_norm=batch_norm, activation=internal_activation)
+            elif layer_type == 'downsample':
+                layer = generate_downsample(inputs=current, channels=layer_width, 
+                                batch_norm=batch_norm, activation=internal_activation)
+            else:
+                raise ValueError(f'Unknown layer type {layer_type}')
+            current = layer
+        # Add final classifier
+        final_classifier = generate_final_classifier(inputs=current, classes=classes,
+                                                    activation=output_activation)
+    else:
+        current = NConvStem(
+            inputs=[input_layer, ],
+            activation=internal_activation,
+            channels=widths[0],
+            batch_norm=batch_norm,
+            input_channels=input_shape[-1],
+        )
+        # Loop through layers 
+        for i in range(len(layer_list)):
+            layer_width = widths_list[i]
+            layer_type = layer_list[i]
+            if layer_type == 'cell':
+                layer = NCell(
+                    inputs=[current, ],
+                    activation=internal_activation,
+                    channels=layer_width,
+                    batch_norm=batch_norm,
+                    cell_type=cell_type,
+                    nodes=cell_nodes,
+                    operations=cell_ops,
+                )
+            elif layer_type == 'downsample':
+                layer = NDownsample(
+                    inputs=[current, ],
+                    activation=internal_activation,
+                    channels=layer_width,
+                )
+            else:
+                raise ValueError(f'Unknown layer type {layer_type}')
+            current = layer
+
+        # Add final classifier
+        final_classifier = NFinalClassifier(
+            inputs=[current, ],
+            activation=output_activation,
+            classes=classes,
+        )
     return final_classifier
 
 
@@ -394,6 +419,7 @@ class MakeKerasLayersFromNetwork:
 
     def _visit(self, target: NetworkModule) -> any:
         if target not in self._nodes:
+            # print('Target: ', target)
             keras_inputs = [self._visit(i) for i in target.inputs]
             self._nodes[target] = self._visit_raw(target, keras_inputs)
         return self._nodes[target]
@@ -429,12 +455,16 @@ class MakeKerasLayersFromNetwork:
     def _(self, target: NAdd, keras_inputs) -> any:
         return tensorflow.keras.layers.add(keras_inputs)
 
+    @_visit_raw.register
+    def _(self, target: NConcat, keras_inputs) -> any:
+        return keras.layers.Concatenate()(keras_inputs)
+
     # CNN visitors 
     @_visit_raw.register
-    def _(self, target: NCNNInput, keras_inputs) -> any:
-        result = Input(shape=target.shape)
-        self._inputs.append(result)
-        return result
+    # def _(self, target: NCNNInput, keras_inputs) -> any:
+    #     result = Input(shape=target.shape)
+    #     self._inputs.append(result)
+    #     return result
 
     @_visit_raw.register
     def _(self, target: NConv, keras_inputs) -> any:
@@ -523,6 +553,7 @@ class MakeKerasLayersFromNetwork:
         bias_regularizer = make_regularizer(target.bias_regularizer)
         activity_regularizer = make_regularizer(
             target.activity_regularizer)
+        print(keras_inputs)
 
         return ConvStem(
             target.channels,
@@ -531,7 +562,7 @@ class MakeKerasLayersFromNetwork:
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer,
             activity_regularizer=activity_regularizer,
-        )(*keras_inputs)
+        )(*keras_inputs) # Expands a list as though it were separate arguments
 
     @_visit_raw.register
     def _(self, target: NDownsample, keras_inputs) -> any:

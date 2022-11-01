@@ -15,9 +15,9 @@ class NBasicCNN(NetworkModule):
     bias_regularizer : Optional[dict] = None
     activity_regularizer : Optional[dict] = None
 
-@dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NCNNInput(NetworkModule):
-    channels: int = 16
+# @dataclass(frozen=False, eq=False, unsafe_hash=False)
+# class NCNNInput(NetworkModule):
+#     channels: int = 16
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NConv(NBasicCNN):
@@ -41,4 +41,8 @@ class NIdentity(NetworkModule):
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NZeroize(NetworkModule):
+    pass
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
+class NConcat(NetworkModule):
     pass

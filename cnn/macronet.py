@@ -13,7 +13,7 @@ import tensorflow.keras.layers as layers
 import tensorflow.keras.backend as K
 import tensorflow.keras.models as models
 import tensorflow.keras.regularizers as regularizers
-from cell_structures import *
+from cnn.cell_structures import *
 
 ########################################################################################
 #--------------------------------------------------------------------------------------#
@@ -69,7 +69,7 @@ max_downsamples_dict = {
 def make_net(cell_type='3x3', 
             downsamples=1, 
             cell_depth=2, 
-            channels=16, 
+            channels=[16.32], 
             dataset='cifar10', 
             batch_norm=False, 
             activation='relu', 
