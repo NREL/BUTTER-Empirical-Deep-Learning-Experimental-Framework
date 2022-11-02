@@ -28,8 +28,7 @@ def main():
                           growth_method_params=None,
                           growth_scale=2.0,
                           max_size=1224,
-                          asdf=10)
-                        #   val_split=0.1,)
+                          val_split=0.1,)
     
     # print(task.max_size,task.asdf,task.val_split)
     worker = Worker(None,None,tf.distribute.get_strategy(),{})

@@ -33,7 +33,6 @@ def do_parameter_sweep(sweep_config, task_handler):
         if key_index < 0:
             for rep in range(repetitions):
                 task_config['seed'] = seed
-                print(task_config)
                 task = GrowthTestTask(**task_config)
                 task_handler(task)
                 seed += 1
@@ -60,8 +59,8 @@ def main():
             'size': [256],
             'depth': [3],
             'test_split': [.2],
-            # 'val_split': [.1],
-            'test_split_method': ['shuffled_train_test_split'],
+            'val_split': [.1],
+            'test_split_method': ['shuffled_train_val_test_split'],
             'run_config': [{
                 'shuffle': True,
                 'epochs': 100,
@@ -78,7 +77,7 @@ def main():
             'growth_trigger_params': [{'patience':10}],
             'growth_method': ['grow_network'],
             'growth_method_params': [None],
-            'growth_scale': [0.0],
+            'growth_scale': [2.0],
             'max_size': [2048],
         },
     }
