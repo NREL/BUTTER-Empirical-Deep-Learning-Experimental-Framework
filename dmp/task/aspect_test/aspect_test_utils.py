@@ -298,7 +298,7 @@ def make_conv_network(
     cell_nodes: int,
     cell_ops: List[List[str]],
     classes: int,
-    batch_norm: bool,
+    batch_norm: str,
 ) -> NetworkModule:
     """ Construct CNN out of NetworkModules. """
     cell_setup = False
@@ -321,7 +321,7 @@ def make_conv_network(
 
     input_layer = NInput(label=0,
                 shape=input_shape,)
-    if not cell_setup:
+    if not cell_setup: # do the updated keras layer wise construction
         current = generate_conv_stem(input_layer, widths[0], batch_norm)
         # Loop through layers 
         for i in range(len(layer_list)):
@@ -339,7 +339,7 @@ def make_conv_network(
         # Add final classifier
         final_classifier = generate_final_classifier(inputs=current, classes=classes,
                                                     activation=output_activation)
-    else:
+    else: # Do the outdated cell-wise construction
         current = NConvStem(
             inputs=[input_layer, ],
             activation=internal_activation,

@@ -9,11 +9,11 @@ options = {
     'internal_activation': 'relu',
     'output_activation': 'softmax',
     'cell_depth': 2,
-    'cell_type': 'graph',
+    'cell_type': 'graph', # 'paralleladd', 'parallelconcat', 'graph'
     'cell_nodes': 3,
     'cell_ops': [['conv3x3', 'maxpool3x3'], ['conv1x1']],
     'classes': 10,
-    'batch_norm': False
+    'batch_norm': 'none'
 }
 
 net_module = make_conv_network(**options)

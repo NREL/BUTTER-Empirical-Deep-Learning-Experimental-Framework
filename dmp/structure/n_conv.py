@@ -21,11 +21,10 @@ class NBasicCNN(NetworkModule):
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NConv(NBasicCNN):
-    batch_norm: bool = False
-
+    batch_norm: str = 'none'
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NSepConv(NBasicCNN):
-    batch_norm: bool = False
+    batch_norm: str = 'none'
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NMaxPool(NBasicCNN):

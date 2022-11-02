@@ -16,12 +16,12 @@ class NBasicCell(NetworkModule):
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NConvStem(NBasicCell):
-    batch_norm: bool = False
+    batch_norm: str = 'none'
     input_channels: int = 3
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NCell(NBasicCell):
-    batch_norm: bool = False
+    batch_norm: str = 'none'
     operations: list = None
     nodes: int = 2
     cell_type: str = 'graph'
@@ -44,7 +44,7 @@ class NFinalClassifier(NetworkModule):
 #--------------------------------------------------------------------------------------#
 ########################################################################################
 
-def generate_conv_stem(inputs, channels=16, batch_norm=False, activation='relu',
+def generate_conv_stem(inputs, channels=16, batch_norm='none', activation='relu',
                        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None):
     module = NConv(label=0,
                    inputs = [inputs,],
@@ -59,7 +59,7 @@ def generate_conv_stem(inputs, channels=16, batch_norm=False, activation='relu',
                    activity_regularizer=activity_regularizer)
     return module
 
-def generate_downsample(inputs, channels=16, batch_norm=False, activation='relu',
+def generate_downsample(inputs, channels=16, batch_norm='none', activation='relu',
                         kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None):
     module = NMaxPool(label=0,
                     inputs = [inputs,],
@@ -187,7 +187,7 @@ def generate_module(inp, op, channels, batch_norm, activation,
     
     return module
 
-def generate_graph_cell(inputs, nodes, operations, channels=16, batch_norm=False, activation='relu',
+def generate_graph_cell(inputs, nodes, operations, channels=16, batch_norm='none', activation='relu',
                         kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None):
     # Graph cell connects node i to all nodes j where j>i and sums at every node
     # nodes is the number of nodes where operations are summed in the cell with node 1 being the input tensor
@@ -218,7 +218,7 @@ def generate_graph_cell(inputs, nodes, operations, channels=16, batch_norm=False
         node_list[i] = node
     return node_list[-1]
 
-def generate_parallel_concat_cell(inputs, nodes, operations, channels=16, batch_norm=False, activation='relu',
+def generate_parallel_concat_cell(inputs, nodes, operations, channels=16, batch_norm='none', activation='relu',
                                   kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None):
     # Nodes is the number of parallel tracks
     # Operations is a list of lists corresponding to the operations at each node
@@ -238,13 +238,16 @@ def generate_parallel_concat_cell(inputs, nodes, operations, channels=16, batch_
             module = generate_module(inp, op, channels, batch_norm, activation,
                                      kernel_regularizer, bias_regularizer, activity_regularizer)
         tracks[i] = module
-    module = NConcat(label=0,
-                    inputs = tracks,
-                    )
+    if len(tracks) > 1:
+        module = NConcat(label=0,
+                        inputs = tracks,
+                        )
+    else:
+        module = tracks[0]
 
     return module
 
-def generate_parallel_add_cell(inputs, nodes, operations, channels=16, batch_norm=False, activation='relu',
+def generate_parallel_add_cell(inputs, nodes, operations, channels=16, batch_norm='none', activation='relu',
                                  kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None):
     # Nodes is the number of parallel tracks
     # Operations is a list of lists corresponding to the operations at each node
@@ -260,12 +263,16 @@ def generate_parallel_add_cell(inputs, nodes, operations, channels=16, batch_nor
             module = generate_module(inp, op, channels, batch_norm, activation,
                                      kernel_regularizer, bias_regularizer, activity_regularizer)
         tracks[i] = module
-    module = NAdd(label=0,
-                    inputs = tracks,
-                    )
+    if len(tracks) > 1:
+        module = NAdd(label=0,
+                        inputs = tracks,
+                        )
+    else:
+        module = tracks[0]
+
     return module
 
-def generate_generic_cell(type, inputs, nodes, operations, channels=16, batch_norm=False, activation='relu',
+def generate_generic_cell(type, inputs, nodes, operations, channels=16, batch_norm='none', activation='relu',
                           kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None):
     args = {'inputs': inputs, 'nodes': nodes, 'operations': operations, 'channels': channels,
             'batch_norm': batch_norm, 'activation': activation, 'kernel_regularizer': kernel_regularizer,
