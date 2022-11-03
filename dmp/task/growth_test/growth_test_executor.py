@@ -5,6 +5,7 @@ import platform
 import subprocess
 
 from pytest import param
+# from sympy import per
 
 from dmp.data.pmlb import pmlb_loader
 from dmp.jobqueue_interface.common import jobqueue_marshal
@@ -22,6 +23,7 @@ import pandas
 import numpy
 import sys
 import copy
+import math
 
 # from keras_buoy.models import ResumableModel
 
@@ -68,6 +70,21 @@ class GrowthTestExecutor(GrowthTestTask):
         )
         test_data = (prepared_config['test_data'][0],prepared_config['test_data'][1],'test_data')
         del prepared_config['test_data']
+
+        # Get the per size epoch budget
+        per_size_epoch_budget = prepared_config['epochs']
+
+        # Use one of these budgets during growth. If all are none, raise error, else set them to infinity.
+        if self.max_total_epochs == None and self.max_equivalent_epoch_budget == None and per_size_epoch_budget == None:
+            raise ValueError("Must specify value for max_total_epochs, max_equivalent_epoch_budget, or run_config['epochs']")
+        if self.max_total_epochs == None:
+            self.max_total_epochs = numpy.inf
+        if self.max_equivalent_epoch_budget == None:
+            self.max_equivalent_epoch_budget = numpy.inf
+        if per_size_epoch_budget == None:
+            per_size_epoch_budget = numpy.inf
+
+        print(per_size_epoch_budget)
 
         # Generate neural network architecture
         num_outputs = self.outputs.shape[1]
@@ -173,18 +190,56 @@ class GrowthTestExecutor(GrowthTestTask):
             #         save_every_epochs=self.save_every_epochs,
             #         to_path=save_path)
 
+            # Calculate number of growth phases
+            growth_number = math.ceil(math.log(self.max_size / self.size, self.growth_scale))
+            
             # fit / train model
             histories = dict()
-            while num_free_parameters < self.max_size:
-                print(num_free_parameters)
+            epoch_parameters_left = self.max_equivalent_epoch_budget * self.max_size
+            for growth_phase in range(growth_number):
+                ideal_size = self.size * math.pow(self.growth_scale,growth_phase)
+                print('growing',growth_phase,num_free_parameters,ideal_size)
+                
+                # Calculate epoch budget left based on epoch_parameter budget of network with max size
+                # epoch_budget_left is the epoch budget based on this epoch_parameter budget
+                epoch_budget_left = math.ceil(epoch_parameters_left / ideal_size)
+                print('epoch_budget_left',epoch_budget_left)
+                # Calculate the total_epochs_left, which is a budget based on the max_total_epochs
+                if len(histories.keys())==0:
+                    total_epochs_left = self.max_total_epochs
+                else:
+                    total_epochs_left = self.max_total_epochs - len(histories['loss'])
+                print('total_epochs_left',total_epochs_left)
+                # The epochs to run the next size for becomes the minimum of these two budgets
+                epochs_left = min(total_epochs_left,epoch_budget_left)
+                print('per_size_epoch_budget',per_size_epoch_budget)
+                # And that budget is used in the case that it is less than the per size budget set by the run_config.
+                if epochs_left < per_size_epoch_budget:
+                    prepared_config['epochs'] = epochs_left
+                else:
+                    prepared_config['epochs'] = per_size_epoch_budget
+
+                # If our epoch budget has run out, stop
+                if prepared_config['epochs'] == 0:
+                    break
+
                 # Train
                 additional_history = growth_test_utils.AdditionalValidationSets([test_data],
                                     batch_size=self.run_config['batch_size'])
-                history = self.keras_model.fit(
-                    callbacks=[getattr(sys.modules[__name__], self.growth_trigger)(**self.growth_trigger_params),
-                               additional_history],
-                    **prepared_config,
-                )
+
+                # If we're not on our last size, use trigger
+                if growth_phase < growth_number-1:
+                    history = self.keras_model.fit(
+                        callbacks=[getattr(sys.modules[__name__], self.growth_trigger)(**self.growth_trigger_params),
+                                additional_history],
+                        **prepared_config,
+                    )
+                # else, run out epoch budget
+                else:
+                    history = self.keras_model.fit(
+                        callbacks=[additional_history],
+                        **prepared_config,
+                    )
                 print(additional_history.history.keys())
 
                 # Tensorflow models return a History object from their fit function,
@@ -192,6 +247,8 @@ class GrowthTestExecutor(GrowthTestTask):
                 # out that incompatibility.
                 if self.save_every_epochs is None or self.save_every_epochs == 0:
                     history = history.history
+
+                epoch_parameters_left = epoch_parameters_left - (ideal_size * len(history['loss']))
                 
                 # Merge history dictionaries, adding metrics from evaluation on test set.
                 history = {**additional_history.history, **history}
@@ -227,7 +284,7 @@ class GrowthTestExecutor(GrowthTestTask):
                     self.input_activation,
                     self.activation,
                     self.output_activation,
-                    self.growth_scale * num_free_parameters,
+                    self.growth_scale * ideal_size, # Grows by the ideal size based on growth scale
                     widths_factory(shape)(num_outputs, self.depth),
                     self.depth,
                     shape,
@@ -252,6 +309,11 @@ class GrowthTestExecutor(GrowthTestTask):
 
                 # Calculate number of parameters in grown network
                 num_free_parameters = count_trainable_parameters_in_keras_model(self.keras_model)
+
+            # Rename history keys
+            histories = {k.replace('val_','validation_'):v for k,v in histories.items()}
+            histories = {k.replace('test_data_','val_'):v for k,v in histories.items()}
+            print(histories.keys())
 
             # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
             # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.

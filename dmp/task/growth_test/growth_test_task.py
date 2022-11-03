@@ -7,7 +7,6 @@ from .growth_test_utils import *
 
 @dataclass
 class GrowthTestTask(AspectTestTask):
-    asdf: Optional[int] = 1
     val_split:  Optional[float] = None
     growth_trigger: Optional[str] = None
     growth_trigger_params: Optional[dict] = None
@@ -15,6 +14,8 @@ class GrowthTestTask(AspectTestTask):
     growth_method_params: Optional[dict] = None
     growth_scale: Optional[float] = None
     max_size: Optional[int] = None
+    max_total_epochs: Optional[int] = None
+    max_equivalent_epoch_budget: Optional[int] = None
 
 
     def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:

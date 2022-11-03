@@ -9,13 +9,13 @@ def main():
                           dataset='201_pol',
                           input_activation='relu',
                           activation='relu',
-                          optimizer={'class_name': 'adam', 'config': {'learning_rate': 0.001}},
+                          optimizer={'class_name': 'adam', 'config': {'learning_rate': 0.01}},
                           shape='rectangle',
-                          size=256,
+                          size=128,
                           depth=3,
                           test_split=0.3,
                           test_split_method='shuffled_train_val_test_split',
-                          run_config= {'shuffle': True,'epochs': 50,'batch_size': 256,'verbose': 0,},
+                          run_config= {'shuffle': True,'epochs': None,'batch_size': 256,'verbose': 0,},
                           label_noise=0.0,
                           kernel_regularizer=None,
                           bias_regularizer=None,
@@ -23,12 +23,14 @@ def main():
                           early_stopping=None,
                           save_every_epochs=None,
                           growth_trigger='EarlyStopping',
-                          growth_trigger_params={'patience':10},
+                          growth_trigger_params={'patience':2},
                           growth_method='grow_network',
                           growth_method_params=None,
                           growth_scale=2.0,
-                          max_size=1224,
-                          val_split=0.1,)
+                          max_size=2**15,
+                          val_split=0.1,
+                          max_total_epochs=None,
+                          max_equivalent_epoch_budget=100)
     
     # print(task.max_size,task.asdf,task.val_split)
     worker = Worker(None,None,tf.distribute.get_strategy(),{})

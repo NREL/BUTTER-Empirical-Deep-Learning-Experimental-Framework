@@ -159,5 +159,6 @@ WHERE id = %s
                 break
         
         if type_index is None and value is not None:
-            raise ValueError('Value is not a supported parameter type.')
+            print(value)
+            raise ValueError(f'Value is not a supported parameter type, type "{type(value)}".')
         return typed_values

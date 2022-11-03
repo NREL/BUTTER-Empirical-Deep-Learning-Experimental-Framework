@@ -1,5 +1,9 @@
 """
 Enqueues jobs from stdin into the JobQueue
+
+TODO:
+- Growth code currently supports growth for rectangular MLPs by adding the same number of neurons
+    to each layer. Should be modified for growth of other sizes and other architectures.
 """
 
 import argparse
@@ -63,7 +67,7 @@ def main():
             'test_split_method': ['shuffled_train_val_test_split'],
             'run_config': [{
                 'shuffle': True,
-                'epochs': 100,
+                'epochs': 10,
                 'batch_size': 256,
                 'verbose': 0,
             }],
@@ -78,7 +82,7 @@ def main():
             'growth_method': ['grow_network'],
             'growth_method_params': [None],
             'growth_scale': [2.0],
-            'max_size': [2048],
+            'max_size': [1000],
         },
     }
 
