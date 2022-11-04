@@ -4,7 +4,7 @@ import random
 from copy import deepcopy
 from functools import singledispatchmethod
 import time
-from typing import Callable, Dict, Tuple, Union, List, Optional
+from typing import Any, Callable, Dict, Iterable, Tuple, Union, List, Optional
 
 import numpy
 import tensorflow
@@ -74,7 +74,7 @@ def prepare_dataset(
     run_task: str,
     inputs,
     outputs,
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     run_config = deepcopy(run_config)
     if test_split_method == 'shuffled_train_test_split':
 
@@ -98,17 +98,26 @@ def prepare_dataset(
     return run_config
 
 
-def count_trainable_parameters_in_keras_model(model: Model) -> int:
+def count_vars_in_keras_model(model: Model, var_getter) -> int:
     count = 0
-    for var in model.trainable_variables:
-        # print('ctp {}'.format(var.get_shape()))
+    for var in var_getter(model):
         acc = 1
         for dim in var.get_shape():
             acc *= int(dim)
-        # print('ctp acc {}'.format(acc))
         count += acc
-    # print('ctp total {}'.format(count))
     return count
+
+
+def count_trainable_parameters_in_keras_model(model: Model) -> int:
+    return count_vars_in_keras_model(model, lambda m: m.trainable_variables)
+
+
+def count_parameters_in_keras_model(model: Model) -> int:
+    return count_vars_in_keras_model(model, lambda m: m.variables)
+
+
+def count_non_trainable_parameters_in_keras_model(model: Model) -> int:
+    return count_vars_in_keras_model(model, lambda m: m.non_trainable_variables)
 
 
 def count_num_free_parameters(target: NetworkModule) -> int:
@@ -123,7 +132,7 @@ def count_num_free_parameters(target: NetworkModule) -> int:
         """
 
         @singledispatchmethod
-        def visit(self, target) -> any:
+        def visit(self, target) -> Any:
             raise Exception(
                 'Unsupported module of type "{}".'.format(type(target)))
 
@@ -143,31 +152,28 @@ def count_num_free_parameters(target: NetworkModule) -> int:
 
 
 def make_network(
-        inputs: numpy.ndarray,
+        input_shape: Tuple[int,...],
         widths: List[int],
-        residual_mode: any,
+        residual_mode: Optional[str],
         input_activation: str,
         internal_activation: str,
         output_activation: str,
-        depth: int,
-        shape: str,
         layer_args: dict,
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
     input_layer = NInput(label=0,
                          inputs=[],
-                         shape=list(inputs.shape[1:]))
+                         shape=list(input_shape[1:]))
     current = input_layer
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
-    for d in range(depth):
-        layer_width = widths[d]
+    for d, layer_width in enumerate(widths):
 
         # Activation functions may be different for input, output, and hidden layers
         activation = internal_activation
         if d == 0:
             activation = input_activation
-        elif d == depth - 1:
+        elif d == len(widths) - 1:
             activation = output_activation
 
         # Fully connected layer
@@ -182,20 +188,17 @@ def make_network(
         if residual_mode is None or residual_mode == 'none':
             pass
         elif residual_mode == 'full':
-            # in wide-first networks, first layer is of different dimension, and will therefore not originate any skip connections
-            first_residual_layer = 1 if shape.startswith('wide_first') else 0
-            # Output layer is assumed to be of a different dimension, and will therefore not directly receive skip connections
-            last_residual_layer = depth - 1
-            if d > first_residual_layer and d < last_residual_layer:
+            # If this isn't the first or last layer, and the previous layer is
+            # of the same width insert a residual sum between layers
+            # NB: Only works for rectangle
+            if d > 0 and d < len(widths)-1 and layer_width == widths[d-1]:
                 layer = NAdd(label=0,
                              inputs=[layer, current],
-                             shape=layer.shape.copy())  # TODO JP: Only works for rectangle
+                             shape=layer.shape.copy())
         else:
             raise NotImplementedError(
                 f'Unknown residual mode "{residual_mode}".')
-
         current = layer
-
     return current
 
 
@@ -233,28 +236,28 @@ class MakeKerasLayersFromNetwork:
         output = self._visit(target)
         self._outputs = [output]
 
-    def __call__(self) -> Tuple[list, any]:
+    def __call__(self) -> Tuple[list, Any]:
         return self._inputs, self._outputs
 
-    def _visit(self, target: NetworkModule) -> any:
+    def _visit(self, target: NetworkModule) -> Any:
         if target not in self._nodes:
             keras_inputs = [self._visit(i) for i in target.inputs]
             self._nodes[target] = self._visit_raw(target, keras_inputs)
         return self._nodes[target]
 
     @singledispatchmethod
-    def _visit_raw(self, target, keras_inputs) -> any:
+    def _visit_raw(self, target, keras_inputs) -> Any:
         raise NotImplementedError(
             'Unsupported module of type "{}".'.format(type(target)))
 
     @_visit_raw.register
-    def _(self, target: NInput, keras_inputs) -> any:
+    def _(self, target: NInput, keras_inputs) -> Any:
         result = Input(shape=target.shape)
         self._inputs.append(result)
         return result
 
     @_visit_raw.register
-    def _(self, target: NDense, keras_inputs) -> any:
+    def _(self, target: NDense, keras_inputs) -> Any:
 
         kernel_regularizer = make_regularizer(target.kernel_regularizer)
         bias_regularizer = make_regularizer(target.bias_regularizer)
@@ -267,10 +270,11 @@ class MakeKerasLayersFromNetwork:
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer,
             activity_regularizer=activity_regularizer,
+            kernel_initializer=target.kernel_initializer,
         )(*keras_inputs)
 
     @_visit_raw.register
-    def _(self, target: NAdd, keras_inputs) -> any:
+    def _(self, target: NAdd, keras_inputs) -> Any:
         return tensorflow.keras.layers.add(keras_inputs)
 
 
@@ -285,7 +289,7 @@ def make_keras_network_from_network_module(target: NetworkModule) -> keras.Model
     return Model(inputs=inputs, outputs=outputs)
 
 
-def compute_network_configuration(num_outputs, dataset) -> Tuple[any, any]:
+def compute_network_configuration(num_outputs, dataset) -> Tuple[Any, Any]:
     output_activation = 'relu'
     run_task = dataset['Task']
     if run_task == 'regression':
@@ -343,33 +347,29 @@ def binary_search_int(objective: Callable[[int], Union[int, float]],
 
 
 def find_best_layout_for_budget_and_depth(
-        inputs,
-        residual_mode,
-        input_activation,
-        internal_activation,
-        output_activation,
-        size,
-        make_widths: Callable[[int], List[int]],
-        depth,
-        shape,
-        layer_args
+    input_shape: Tuple[int,...],
+    residual_mode: Optional[str],
+    input_activation : str,
+    internal_activation : str,
+    output_activation : str,
+    target_size : int,
+    make_widths: Callable[[int], List[int]],
+    layer_args: dict
 ) -> Tuple[int, List[int], NetworkModule]:
     best = (math.inf, None, None)
 
     def search_objective(w0):
         nonlocal best
         widths = make_widths(w0)
-        network = make_network(inputs,
+        network = make_network(input_shape,
                                widths,
                                residual_mode,
                                input_activation,
                                internal_activation,
                                output_activation,
-                               depth,
-                               shape,
-                               layer_args
+                               layer_args,
                                )
-        delta = count_num_free_parameters(network) - size
+        delta = count_num_free_parameters(network) - target_size
 
         if abs(delta) < abs(best[0]):
             best = (delta, widths, network)
@@ -377,7 +377,7 @@ def find_best_layout_for_budget_and_depth(
         return delta
 
     binary_search_int(search_objective, 1, int(2 ** 30))
-    return best
+    return best  # type: ignore
 
 
 def get_rectangular_widths(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
