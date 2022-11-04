@@ -220,13 +220,9 @@ class AspectTestExecutor(AspectTestTask):
         # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
         # model.save(f'./log/models/{run_name}.h5', save_format='h5')
 
-        # rename 'val_' keys to 'test_'
+        # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
         history = remap_key_prefixes(
             history, [('val_', 'test_'), ('', 'train_')])  # type: ignore
-
-        print('history:')
-        print(history)
-        # rename un-prefixed history keys to 'train_'
 
         parameters: Dict[str, Any] = parent.parameters
         parameters['output_activation'] = self.output_activation
