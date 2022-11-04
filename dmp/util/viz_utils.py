@@ -60,16 +60,16 @@ options = {
     'shape': [
         'rectangle', 'trapezoid', 'exponential',
         'wide_first_2x', 'wide_first_4x', 'wide_first'],
-    'loss': ['loss', 'hinge', 'accuracy',
+    'loss': ['train_loss', 'train_hinge', 'train_accuracy',
              'test_loss', 'test_hinge', 'test_accuracy',
-             'squared_hinge', 'cosine_similarity',
-             'test_squared_hinge', 'mean_squared_error',
-             'mean_absolute_error', 'test_cosine_similarity',
-             'test_mean_squared_error', 'root_mean_squared_error',
+             'train_squared_hinge', 'train_cosine_similarity',
+             'test_squared_hinge', 'train_mean_squared_error',
+             'train_mean_absolute_error', 'test_cosine_similarity',
+             'test_mean_squared_error', 'train_root_mean_squared_error',
              'test_mean_absolute_error',
-             'kullback_leibler_divergence',
+             'train_kullback_leibler_divergence',
              'test_root_mean_squared_error',
-             'mean_squared_logarithmic_error',
+             'train_mean_squared_logarithmic_error',
              'test_kullback_leibler_divergence',
              'test_mean_squared_logarithmic_error'],
     'residual_mode': ['none', 'full'],
@@ -532,7 +532,7 @@ options_summary = {
         'test_loss_stddev',
         'test_loss_min',
         'test_loss_max',
-        'loss_avg'
+        'train_loss_avg'
     ],
     'shape': [
         'rectangle',
@@ -571,8 +571,8 @@ def get_summary_records(
             ('test_loss_min', 'float'),
             ('test_loss_max', 'float'),
             ('test_loss_percentile', None),
-            ('loss_avg', 'float'),
-            ('loss_percentile', None),
+            ('train_loss_avg', 'float'),
+            ('train_loss_percentile', None),
         ]
     if kinds is None:
         def infer_type(k):
@@ -675,12 +675,12 @@ def fixed_3k_1_gridded_heatmap_summary_get_data(
             ('test_loss_max', 'float'),
             # ('test_loss_percentile', None),
             ('test_loss_median', None),
-            ('loss_avg', 'float'),
-            # ('loss_percentile', None),
-            ('loss_median', None),
-            ('mean_squared_error_median', None),
+            ('train_loss_avg', 'float'),
+            # ('train_loss_percentile', None),
+            ('train_loss_median', None),
+            ('train_mean_squared_error_median', None),
             ('test_mean_squared_error_median', None),
-            ('kullback_leibler_divergence_median', None),
+            ('train_kullback_leibler_divergence_median', None),
             ('test_kullback_leibler_divergence_median', None),
         ]
 

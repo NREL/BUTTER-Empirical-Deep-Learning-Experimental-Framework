@@ -1,7 +1,3 @@
-import argparse
-import gc
-import json
-import math
 import sys
 import uuid
 
@@ -10,8 +6,6 @@ from jobqueue.job_queue import JobQueue
 from dmp.logging.postgres_result_logger import PostgresResultLogger
 from dmp.worker import Worker
 
-
-import jobqueue
 import tensorflow
 
 from .common import jobqueue_marshal
@@ -61,6 +55,7 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     return strategy
 
 
+# Example: python -u -m dmp.jobqueue_interface.worker 0 2 0 36 0 0 0 dmp -10 0 0 0
 if __name__ == "__main__":
     a = sys.argv
 
@@ -100,7 +95,7 @@ if __name__ == "__main__":
     print(f'Worker id {worker_id} create result logger..\n', flush=True)
     result_logger = PostgresResultLogger(credentials)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
-    
+
     worker = Worker(
         job_queue,
         result_logger,

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 
 from psycopg2 import sql
 
@@ -6,9 +6,9 @@ from psycopg2 import sql
 class PostgresParameterMap:
 
     _parameter_table: sql.Identifier
-    _select_parameter: sql.SQL
-    _parameter_to_id_map: Dict[any, int]
-    _id_to_parameter_map: Dict[int, any]
+    _select_parameter: sql.Composed
+    _parameter_to_id_map: Dict[Any, int]
+    _id_to_parameter_map: Dict[int, Any]
 
     _key_columns = sql.SQL(',').join(
         map(sql.Identifier, [

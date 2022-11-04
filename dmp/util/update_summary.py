@@ -49,21 +49,21 @@ insert into experiment_summary_ (
     test_loss_num_finite, test_loss_min, test_loss_max,
     test_loss_avg, test_loss_stddev,    
     test_loss_q1, test_loss_median, test_loss_q3,
-    loss_num_finite, loss_min, loss_max,
-    loss_avg, loss_stddev,
-    loss_q1, loss_median, loss_q3,
+    train_loss_num_finite, train_loss_min, train_loss_max,
+    train_loss_avg, train_loss_stddev,
+    train_loss_q1, train_loss_median, train_loss_q3,
     test_accuracy_avg, test_accuracy_stddev,
     test_accuracy_q1, test_accuracy_median, test_accuracy_q3,
-    accuracy_avg, accuracy_stddev,
-    accuracy_q1, accuracy_median, accuracy_q3,
+    train_accuracy_avg, train_accuracy_stddev,
+    train_accuracy_q1, train_accuracy_median, train_accuracy_q3,
     test_mean_squared_error_avg, test_mean_squared_error_stddev,
     test_mean_squared_error_q1, test_mean_squared_error_median, test_mean_squared_error_q3,
-    mean_squared_error_avg, mean_squared_error_stddev,
-    mean_squared_error_q1, mean_squared_error_median, mean_squared_error_q3,
+    train_mean_squared_error_avg, train_mean_squared_error_stddev,
+    train_mean_squared_error_q1, train_mean_squared_error_median, train_mean_squared_error_q3,
     test_kullback_leibler_divergence_avg, test_kullback_leibler_divergence_stddev,
     test_kullback_leibler_divergence_q1, test_kullback_leibler_divergence_median, test_kullback_leibler_divergence_q3,
-    kullback_leibler_divergence_avg, kullback_leibler_divergence_stddev,
-    kullback_leibler_divergence_q1, kullback_leibler_divergence_median, kullback_leibler_divergence_q3,
+    train_kullback_leibler_divergence_avg, train_kullback_leibler_divergence_stddev,
+    train_kullback_leibler_divergence_q1, train_kullback_leibler_divergence_median, train_kullback_leibler_divergence_q3,
     test_loss_min_epoch_q1, test_loss_min_epoch_median, test_loss_min_epoch_q3, test_loss_min_value_min, test_loss_min_value_max, test_loss_min_value_avg, test_loss_min_value_q1, test_loss_min_value_median, test_loss_min_value_q3, test_accuracy_max_epoch_min, test_accuracy_max_epoch_max, test_accuracy_max_epoch_avg, test_accuracy_max_epoch_q1, test_accuracy_max_epoch_median, test_accuracy_max_epoch_q3, test_accuracy_max_value_min, test_accuracy_max_value_max, test_accuracy_max_value_avg, test_accuracy_max_value_q1, test_accuracy_max_value_median, test_accuracy_max_value_q3, test_mean_squared_error_min_epoch_min, test_mean_squared_error_min_epoch_max, test_mean_squared_error_min_epoch_avg, test_mean_squared_error_min_epoch_q1, test_mean_squared_error_min_epoch_median, test_mean_squared_error_min_epoch_q3, test_mean_squared_error_min_value_min, test_mean_squared_error_min_value_max, test_mean_squared_error_min_value_avg, test_mean_squared_error_min_value_q1, test_mean_squared_error_min_value_median, test_mean_squared_error_min_value_q3, test_kullback_leibler_divergence_min_epoch_min, test_kullback_leibler_divergence_min_epoch_max, test_kullback_leibler_divergence_min_epoch_avg, test_kullback_leibler_divergence_min_epoch_q1, test_kullback_leibler_divergence_min_epoch_median, test_kullback_leibler_divergence_min_epoch_q3, test_kullback_leibler_divergence_min_value_min, test_kullback_leibler_divergence_min_value_max, test_kullback_leibler_divergence_min_value_avg, test_kullback_leibler_divergence_min_value_q1, test_kullback_leibler_divergence_min_value_median, test_kullback_leibler_divergence_min_value_q3
 )
 select
@@ -78,21 +78,21 @@ select
     test_loss_num_finite, test_loss_min, test_loss_max,
     test_loss_avg, test_loss_stddev,    
     test_loss_q1, test_loss_median, test_loss_q3,
-    loss_num_finite, loss_min, loss_max,
-    loss_avg, loss_stddev,
-    loss_q1, loss_median, loss_q3,
+    train_loss_num_finite, train_loss_min, train_loss_max,
+    train_loss_avg, train_loss_stddev,
+    train_loss_q1, train_loss_median, train_loss_q3,
     test_accuracy_avg, test_accuracy_stddev,
     test_accuracy_q1, test_accuracy_median, test_accuracy_q3,
-    accuracy_avg, accuracy_stddev,
-    accuracy_q1, accuracy_median, accuracy_q3,
+    train_accuracy_avg, train_accuracy_stddev,
+    train_accuracy_q1, train_accuracy_median, train_accuracy_q3,
     test_mean_squared_error_avg, test_mean_squared_error_stddev,
     test_mean_squared_error_q1, test_mean_squared_error_median, test_mean_squared_error_q3,
-    mean_squared_error_avg, mean_squared_error_stddev,
-    mean_squared_error_q1, mean_squared_error_median, mean_squared_error_q3,
+    train_mean_squared_error_avg, train_mean_squared_error_stddev,
+    train_mean_squared_error_q1, train_mean_squared_error_median, train_mean_squared_error_q3,
     test_kullback_leibler_divergence_avg, test_kullback_leibler_divergence_stddev,
     test_kullback_leibler_divergence_q1, test_kullback_leibler_divergence_median, test_kullback_leibler_divergence_q3,
-    kullback_leibler_divergence_avg, kullback_leibler_divergence_stddev,
-    kullback_leibler_divergence_q1, kullback_leibler_divergence_median, kullback_leibler_divergence_q3,
+    train_kullback_leibler_divergence_avg, train_kullback_leibler_divergence_stddev,
+    train_kullback_leibler_divergence_q1, train_kullback_leibler_divergence_median, train_kullback_leibler_divergence_q3,
     test_loss_min_epoch_q1, test_loss_min_epoch_median, test_loss_min_epoch_q3, test_loss_min_value_min, test_loss_min_value_max, test_loss_min_value_avg, test_loss_min_value_q1, test_loss_min_value_median, test_loss_min_value_q3, test_accuracy_max_epoch_min, test_accuracy_max_epoch_max, test_accuracy_max_epoch_avg, test_accuracy_max_epoch_q1, test_accuracy_max_epoch_median, test_accuracy_max_epoch_q3, test_accuracy_max_value_min, test_accuracy_max_value_max, test_accuracy_max_value_avg, test_accuracy_max_value_q1, test_accuracy_max_value_median, test_accuracy_max_value_q3, test_mean_squared_error_min_epoch_min, test_mean_squared_error_min_epoch_max, test_mean_squared_error_min_epoch_avg, test_mean_squared_error_min_epoch_q1, test_mean_squared_error_min_epoch_median, test_mean_squared_error_min_epoch_q3, test_mean_squared_error_min_value_min, test_mean_squared_error_min_value_max, test_mean_squared_error_min_value_avg, test_mean_squared_error_min_value_q1, test_mean_squared_error_min_value_median, test_mean_squared_error_min_value_q3, test_kullback_leibler_divergence_min_epoch_min, test_kullback_leibler_divergence_min_epoch_max, test_kullback_leibler_divergence_min_epoch_avg, test_kullback_leibler_divergence_min_epoch_q1, test_kullback_leibler_divergence_min_epoch_median, test_kullback_leibler_divergence_min_epoch_q3, test_kullback_leibler_divergence_min_value_min, test_kullback_leibler_divergence_min_value_max, test_kullback_leibler_divergence_min_value_avg, test_kullback_leibler_divergence_min_value_q1, test_kullback_leibler_divergence_min_value_median, test_kullback_leibler_divergence_min_value_q3
 from
 (
@@ -163,9 +163,9 @@ lateral (
         ) test_loss_,
     lateral (
         select
-            array_agg(v_num_finite) loss_num_finite, array_agg(v_min) loss_min, array_agg(v_max) loss_max,
-            array_agg(v_avg) loss_avg, array_agg(v_stddev) loss_stddev,
-            array_agg(v_percentile[1]) loss_q1, array_agg(v_percentile[2]) loss_median, array_agg(v_percentile[3]) loss_q3
+            array_agg(v_num_finite) train_loss_num_finite, array_agg(v_min) train_loss_min, array_agg(v_max) train_loss_max,
+            array_agg(v_avg) train_loss_avg, array_agg(v_stddev) train_loss_stddev,
+            array_agg(v_percentile[1]) train_loss_q1, array_agg(v_percentile[2]) train_loss_median, array_agg(v_percentile[3]) train_loss_q3
         from
         (       
             select
@@ -174,10 +174,10 @@ lateral (
                 (PERCENTILE_CONT(array[.25, .5, .75]) WITHIN GROUP(ORDER BY coalesce(v, 'NaN'::real)))::real[] v_percentile
             from
                 rr inner join run_ r on rr.run_ctid = r.ctid,
-                unnest(r.loss) WITH ORDINALITY as epoch_value(v, epoch)
+                unnest(r.train_loss) WITH ORDINALITY as epoch_value(v, epoch)
             group by epoch order by epoch
         ) x
-    ) loss_,
+    ) train_loss_,
     lateral (
         with ev as (
             select run_ctid, v, epoch from
@@ -213,12 +213,12 @@ lateral (
                     ) x
             ) y
     ) test_accuracy_,
-    lateral (select array_agg(v_avg) accuracy_avg, array_agg(v_stddev) accuracy_stddev, array_agg(v_percentile[1]) accuracy_q1, array_agg(v_percentile[2]) accuracy_median, array_agg(v_percentile[3]) accuracy_q3 from
+    lateral (select array_agg(v_avg) train_accuracy_avg, array_agg(v_stddev) train_accuracy_stddev, array_agg(v_percentile[1]) train_accuracy_q1, array_agg(v_percentile[2]) train_accuracy_median, array_agg(v_percentile[3]) train_accuracy_q3 from
             (select
                 (AVG(v))::real v_avg, (stddev_samp(v))::real v_stddev, (PERCENTILE_CONT(array[.25, .5, .75]) WITHIN GROUP(ORDER BY coalesce(v, 'NaN'::real)))::real[] v_percentile
-                from rr inner join run_ r on rr.run_ctid = r.ctid, unnest(r.accuracy) WITH ORDINALITY as epoch_value(v, epoch)
+                from rr inner join run_ r on rr.run_ctid = r.ctid, unnest(r.train_accuracy) WITH ORDINALITY as epoch_value(v, epoch)
                 group by epoch order by epoch
-            ) x ) accuracy_,
+            ) x ) train_accuracy_,
     lateral (
         with ev as (
             select run_ctid, v, epoch from
@@ -252,12 +252,12 @@ lateral (
                             order by run_ctid, v asc, epoch asc
             ) x ) x ) y
         ) test_mean_squared_error_,
-    lateral (select array_agg(v_avg) mean_squared_error_avg, array_agg(v_stddev) mean_squared_error_stddev, array_agg(v_percentile[1]) mean_squared_error_q1, array_agg(v_percentile[2]) mean_squared_error_median, array_agg(v_percentile[3]) mean_squared_error_q3 from
+    lateral (select array_agg(v_avg) train_mean_squared_error_avg, array_agg(v_stddev) train_mean_squared_error_stddev, array_agg(v_percentile[1]) train_mean_squared_error_q1, array_agg(v_percentile[2]) train_mean_squared_error_median, array_agg(v_percentile[3]) train_mean_squared_error_q3 from
             (select
                 (AVG(v))::real v_avg, (stddev_samp(v))::real v_stddev, (PERCENTILE_CONT(array[.25, .5, .75]) WITHIN GROUP(ORDER BY coalesce(v, 'NaN'::real)))::real[] v_percentile
-                from rr inner join run_ r on rr.run_ctid = r.ctid, unnest(r.mean_squared_error) WITH ORDINALITY as epoch_value(v, epoch)
+                from rr inner join run_ r on rr.run_ctid = r.ctid, unnest(r.train_mean_squared_error) WITH ORDINALITY as epoch_value(v, epoch)
                 group by epoch order by epoch
-            ) x ) mean_squared_error_,
+            ) x ) train_mean_squared_error_,
     lateral (
         with ev as (
             select run_ctid, v, epoch from
@@ -289,12 +289,12 @@ lateral (
                             where v is not null and epoch is not null
                             order by run_ctid, v asc, epoch asc
     ) x ) x ) y ) test_kullback_leibler_divergence_,
-    lateral (select array_agg(v_avg) kullback_leibler_divergence_avg, array_agg(v_stddev) kullback_leibler_divergence_stddev, array_agg(v_percentile[1]) kullback_leibler_divergence_q1, array_agg(v_percentile[2]) kullback_leibler_divergence_median, array_agg(v_percentile[3]) kullback_leibler_divergence_q3 from
+    lateral (select array_agg(v_avg) train_kullback_leibler_divergence_avg, array_agg(v_stddev) train_kullback_leibler_divergence_stddev, array_agg(v_percentile[1]) train_kullback_leibler_divergence_q1, array_agg(v_percentile[2]) train_kullback_leibler_divergence_median, array_agg(v_percentile[3]) train_kullback_leibler_divergence_q3 from
             (select
                 (AVG(v))::real v_avg, (stddev_samp(v))::real v_stddev, (PERCENTILE_CONT(array[.25, .5, .75]) WITHIN GROUP(ORDER BY coalesce(v, 'NaN'::real)))::real[] v_percentile
-                from rr inner join run_ r on rr.run_ctid = r.ctid, unnest(r.kullback_leibler_divergence) WITH ORDINALITY as epoch_value(v, epoch)
+                from rr inner join run_ r on rr.run_ctid = r.ctid, unnest(r.train_kullback_leibler_divergence) WITH ORDINALITY as epoch_value(v, epoch)
                 group by epoch order by epoch
-            ) x ) kullback_leibler_divergence_
+            ) x ) train_kullback_leibler_divergence_
     ) aggregates
 ON CONFLICT (experiment_id) DO UPDATE SET
         update_timestamp = ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer,
@@ -307,21 +307,21 @@ ON CONFLICT (experiment_id) DO UPDATE SET
         test_loss_num_finite = EXCLUDED.test_loss_num_finite,test_loss_min = EXCLUDED.test_loss_min,test_loss_max = EXCLUDED.test_loss_max,
         test_loss_avg = EXCLUDED.test_loss_avg,test_loss_stddev = EXCLUDED.test_loss_stddev,    
         test_loss_q1 = EXCLUDED.test_loss_q1,test_loss_median = EXCLUDED.test_loss_median,test_loss_q3 = EXCLUDED.test_loss_q3,
-        loss_num_finite = EXCLUDED.loss_num_finite,loss_min = EXCLUDED.loss_min,loss_max = EXCLUDED.loss_max,
-        loss_avg = EXCLUDED.loss_avg,loss_stddev = EXCLUDED.loss_stddev,
-        loss_q1 = EXCLUDED.loss_q1,loss_median = EXCLUDED.loss_median,loss_q3 = EXCLUDED.loss_q3,
+        train_loss_num_finite = EXCLUDED.train_loss_num_finite,train_loss_min = EXCLUDED.train_loss_min,train_loss_max = EXCLUDED.train_loss_max,
+        train_loss_avg = EXCLUDED.train_loss_avg,train_loss_stddev = EXCLUDED.train_loss_stddev,
+        train_loss_q1 = EXCLUDED.train_loss_q1,train_loss_median = EXCLUDED.train_loss_median,train_loss_q3 = EXCLUDED.train_loss_q3,
         test_accuracy_avg = EXCLUDED.test_accuracy_avg,test_accuracy_stddev = EXCLUDED.test_accuracy_stddev,
         test_accuracy_q1 = EXCLUDED.test_accuracy_q1,test_accuracy_median = EXCLUDED.test_accuracy_median,test_accuracy_q3 = EXCLUDED.test_accuracy_q3,
-        accuracy_avg = EXCLUDED.accuracy_avg,accuracy_stddev = EXCLUDED.accuracy_stddev,
-        accuracy_q1 = EXCLUDED.accuracy_q1,accuracy_median = EXCLUDED.accuracy_median,accuracy_q3 = EXCLUDED.accuracy_q3,
+        train_accuracy_avg = EXCLUDED.train_accuracy_avg,train_accuracy_stddev = EXCLUDED.train_accuracy_stddev,
+        train_accuracy_q1 = EXCLUDED.train_accuracy_q1,train_accuracy_median = EXCLUDED.train_accuracy_median,train_accuracy_q3 = EXCLUDED.train_accuracy_q3,
         test_mean_squared_error_avg = EXCLUDED.test_mean_squared_error_avg,test_mean_squared_error_stddev = EXCLUDED.test_mean_squared_error_stddev,
         test_mean_squared_error_q1 = EXCLUDED.test_mean_squared_error_q1,test_mean_squared_error_median = EXCLUDED.test_mean_squared_error_median,test_mean_squared_error_q3 = EXCLUDED.test_mean_squared_error_q3,
-        mean_squared_error_avg = EXCLUDED.mean_squared_error_avg,mean_squared_error_stddev = EXCLUDED.mean_squared_error_stddev,
-        mean_squared_error_q1 = EXCLUDED.mean_squared_error_q1,mean_squared_error_median = EXCLUDED.mean_squared_error_median,mean_squared_error_q3 = EXCLUDED.mean_squared_error_q3,
+        train_mean_squared_error_avg = EXCLUDED.train_mean_squared_error_avg,train_mean_squared_error_stddev = EXCLUDED.train_mean_squared_error_stddev,
+        train_mean_squared_error_q1 = EXCLUDED.train_mean_squared_error_q1,train_mean_squared_error_median = EXCLUDED.train_mean_squared_error_median,train_mean_squared_error_q3 = EXCLUDED.train_mean_squared_error_q3,
         test_kullback_leibler_divergence_avg = EXCLUDED.test_kullback_leibler_divergence_avg,test_kullback_leibler_divergence_stddev = EXCLUDED.test_kullback_leibler_divergence_stddev,
         test_kullback_leibler_divergence_q1 = EXCLUDED.test_kullback_leibler_divergence_q1,test_kullback_leibler_divergence_median = EXCLUDED.test_kullback_leibler_divergence_median,test_kullback_leibler_divergence_q3 = EXCLUDED.test_kullback_leibler_divergence_q3,
-        kullback_leibler_divergence_avg = EXCLUDED.kullback_leibler_divergence_avg,kullback_leibler_divergence_stddev = EXCLUDED.kullback_leibler_divergence_stddev,
-        kullback_leibler_divergence_q1 = EXCLUDED.kullback_leibler_divergence_q1,kullback_leibler_divergence_median = EXCLUDED.kullback_leibler_divergence_median,kullback_leibler_divergence_q3 = EXCLUDED.kullback_leibler_divergence_q3,
+        train_kullback_leibler_divergence_avg = EXCLUDED.train_kullback_leibler_divergence_avg,train_kullback_leibler_divergence_stddev = EXCLUDED.train_kullback_leibler_divergence_stddev,
+        train_kullback_leibler_divergence_q1 = EXCLUDED.train_kullback_leibler_divergence_q1,train_kullback_leibler_divergence_median = EXCLUDED.train_kullback_leibler_divergence_median,train_kullback_leibler_divergence_q3 = EXCLUDED.train_kullback_leibler_divergence_q3,
         test_loss_min_epoch_min = EXCLUDED.test_loss_min_epoch_min, test_loss_min_epoch_max = EXCLUDED.test_loss_min_epoch_max, test_loss_min_epoch_avg = EXCLUDED.test_loss_min_epoch_avg, test_loss_min_epoch_q1 = EXCLUDED.test_loss_min_epoch_q1, test_loss_min_epoch_median = EXCLUDED.test_loss_min_epoch_median, test_loss_min_epoch_q3 = EXCLUDED.test_loss_min_epoch_q3, test_loss_min_value_min = EXCLUDED.test_loss_min_value_min, test_loss_min_value_max = EXCLUDED.test_loss_min_value_max, test_loss_min_value_avg = EXCLUDED.test_loss_min_value_avg, test_loss_min_value_q1 = EXCLUDED.test_loss_min_value_q1, test_loss_min_value_median = EXCLUDED.test_loss_min_value_median, test_loss_min_value_q3 = EXCLUDED.test_loss_min_value_q3, test_accuracy_max_epoch_min = EXCLUDED.test_accuracy_max_epoch_min, test_accuracy_max_epoch_max = EXCLUDED.test_accuracy_max_epoch_max, test_accuracy_max_epoch_avg = EXCLUDED.test_accuracy_max_epoch_avg, test_accuracy_max_epoch_q1 = EXCLUDED.test_accuracy_max_epoch_q1, test_accuracy_max_epoch_median = EXCLUDED.test_accuracy_max_epoch_median, test_accuracy_max_epoch_q3 = EXCLUDED.test_accuracy_max_epoch_q3, test_accuracy_max_value_min = EXCLUDED.test_accuracy_max_value_min, test_accuracy_max_value_max = EXCLUDED.test_accuracy_max_value_max, test_accuracy_max_value_avg = EXCLUDED.test_accuracy_max_value_avg, test_accuracy_max_value_q1 = EXCLUDED.test_accuracy_max_value_q1, test_accuracy_max_value_median = EXCLUDED.test_accuracy_max_value_median, test_accuracy_max_value_q3 = EXCLUDED.test_accuracy_max_value_q3, test_mean_squared_error_min_epoch_min = EXCLUDED.test_mean_squared_error_min_epoch_min, test_mean_squared_error_min_epoch_max = EXCLUDED.test_mean_squared_error_min_epoch_max, test_mean_squared_error_min_epoch_avg = EXCLUDED.test_mean_squared_error_min_epoch_avg, test_mean_squared_error_min_epoch_q1 = EXCLUDED.test_mean_squared_error_min_epoch_q1, test_mean_squared_error_min_epoch_median = EXCLUDED.test_mean_squared_error_min_epoch_median, test_mean_squared_error_min_epoch_q3 = EXCLUDED.test_mean_squared_error_min_epoch_q3, test_mean_squared_error_min_value_min = EXCLUDED.test_mean_squared_error_min_value_min, test_mean_squared_error_min_value_max = EXCLUDED.test_mean_squared_error_min_value_max, test_mean_squared_error_min_value_avg = EXCLUDED.test_mean_squared_error_min_value_avg, test_mean_squared_error_min_value_q1 = EXCLUDED.test_mean_squared_error_min_value_q1, test_mean_squared_error_min_value_median = EXCLUDED.test_mean_squared_error_min_value_median, test_mean_squared_error_min_value_q3 = EXCLUDED.test_mean_squared_error_min_value_q3, test_kullback_leibler_divergence_min_epoch_min = EXCLUDED.test_kullback_leibler_divergence_min_epoch_min, test_kullback_leibler_divergence_min_epoch_max = EXCLUDED.test_kullback_leibler_divergence_min_epoch_max, test_kullback_leibler_divergence_min_epoch_avg = EXCLUDED.test_kullback_leibler_divergence_min_epoch_avg, test_kullback_leibler_divergence_min_epoch_q1 = EXCLUDED.test_kullback_leibler_divergence_min_epoch_q1, test_kullback_leibler_divergence_min_epoch_median = EXCLUDED.test_kullback_leibler_divergence_min_epoch_median, test_kullback_leibler_divergence_min_epoch_q3 = EXCLUDED.test_kullback_leibler_divergence_min_epoch_q3, test_kullback_leibler_divergence_min_value_min = EXCLUDED.test_kullback_leibler_divergence_min_value_min, test_kullback_leibler_divergence_min_value_max = EXCLUDED.test_kullback_leibler_divergence_min_value_max, test_kullback_leibler_divergence_min_value_avg = EXCLUDED.test_kullback_leibler_divergence_min_value_avg, test_kullback_leibler_divergence_min_value_q1 = EXCLUDED.test_kullback_leibler_divergence_min_value_q1, test_kullback_leibler_divergence_min_value_median = EXCLUDED.test_kullback_leibler_divergence_min_value_median, test_kullback_leibler_divergence_min_value_q3 = EXCLUDED.test_kullback_leibler_divergence_min_value_q3
             ;"""))
             rows_affected = cursor.rowcount

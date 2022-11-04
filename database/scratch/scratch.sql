@@ -29,11 +29,11 @@ SELECT pg_size_pretty( pg_total_relation_size('materialized_experiments_3_base')
 SELECT pg_size_pretty( pg_total_relation_size('materialized_experiments_3_loss') );
 SELECT pg_size_pretty( pg_total_relation_size('materialized_experiments_3_history') );
 
-ALTER TABLE materialized_experiments_3_history ADD COLUMN loss real[];
+ALTER TABLE materialized_experiments_3_history ADD COLUMN train_loss real[];
 UPDATE materialized_experiments_3_history h
-SET loss = (SELECT l.loss from materialized_experiments_3_loss l WHERE l.id = h.id);
-alter table materialized_experiments_3_history alter column loss set not null;
-alter table materialized_experiments_3_loss drop column loss;
+SET train_loss = (SELECT l.train_loss from materialized_experiments_3_loss l WHERE l.id = h.id);
+alter table materialized_experiments_3_history alter column train_loss set not null;
+alter table materialized_experiments_3_loss drop column train_loss;
 alter table materialized_experiments_3_loss rename to materialized_experiments_3_test_loss;
 
 ALTER TABLE materialized_experiments_3_history ADD COLUMN test_loss real[];
@@ -284,7 +284,7 @@ create table materialized_experiments_0
     groupname                                  varchar,
     jobid                                      bigint,
     iterations                                 bigint,
-    loss                                       double precision,
+    train_loss                                       double precision,
     num_classes                                bigint,
     num_features                               bigint,
     num_inputs                                 bigint,
@@ -384,10 +384,10 @@ FROM
 WHERE jobqueue.uuid = materialized_experiments_0.job;
 
 
-INSERT INTO COUNT(*), doc.loss, config.budget, config.topology, config.residual_mode, config.dataset, config.test_split, config.label_noise
+INSERT INTO COUNT(*), doc.train_loss, config.budget, config.topology, config.residual_mode, config.dataset, config.test_split, config.label_noise
 FROM log,
      jsonb_to_record((log.doc->'config')::jsonb) config(budget int, topology text, residual_mode text, depth int, dataset text, test_split text, label_noise text),
-     jsonb_to_record((log.doc)::jsonb) doc(loss float)
+     jsonb_to_record((log.doc)::jsonb) doc(train_loss float)
 WHERE
     log.groupname = 'fixed_3k_1'
 
@@ -463,7 +463,7 @@ SELECT
     log.groupname AS groupname,
     CAST(log."doc" -> 'environment' ->> 'SLURM_JOB_ID' AS BIGINT) AS jobid,
     (log.doc->'iterations')::bigint AS "iterations",
-    (CASE WHEN jsonb_typeof(log.doc->'loss') = 'number' THEN (log.doc->'loss')::float END)  AS "loss",
+    (CASE WHEN jsonb_typeof(log.doc->'train_loss') = 'number' THEN (log.doc->'train_loss')::float END)  AS "train_loss",
     CAST((log.doc->>'num_classes')::float AS BIGINT) AS "num_classes",
     CAST((log.doc->>'num_features')::float AS BIGINT) AS "num_features",
     (log.doc->'num_inputs')::bigint AS "num_inputs",
@@ -490,24 +490,24 @@ SELECT
     (log.doc->'config'->>'residual_mode') AS "residual_mode",
     (CASE WHEN jsonb_typeof(log.doc->'config'->'test_split') = 'number' THEN (log.doc->'config'->'test_split')::float END) AS "test_split",
     (log.doc->'config'->>'topology') AS "topology",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'loss') as v) AS "history_loss",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'hinge') as v) AS "history_hinge",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'accuracy') as v) AS "history_accuracy",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_loss') as v) AS "history_loss",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_hinge') as v) AS "history_hinge",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_accuracy') as v) AS "history_accuracy",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_loss') as v) AS "history_test_loss",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_hinge') as v) AS "history_test_hinge",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_accuracy') as v) AS "history_test_accuracy",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'squared_hinge') as v) AS "history_squared_hinge",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'cosine_similarity') as v) AS "history_cosine_similarity",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_squared_hinge') as v) AS "history_squared_hinge",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_cosine_similarity') as v) AS "history_cosine_similarity",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_squared_hinge') as v) AS "history_test_squared_hinge",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_error') as v) AS "history_mean_squared_error",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_absolute_error') as v) AS "history_mean_absolute_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_mean_squared_error') as v) AS "history_mean_squared_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_mean_absolute_error') as v) AS "history_mean_absolute_error",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_cosine_similarity') as v) AS "history_test_cosine_similarity",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_mean_squared_error') as v) AS "history_test_mean_squared_error",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'root_mean_squared_error') as v) AS "history_root_mean_squared_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_root_mean_squared_error') as v) AS "history_root_mean_squared_error",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_mean_absolute_error') as v) AS "history_test_mean_absolute_error",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'kullback_leibler_divergence') as v) AS "history_kullback_leibler_divergence",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_kullback_leibler_divergence') as v) AS "history_kullback_leibler_divergence",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_root_mean_squared_error') as v) AS "history_test_root_mean_squared_error",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_logarithmic_error') as v) AS "history_mean_squared_logarithmic_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'train_mean_squared_logarithmic_error') as v) AS "history_mean_squared_logarithmic_error",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_kullback_leibler_divergence') as v) AS "history_test_kullback_leibler_divergence",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_mean_squared_logarithmic_error') as v) AS "history_test_mean_squared_logarithmic_error",
     (jobqueue.end_time - jobqueue.start_time) AS job_length,
@@ -523,7 +523,7 @@ SELECT
 
 
 SELECT
-    (log.doc->>'loss')::float AS "loss",
+    (log.doc->>'train_loss')::float AS "train_loss",
     (log.doc->>'test_loss')::float AS "test_loss",
     (log.doc->>'test_loss')::float AS "test_loss",
     (log.doc->'config'->'early_stopping'->>'min_delta')::float AS "early_stopping.min_delta",
@@ -536,8 +536,8 @@ SELECT
         log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0) AND log.groupname = 'fixed_3k_1';
 
 SELECT
-   (jsonb_typeof(log.doc->'loss') = 'null'),
-    (CASE WHEN jsonb_typeof(log.doc->'loss') = 'number' THEN (log.doc->'loss')::float END) AS "loss",
+   (jsonb_typeof(log.doc->'train_loss') = 'null'),
+    (CASE WHEN jsonb_typeof(log.doc->'train_loss') = 'number' THEN (log.doc->'train_loss')::float END) AS "train_loss",
     (jsonb_typeof(log.doc->'test_loss') = 'null'),
     (jsonb_typeof(log.doc->'test_loss') = 'null'),
     (jsonb_typeof(log.doc->'config'->'early_stopping'->'min_delta') = 'null'),
@@ -552,7 +552,7 @@ SELECT
         jobqueue.uuid = log.job AND
         log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0) AND log.groupname = 'fixed_3k_1';
 --         AND (
---             (jsonb_typeof(log.doc->'loss') = 'null') OR
+--             (jsonb_typeof(log.doc->'train_loss') = 'null') OR
 --             (jsonb_typeof(log.doc->'test_loss') = 'null') OR
 --             (jsonb_typeof(log.doc->'test_loss') = 'null') OR
 --             (jsonb_typeof(log.doc->'config'->'early_stopping'->'min_delta') = 'null') OR
@@ -578,24 +578,24 @@ SELECT * FROM log
     log.timestamp > (SELECT MAX(timestamp) FROM materialized_experiments_0);
 
 VACUUM materialized_experiments_0;
---   "loss"
---   "hinge"
---   "accuracy"
+--   "train_loss"
+--   "train_hinge"
+--   "train_accuracy"
 --   "test_loss"
 --   "test_hinge"
 --   "test_accuracy"
---   "squared_hinge"
---   "cosine_similarity"
+--   "train_squared_hinge"
+--   "train_cosine_similarity"
 --   "test_squared_hinge"
---   "mean_squared_error"
---   "mean_absolute_error"
+--   "train_mean_squared_error"
+--   "train_mean_absolute_error"
 --   "test_cosine_similarity"
 --   "test_mean_squared_error"
---   "root_mean_squared_error"
+--   "train_root_mean_squared_error"
 --   "test_mean_absolute_error"
---   "kullback_leibler_divergence"
+--   "train_kullback_leibler_divergence"
 --   "test_root_mean_squared_error"
---   "mean_squared_logarithmic_error"
+--   "train_mean_squared_logarithmic_error"
 --   "test_kullback_leibler_divergence"
 --   "test_mean_squared_logarithmic_error"
 
@@ -668,29 +668,29 @@ alter table materialized_experiments_0 add history_test_kullback_leibler_diverge
 alter table materialized_experiments_0 add history_test_mean_squared_logarithmic_error float[];
 
 UPDATE materialized_experiments_0 SET
-    history_loss = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'loss') as v),
-    history_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'hinge') as v),
-    history_accuracy = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'accuracy') as v),
+    history_loss = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_loss') as v),
+    history_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_hinge') as v),
+    history_accuracy = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_accuracy') as v),
     history_test_loss = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_loss') as v),
     history_test_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_hinge') as v),
     history_test_accuracy = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_accuracy') as v),
-    history_squared_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'squared_hinge') as v),
-    history_cosine_similarity = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'cosine_similarity') as v),
+    history_squared_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_squared_hinge') as v),
+    history_cosine_similarity = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_cosine_similarity') as v),
     history_test_squared_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_squared_hinge') as v),
-    history_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_squared_error') as v),
-    history_mean_absolute_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_absolute_error') as v),
+    history_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_mean_squared_error') as v),
+    history_mean_absolute_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_mean_absolute_error') as v),
     history_test_cosine_similarity = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_cosine_similarity') as v),
     history_test_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_mean_squared_error') as v),
-    history_root_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'root_mean_squared_error') as v),
+    history_root_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_root_mean_squared_error') as v),
     history_test_mean_absolute_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_mean_absolute_error') as v),
-    history_kullback_leibler_divergence = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'kullback_leibler_divergence') as v),
+    history_kullback_leibler_divergence = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_kullback_leibler_divergence') as v),
     history_test_root_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_root_mean_squared_error') as v),
-    history_mean_squared_logarithmic_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_squared_logarithmic_error') as v),
+    history_mean_squared_logarithmic_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'train_mean_squared_logarithmic_error') as v),
     history_test_kullback_leibler_divergence = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_kullback_leibler_divergence') as v),
     history_test_mean_squared_logarithmic_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_mean_squared_logarithmic_error') as v);
 
 SELECT "id", "name", "timestamp", "job", "groupname", "jobid",
-           "iterations", "loss", "num_classes", "num_features", "num_inputs",
+           "iterations", "train_loss", "num_classes", "num_features", "num_inputs",
            "num_observations", "num_outputs", "num_weights", "run_name", "task",
            "test_loss", "test_loss", "config.activation", "config.budget",
            "config.dataset", "config.depth", "config.early_stopping.baseline",
@@ -957,24 +957,24 @@ create  TABLE mat_core as
              jsonb_to_record(log.doc) as doc(history jsonb, config jsonb),
              jsonb_to_record(doc.config) as config (dataset text, topology text, residual_mode text, budget bigint, depth smallint, label_noise jsonb),
              jsonb_to_record(doc.history) as history (
-                loss real[],
-                hinge real[],
-                accuracy real[],
+                train_loss real[],
+                train_hinge real[],
+                train_accuracy real[],
                 test_loss real[],
                 test_hinge real[],
                 test_accuracy real[],
-                squared_hinge real[],
-                cosine_similarity real[],
+                train_squared_hinge real[],
+                train_cosine_similarity real[],
                 test_squared_hinge real[],
-                mean_squared_error real[],
-                mean_absolute_error real[],
+                train_mean_squared_error real[],
+                train_mean_absolute_error real[],
                 test_cosine_similarity real[],
                 test_mean_squared_error real[],
-                root_mean_squared_error real[],
+                train_root_mean_squared_error real[],
                 test_mean_absolute_error real[],
-                kullback_leibler_divergence real[],
+                train_kullback_leibler_divergence real[],
                 test_root_mean_squared_error real[],
-                mean_squared_logarithmic_error real[],
+                train_mean_squared_logarithmic_error real[],
                 test_kullback_leibler_divergence real[],
                 test_mean_squared_logarithmic_error real[])
         WHERE
@@ -993,24 +993,24 @@ create  TABLE mat_config as SELECT
              jsonb_to_record(log.doc->'config') as config (dataset text, topology text, residual_mode text, budget bigint, depth smallint, label_noise jsonb),
              jsonb_to_record(log.doc->'config') as config (dataset text, topology text, residual_mode text, budget bigint, depth smallint, label_noise jsonb),
              jsonb_to_record(log.doc->'history') as history (
-                loss real[],
-                hinge real[],
-                accuracy real[],
+                train_loss real[],
+                train_hinge real[],
+                train_accuracy real[],
                 test_loss real[],
                 test_hinge real[],
                 test_accuracy real[],
-                squared_hinge real[],
-                cosine_similarity real[],
+                train_squared_hinge real[],
+                train_cosine_similarity real[],
                 test_squared_hinge real[],
-                mean_squared_error real[],
-                mean_absolute_error real[],
+                train_mean_squared_error real[],
+                train_mean_absolute_error real[],
                 test_cosine_similarity real[],
                 test_mean_squared_error real[],
-                root_mean_squared_error real[],
+                train_root_mean_squared_error real[],
                 test_mean_absolute_error real[],
-                kullback_leibler_divergence real[],
+                train_kullback_leibler_divergence real[],
                 test_root_mean_squared_error real[],
-                mean_squared_logarithmic_error real[],
+                train_mean_squared_logarithmic_error real[],
                 test_kullback_leibler_divergence real[],
                 test_mean_squared_logarithmic_error real[]);
 
@@ -1026,24 +1026,24 @@ EXPLAIN SELECT
              mat_core as log,
              jsonb_to_record(log.doc->'config') as config (dataset text, topology text, residual_mode text, budget bigint, depth smallint, label_noise jsonb),
              jsonb_to_record(log.doc->'history') as history (
-                loss real[],
-                hinge real[],
-                accuracy real[],
+                train_loss real[],
+                train_hinge real[],
+                train_accuracy real[],
                 test_loss real[],
                 test_hinge real[],
                 test_accuracy real[],
-                squared_hinge real[],
-                cosine_similarity real[],
+                train_squared_hinge real[],
+                train_cosine_similarity real[],
                 test_squared_hinge real[],
-                mean_squared_error real[],
-                mean_absolute_error real[],
+                train_mean_squared_error real[],
+                train_mean_absolute_error real[],
                 test_cosine_similarity real[],
                 test_mean_squared_error real[],
-                root_mean_squared_error real[],
+                train_root_mean_squared_error real[],
                 test_mean_absolute_error real[],
-                kullback_leibler_divergence real[],
+                train_kullback_leibler_divergence real[],
                 test_root_mean_squared_error real[],
-                mean_squared_logarithmic_error real[],
+                train_mean_squared_logarithmic_error real[],
                 test_kullback_leibler_divergence real[],
                 test_mean_squared_logarithmic_error real[]);
 
@@ -1062,24 +1062,24 @@ INSERT INTO materialized_experiments_2
         (jobqueue.end_time - jobqueue.start_time) AS job_length,
         (config->'optimizer'->'config'->'learning_rate')::real AS learning_rate,
         (CASE WHEN jsonb_typeof(config.label_noise) = 'number' THEN config.label_noise::real ELSE 0.0 END) AS label_noise,
-        history.loss as history_loss,
-        history.hinge as history_hinge,
-        history.accuracy as history_accuracy,
+        history.train_loss as history_loss,
+        history.train_hinge as history_hinge,
+        history.train_accuracy as history_accuracy,
         history.test_loss as history_test_loss,
         history.test_hinge as history_test_hinge,
         history.test_accuracy as history_test_accuracy,
-        history.squared_hinge as history_squared_hinge,
-        history.cosine_similarity as history_cosine_similarity,
+        history.train_squared_hinge as history_squared_hinge,
+        history.train_cosine_similarity as history_cosine_similarity,
         history.test_squared_hinge as history_test_squared_hinge,
-        history.mean_squared_error as history_mean_squared_error,
-        history.mean_absolute_error as history_mean_absolute_error,
+        history.train_mean_squared_error as history_mean_squared_error,
+        history.train_mean_absolute_error as history_mean_absolute_error,
         history.test_cosine_similarity as history_test_cosine_similarity,
         history.test_mean_squared_error as history_test_mean_squared_error,
-        history.root_mean_squared_error as history_root_mean_squared_error,
+        history.train_root_mean_squared_error as history_root_mean_squared_error,
         history.test_mean_absolute_error as history_test_mean_absolute_error,
-        history.kullback_leibler_divergence as history_kullback_leibler_divergence,
+        history.train_kullback_leibler_divergence as history_kullback_leibler_divergence,
         history.test_root_mean_squared_error as history_test_root_mean_squared_error,
-        history.mean_squared_logarithmic_error as history_mean_squared_logarithmic_error,
+        history.train_mean_squared_logarithmic_error as history_mean_squared_logarithmic_error,
         history.test_kullback_leibler_divergence as history_test_kullback_leibler_divergence,
         history.test_mean_squared_logarithmic_error as history_test_mean_squared_logarithmic_error
         FROM
@@ -1087,24 +1087,24 @@ INSERT INTO materialized_experiments_2
              jobqueue,
              jsonb_to_record(log.doc->'config') as config (dataset text, topology text, residual_mode text, budget bigint, depth smallint, label_noise jsonb),
              jsonb_to_record(log.doc->'history') as history (
-                loss real[],
-                hinge real[],
-                accuracy real[],
+                train_loss real[],
+                train_hinge real[],
+                train_accuracy real[],
                 test_loss real[],
                 test_hinge real[],
                 test_accuracy real[],
-                squared_hinge real[],
-                cosine_similarity real[],
+                train_squared_hinge real[],
+                train_cosine_similarity real[],
                 test_squared_hinge real[],
-                mean_squared_error real[],
-                mean_absolute_error real[],
+                train_mean_squared_error real[],
+                train_mean_absolute_error real[],
                 test_cosine_similarity real[],
                 test_mean_squared_error real[],
-                root_mean_squared_error real[],
+                train_root_mean_squared_error real[],
                 test_mean_absolute_error real[],
-                kullback_leibler_divergence real[],
+                train_kullback_leibler_divergence real[],
                 test_root_mean_squared_error real[],
-                mean_squared_logarithmic_error real[],
+                train_mean_squared_logarithmic_error real[],
                 test_kullback_leibler_divergence real[],
                 test_mean_squared_logarithmic_error real[])
         WHERE

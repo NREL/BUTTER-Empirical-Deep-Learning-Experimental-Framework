@@ -17,6 +17,8 @@ from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 from dmp.task.aspect_test.aspect_test_utils import *
 from dmp.task.task import Parameter
 
+from dmp.task.task_util import remap_key_prefixes
+
 import pandas
 import numpy
 
@@ -219,15 +221,12 @@ class AspectTestExecutor(AspectTestTask):
         # model.save(f'./log/models/{run_name}.h5', save_format='h5')
 
         # rename 'val_' keys to 'test_'
-        # make sure we have a normal dict here...
-        history = {k: v for k, v in history.items()}
+        history = remap_key_prefixes(
+            history, [('val_', 'test_'), ('', 'train_')])  # type: ignore
 
-        old_prefix = 'val_'
-        new_prefix = 'history_'
-        for k in [k for k in history.keys() if k.startsWith(old_prefix)]:
-            new_key = new_prefix + k[len(old_prefix):]
-            history[new_key] = history[k]
-            del history[k]
+        print('history:')
+        print(history)
+        # rename un-prefixed history keys to 'train_'
 
         parameters: Dict[str, Any] = parent.parameters
         parameters['output_activation'] = self.output_activation
@@ -240,5 +239,6 @@ class AspectTestExecutor(AspectTestTask):
         parameters.update(history)  # type: ignore
         parameters.update(worker.worker_info)
 
+        print(parameters)
         # return the result record
         return parameters

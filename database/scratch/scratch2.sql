@@ -42,10 +42,10 @@ WHERE
 select budget, depth, avg(a.val) as value, count(a.val) as count, a.epoch
     from
         materialized_experiments_3_base base,
-        materialized_experiments_3_loss loss,
-        unnest(loss.test_loss) WITH ORDINALITY as a(val, epoch)
+        materialized_experiments_3_loss train_loss,
+        unnest(train_loss.test_loss) WITH ORDINALITY as a(val, epoch)
     WHERE
-        base.id = loss.id and
+        base.id = train_loss.id and
         label_noise = 0.0::real and
         learning_rate = 0.0001::real and
         groupname = 1176 and
@@ -130,24 +130,24 @@ create table materialized_experiments_2
 	batch_size int not null,
 	validation_split real not null,
 	label_noise real not null,
-    loss real[] not null,
-    hinge real[] not null,
-    accuracy real[] not null,
+    train_loss real[] not null,
+    train_hinge real[] not null,
+    train_accuracy real[] not null,
     test_loss real[] not null,
     test_hinge real[] not null,
     test_accuracy real[] not null,
-    squared_hinge real[] not null,
-    cosine_similarity real[] not null,
+    train_squared_hinge real[] not null,
+    train_cosine_similarity real[] not null,
     test_squared_hinge real[] not null,
-    mean_squared_error real[] not null,
-    mean_absolute_error real[] not null,
+    train_mean_squared_error real[] not null,
+    train_mean_absolute_error real[] not null,
     test_cosine_similarity real[] not null,
     test_mean_squared_error real[] not null,
-    root_mean_squared_error real[] not null,
+    train_root_mean_squared_error real[] not null,
     test_mean_absolute_error real[] not null,
-    kullback_leibler_divergence real[] not null,
+    train_kullback_leibler_divergence real[] not null,
     test_root_mean_squared_error real[] not null,
-    mean_squared_logarithmic_error real[] not null,
+    train_mean_squared_logarithmic_error real[] not null,
     test_kullback_leibler_divergence real[] not null,
     test_mean_squared_logarithmic_error real[] not null
 );
@@ -254,24 +254,24 @@ VACUUM log;
 create table materialized_experiments_3_history
 (
 	id int not null PRIMARY KEY,
-    loss real[] not null,
-    hinge real[] not null,
-    accuracy real[] not null,
+    train_loss real[] not null,
+    train_hinge real[] not null,
+    train_accuracy real[] not null,
     test_loss real[] not null,
     test_hinge real[] not null,
     test_accuracy real[] not null,
-    squared_hinge real[] not null,
-    cosine_similarity real[] not null,
+    train_squared_hinge real[] not null,
+    train_cosine_similarity real[] not null,
     test_squared_hinge real[] not null,
-    mean_squared_error real[] not null,
-    mean_absolute_error real[] not null,
+    train_mean_squared_error real[] not null,
+    train_mean_absolute_error real[] not null,
     test_cosine_similarity real[] not null,
     test_mean_squared_error real[] not null,
-    root_mean_squared_error real[] not null,
+    train_root_mean_squared_error real[] not null,
     test_mean_absolute_error real[] not null,
-    kullback_leibler_divergence real[] not null,
+    train_kullback_leibler_divergence real[] not null,
     test_root_mean_squared_error real[] not null,
-    mean_squared_logarithmic_error real[] not null,
+    train_mean_squared_logarithmic_error real[] not null,
     test_kullback_leibler_divergence real[] not null,
     test_mean_squared_logarithmic_error real[] not null
 );
@@ -279,11 +279,11 @@ create table materialized_experiments_3_history
 create table materialized_experiments_3_loss
 (
 	id int not null PRIMARY KEY,
-    loss real[] not null,
+    train_loss real[] not null,
     test_loss real[] not null
 );
-ALTER TABLE materialized_experiments_3_history DROP COLUMN loss, DROP COLUMN test_loss;
-INSERT INTO materialized_experiments_3_loss SELECT id, loss, test_loss from materialized_experiments_3_history ORDER BY id;
+ALTER TABLE materialized_experiments_3_history DROP COLUMN train_loss, DROP COLUMN test_loss;
+INSERT INTO materialized_experiments_3_loss SELECT id, train_loss, test_loss from materialized_experiments_3_history ORDER BY id;
 VACUUM  materialized_experiments_3_history;
 
 CREATE TABLE to_del AS (SELECT id, COUNT(id) as count
@@ -377,48 +377,48 @@ SELECT
     config.budget as budget,
     config.depth as depth,
     (CASE WHEN jsonb_typeof(config.label_noise) = 'number' THEN config.label_noise::real ELSE 0.0 END) AS label_noise,
-    history.loss as history_loss,
-    history.hinge as history_hinge,
-    history.accuracy as history_accuracy,
+    history.train_loss as history_loss,
+    history.train_hinge as history_hinge,
+    history.train_accuracy as history_accuracy,
     history.test_loss as history_test_loss,
     history.test_hinge as history_test_hinge,
     history.test_accuracy as history_test_accuracy,
-    history.squared_hinge as history_squared_hinge,
-    history.cosine_similarity as history_cosine_similarity,
+    history.train_squared_hinge as history_squared_hinge,
+    history.train_cosine_similarity as history_cosine_similarity,
     history.test_squared_hinge as history_test_squared_hinge,
-    history.mean_squared_error as history_mean_squared_error,
-    history.mean_absolute_error as history_mean_absolute_error,
+    history.train_mean_squared_error as history_mean_squared_error,
+    history.train_mean_absolute_error as history_mean_absolute_error,
     history.test_cosine_similarity as history_test_cosine_similarity,
     history.test_mean_squared_error as history_test_mean_squared_error,
-    history.root_mean_squared_error as history_root_mean_squared_error,
+    history.train_root_mean_squared_error as history_root_mean_squared_error,
     history.test_mean_absolute_error as history_test_mean_absolute_error,
-    history.kullback_leibler_divergence as history_kullback_leibler_divergence,
+    history.train_kullback_leibler_divergence as history_kullback_leibler_divergence,
     history.test_root_mean_squared_error as history_test_root_mean_squared_error,
-    history.mean_squared_logarithmic_error as history_mean_squared_logarithmic_error,
+    history.train_mean_squared_logarithmic_error as history_mean_squared_logarithmic_error,
     history.test_kullback_leibler_divergence as history_test_kullback_leibler_divergence,
     history.test_mean_squared_logarithmic_error as history_test_mean_squared_logarithmic_error
     FROM
          log,
          jsonb_to_record(log.doc->'config') as config (dataset text, topology text, residual_mode text, budget bigint, depth smallint, label_noise jsonb),
          jsonb_to_record(log.doc->'history') as history (
-            loss real[],
-            hinge real[],
-            accuracy real[],
+            train_loss real[],
+            train_hinge real[],
+            train_accuracy real[],
             test_loss real[],
             test_hinge real[],
             test_accuracy real[],
-            squared_hinge real[],
-            cosine_similarity real[],
+            train_squared_hinge real[],
+            train_cosine_similarity real[],
             test_squared_hinge real[],
-            mean_squared_error real[],
-            mean_absolute_error real[],
+            train_mean_squared_error real[],
+            train_mean_absolute_error real[],
             test_cosine_similarity real[],
             test_mean_squared_error real[],
-            root_mean_squared_error real[],
+            train_root_mean_squared_error real[],
             test_mean_absolute_error real[],
-            kullback_leibler_divergence real[],
+            train_kullback_leibler_divergence real[],
             test_root_mean_squared_error real[],
-            mean_squared_logarithmic_error real[],
+            train_mean_squared_logarithmic_error real[],
             test_kullback_leibler_divergence real[],
             test_mean_squared_logarithmic_error real[])
     WHERE
@@ -441,24 +441,24 @@ INSERT INTO materialized_experiments_2
         (jobqueue.end_time - jobqueue.start_time) AS job_length,
         (config->'optimizer'->'config'->'learning_rate')::real AS learning_rate,
         (CASE WHEN jsonb_typeof(config.label_noise) = 'number' THEN config.label_noise::real ELSE 0.0 END) AS label_noise,
-        history.loss as history_loss,
-        history.hinge as history_hinge,
-        history.accuracy as history_accuracy,
+        history.train_loss as history_loss,
+        history.train_hinge as history_hinge,
+        history.train_accuracy as history_accuracy,
         history.test_loss as history_test_loss,
         history.test_hinge as history_test_hinge,
         history.test_accuracy as history_test_accuracy,
-        history.squared_hinge as history_squared_hinge,
-        history.cosine_similarity as history_cosine_similarity,
+        history.train_squared_hinge as history_squared_hinge,
+        history.train_cosine_similarity as history_cosine_similarity,
         history.test_squared_hinge as history_test_squared_hinge,
-        history.mean_squared_error as history_mean_squared_error,
-        history.mean_absolute_error as history_mean_absolute_error,
+        history.train_mean_squared_error as history_mean_squared_error,
+        history.train_mean_absolute_error as history_mean_absolute_error,
         history.test_cosine_similarity as history_test_cosine_similarity,
         history.test_mean_squared_error as history_test_mean_squared_error,
-        history.root_mean_squared_error as history_root_mean_squared_error,
+        history.train_root_mean_squared_error as history_root_mean_squared_error,
         history.test_mean_absolute_error as history_test_mean_absolute_error,
-        history.kullback_leibler_divergence as history_kullback_leibler_divergence,
+        history.train_kullback_leibler_divergence as history_kullback_leibler_divergence,
         history.test_root_mean_squared_error as history_test_root_mean_squared_error,
-        history.mean_squared_logarithmic_error as history_mean_squared_logarithmic_error,
+        history.train_mean_squared_logarithmic_error as history_mean_squared_logarithmic_error,
         history.test_kullback_leibler_divergence as history_test_kullback_leibler_divergence,
         history.test_mean_squared_logarithmic_error as history_test_mean_squared_logarithmic_error
         FROM
@@ -466,24 +466,24 @@ INSERT INTO materialized_experiments_2
              jobqueue,
              jsonb_to_record(log.doc->'config') as config (dataset text, topology text, residual_mode text, budget bigint, depth smallint, label_noise jsonb),
              jsonb_to_record(log.doc->'history') as history (
-                loss real[],
-                hinge real[],
-                accuracy real[],
+                train_loss real[],
+                train_hinge real[],
+                train_accuracy real[],
                 test_loss real[],
                 test_hinge real[],
                 test_accuracy real[],
-                squared_hinge real[],
-                cosine_similarity real[],
+                train_squared_hinge real[],
+                train_cosine_similarity real[],
                 test_squared_hinge real[],
-                mean_squared_error real[],
-                mean_absolute_error real[],
+                train_mean_squared_error real[],
+                train_mean_absolute_error real[],
                 test_cosine_similarity real[],
                 test_mean_squared_error real[],
-                root_mean_squared_error real[],
+                train_root_mean_squared_error real[],
                 test_mean_absolute_error real[],
-                kullback_leibler_divergence real[],
+                train_kullback_leibler_divergence real[],
                 test_root_mean_squared_error real[],
-                mean_squared_logarithmic_error real[],
+                train_mean_squared_logarithmic_error real[],
                 test_kullback_leibler_divergence real[],
                 test_mean_squared_logarithmic_error real[])
         WHERE
@@ -497,9 +497,9 @@ SELECT * FROM pg_stat_activity WHERE datname = 'dmpapps'  ORDER BY query;
 SELECT *
 FROM
      materialized_experiments_3_base as mat,
-     materialized_experiments_3_loss as loss
+     materialized_experiments_3_loss as train_loss
 WHERE
-    mat.id = loss.id AND
+    mat.id = train_loss.id AND
     mat."group" = (SELECT id from strings where value = 'fixed_3k_1')AND
     mat.dataset = (SELECT id from strings where value = '201_pol')AND
     mat.topology = (SELECT id from strings where value = 'rectangle')AND
