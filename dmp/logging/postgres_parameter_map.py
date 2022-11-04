@@ -1,4 +1,5 @@
-from typing import Dict, Any
+
+from typing import Any, Dict
 
 from psycopg2 import sql
 

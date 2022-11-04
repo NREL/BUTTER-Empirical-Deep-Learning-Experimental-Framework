@@ -16,11 +16,7 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     devices = []
     devices.extend(['/GPU:' + str(i)
                    for i in range(first_gpu, first_gpu + num_gpus)])
-    # if num_core > num_gpu * 2:  # no CPU device if 2 or fewer CPUs per GPU
     devices.append('/CPU:0')  # TF batches all CPU's into one device
-
-    # make sure we have one thread even if not using any CPUs
-    num_threads = max(1, num_cores)
 
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
     print(
@@ -82,8 +78,6 @@ if __name__ == "__main__":
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     print('\n', flush=True)
-
-    # queue = args.queue
 
     if not isinstance(queue, int):
         queue = 1

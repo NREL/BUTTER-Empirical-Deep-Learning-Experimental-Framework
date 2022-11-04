@@ -380,6 +380,7 @@ sbatch -J ckf_1 -q flex --time-min=4:00:00 --time=48:00:00 --comment=100:00:00 -
 squeue -u ctripp -h | grep -P "\sgpu\s.*\sPD\s" | awk '{print $1}' | xargs scontrol hold
 
 squeue -u ctripp -h | grep -P "gpu" | awk '{print $1}' | xargs scontrol hold
+squeue -u ctripp -h | grep -P "gpu" | awk '{print $1}' | xargs scontrol release
 squeue -u ctripp -h | grep -P ".*\s+\([^)]+\)" | awk '{print $1}' | xargs scontrol hold
 squeue -u ctripp -h | grep -P ".*\s+\([^)]+\)" | awk '{print $1}' | xargs scontrol release
 squeue -u ctripp -h | awk '{print $1}' | xargs scontrol hold

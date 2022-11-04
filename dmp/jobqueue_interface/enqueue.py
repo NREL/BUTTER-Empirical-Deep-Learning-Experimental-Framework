@@ -16,13 +16,10 @@ if __name__ == "__main__":
     parser.add_argument(
         'project', help='project identifier in your jobqueue.json file')
     parser.add_argument('queue', help='queue id to use (smallint)')
-    # parser.add_argument('group', help='group name or tag')
     args = parser.parse_args()
 
     credentials = connect.load_credentials('dmp')
     job_queue = JobQueue(credentials, int(args.queue), check_table=False)
-
-    # job_queue = jobqueue.JobQueue(args.project, args.group, pooling=True)
 
     accumulated = []
     lines = sys.stdin.readlines()

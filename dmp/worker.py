@@ -17,6 +17,7 @@ class Worker:
     _result_logger: ResultLogger
     _strategy: tensorflow.distribute.Strategy
     _worker_info: Dict
+    _max_jobs: Optional[int] = None
 
     @property
     def strategy(self) -> tensorflow.distribute.Strategy:
@@ -30,7 +31,7 @@ class Worker:
         self._job_queue.work_loop(
             lambda worker_id, job: self._handler(worker_id, job))
 
-    def _handler(self, worker_id: uuid.UUID, job: Job):
+    def _handler(self, worker_id: uuid.UUID, job: Job) -> bool:
 
         # demarshal task from job.command
         task: Task = jobqueue_marshal.demarshal(job.command)
@@ -39,7 +40,6 @@ class Worker:
         result = task(self)
 
         # log task run
-
         self._result_logger.log(
             [
                 (
@@ -49,3 +49,9 @@ class Worker:
                 )
             ]
         )
+
+        if self._max_jobs is None:
+            return True
+
+        self._max_jobs -= 1
+        return self._max_jobs > 0
