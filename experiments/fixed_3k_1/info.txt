@@ -213,6 +213,7 @@ squeue -u ctripp -h | grep -P "\s+ctripp\s+.+\s+\(\w+\)" | awk '{print $1}' | xa
 squeue -u ctripp -h | grep -P "\(JobHeldUser\)" | awk '{print $1}' | xargs scontrol release
 hold
 
+squeue -u ctripp -h | grep -P "\sPD\s" | awk '{print $1}' | xargs scontrol hold
 
 squeue -u ctripp -h | awk '{print $1}' | xargs scontrol hold
 
