@@ -128,11 +128,11 @@ CREATE TABLE IF NOT EXISTS run_ ( experiment_id integer, record_timestamp intege
                                                                                           run_id uuid NOT NULL,
                                                                                                       job_id uuid,
                                                                                                       run_parameters smallint[] NOT NULL,
-                                                                                                                                val_loss real[], loss real[], val_accuracy real[], accuracy real[], val_mean_squared_error real[], mean_squared_error real[], val_mean_absolute_error real[], mean_absolute_error real[], val_root_mean_squared_error real[], root_mean_squared_error real[], val_mean_squared_logarithmic_error real[], mean_squared_logarithmic_error real[], val_hinge real[], hinge real[], val_squared_hinge real[], squared_hinge real[], val_cosine_similarity real[], cosine_similarity real[], val_kullback_leibler_divergence real[], kullback_leibler_divergence real[], platform text , git_hash text , hostname text , slurm_job_id text , seed bigint, save_every_epochs smallint CONSTRAINT run__pkey PRIMARY KEY (run_id));
+                                                                                                                                test_loss real[], loss real[], test_accuracy real[], accuracy real[], test_mean_squared_error real[], mean_squared_error real[], test_mean_absolute_error real[], mean_absolute_error real[], test_root_mean_squared_error real[], root_mean_squared_error real[], test_mean_squared_logarithmic_error real[], mean_squared_logarithmic_error real[], test_hinge real[], hinge real[], test_squared_hinge real[], squared_hinge real[], test_cosine_similarity real[], cosine_similarity real[], test_kullback_leibler_divergence real[], kullback_leibler_divergence real[], platform text , git_hash text , hostname text , slurm_job_id text , seed bigint, save_every_epochs smallint CONSTRAINT run__pkey PRIMARY KEY (run_id));
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_loss
+ALTER COLUMN test_loss
 SET
 STORAGE EXTERNAL;
 
@@ -144,7 +144,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_accuracy
+ALTER COLUMN test_accuracy
 SET
 STORAGE EXTERNAL;
 
@@ -156,7 +156,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_mean_squared_error
+ALTER COLUMN test_mean_squared_error
 SET
 STORAGE EXTERNAL;
 
@@ -168,7 +168,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_mean_absolute_error
+ALTER COLUMN test_mean_absolute_error
 SET
 STORAGE EXTERNAL;
 
@@ -180,7 +180,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_root_mean_squared_error
+ALTER COLUMN test_root_mean_squared_error
 SET
 STORAGE EXTERNAL;
 
@@ -192,7 +192,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_mean_squared_logarithmic_error
+ALTER COLUMN test_mean_squared_logarithmic_error
 SET
 STORAGE EXTERNAL;
 
@@ -204,7 +204,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_hinge
+ALTER COLUMN test_hinge
 SET
 STORAGE EXTERNAL;
 
@@ -216,7 +216,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_squared_hinge
+ALTER COLUMN test_squared_hinge
 SET
 STORAGE EXTERNAL;
 
@@ -228,7 +228,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_cosine_similarity
+ALTER COLUMN test_cosine_similarity
 SET
 STORAGE EXTERNAL;
 
@@ -240,7 +240,7 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS run_
-ALTER COLUMN val_kullback_leibler_divergence
+ALTER COLUMN test_kullback_leibler_divergence
 SET
 STORAGE EXTERNAL;
 
@@ -298,25 +298,25 @@ CREATE TABLE IF NOT EXISTS experiment_summary_ ( experiment_id integer NOT NULL,
                                                                        update_timestamp integer NOT NULL DEFAULT ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer,
                                                                                                                  experiment_parameters smallint[] NOT NULL,
                                                                                                                                                   num_runs smallint NOT NULL,
-                                                                                                                                                                    num smallint[], val_loss_num_finite smallint[], val_loss_avg real[], val_loss_stddev real[], val_loss_min real[], val_loss_max real[], val_loss_percentile real[], loss_num_finite smallint[], loss_avg real[], loss_stddev real[], loss_min real[], loss_max real[], loss_percentile real[], val_accuracy_avg real[], val_accuracy_stddev real[], accuracy_avg real[], accuracy_stddev real[], val_mean_squared_error_avg real[], val_mean_squared_error_stddev real[], mean_squared_error_avg real[], mean_squared_error_stddev real[], val_kullback_leibler_divergence_avg real[], val_kullback_leibler_divergence_stddev real[], kullback_leibler_divergence_avg real[], kullback_leibler_divergence_stddev real[], num_free_parameters integer, network_structure jsonb,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         widths integer[], size bigint, relative_size_error real, val_loss_median real[], loss_median real[], val_accuracy_median real[], accuracy_median real[], val_mean_squared_error_median real[], mean_squared_error_median real[], kullback_leibler_divergence_median real[], val_kullback_leibler_divergence_median real[], external_batch text , primary_sweep boolean NOT NULL DEFAULT false,
+                                                                                                                                                                    num smallint[], test_loss_num_finite smallint[], test_loss_avg real[], test_loss_stddev real[], test_loss_min real[], test_loss_max real[], test_loss_percentile real[], loss_num_finite smallint[], loss_avg real[], loss_stddev real[], loss_min real[], loss_max real[], loss_percentile real[], test_accuracy_avg real[], test_accuracy_stddev real[], accuracy_avg real[], accuracy_stddev real[], test_mean_squared_error_avg real[], test_mean_squared_error_stddev real[], mean_squared_error_avg real[], mean_squared_error_stddev real[], test_kullback_leibler_divergence_avg real[], test_kullback_leibler_divergence_stddev real[], kullback_leibler_divergence_avg real[], kullback_leibler_divergence_stddev real[], num_free_parameters integer, network_structure jsonb,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         widths integer[], size bigint, relative_size_error real, test_loss_median real[], loss_median real[], test_accuracy_median real[], accuracy_median real[], test_mean_squared_error_median real[], mean_squared_error_median real[], kullback_leibler_divergence_median real[], test_kullback_leibler_divergence_median real[], external_batch text , primary_sweep boolean NOT NULL DEFAULT false,
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  "300_epoch_sweep" boolean NOT NULL DEFAULT false,
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             "30k_epoch_sweep" boolean NOT NULL DEFAULT false,
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        learning_rate_sweep boolean NOT NULL DEFAULT false,
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     label_noise_sweep boolean NOT NULL DEFAULT false,
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                batch_size_sweep boolean NOT NULL DEFAULT false,
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          regularization_sweep boolean NOT NULL DEFAULT false,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       val_loss_q1 double precision[], val_loss_q3 double precision[], loss_q1 double precision[], loss_q3 double precision[], val_accuracy_q1 double precision[], val_accuracy_q3 double precision[], accuracy_q1 double precision[], accuracy_q3 double precision[], val_mean_squared_error_q1 double precision[], val_mean_squared_error_q3 double precision[], mean_squared_error_q1 double precision[], mean_squared_error_q3 double precision[], val_mean_absolute_error_q1 double precision[], val_mean_absolute_error_q3 double precision[], mean_absolute_error_q1 double precision[], mean_absolute_error_q3 double precision[], val_root_mean_squared_error_q1 double precision[], val_root_mean_squared_error_q3 double precision[], root_mean_squared_error_q1 double precision[], root_mean_squared_error_q3 double precision[], val_mean_squared_logarithmic_error_q1 double precision[], val_mean_squared_logarithmic_error_q3 double precision[], mean_squared_logarithmic_error_q1 double precision[], mean_squared_logarithmic_error_q3 double precision[], val_hinge_q1 double precision[], val_hinge_q3 double precision[], hinge_q1 double precision[], hinge_q3 double precision[], val_squared_hinge_q1 double precision[], val_squared_hinge_q3 double precision[], squared_hinge_q1 double precision[], squared_hinge_q3 double precision[], val_cosine_similarity_q1 double precision[], val_cosine_similarity_q3 double precision[], cosine_similarity_q1 double precision[], cosine_similarity_q3 double precision[], val_kullback_leibler_divergence_q1 double precision[], val_kullback_leibler_divergence_q3 double precision[], kullback_leibler_divergence_q1 double precision[], kullback_leibler_divergence_q3 double precision[], CONSTRAINT experiment_summary__pkey1 PRIMARY KEY (experiment_id));
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       test_loss_q1 double precision[], test_loss_q3 double precision[], loss_q1 double precision[], loss_q3 double precision[], test_accuracy_q1 double precision[], test_accuracy_q3 double precision[], accuracy_q1 double precision[], accuracy_q3 double precision[], test_mean_squared_error_q1 double precision[], test_mean_squared_error_q3 double precision[], mean_squared_error_q1 double precision[], mean_squared_error_q3 double precision[], test_mean_absolute_error_q1 double precision[], test_mean_absolute_error_q3 double precision[], mean_absolute_error_q1 double precision[], mean_absolute_error_q3 double precision[], test_root_mean_squared_error_q1 double precision[], test_root_mean_squared_error_q3 double precision[], root_mean_squared_error_q1 double precision[], root_mean_squared_error_q3 double precision[], test_mean_squared_logarithmic_error_q1 double precision[], test_mean_squared_logarithmic_error_q3 double precision[], mean_squared_logarithmic_error_q1 double precision[], mean_squared_logarithmic_error_q3 double precision[], test_hinge_q1 double precision[], test_hinge_q3 double precision[], hinge_q1 double precision[], hinge_q3 double precision[], test_squared_hinge_q1 double precision[], test_squared_hinge_q3 double precision[], squared_hinge_q1 double precision[], squared_hinge_q3 double precision[], test_cosine_similarity_q1 double precision[], test_cosine_similarity_q3 double precision[], cosine_similarity_q1 double precision[], cosine_similarity_q3 double precision[], test_kullback_leibler_divergence_q1 double precision[], test_kullback_leibler_divergence_q3 double precision[], kullback_leibler_divergence_q1 double precision[], kullback_leibler_divergence_q3 double precision[], CONSTRAINT experiment_summary__pkey1 PRIMARY KEY (experiment_id));
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_loss_q1
+ALTER COLUMN test_loss_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_loss_q3
+ALTER COLUMN test_loss_q3
 SET
 STORAGE EXTERNAL;
 
@@ -334,13 +334,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_accuracy_q1
+ALTER COLUMN test_accuracy_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_accuracy_q3
+ALTER COLUMN test_accuracy_q3
 SET
 STORAGE EXTERNAL;
 
@@ -358,13 +358,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_mean_squared_error_q1
+ALTER COLUMN test_mean_squared_error_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_mean_squared_error_q3
+ALTER COLUMN test_mean_squared_error_q3
 SET
 STORAGE EXTERNAL;
 
@@ -382,13 +382,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_mean_absolute_error_q1
+ALTER COLUMN test_mean_absolute_error_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_mean_absolute_error_q3
+ALTER COLUMN test_mean_absolute_error_q3
 SET
 STORAGE EXTERNAL;
 
@@ -406,13 +406,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_root_mean_squared_error_q1
+ALTER COLUMN test_root_mean_squared_error_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_root_mean_squared_error_q3
+ALTER COLUMN test_root_mean_squared_error_q3
 SET
 STORAGE EXTERNAL;
 
@@ -430,13 +430,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_mean_squared_logarithmic_error_q1
+ALTER COLUMN test_mean_squared_logarithmic_error_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_mean_squared_logarithmic_error_q3
+ALTER COLUMN test_mean_squared_logarithmic_error_q3
 SET
 STORAGE EXTERNAL;
 
@@ -454,13 +454,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_hinge_q1
+ALTER COLUMN test_hinge_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_hinge_q3
+ALTER COLUMN test_hinge_q3
 SET
 STORAGE EXTERNAL;
 
@@ -478,13 +478,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_squared_hinge_q1
+ALTER COLUMN test_squared_hinge_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_squared_hinge_q3
+ALTER COLUMN test_squared_hinge_q3
 SET
 STORAGE EXTERNAL;
 
@@ -502,13 +502,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_cosine_similarity_q1
+ALTER COLUMN test_cosine_similarity_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_cosine_similarity_q3
+ALTER COLUMN test_cosine_similarity_q3
 SET
 STORAGE EXTERNAL;
 
@@ -526,13 +526,13 @@ STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_kullback_leibler_divergence_q1
+ALTER COLUMN test_kullback_leibler_divergence_q1
 SET
 STORAGE EXTERNAL;
 
 
 ALTER TABLE IF EXISTS experiment_summary_
-ALTER COLUMN val_kullback_leibler_divergence_q3
+ALTER COLUMN test_kullback_leibler_divergence_q3
 SET
 STORAGE EXTERNAL;
 

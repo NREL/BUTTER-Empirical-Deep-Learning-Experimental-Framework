@@ -160,7 +160,7 @@ create table materialized_experiments_0
     run_name                                   text,
     task                                       text,
     test_loss                                  double precision,
-    val_loss                                   double precision,
+    test_loss                                   double precision,
     activation                                 text,
     budget                                     bigint,
     dataset                                    text,
@@ -180,23 +180,23 @@ create table materialized_experiments_0
     history_loss                               double precision[],
     history_hinge                              double precision[],
     history_accuracy                           double precision[],
-    history_val_loss                           double precision[],
-    history_val_hinge                          double precision[],
-    history_val_accuracy                       double precision[],
+    history_test_loss                           double precision[],
+    history_test_hinge                          double precision[],
+    history_test_accuracy                       double precision[],
     history_squared_hinge                      double precision[],
     history_cosine_similarity                  double precision[],
-    history_val_squared_hinge                  double precision[],
+    history_test_squared_hinge                  double precision[],
     history_mean_squared_error                 double precision[],
     history_mean_absolute_error                double precision[],
-    history_val_cosine_similarity              double precision[],
-    history_val_mean_squared_error             double precision[],
+    history_test_cosine_similarity              double precision[],
+    history_test_mean_squared_error             double precision[],
     history_root_mean_squared_error            double precision[],
-    history_val_mean_absolute_error            double precision[],
+    history_test_mean_absolute_error            double precision[],
     history_kullback_leibler_divergence        double precision[],
-    history_val_root_mean_squared_error        double precision[],
+    history_test_root_mean_squared_error        double precision[],
     history_mean_squared_logarithmic_error     double precision[],
-    history_val_kullback_leibler_divergence    double precision[],
-    history_val_mean_squared_logarithmic_error double precision[],
+    history_test_kullback_leibler_divergence    double precision[],
+    history_test_mean_squared_logarithmic_error double precision[],
     job_length                                 interval,
     learning_rate                              double precision,
     label_noise                                double precision
@@ -268,7 +268,7 @@ SELECT
     (log.doc->>'run_name') AS "run_name",
     (log.doc->>'task') AS "task",
     (CASE WHEN jsonb_typeof(log.doc->'test_loss') = 'number' THEN (log.doc->'test_loss')::float END) AS "test_loss",
-    (CASE WHEN jsonb_typeof(log.doc->'val_loss') = 'number' THEN (log.doc->'val_loss')::float END) AS "val_loss",
+    (CASE WHEN jsonb_typeof(log.doc->'test_loss') = 'number' THEN (log.doc->'test_loss')::float END) AS "test_loss",
     (log.doc->'config'->>'activation') AS "activation",
     (log.doc->'config'->'budget')::bigint AS "budget",
     (log.doc->'config'->>'dataset') AS "dataset",
@@ -288,23 +288,23 @@ SELECT
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'loss') as v) AS "history_loss",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'hinge') as v) AS "history_hinge",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'accuracy') as v) AS "history_accuracy",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_loss') as v) AS "history_val_loss",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_hinge') as v) AS "history_val_hinge",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_accuracy') as v) AS "history_val_accuracy",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_loss') as v) AS "history_test_loss",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_hinge') as v) AS "history_test_hinge",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_accuracy') as v) AS "history_test_accuracy",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'squared_hinge') as v) AS "history_squared_hinge",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'cosine_similarity') as v) AS "history_cosine_similarity",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_squared_hinge') as v) AS "history_val_squared_hinge",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_squared_hinge') as v) AS "history_test_squared_hinge",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_error') as v) AS "history_mean_squared_error",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_absolute_error') as v) AS "history_mean_absolute_error",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_cosine_similarity') as v) AS "history_val_cosine_similarity",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_squared_error') as v) AS "history_val_mean_squared_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_cosine_similarity') as v) AS "history_test_cosine_similarity",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_mean_squared_error') as v) AS "history_test_mean_squared_error",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'root_mean_squared_error') as v) AS "history_root_mean_squared_error",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_absolute_error') as v) AS "history_val_mean_absolute_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_mean_absolute_error') as v) AS "history_test_mean_absolute_error",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'kullback_leibler_divergence') as v) AS "history_kullback_leibler_divergence",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_root_mean_squared_error') as v) AS "history_val_root_mean_squared_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_root_mean_squared_error') as v) AS "history_test_root_mean_squared_error",
     (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'mean_squared_logarithmic_error') as v) AS "history_mean_squared_logarithmic_error",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_kullback_leibler_divergence') as v) AS "history_val_kullback_leibler_divergence",
-    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'val_mean_squared_logarithmic_error') as v) AS "history_val_mean_squared_logarithmic_error",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_kullback_leibler_divergence') as v) AS "history_test_kullback_leibler_divergence",
+    (SELECT array_agg(CASE WHEN jsonb_typeof(v) = 'number' THEN v::float END) AS v FROM jsonb_array_elements(log.doc->'history'->'test_mean_squared_logarithmic_error') as v) AS "history_test_mean_squared_logarithmic_error",
     (jobqueue.end_time - jobqueue.start_time) AS job_length,
     (CASE WHEN jsonb_typeof(log.doc->'config'->'label_noise') = 'number' THEN (log.doc->'config'->'label_noise')::float END) AS "label_noise",
     (CASE WHEN jsonb_typeof(log.doc->'config'->'optimizer'->'config'->'learning_rate') = 'number' THEN (log.doc->'config'->'optimizer'->'config'->'learning_rate')::float END) AS "learning_rate"
@@ -320,7 +320,7 @@ SELECT
 SELECT
     (log.doc->>'loss')::float AS "loss",
     (log.doc->>'test_loss')::float AS "test_loss",
-    (log.doc->>'val_loss')::float AS "val_loss",
+    (log.doc->>'test_loss')::float AS "test_loss",
     (log.doc->'config'->'early_stopping'->>'min_delta')::float AS "early_stopping.min_delta",
     (log.doc->'config'->>'test_split')::float AS "test_split"
     FROM
@@ -334,7 +334,7 @@ SELECT
    (jsonb_typeof(log.doc->'loss') = 'null'),
     (CASE WHEN jsonb_typeof(log.doc->'loss') = 'number' THEN (log.doc->'loss')::float END) AS "loss",
     (jsonb_typeof(log.doc->'test_loss') = 'null'),
-    (jsonb_typeof(log.doc->'val_loss') = 'null'),
+    (jsonb_typeof(log.doc->'test_loss') = 'null'),
     (jsonb_typeof(log.doc->'config'->'early_stopping'->'min_delta') = 'null'),
     (jsonb_typeof(log.doc->'config'->'test_split') = 'null'),
     (jsonb_typeof(log.doc->'config'->'label_noise') = 'null'),
@@ -349,7 +349,7 @@ SELECT
 --         AND (
 --             (jsonb_typeof(log.doc->'loss') = 'null') OR
 --             (jsonb_typeof(log.doc->'test_loss') = 'null') OR
---             (jsonb_typeof(log.doc->'val_loss') = 'null') OR
+--             (jsonb_typeof(log.doc->'test_loss') = 'null') OR
 --             (jsonb_typeof(log.doc->'config'->'early_stopping'->'min_delta') = 'null') OR
 --             (jsonb_typeof(log.doc->'config'->'test_split') = 'null') OR
 --             (jsonb_typeof(log.doc->'config'->'label_noise') = 'null') OR
@@ -376,23 +376,23 @@ VACUUM materialized_experiments_0;
 --   "loss"
 --   "hinge"
 --   "accuracy"
---   "val_loss"
---   "val_hinge"
---   "val_accuracy"
+--   "test_loss"
+--   "test_hinge"
+--   "test_accuracy"
 --   "squared_hinge"
 --   "cosine_similarity"
---   "val_squared_hinge"
+--   "test_squared_hinge"
 --   "mean_squared_error"
 --   "mean_absolute_error"
---   "val_cosine_similarity"
---   "val_mean_squared_error"
+--   "test_cosine_similarity"
+--   "test_mean_squared_error"
 --   "root_mean_squared_error"
---   "val_mean_absolute_error"
+--   "test_mean_absolute_error"
 --   "kullback_leibler_divergence"
---   "val_root_mean_squared_error"
+--   "test_root_mean_squared_error"
 --   "mean_squared_logarithmic_error"
---   "val_kullback_leibler_divergence"
---   "val_mean_squared_logarithmic_error"
+--   "test_kullback_leibler_divergence"
+--   "test_mean_squared_logarithmic_error"
 
 CREATE TABLE materialized_experiments_0_history (
     id INTEGER,
@@ -444,50 +444,50 @@ ALTER TABLE materialized_experiments_0_history ADD PRIMARY KEY (id, type, iterat
 alter table materialized_experiments_0 add history_loss float[];
 alter table materialized_experiments_0 add history_hinge float[];
 alter table materialized_experiments_0 add history_accuracy float[];
-alter table materialized_experiments_0 add history_val_loss float[];
-alter table materialized_experiments_0 add history_val_hinge float[];
-alter table materialized_experiments_0 add history_val_accuracy float[];
+alter table materialized_experiments_0 add history_test_loss float[];
+alter table materialized_experiments_0 add history_test_hinge float[];
+alter table materialized_experiments_0 add history_test_accuracy float[];
 alter table materialized_experiments_0 add history_squared_hinge float[];
 alter table materialized_experiments_0 add history_cosine_similarity float[];
-alter table materialized_experiments_0 add history_val_squared_hinge float[];
+alter table materialized_experiments_0 add history_test_squared_hinge float[];
 alter table materialized_experiments_0 add history_mean_squared_error float[];
 alter table materialized_experiments_0 add history_mean_absolute_error float[];
-alter table materialized_experiments_0 add history_val_cosine_similarity float[];
-alter table materialized_experiments_0 add history_val_mean_squared_error float[];
+alter table materialized_experiments_0 add history_test_cosine_similarity float[];
+alter table materialized_experiments_0 add history_test_mean_squared_error float[];
 alter table materialized_experiments_0 add history_root_mean_squared_error float[];
-alter table materialized_experiments_0 add history_val_mean_absolute_error float[];
+alter table materialized_experiments_0 add history_test_mean_absolute_error float[];
 alter table materialized_experiments_0 add history_kullback_leibler_divergence float[];
-alter table materialized_experiments_0 add history_val_root_mean_squared_error float[];
+alter table materialized_experiments_0 add history_test_root_mean_squared_error float[];
 alter table materialized_experiments_0 add history_mean_squared_logarithmic_error float[];
-alter table materialized_experiments_0 add history_val_kullback_leibler_divergence float[];
-alter table materialized_experiments_0 add history_val_mean_squared_logarithmic_error float[];
+alter table materialized_experiments_0 add history_test_kullback_leibler_divergence float[];
+alter table materialized_experiments_0 add history_test_mean_squared_logarithmic_error float[];
 
 UPDATE materialized_experiments_0 SET
     history_loss = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'loss') as v),
     history_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'hinge') as v),
     history_accuracy = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'accuracy') as v),
-    history_val_loss = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_loss') as v),
-    history_val_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_hinge') as v),
-    history_val_accuracy = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_accuracy') as v),
+    history_test_loss = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_loss') as v),
+    history_test_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_hinge') as v),
+    history_test_accuracy = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_accuracy') as v),
     history_squared_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'squared_hinge') as v),
     history_cosine_similarity = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'cosine_similarity') as v),
-    history_val_squared_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_squared_hinge') as v),
+    history_test_squared_hinge = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_squared_hinge') as v),
     history_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_squared_error') as v),
     history_mean_absolute_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_absolute_error') as v),
-    history_val_cosine_similarity = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_cosine_similarity') as v),
-    history_val_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_mean_squared_error') as v),
+    history_test_cosine_similarity = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_cosine_similarity') as v),
+    history_test_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_mean_squared_error') as v),
     history_root_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'root_mean_squared_error') as v),
-    history_val_mean_absolute_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_mean_absolute_error') as v),
+    history_test_mean_absolute_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_mean_absolute_error') as v),
     history_kullback_leibler_divergence = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'kullback_leibler_divergence') as v),
-    history_val_root_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_root_mean_squared_error') as v),
+    history_test_root_mean_squared_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_root_mean_squared_error') as v),
     history_mean_squared_logarithmic_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'mean_squared_logarithmic_error') as v),
-    history_val_kullback_leibler_divergence = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_kullback_leibler_divergence') as v),
-    history_val_mean_squared_logarithmic_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'val_mean_squared_logarithmic_error') as v);
+    history_test_kullback_leibler_divergence = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_kullback_leibler_divergence') as v),
+    history_test_mean_squared_logarithmic_error = (SELECT array_agg(v::float) AS v FROM jsonb_array_elements(doc->'history'->'test_mean_squared_logarithmic_error') as v);
 
 SELECT "id", "name", "timestamp", "job", "groupname", "jobid",
            "iterations", "loss", "num_classes", "num_features", "num_inputs",
            "num_observations", "num_outputs", "num_weights", "run_name", "task",
-           "test_loss", "val_loss", "config.activation", "config.budget",
+           "test_loss", "test_loss", "config.activation", "config.budget",
            "config.dataset", "config.depth", "config.early_stopping.baseline",
            "config.early_stopping.min_delta", "config.early_stopping.mode",
            "config.early_stopping.monitor", "config.early_stopping.patience",
@@ -624,7 +624,7 @@ FROM
             (SELECT "config.budget", "config.depth", t.id AS id, MIN(a.val) AS min_value
             FROM
                 materialized_experiments_0 t,
-                unnest(history_val_loss) WITH ORDINALITY as a(val, epoch)
+                unnest(history_test_loss) WITH ORDINALITY as a(val, epoch)
             WHERE
                 "groupname" IN ('fixed_01') and
                 "config.dataset"='201_pol' and
@@ -635,7 +635,7 @@ FROM
         GROUP BY "config.budget", "config.depth") AS min_groups
         WHERE rank = 1) as min_groups,
     materialized_experiments_0 as t,
-    unnest(t.history_val_loss) WITH ORDINALITY as a(value, epoch)
+    unnest(t.history_test_loss) WITH ORDINALITY as a(value, epoch)
 WHERE
     min_groups."config.budget" = t.budget AND
     min_groups."config.depth" = t.depth AND
@@ -656,7 +656,7 @@ GROUP BY min_groups."config.budget", min_groups."config.depth", a.epoch;
 -- FROM
 -- min_values,
 -- materialized_experiments_0 as t,
--- unnest(t.history_val_loss) WITH ORDINALITY as a(value, epoch)
+-- unnest(t.history_test_loss) WITH ORDINALITY as a(value, epoch)
 -- WHERE
 --     min_values.id = t.id
 -- GROUP BY t."config.budget", t."config.depth", a.epoch)
@@ -669,7 +669,7 @@ GROUP BY min_groups."config.budget", min_groups."config.depth", a.epoch;
 -- FROM
 -- min_values,
 -- materialized_experiments_0 as t,
--- unnest(t.history_val_loss) WITH ORDINALITY as a(value, epoch)
+-- unnest(t.history_test_loss) WITH ORDINALITY as a(value, epoch)
 -- WHERE
 --     min_values.id = t.id AND
 --     rank = 1
@@ -681,7 +681,7 @@ WITH summary AS (
         ROW_NUMBER() OVER(PARTITION BY epoch, "config.budget", "config.depth" ORDER BY MIN(a.val) ASC) AS rank
 FROM
     materialized_experiments_0 t,
-    unnest(history_val_loss) WITH ORDINALITY as a(val, epoch)
+    unnest(history_test_loss) WITH ORDINALITY as a(val, epoch)
 WHERE
     "groupname" IN ('fixed_01') and
     "config.dataset"='201_pol' and
@@ -696,7 +696,7 @@ SELECT * FROM summary
 SELECT COUNT(*) FROM log;
 
 SELECT *, time_per_epoch * 1000 as time FROM (
-                               select t.dataset,t.budget,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1))) as stddev
+                               select t.dataset,t.budget,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_test_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_test_loss, 1))) as stddev
                                FROM jobqueue,
                                     materialized_experiments_0 as t
                                WHERE jobqueue.uuid = t.job
@@ -707,7 +707,7 @@ SELECT *, time_per_epoch * 1000 as time FROM (
 ORDER BY time_per_epoch;
 
 SELECT *, time_per_epoch * 1000 as time FROM (
-                               select t.dataset,t.budget,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1))) as stddev
+                               select t.dataset,t.budget,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_test_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_test_loss, 1))) as stddev
                                FROM jobqueue,
                                     materialized_experiments_0 as t
                                WHERE jobqueue.uuid = t.job
@@ -719,7 +719,7 @@ ORDER BY time_per_epoch;
 
 
 SELECT *, time_per_epoch * 1000 as time FROM (
-                               select t.dataset,t.budget,t.depth,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_val_loss, 1))) as stddev
+                               select t.dataset,t.budget,t.depth,AVG((jobqueue.end_time - jobqueue.start_time) / array_length(t.history_test_loss, 1)) as time_per_epoch,stddev(EXTRACT(epoch FROM (jobqueue.end_time - jobqueue.start_time) / array_length(t.history_test_loss, 1))) as stddev
                                FROM jobqueue,
                                     materialized_experiments_0 as t
                                WHERE jobqueue.uuid = t.job

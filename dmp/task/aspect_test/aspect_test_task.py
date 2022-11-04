@@ -36,7 +36,7 @@ class AspectTestTask(Task):
     # epoch_scale: dict
     # rep: int
 
-    test_split: float  
+    test_split: float
     test_split_method: str
     run_config: dict
     # run_config.batch_size
@@ -45,9 +45,9 @@ class AspectTestTask(Task):
 
     label_noise: float
 
-    kernel_regularizer : Optional[dict] = None
-    bias_regularizer : Optional[dict] = None
-    activity_regularizer : Optional[dict] = None
+    kernel_regularizer: Optional[dict] = None
+    bias_regularizer: Optional[dict] = None
+    activity_regularizer: Optional[dict] = None
 
     early_stopping: Optional[dict] = None
     save_every_epochs: Optional[int] = None
@@ -58,7 +58,7 @@ class AspectTestTask(Task):
 
     @property
     def version(self) -> int:
-        return 3
+        return 4
 
     @property
     def parameters(self) -> ParameterDict:

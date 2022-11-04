@@ -197,8 +197,9 @@ class AspectTestExecutor(AspectTestTask):
             prepared_config['x'], prepared_config['y'])
         del prepared_config['y']
 
-        val_data = prepared_config['validation_data']
-        prepared_config['validation_data'] = make_tensorflow_dataset(*val_data)
+        test_data = prepared_config['validation_data']
+        prepared_config['validation_data'] = make_tensorflow_dataset(
+            *test_data)
 
         # fit / train model
         history = self.keras_model.fit(
@@ -216,6 +217,17 @@ class AspectTestExecutor(AspectTestTask):
         # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
         # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
         # model.save(f'./log/models/{run_name}.h5', save_format='h5')
+
+        # rename 'val_' keys to 'test_'
+        # make sure we have a normal dict here...
+        history = {k: v for k, v in history.items()}
+
+        old_prefix = 'val_'
+        new_prefix = 'history_'
+        for k in [k for k in history.keys() if k.startsWith(old_prefix)]:
+            new_key = new_prefix + k[len(old_prefix):]
+            history[new_key] = history[k]
+            del history[k]
 
         parameters: Dict[str, Any] = parent.parameters
         parameters['output_activation'] = self.output_activation

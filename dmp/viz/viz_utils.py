@@ -53,17 +53,17 @@ options = {
         "rectangle", "trapezoid", "exponential",
         "wide_first_2x", "wide_first_4x", "wide_first"],
      "loss": ['loss', 'hinge', 'accuracy',
-       'val_loss', 'val_hinge', 'val_accuracy',
+       'test_loss', 'test_hinge', 'test_accuracy',
        'squared_hinge', 'cosine_similarity',
-       'val_squared_hinge', 'mean_squared_error',
-       'mean_absolute_error', 'val_cosine_similarity',
-       'val_mean_squared_error', 'root_mean_squared_error',
-       'val_mean_absolute_error',
+       'test_squared_hinge', 'mean_squared_error',
+       'mean_absolute_error', 'test_cosine_similarity',
+       'test_mean_squared_error', 'root_mean_squared_error',
+       'test_mean_absolute_error',
        'kullback_leibler_divergence',
-       'val_root_mean_squared_error',
+       'test_root_mean_squared_error',
        'mean_squared_logarithmic_error',
-       'val_kullback_leibler_divergence',
-       'val_mean_squared_logarithmic_error'],
+       'test_kullback_leibler_divergence',
+       'test_mean_squared_logarithmic_error'],
     "residual_mode": ["none", "full"],
     "group_select" : ["min", "max"],
     'depth':[2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20],
@@ -229,7 +229,7 @@ def make_2d_heatmap_viz(df, group, dataset, topology, loss, agg, residual_mode, 
 
 
 # @interact_manual(**options, viz=["imshow", "scatter"])
-# def heatmap_app_3d(groups="('exp00', 'exp01')", dataset="537_houses", topology="wide_first", loss="history_val_mean_squared_error", agg="avg", residual_mode="none", viz="imshow"):
+# def heatmap_app_3d(groups="('exp00', 'exp01')", dataset="537_houses", topology="wide_first", loss="history_test_mean_squared_error", agg="avg", residual_mode="none", viz="imshow"):
 #     query_string = f'''
 #     select "config.budget", "config.depth", {agg}(a.val) as value, count(a.val), a.epoch
 #     from

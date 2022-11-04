@@ -141,12 +141,12 @@ for history in histories:
     print(history.history)
 
 
-# # val_loss, loss, accuracy, val_accuracy
+# # test_loss, loss, accuracy, test_accuracy
 def extract_variable_from_histories(name: str, histories: [tensorflow.keras.callbacks.History]) -> numpy.ndarray:
     return numpy.stack([history.history[name] for history in histories])
 
 
-validation_accuracies = extract_variable_from_histories('val_accuracy', histories)
+validation_accuracies = extract_variable_from_histories('test_accuracy', histories)
 
 # validationAccuracies = numpy.array([[0.9023, 0.91289997, 0.91670001, 0.92089999, 0.92290002,
 #                                      0.92320001, 0.92519999, 0.92439997, 0.92729998, 0.9267,
@@ -207,19 +207,19 @@ minimum_validation_accuracies = numpy.max(validation_accuracies, axis=1)
 pprint(minimum_validation_accuracies)
 validationErrors = 1 - minimum_validation_accuracies
 
-# minValidationLossIndices = [numpy.argmin(history.history['val_loss']) for history in histories]
-# minValidationLoss = [history.history['val_loss'][i] for i, history in enumerate(histories)]
+# minValidationLossIndices = [numpy.argmin(history.history['test_loss']) for history in histories]
+# minValidationLoss = [history.history['test_loss'][i] for i, history in enumerate(histories)]
 #
-# minValidationLossIndices = [numpy.argmin(history.history['val_loss']) for history in histories]
+# minValidationLossIndices = [numpy.argmin(history.history['test_loss']) for history in histories]
 #
 # for history in histories:
 #     # print(history)
 #     # validation_loss_index = numpy.argmin(history.history['loss'])
-#     minValidationLossIndex = numpy.argmin(history.history['val_loss'])
+#     minValidationLossIndex = numpy.argmin(history.history['test_loss'])
 #     minValidationLossIndicies.append(minValidationLossIndex)
-#     minValidationLoss = history.history['val_loss'][minValidationLossIndex]
+#     minValidationLoss = history.history['test_loss'][minValidationLossIndex]
 #     minValidationLossIndicies.append(minValidationLoss)
-#     #['val_acc']  ['acc']
+#     #['test_acc']  ['acc']
 #
 #
 pyplot.style.use('seaborn-whitegrid')

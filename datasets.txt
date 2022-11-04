@@ -136,33 +136,33 @@ widths: [uint32], list of layer widths used
 network_structure: string, marshaled json representation of network structure used
 num_runs: uint8, number of runs aggregated in this summary record
 num: [uint8], number of runs aggregated in this summary record at each epoch
-val_loss_num_finite: [uint8], number of finite test losses at each epoch
-val_loss_avg: [float32], average test loss at each epoch
-val_loss_stddev: [float32], standard deviation of the test loss at each epoch
-val_loss_min: [float32], minimum test loss at each epoch
-val_loss_max: [float32], maximum test loss at each epoch
-val_loss_median: [float32], median test loss at each epoch
+test_loss_num_finite: [uint8], number of finite test losses at each epoch
+test_loss_avg: [float32], average test loss at each epoch
+test_loss_stddev: [float32], standard deviation of the test loss at each epoch
+test_loss_min: [float32], minimum test loss at each epoch
+test_loss_max: [float32], maximum test loss at each epoch
+test_loss_median: [float32], median test loss at each epoch
 loss_num_finite: [uint8], number of finite training losses at each epoch
 loss_avg: [float32], average training loss at each epoch
 loss_stddev: [float32], standard deviation of training losses at each epoch
 loss_min: [float32], minimum training loss at each epoch
 loss_max: [float32], maximum training loss at each epoch
 loss_median: [float32], median training loss at each epoch
-val_accuracy_avg: [float32], average test accuracy at each epoch
-val_accuracy_stddev: [float32], test accuracy standard deviation accuracy at each epoch
-val_accuracy_median: [float32], median test accuracy at each epoch
+test_accuracy_avg: [float32], average test accuracy at each epoch
+test_accuracy_stddev: [float32], test accuracy standard deviation accuracy at each epoch
+test_accuracy_median: [float32], median test accuracy at each epoch
 accuracy_avg: [float32], average training accuracy at each epoch
 accuracy_stddev: [float32], standard deviation of the training accuracy at each epoch
 accuracy_median: [float32], median training accuracy at each epoch
-val_mean_squared_error_avg: [float32], test MSE at each epoch
-val_mean_squared_error_stddev: [float32], test MSE standard deviation at each epoch
-val_mean_squared_error_median: [float32], median test MSE at each epoch
+test_mean_squared_error_avg: [float32], test MSE at each epoch
+test_mean_squared_error_stddev: [float32], test MSE standard deviation at each epoch
+test_mean_squared_error_median: [float32], median test MSE at each epoch
 mean_squared_error_avg: [float32], average training MSE at each epoch
 mean_squared_error_stddev: [float32], training MSE standard deviation at each epoch
 mean_squared_error_median: [float32], median training MSE at each epoch
-val_kullback_leibler_divergence_avg: [float32], average test KL-Divergence at each epoch
-val_kullback_leibler_divergence_stddev: [float32], test KL-Divergence standard deviation at each epoch
-val_kullback_leibler_divergence_median: [float32], median test KL-Divergence at each epoch
+test_kullback_leibler_divergence_avg: [float32], average test KL-Divergence at each epoch
+test_kullback_leibler_divergence_stddev: [float32], test KL-Divergence standard deviation at each epoch
+test_kullback_leibler_divergence_median: [float32], median test KL-Divergence at each epoch
 kullback_leibler_divergence_avg: [float32], average training KL-Divergence at each epoch
 kullback_leibler_divergence_stddev: [float32], training KL-Divergence standard deviation at each epoch
 kullback_leibler_divergence_median: [float32], median training KL-Divergence at each epoch
@@ -217,25 +217,25 @@ command: string, complete marshaled json representation of this run's settings
 network_structure: string, marshaled json representation of this run's network configuration
 widths: uint32, list of layer widths for the network used
 num_free_parameters: uint64, exact number of free parameters in the tested network
-val_loss: [float32], test loss at the end of each epoch
+test_loss: [float32], test loss at the end of each epoch
 loss: [float32], training loss at the end of each epoch
-val_accuracy: [float32], test accuracy at the end of each epoch
+test_accuracy: [float32], test accuracy at the end of each epoch
 accuracy: [float32], training accuracy at the end of each epoch
-val_mean_squared_error: [float32], test MSE at the end of each epoch
+test_mean_squared_error: [float32], test MSE at the end of each epoch
 mean_squared_error: [float32], training MSE at the end of each epoch
-val_mean_absolute_error: [float32], test MAE at the end of each epoch
+test_mean_absolute_error: [float32], test MAE at the end of each epoch
 mean_absolute_error: [float32], training MAE at the end of each epoch
-val_root_mean_squared_error: [float32], test RMS error at the end of each epoch
+test_root_mean_squared_error: [float32], test RMS error at the end of each epoch
 root_mean_squared_error: [float32], training RMS error at the end of each epoch
-val_mean_squared_logarithmic_error: [float32], test MSLE at the end of each epoch
+test_mean_squared_logarithmic_error: [float32], test MSLE at the end of each epoch
 mean_squared_logarithmic_error: [float32], training MSLE at the end of each epoch
-val_hinge: [float32], test hinge loss at the end of each epoch
+test_hinge: [float32], test hinge loss at the end of each epoch
 hinge: [float32], training hinge loss at the end of each epoch
-val_squared_hinge: [float32], test squared hinge loss at the end of each epoch
+test_squared_hinge: [float32], test squared hinge loss at the end of each epoch
 squared_hinge: [float32], training squared hinge loss at the end of each epoch
-val_cosine_similarity: [float32], test cosine similarity at the end of each epoch
+test_cosine_similarity: [float32], test cosine similarity at the end of each epoch
 cosine_similarity: [float32], training cosine similarity at the end of each epoch
-val_kullback_leibler_divergence: [float32], test KL-divergence at the end of each epoch
+test_kullback_leibler_divergence: [float32], test KL-divergence at the end of each epoch
 kullback_leibler_divergence: [float32], training KL-divergence at the end of each epoch
 
 

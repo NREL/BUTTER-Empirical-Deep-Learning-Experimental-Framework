@@ -61,17 +61,17 @@ options = {
         'rectangle', 'trapezoid', 'exponential',
         'wide_first_2x', 'wide_first_4x', 'wide_first'],
     'loss': ['loss', 'hinge', 'accuracy',
-             'val_loss', 'val_hinge', 'val_accuracy',
+             'test_loss', 'test_hinge', 'test_accuracy',
              'squared_hinge', 'cosine_similarity',
-             'val_squared_hinge', 'mean_squared_error',
-             'mean_absolute_error', 'val_cosine_similarity',
-             'val_mean_squared_error', 'root_mean_squared_error',
-             'val_mean_absolute_error',
+             'test_squared_hinge', 'mean_squared_error',
+             'mean_absolute_error', 'test_cosine_similarity',
+             'test_mean_squared_error', 'root_mean_squared_error',
+             'test_mean_absolute_error',
              'kullback_leibler_divergence',
-             'val_root_mean_squared_error',
+             'test_root_mean_squared_error',
              'mean_squared_logarithmic_error',
-             'val_kullback_leibler_divergence',
-             'val_mean_squared_logarithmic_error'],
+             'test_kullback_leibler_divergence',
+             'test_mean_squared_logarithmic_error'],
     'residual_mode': ['none', 'full'],
     'group_select': ['min', 'max'],
     'depth': [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20],
@@ -222,7 +222,7 @@ def make_2d_heatmap_viz(df, group, dataset, shape, loss, agg, residual_mode, viz
 
 def saturation_opacity_3d_plot(
     df=None,
-    statistic='val_loss_avg',
+    statistic='test_loss_avg',
     dataset=None,
     shape=None,
     viz='imshow',
@@ -315,7 +315,7 @@ def saturation_opacity_3d_plot(
 
 def heatmap_3d_plot(
         df=None,
-        statistic='val_loss_avg',
+        statistic='test_loss_avg',
         dataset=None,
         shape=None,
         viz='imshow'):
@@ -409,16 +409,16 @@ def dump_args(func):
 #     group = 'fixed_3k_1'
 
 #     if (agg=='cov'):
-#         val_str = 'stddev(a.val)/avg(a.val)'
+#         test_str = 'stddev(a.val)/avg(a.val)'
 #     else:
-#         val_str = f'{agg}(a.val)'
+#         test_str = f'{agg}(a.val)'
 
 #     query_string = f'''
-#     select size, {val_str} as value, count(a.val) as count, a.epoch, dataset, shape, residual_mode
+#     select size, {test_str} as value, count(a.val) as count, a.epoch, dataset, shape, residual_mode
 #     from
 #         materialized_experiments_3_base base,
-#         materialized_experiments_3_val_loss history,
-#         unnest(history.val_loss) WITH ORDINALITY as a(val, epoch)
+#         materialized_experiments_3_test_loss history,
+#         unnest(history.test_loss) WITH ORDINALITY as a(val, epoch)
 #     WHERE
 #         base.id = history.id and
 #         'group' = {string_to_id(group)} and
@@ -527,11 +527,11 @@ parameter_map = load_parameter_map()
 options_summary = {
     'statistic': [
         'num',
-        'val_loss_num_finite',
-        'val_loss_avg',
-        'val_loss_stddev',
-        'val_loss_min',
-        'val_loss_max',
+        'test_loss_num_finite',
+        'test_loss_avg',
+        'test_loss_stddev',
+        'test_loss_min',
+        'test_loss_max',
         'loss_avg'
     ],
     'shape': [
@@ -565,12 +565,12 @@ def get_summary_records(
     if return_values is None:
         return_values = [
             ('num', 'float'),
-            ('val_loss_num_finite', 'float'),
-            ('val_loss_avg', 'float'),
-            ('val_loss_stddev', 'float'),
-            ('val_loss_min', 'float'),
-            ('val_loss_max', 'float'),
-            ('val_loss_percentile', None),
+            ('test_loss_num_finite', 'float'),
+            ('test_loss_avg', 'float'),
+            ('test_loss_stddev', 'float'),
+            ('test_loss_min', 'float'),
+            ('test_loss_max', 'float'),
+            ('test_loss_percentile', None),
             ('loss_avg', 'float'),
             ('loss_percentile', None),
         ]
@@ -668,20 +668,20 @@ def fixed_3k_1_gridded_heatmap_summary_get_data(
     if statistics is None:
         statistics = [
             ('num', 'float'),
-            ('val_loss_num_finite', 'float'),
-            ('val_loss_avg', 'float'),
-            ('val_loss_stddev', 'float'),
-            ('val_loss_min', 'float'),
-            ('val_loss_max', 'float'),
-            # ('val_loss_percentile', None),
-            ('val_loss_median', None),
+            ('test_loss_num_finite', 'float'),
+            ('test_loss_avg', 'float'),
+            ('test_loss_stddev', 'float'),
+            ('test_loss_min', 'float'),
+            ('test_loss_max', 'float'),
+            # ('test_loss_percentile', None),
+            ('test_loss_median', None),
             ('loss_avg', 'float'),
             # ('loss_percentile', None),
             ('loss_median', None),
             ('mean_squared_error_median', None),
-            ('val_mean_squared_error_median', None),
+            ('test_mean_squared_error_median', None),
             ('kullback_leibler_divergence_median', None),
-            ('val_kullback_leibler_divergence_median', None),
+            ('test_kullback_leibler_divergence_median', None),
         ]
 
     if kinds is None:
@@ -816,7 +816,7 @@ def prepare_heatmap_axis_ticks(
         # ticks = [frac * i for i in range(num_ticks)]
         labels = ['$10^{'+str(x)+'}$' for x in tick_values]
         label = 'Effort'
-    elif variable_name == 'val_loss':
+    elif variable_name == 'test_loss':
         frac = 100
         v = np.array(variable_values)
         order = np.floor(np.log10(1e-100 + np.max(np.abs(v)))) - 1
@@ -836,7 +836,7 @@ def prepare_heatmap_axis_ticks(
         ticks = make_ticks(tick_values)
         labels = ['$10^{'+format(x, ".2f")+'}$' for x in tick_values]
         label = 'Test Loss'
-    elif variable_name == 'log_val_loss':
+    elif variable_name == 'log_test_loss':
         frac = 100
         v = np.array(variable_values)
         order = np.floor(np.log10(1e-100 + np.max(np.abs(v)))) - 1

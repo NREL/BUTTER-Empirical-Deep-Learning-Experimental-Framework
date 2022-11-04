@@ -4,15 +4,15 @@ SELECT groupname, status, MIN(retry_count) as "min_retry", AVG(retry_count) as "
 select COUNT(id) from log AS log
     where groupname IN ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01') AND
     (NOT EXISTS (SELECT id FROM materialized_experiments_3_base AS d WHERE d.id = log.id) OR
-     NOT EXISTS (SELECT id FROM materialized_experiments_3_val_loss AS d WHERE d.id = log.id) OR
+     NOT EXISTS (SELECT id FROM materialized_experiments_3_test_loss AS d WHERE d.id = log.id) OR
     NOT EXISTS (SELECT id FROM materialized_experiments_3_history AS d WHERE d.id = log.id));
 
 select count(*) from log;
 
 SELECT job_length,  (EXTRACT(epoch FROM job_length) * 1000)::int as run_time FROM materialized_experiments_3_base LIMIT 10;
 
-ALTER TABLE materialized_experiments_3_history ADD COLUMN val_loss real[];
-vacuum FULL materialized_experiments_3_val_loss;
+ALTER TABLE materialized_experiments_3_history ADD COLUMN test_loss real[];
+vacuum FULL materialized_experiments_3_test_loss;
 SELECT
             log.id as id,
             log.job as job,
@@ -43,7 +43,7 @@ select budget, depth, avg(a.val) as value, count(a.val) as count, a.epoch
     from
         materialized_experiments_3_base base,
         materialized_experiments_3_loss loss,
-        unnest(loss.val_loss) WITH ORDINALITY as a(val, epoch)
+        unnest(loss.test_loss) WITH ORDINALITY as a(val, epoch)
     WHERE
         base.id = loss.id and
         label_noise = 0.0::real and
@@ -133,23 +133,23 @@ create table materialized_experiments_2
     loss real[] not null,
     hinge real[] not null,
     accuracy real[] not null,
-    val_loss real[] not null,
-    val_hinge real[] not null,
-    val_accuracy real[] not null,
+    test_loss real[] not null,
+    test_hinge real[] not null,
+    test_accuracy real[] not null,
     squared_hinge real[] not null,
     cosine_similarity real[] not null,
-    val_squared_hinge real[] not null,
+    test_squared_hinge real[] not null,
     mean_squared_error real[] not null,
     mean_absolute_error real[] not null,
-    val_cosine_similarity real[] not null,
-    val_mean_squared_error real[] not null,
+    test_cosine_similarity real[] not null,
+    test_mean_squared_error real[] not null,
     root_mean_squared_error real[] not null,
-    val_mean_absolute_error real[] not null,
+    test_mean_absolute_error real[] not null,
     kullback_leibler_divergence real[] not null,
-    val_root_mean_squared_error real[] not null,
+    test_root_mean_squared_error real[] not null,
     mean_squared_logarithmic_error real[] not null,
-    val_kullback_leibler_divergence real[] not null,
-    val_mean_squared_logarithmic_error real[] not null
+    test_kullback_leibler_divergence real[] not null,
+    test_mean_squared_logarithmic_error real[] not null
 );
 DELETE FROM materialized_experiments_2 as mat WHERE EXISTS (select id from to_del where to_del.id = mat.id);
 
@@ -257,33 +257,33 @@ create table materialized_experiments_3_history
     loss real[] not null,
     hinge real[] not null,
     accuracy real[] not null,
-    val_loss real[] not null,
-    val_hinge real[] not null,
-    val_accuracy real[] not null,
+    test_loss real[] not null,
+    test_hinge real[] not null,
+    test_accuracy real[] not null,
     squared_hinge real[] not null,
     cosine_similarity real[] not null,
-    val_squared_hinge real[] not null,
+    test_squared_hinge real[] not null,
     mean_squared_error real[] not null,
     mean_absolute_error real[] not null,
-    val_cosine_similarity real[] not null,
-    val_mean_squared_error real[] not null,
+    test_cosine_similarity real[] not null,
+    test_mean_squared_error real[] not null,
     root_mean_squared_error real[] not null,
-    val_mean_absolute_error real[] not null,
+    test_mean_absolute_error real[] not null,
     kullback_leibler_divergence real[] not null,
-    val_root_mean_squared_error real[] not null,
+    test_root_mean_squared_error real[] not null,
     mean_squared_logarithmic_error real[] not null,
-    val_kullback_leibler_divergence real[] not null,
-    val_mean_squared_logarithmic_error real[] not null
+    test_kullback_leibler_divergence real[] not null,
+    test_mean_squared_logarithmic_error real[] not null
 );
 
 create table materialized_experiments_3_loss
 (
 	id int not null PRIMARY KEY,
     loss real[] not null,
-    val_loss real[] not null
+    test_loss real[] not null
 );
-ALTER TABLE materialized_experiments_3_history DROP COLUMN loss, DROP COLUMN val_loss;
-INSERT INTO materialized_experiments_3_loss SELECT id, loss, val_loss from materialized_experiments_3_history ORDER BY id;
+ALTER TABLE materialized_experiments_3_history DROP COLUMN loss, DROP COLUMN test_loss;
+INSERT INTO materialized_experiments_3_loss SELECT id, loss, test_loss from materialized_experiments_3_history ORDER BY id;
 VACUUM  materialized_experiments_3_history;
 
 CREATE TABLE to_del AS (SELECT id, COUNT(id) as count
@@ -380,23 +380,23 @@ SELECT
     history.loss as history_loss,
     history.hinge as history_hinge,
     history.accuracy as history_accuracy,
-    history.val_loss as history_val_loss,
-    history.val_hinge as history_val_hinge,
-    history.val_accuracy as history_val_accuracy,
+    history.test_loss as history_test_loss,
+    history.test_hinge as history_test_hinge,
+    history.test_accuracy as history_test_accuracy,
     history.squared_hinge as history_squared_hinge,
     history.cosine_similarity as history_cosine_similarity,
-    history.val_squared_hinge as history_val_squared_hinge,
+    history.test_squared_hinge as history_test_squared_hinge,
     history.mean_squared_error as history_mean_squared_error,
     history.mean_absolute_error as history_mean_absolute_error,
-    history.val_cosine_similarity as history_val_cosine_similarity,
-    history.val_mean_squared_error as history_val_mean_squared_error,
+    history.test_cosine_similarity as history_test_cosine_similarity,
+    history.test_mean_squared_error as history_test_mean_squared_error,
     history.root_mean_squared_error as history_root_mean_squared_error,
-    history.val_mean_absolute_error as history_val_mean_absolute_error,
+    history.test_mean_absolute_error as history_test_mean_absolute_error,
     history.kullback_leibler_divergence as history_kullback_leibler_divergence,
-    history.val_root_mean_squared_error as history_val_root_mean_squared_error,
+    history.test_root_mean_squared_error as history_test_root_mean_squared_error,
     history.mean_squared_logarithmic_error as history_mean_squared_logarithmic_error,
-    history.val_kullback_leibler_divergence as history_val_kullback_leibler_divergence,
-    history.val_mean_squared_logarithmic_error as history_val_mean_squared_logarithmic_error
+    history.test_kullback_leibler_divergence as history_test_kullback_leibler_divergence,
+    history.test_mean_squared_logarithmic_error as history_test_mean_squared_logarithmic_error
     FROM
          log,
          jsonb_to_record(log.doc->'config') as config (dataset text, topology text, residual_mode text, budget bigint, depth smallint, label_noise jsonb),
@@ -404,23 +404,23 @@ SELECT
             loss real[],
             hinge real[],
             accuracy real[],
-            val_loss real[],
-            val_hinge real[],
-            val_accuracy real[],
+            test_loss real[],
+            test_hinge real[],
+            test_accuracy real[],
             squared_hinge real[],
             cosine_similarity real[],
-            val_squared_hinge real[],
+            test_squared_hinge real[],
             mean_squared_error real[],
             mean_absolute_error real[],
-            val_cosine_similarity real[],
-            val_mean_squared_error real[],
+            test_cosine_similarity real[],
+            test_mean_squared_error real[],
             root_mean_squared_error real[],
-            val_mean_absolute_error real[],
+            test_mean_absolute_error real[],
             kullback_leibler_divergence real[],
-            val_root_mean_squared_error real[],
+            test_root_mean_squared_error real[],
             mean_squared_logarithmic_error real[],
-            val_kullback_leibler_divergence real[],
-            val_mean_squared_logarithmic_error real[])
+            test_kullback_leibler_divergence real[],
+            test_mean_squared_logarithmic_error real[])
     WHERE
         log.groupname = 'fixed_3k_1'
     LIMIT 2;
@@ -444,23 +444,23 @@ INSERT INTO materialized_experiments_2
         history.loss as history_loss,
         history.hinge as history_hinge,
         history.accuracy as history_accuracy,
-        history.val_loss as history_val_loss,
-        history.val_hinge as history_val_hinge,
-        history.val_accuracy as history_val_accuracy,
+        history.test_loss as history_test_loss,
+        history.test_hinge as history_test_hinge,
+        history.test_accuracy as history_test_accuracy,
         history.squared_hinge as history_squared_hinge,
         history.cosine_similarity as history_cosine_similarity,
-        history.val_squared_hinge as history_val_squared_hinge,
+        history.test_squared_hinge as history_test_squared_hinge,
         history.mean_squared_error as history_mean_squared_error,
         history.mean_absolute_error as history_mean_absolute_error,
-        history.val_cosine_similarity as history_val_cosine_similarity,
-        history.val_mean_squared_error as history_val_mean_squared_error,
+        history.test_cosine_similarity as history_test_cosine_similarity,
+        history.test_mean_squared_error as history_test_mean_squared_error,
         history.root_mean_squared_error as history_root_mean_squared_error,
-        history.val_mean_absolute_error as history_val_mean_absolute_error,
+        history.test_mean_absolute_error as history_test_mean_absolute_error,
         history.kullback_leibler_divergence as history_kullback_leibler_divergence,
-        history.val_root_mean_squared_error as history_val_root_mean_squared_error,
+        history.test_root_mean_squared_error as history_test_root_mean_squared_error,
         history.mean_squared_logarithmic_error as history_mean_squared_logarithmic_error,
-        history.val_kullback_leibler_divergence as history_val_kullback_leibler_divergence,
-        history.val_mean_squared_logarithmic_error as history_val_mean_squared_logarithmic_error
+        history.test_kullback_leibler_divergence as history_test_kullback_leibler_divergence,
+        history.test_mean_squared_logarithmic_error as history_test_mean_squared_logarithmic_error
         FROM
              log,
              jobqueue,
@@ -469,23 +469,23 @@ INSERT INTO materialized_experiments_2
                 loss real[],
                 hinge real[],
                 accuracy real[],
-                val_loss real[],
-                val_hinge real[],
-                val_accuracy real[],
+                test_loss real[],
+                test_hinge real[],
+                test_accuracy real[],
                 squared_hinge real[],
                 cosine_similarity real[],
-                val_squared_hinge real[],
+                test_squared_hinge real[],
                 mean_squared_error real[],
                 mean_absolute_error real[],
-                val_cosine_similarity real[],
-                val_mean_squared_error real[],
+                test_cosine_similarity real[],
+                test_mean_squared_error real[],
                 root_mean_squared_error real[],
-                val_mean_absolute_error real[],
+                test_mean_absolute_error real[],
                 kullback_leibler_divergence real[],
-                val_root_mean_squared_error real[],
+                test_root_mean_squared_error real[],
                 mean_squared_logarithmic_error real[],
-                val_kullback_leibler_divergence real[],
-                val_mean_squared_logarithmic_error real[])
+                test_kullback_leibler_divergence real[],
+                test_mean_squared_logarithmic_error real[])
         WHERE
             jobqueue.uuid = log.job AND
             log.groupname = 'fixed_3k_1';

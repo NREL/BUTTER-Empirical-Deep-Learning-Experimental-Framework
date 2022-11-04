@@ -63,7 +63,7 @@ register_adapter(numpy.ndarray, adapt_numpy_array)
 record_key = 'id'
 
 drop_list = [
-    'loss', 'task', 'endpoint', 'run_name', 'config.run_name', 'val_loss', 'iterations',
+    'loss', 'task', 'endpoint', 'run_name', 'config.run_name', 'test_loss', 'iterations',
     'num_inputs', 'num_classes', 'num_outputs', 'num_weights',
     'num_features', 'num_observations', 'config.log', 'config.rep',
     'config.mode', 'config.name', 'config.reps', 'config.seed',
@@ -87,17 +87,17 @@ drop_list = [
 rename_map = {
     s: s[len('history.'):] for s in [
         'history.loss', 'history.hinge',
-        'history.accuracy', 'history.val_loss', 'history.val_hinge',
-        'history.val_accuracy', 'history.squared_hinge',
-        'history.cosine_similarity', 'history.val_squared_hinge',
+        'history.accuracy', 'history.test_loss', 'history.test_hinge',
+        'history.test_accuracy', 'history.squared_hinge',
+        'history.cosine_similarity', 'history.test_squared_hinge',
         'history.mean_squared_error', 'history.mean_absolute_error',
-        'history.val_cosine_similarity', 'history.val_mean_squared_error',
-        'history.root_mean_squared_error', 'history.val_mean_absolute_error',
+        'history.test_cosine_similarity', 'history.test_mean_squared_error',
+        'history.root_mean_squared_error', 'history.test_mean_absolute_error',
         'history.kullback_leibler_divergence',
-        'history.val_root_mean_squared_error',
+        'history.test_root_mean_squared_error',
         'history.mean_squared_logarithmic_error',
-        'history.val_kullback_leibler_divergence',
-        'history.val_mean_squared_logarithmic_error',
+        'history.test_kullback_leibler_divergence',
+        'history.test_mean_squared_logarithmic_error',
     ]}
 
 rename_map.update({
@@ -150,23 +150,23 @@ type_map = {
     # 'loss' : 'float32[]',
     # 'hinge' : 'float32[]',
     # 'accuracy' : 'float32[]',
-    # 'val_loss' : 'float32[]',
-    # 'val_hinge' : 'float32[]',
-    # 'val_accuracy' : 'float32[]',
+    # 'test_loss' : 'float32[]',
+    # 'test_hinge' : 'float32[]',
+    # 'test_accuracy' : 'float32[]',
     # 'squared_hinge' : 'float32[]',
     # 'cosine_similarity' : 'float32[]',
-    # 'val_squared_hinge' : 'float32[]',
+    # 'test_squared_hinge' : 'float32[]',
     # 'mean_squared_error' : 'float32[]',
     # 'mean_absolute_error' : 'float32[]',
-    # 'val_cosine_similarity' : 'float32[]',
-    # 'val_mean_squared_error' : 'float32[]',
+    # 'test_cosine_similarity' : 'float32[]',
+    # 'test_mean_squared_error' : 'float32[]',
     # 'root_mean_squared_error' : 'float32[]',
-    # 'val_mean_absolute_error' : 'float32[]',
+    # 'test_mean_absolute_error' : 'float32[]',
     # 'kullback_leibler_divergence' : 'float32[]',
-    # 'val_root_mean_squared_error' : 'float32[]',
+    # 'test_root_mean_squared_error' : 'float32[]',
     # 'mean_squared_logarithmic_error' : 'float32[]',
-    # 'val_kullback_leibler_divergence' : 'float32[]',
-    # 'val_mean_squared_logarithmic_error' : 'float32[]',
+    # 'test_kullback_leibler_divergence' : 'float32[]',
+    # 'test_mean_squared_logarithmic_error' : 'float32[]',
     'id': 'int32',
     'job': 'str',
 }
@@ -184,23 +184,23 @@ array_cols = [
     'loss',
     'hinge',
     'accuracy',
-    'val_loss',
-    'val_hinge',
-    'val_accuracy',
+    'test_loss',
+    'test_hinge',
+    'test_accuracy',
     'squared_hinge',
     'cosine_similarity',
-    'val_squared_hinge',
+    'test_squared_hinge',
     'mean_squared_error',
     'mean_absolute_error',
-    'val_cosine_similarity',
-    'val_mean_squared_error',
+    'test_cosine_similarity',
+    'test_mean_squared_error',
     'root_mean_squared_error',
-    'val_mean_absolute_error',
+    'test_mean_absolute_error',
     'kullback_leibler_divergence',
-    'val_root_mean_squared_error',
+    'test_root_mean_squared_error',
     'mean_squared_logarithmic_error',
-    'val_kullback_leibler_divergence',
-    'val_mean_squared_logarithmic_error',
+    'test_kullback_leibler_divergence',
+    'test_mean_squared_logarithmic_error',
 ]
 
 base_cols = [
@@ -225,33 +225,33 @@ base_cols = [
 
 loss_cols = [
     record_key,
-    'val_loss',
+    'test_loss',
 ]
 
 history_cols = [
     record_key,
     'loss',
-    'val_loss',
+    'test_loss',
     'hinge',
     'accuracy',
-    'val_hinge',
-    'val_accuracy',
+    'test_hinge',
+    'test_accuracy',
     'squared_hinge',
     'cosine_similarity',
-    'val_squared_hinge',
+    'test_squared_hinge',
     'mean_squared_error',
     'mean_absolute_error',
-    'val_cosine_similarity',
-    'val_mean_squared_error',
+    'test_cosine_similarity',
+    'test_mean_squared_error',
     'root_mean_squared_error',
-    'val_mean_absolute_error',
+    'test_mean_absolute_error',
     'kullback_leibler_divergence',
-    'val_root_mean_squared_error',
+    'test_root_mean_squared_error',
     'mean_squared_logarithmic_error',
-    'val_kullback_leibler_divergence',
-    'val_mean_squared_logarithmic_error',
+    'test_kullback_leibler_divergence',
+    'test_mean_squared_logarithmic_error',
     'loss',
-    'val_loss',
+    'test_loss',
 ]
 
 dest_cols = set(base_cols)
@@ -356,7 +356,7 @@ def func():
     groups = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
     source_table = 'log'
     dest_table_base = 'materialized_experiments_3_base'
-    dest_table_val_loss = 'materialized_experiments_3_val_loss'
+    dest_table_test_loss = 'materialized_experiments_3_test_loss'
     dest_table_history = 'materialized_experiments_3_history'
     num_threads = 64
     # num_threads = 1
@@ -389,7 +389,7 @@ def func():
     where {conditions} AND 
     (
     NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
-    NOT EXISTS (SELECT id FROM {dest_table_val_loss} AS d WHERE d.id = log.id) OR
+    NOT EXISTS (SELECT id FROM {dest_table_test_loss} AS d WHERE d.id = log.id) OR
     NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id)
     )
     ORDER BY id ASC
@@ -458,7 +458,7 @@ def func():
             base_chunk, loss_chunk, history_chunk = postprocess_dataframe(chunk, engine)
             print(f'Read #{read_number}: writing chunk to database...')
             base_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
-            loss_chunk.to_sql(dest_table_val_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
+            loss_chunk.to_sql(dest_table_test_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
             history_chunk.to_sql(dest_table_history, engine, method=insert_on_duplicate, if_exists='append',
                                  index=False)
             print(f'Read #{read_number}: done writing...')
