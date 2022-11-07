@@ -1,14 +1,9 @@
-import dataclasses
-
 from dataclasses import dataclass
-import os
-import platform
-import subprocess
 from typing import Any
 
+from dmp.task.task import Parameter, ParameterDict, Task
 
 from .aspect_test_utils import *
-from dmp.task.task import ParameterDict, Task, Parameter
 
 # budget -> size
 # topology -> shape
@@ -54,7 +49,7 @@ class AspectTestTask(Task):
 
     def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
         from .aspect_test_executor import AspectTestExecutor
-        return AspectTestExecutor(*dataclasses.astuple(self))(self, worker, *args, **kwargs)
+        return AspectTestExecutor(self)(self, worker, *args, **kwargs)
 
     @property
     def version(self) -> int:

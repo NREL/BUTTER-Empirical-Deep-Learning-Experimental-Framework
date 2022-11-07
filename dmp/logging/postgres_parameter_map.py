@@ -1,5 +1,5 @@
 
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from psycopg2 import sql
 
@@ -8,8 +8,8 @@ class PostgresParameterMap:
 
     _parameter_table: sql.Identifier
     _select_parameter: sql.Composed
-    _parameter_to_id_map: Dict[Any, int]
-    _id_to_parameter_map: Dict[int, Any]
+    _parameter_to_id_map: Dict[str, Dict[Any, int]]
+    _id_to_parameter_map: Dict[int, Tuple[str, Any]]
 
     _key_columns = sql.SQL(',').join(
         map(sql.Identifier, [
@@ -118,24 +118,6 @@ SELECT * from i
             return [self.parameter_from_id(e, cursor) for e in i]
         return self._id_to_parameter_map[i]
 
-    def parameter_value_from_id(self, parameter_id, cursor=None):
-        try:
-            return self.parameter_value_from_id[parameter_id]
-        except KeyError:
-            if cursor is not None:
-                cursor.execute(
-                    sql.SQL("""
-{}
-WHERE id = %s
-;"""
-                            ).format(self._select_parameter),
-                    (id,))
-                result = cursor.fetchone()
-                if result is not None:
-                    self._register_parameter_from_row(result)
-                    return self.parameter_value_from_id(parameter_id, None)
-            raise KeyError(f'Unknown parameter id {parameter_id}.')
-
     def _register_parameter_from_row(self, row):
         value = next(
             (v for v in (row[i + 2] for i in range(4)) if v is not None),
@@ -160,5 +142,5 @@ WHERE id = %s
                 break
         
         if type_index is None and value is not None:
-            raise ValueError('Value is not a supported parameter type.')
+            raise ValueError(f'Value is not a supported parameter type, type "{type(value)}".')
         return typed_values

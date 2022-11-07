@@ -1061,6 +1061,17 @@ e.experiment_parameters @> array[size_.id] and size_.kind = 'size';
 select * from parameter_ order by kind, string_value, integer_value, real_value, bool_value;
 
 -- check queue status
+
+select 
+    queue, command->'batch' batch, status, count(*) num, min(priority) min_priority, max(priority) max_priority
+from 
+    job_status s,
+    job_data d
+where s.id = d.id and queue = 2 and status IN (0,1,2,3)
+group by queue, batch, status
+order by queue, batch, status asc, min_priority asc;
+
+
 select 
     queue, status, min(priority) min_priority, max(priority) max_priority, count(*) num, command->'batch' batch, command->'shape' shape, command->'dataset' dataset
 from 

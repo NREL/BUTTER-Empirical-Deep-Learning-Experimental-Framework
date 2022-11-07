@@ -65,6 +65,7 @@ class PostgresResultLogger(ResultLogger):
 
             ('seed', 'bigint'),
             ('save_every_epochs', 'smallint'),
+
             ('train_loss', 'real[]'),
             ('train_accuracy', 'real[]'),
             ('train_mean_squared_error', 'real[]'),
@@ -86,8 +87,20 @@ class PostgresResultLogger(ResultLogger):
             ('test_squared_hinge', 'real[]'),            
             ('test_cosine_similarity', 'real[]'),            
             ('test_kullback_leibler_divergence', 'real[]'),
-            
+
+            ('validation_loss', 'real[]'),
+            ('validation_accuracy', 'real[]'),
+            ('validation_mean_squared_error', 'real[]'),
+            ('validation_mean_absolute_error', 'real[]'),
+            ('validation_root_mean_squared_error', 'real[]'),
+            ('validation_mean_squared_logarithmic_error', 'real[]'),
+            ('validation_hinge', 'real[]'),
+            ('validation_squared_hinge', 'real[]'),
+            ('validation_cosine_similarity', 'real[]'),
+            ('validation_kullback_leibler_divergence', 'real[]'),
+
             ('parameter_count', 'bigint[]'),
+            ('growth_points', 'smallint[]'),
         ] if run_columns is None else run_columns
 
         experiment_columns_sql, cast_experiment_columns_sql = \

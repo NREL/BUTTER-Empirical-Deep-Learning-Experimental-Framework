@@ -3,6 +3,7 @@ import os
 from typing import (
     Callable,
     Dict,
+    List,
     Optional,
     Tuple,
 )
@@ -20,11 +21,19 @@ from sklearn.preprocessing import (
 dataset_path = os.path.join(os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__))), 'pmlb.csv')
 
+_dataset_index: List[Optional[pandas.DataFrame]] = [None]
+
 
 def load_dataset_index(filePath: str = dataset_path) -> pandas.DataFrame:
     datasets = pandas.read_csv(filePath)
     datasets.set_index('Dataset', inplace=True, drop=False)
     return datasets
+
+
+def get_datasets() -> pandas.DataFrame:
+    if _dataset_index[0] is None:
+        _dataset_index[0] = load_dataset_index()
+    return _dataset_index[0]
 
 
 def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> Tuple[pandas.Series, ndarray, ndarray]:
@@ -61,7 +70,8 @@ def _read_raw_pmlb(cache_directory, dataset_name):
             raw_inputs = numpy.load(f, allow_pickle=True)
             raw_outputs = numpy.load(f, allow_pickle=True)
     except FileNotFoundError:
-        raw_inputs, raw_outputs = pmlb.fetch_data(dataset_name, return_X_y=True)
+        raw_inputs, raw_outputs = pmlb.fetch_data(
+            dataset_name, return_X_y=True)
         _save_raw_pmlb(cache_directory, raw_inputs, raw_outputs)
 
     return raw_inputs, raw_outputs
@@ -122,7 +132,8 @@ def _dynamic_value_transform(value: ndarray) -> Optional[ndarray]:
 
 def _prepare_value(
         value: ndarray,
-        value_transform: Optional[Callable[[ndarray], ndarray]] = _dynamic_value_transform,
+        value_transform: Optional[Callable[[ndarray],
+                                           ndarray]] = _dynamic_value_transform,
 ) -> Optional[ndarray]:
     value = numpy.reshape(value, (-1, 1))
     return value_transform(value)
@@ -130,7 +141,8 @@ def _prepare_value(
 
 def _prepare_matrix(
         values: ndarray,
-        value_transform: Optional[Callable[[ndarray], ndarray]] = _dynamic_value_transform,
+        value_transform: Optional[Callable[[ndarray],
+                                           ndarray]] = _dynamic_value_transform,
 ) -> ndarray:
     transformed_list = []
     for i in range(values.shape[1]):

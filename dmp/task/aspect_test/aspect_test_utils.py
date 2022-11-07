@@ -1,23 +1,22 @@
-from dataclasses import dataclass
 import math
 import random
-from copy import deepcopy
-from functools import singledispatchmethod
 import time
-from typing import Any, Callable, Dict, Iterable, Tuple, Union, List, Optional
+from copy import deepcopy
+from dataclasses import dataclass
+from functools import singledispatchmethod
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
 import tensorflow
-from sklearn.model_selection import train_test_split
-from tensorflow.keras import losses, Input
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.models import Model
 import tensorflow.keras as keras
-
 from dmp.structure.n_add import NAdd
 from dmp.structure.n_dense import NDense
 from dmp.structure.n_input import NInput
 from dmp.structure.network_module import NetworkModule
+from sklearn.model_selection import train_test_split
+from tensorflow.keras import Input, losses
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Model
 
 
 def set_random_seeds(seed: Optional[int]) -> int:
@@ -74,6 +73,7 @@ def prepare_dataset(
     run_task: str,
     inputs,
     outputs,
+    val_portion: Optional[float] = None,
 ) -> Dict[str, Any]:
     run_config = deepcopy(run_config)
     if test_split_method == 'shuffled_train_test_split':
@@ -88,6 +88,31 @@ def prepare_dataset(
         add_label_noise(label_noise, run_task, train_outputs)
 
         run_config['validation_data'] = (test_inputs, test_outputs)
+        run_config['x'] = train_inputs
+        run_config['y'] = train_outputs
+    elif test_split_method == 'shuffled_train_val_test_split':
+
+        train_inputs, test_inputs, train_outputs, test_outputs = \
+            train_test_split(
+                inputs,
+                outputs,
+                test_size=split_portion,
+                shuffle=True,
+            )
+        if val_portion is None:
+            val_portion = 0.0
+
+        train_inputs, val_inputs, train_outputs, val_outputs = \
+            train_test_split(
+                train_inputs,
+                train_outputs,
+                test_size=int(val_portion/(1-split_portion)),
+                shuffle=True,
+            )
+        add_label_noise(label_noise, run_task, train_outputs)
+
+        run_config['test_data'] = (test_inputs, test_outputs)
+        run_config['validation_data'] = (val_inputs, val_outputs)
         run_config['x'] = train_inputs
         run_config['y'] = train_outputs
     else:
@@ -152,7 +177,7 @@ def count_num_free_parameters(target: NetworkModule) -> int:
 
 
 def make_network(
-        input_shape: Tuple[int,...],
+        input_shape: Tuple[int, ...],
         widths: List[int],
         residual_mode: Optional[str],
         input_activation: str,
@@ -202,7 +227,7 @@ def make_network(
     return current
 
 
-def make_regularizer(regularization_settings: dict) \
+def make_regularizer(regularization_settings: Optional[Dict]) \
         -> keras.regularizers.Regularizer:
     if regularization_settings is None:
         return None
@@ -278,7 +303,6 @@ class MakeKerasLayersFromNetwork:
         return tensorflow.keras.layers.add(keras_inputs)
 
 
-
 def make_keras_network_from_network_module(target: NetworkModule) -> keras.Model:
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
@@ -347,12 +371,12 @@ def binary_search_int(objective: Callable[[int], Union[int, float]],
 
 
 def find_best_layout_for_budget_and_depth(
-    input_shape: Tuple[int,...],
+    input_shape: Tuple[int, ...],
     residual_mode: Optional[str],
-    input_activation : str,
-    internal_activation : str,
-    output_activation : str,
-    target_size : int,
+    input_activation: str,
+    internal_activation: str,
+    output_activation: str,
+    target_size: int,
     make_widths: Callable[[int], List[int]],
     layer_args: dict
 ) -> Tuple[int, List[int], NetworkModule]:

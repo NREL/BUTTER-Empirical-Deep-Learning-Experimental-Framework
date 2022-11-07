@@ -4,6 +4,7 @@ from dmp.structure.n_add import NAdd
 from dmp.structure.n_dense import NDense
 from dmp.structure.n_input import NInput
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
+from dmp.task.growth_test.growth_test_task import GrowthTestTask
 from lmarshal import MarshalConfig, Marshal
 
 jobqueue_marshal: Marshal = Marshal(MarshalConfig(
@@ -20,6 +21,7 @@ jobqueue_marshal: Marshal = Marshal(MarshalConfig(
 
 # register Task here
 jobqueue_marshal.register_type(AspectTestTask)
+jobqueue_marshal.register_type(GrowthTestTask)
 
 
 # register NetworkModule here
