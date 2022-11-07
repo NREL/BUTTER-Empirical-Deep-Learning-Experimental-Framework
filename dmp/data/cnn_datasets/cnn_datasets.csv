@@ -1,0 +1,5 @@
+Dataset,n_observations,input_shape,n_classes,Endpoint,Imbalance,Task,Metadata
+mnist,70000,"(28,28,1)",10,categorical,0,classification,
+fashion_mnist,70000,"(28,28,1)",10,categorical,,classification,
+cifar10,60000,"(32,32,3)",10,categorical,,classification,
+cifar100,60000,"(32,32,3)",100,categorical,,classification,
