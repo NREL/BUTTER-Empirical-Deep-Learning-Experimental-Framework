@@ -31,7 +31,6 @@ from dmp.task.task_util import remap_key_prefixes
 # from keras_buoy.models import ResumableModel
 
 
-
 @dataclass
 class GrowthTestExecutor(AspectTestExecutor):
     '''
@@ -41,7 +40,7 @@ class GrowthTestExecutor(AspectTestExecutor):
             -> Dict[str, Any]:
 
         # for easy access
-        task: GrowthTestTask = self.task  # type: ignore 
+        task: GrowthTestTask = self.task  # type: ignore
 
         self.seed = set_random_seeds(self.seed)
         self.load_dataset()
@@ -79,7 +78,7 @@ class GrowthTestExecutor(AspectTestExecutor):
         print(per_size_epoch_budget)
 
         # -----------
-        self.make_network()        
+        self.make_network()
         # -----------
 
         # if parameters not passed, set to empty dict
@@ -98,8 +97,8 @@ class GrowthTestExecutor(AspectTestExecutor):
             self.make_tensorflow_dataset_converter(prepared_config)
         self.setup_tensorflow_training_and_validation_datasets(
             make_tensorflow_dataset,
-            prepared_config,        
-            )
+            prepared_config,
+        )
         # -----------
 
         test_data = \
@@ -150,45 +149,42 @@ class GrowthTestExecutor(AspectTestExecutor):
                 )
 
             # If we're not on our last size, use trigger
-            callbacks = [additional_history]
-            
-            if growth_phase < growth_number-1:
-                callbacks.append(self.make_growth_trigger_callback())
+            callbacks: List[keras.callbacks.Callback] = [additional_history]
 
-            history = self.keras_model.fit(
-                callbacks=callbacks,
-                **prepared_config,
-            )
+            if growth_phase < growth_number-1:
+                callbacks.append(
+                    self.make_growth_trigger_callback(
+                        self.task.growth_trigger))
+
+            history = self.fit_model(prepared_config, callbacks)
+
             # ---------- Stopped here
             print(additional_history.history.keys())
 
-            # Tensorflow models return a History object from their fit function,
-            # but ResumableModel objects returns History.history. This smooths
-            # out that incompatibility.
-            if task.save_every_epochs is None or task.save_every_epochs == 0:
-                history = history.history
+            num_epochs = len(history['loss'])
 
             epoch_parameters_left = epoch_parameters_left - \
-                (ideal_size * len(history['loss']))
+                (ideal_size * num_epochs)
 
             # Merge history dictionaries, adding metrics from evaluation on test set.
-            history = {**additional_history.history, **history}
+            history.update(additional_history.history)
 
-            # Add num_free_parameters to history dictionary and append to master histories dictionary
-            history['parameter_count'] = [
-                num_free_parameters for _ in range(len(history['loss']))]
+            # Add num_free_parameters to history dictionary and append to master
+            # histories dictionary
+            history['parameter_count'] = \
+                [num_free_parameters for _ in range(num_epochs)]
 
             # Add growth points to history dictionary
-            history['growth_points'] = [
-                0 for _ in range(len(history['loss']))]
+            history['growth_points'] = [0 for _ in range(num_epochs)]
 
             # If the growth trigger is EarlyStopping and the 'restore_best_weights' flag is set,
             # indicate growth point at epoch that achieves lowest val_loss
             # else growth occured at final epoch
             if task.growth_trigger == 'EarlyStopping':
-                if 'restore_best_weights' in self.growth_trigger_params and self.growth_trigger_params['restore_best_weights']:
-                    history['growth_points'][numpy.argmin(
-                        history['val_loss'])] = 1
+                if 'restore_best_weights' in self.growth_trigger_params and \
+                        self.growth_trigger_params['restore_best_weights']:
+                    history['growth_points'][
+                        numpy.argmin(history['val_loss'])] = 1
                 else:
                     history['growth_points'][-1] = 1
 
@@ -238,12 +234,11 @@ class GrowthTestExecutor(AspectTestExecutor):
 
             # Rename history keys
             histories = remap_key_prefixes(
-                histories, [('val_', 'validation_'), ('test_data_', 'test_'), ('', 'train_')])  # type: ignore
-
-            # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
-            # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
-            # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
-            # model.save(f'./log/models/{run_name}.h5', save_format='h5')
+                histories, [
+                    ('val_', 'validation_'),
+                    ('test_data_', 'test_'),
+                    ('', 'train_'),
+                ])  # type: ignore
 
             parameters: Dict[str, Any] = parent.parameters
             parameters['output_activation'] = self.output_activation
@@ -258,10 +253,10 @@ class GrowthTestExecutor(AspectTestExecutor):
             # return the result record
             return parameters
 
-    def make_growth_trigger_callback(self):
-        growth_trigger_name = self.task.growth_trigger
+    def make_growth_trigger_callback(self, growth_trigger_name: str):
         if growth_trigger_name == 'EarlyStopping':
             clss = EarlyStopping
         else:
-            raise NotImplementedError(f'Unsupported growth trigger, "{growth_trigger_name}".')
+            raise NotImplementedError(
+                f'Unsupported growth trigger, "{growth_trigger_name}".')
         return clss(**self.growth_trigger_params)

@@ -187,10 +187,10 @@ class AspectTestExecutor():
         prepared_config['validation_data'] = make_tensorflow_dataset(
             *test_data)
 
-    def fit_model(self, 
-    prepared_config : dict, 
-    callbacks : list,
-    ) -> Any:
+    def fit_model(self,
+                  prepared_config: dict,
+                  callbacks: list,
+                  ) -> Any:
         history = self.keras_model.fit(
             callbacks=callbacks,
             **prepared_config,
@@ -200,13 +200,14 @@ class AspectTestExecutor():
         # but ResumableModel objects returns History.history. This smooths
         # out that incompatibility.
         if self.task.save_every_epochs is None \
-            or self.task.save_every_epochs == 0:
+                or self.task.save_every_epochs == 0:
             history = history.history  # type: ignore
 
         # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
         # Using the older H5 format because it's one single file instead of multiple files, and this should be easier on Lustre.
         # model.save_weights(f'./log/weights/{run_name}.h5', save_format='h5')
         # model.save(f'./log/models/{run_name}.h5', save_format='h5')
+
         return history
 
     def __call__(self, parent: AspectTestTask, worker, *args, **kwargs) \
@@ -243,7 +244,10 @@ class AspectTestExecutor():
 
         # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
         history = remap_key_prefixes(
-            history, [('val_', 'test_'), ('', 'train_')])  # type: ignore
+            history, [
+                ('val_', 'test_'),
+                ('', 'train_'),
+            ])  # type: ignore
 
         parameters: Dict[str, Any] = parent.parameters
         parameters['output_activation'] = self.output_activation
