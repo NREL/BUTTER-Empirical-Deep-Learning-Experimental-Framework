@@ -42,8 +42,9 @@ class GrowthTestExecutor(AspectTestExecutor):
         # for easy access
         task: GrowthTestTask = self.task  # type: ignore
 
-        self.seed = set_random_seeds(self.seed)
-        self.load_dataset()
+        self.set_random_seeds()
+        self.dataset_series, self.inputs, self.outputs = self.load_dataset()
+
         # -----------
 
         # prepare dataset shuffle, split, and label noise:
@@ -77,10 +78,6 @@ class GrowthTestExecutor(AspectTestExecutor):
 
         print(per_size_epoch_budget)
 
-        # -----------
-        self.make_network()
-        # -----------
-
         # if parameters not passed, set to empty dict
         if self.growth_trigger_params == None:
             self.growth_trigger_params = {}
@@ -92,7 +89,7 @@ class GrowthTestExecutor(AspectTestExecutor):
             raise RuntimeError('Growth scale less than one.')
 
         # -----------
-        run_callbacks = self.make_keras_model()
+
         make_tensorflow_dataset = \
             self.make_tensorflow_dataset_converter(prepared_config)
         self.setup_tensorflow_training_and_validation_datasets(
@@ -105,81 +102,86 @@ class GrowthTestExecutor(AspectTestExecutor):
             (make_tensorflow_dataset(test_data[0], test_data[1]), 'test_data')
 
         # Calculate number of growth phases
-        growth_number = math.ceil(
+        num_growth_steps = math.ceil(
             math.log(task.max_size / task.size, task.growth_scale))
 
         # fit / train model
-        histories = dict()
-        epoch_parameters_left = task.max_equivalent_epoch_budget * task.max_size
-        for growth_phase in range(growth_number):
-            ideal_size = task.size * \
-                math.pow(task.growth_scale, growth_phase)
-            print('growing', growth_phase, num_free_parameters, ideal_size)
+        histories: dict = dict()
+        growth_step: int = 0
+        max_size_threshold = max(1.0-.1, 1.0/(task.growth_scale)) * task.size
+        epoch_parameters: int = 0
+        epochs: int = 0
+        go: bool = True
+        while go:
 
-            # Calculate epoch budget left based on epoch_parameter budget of network with max size
-            # epoch_budget_left is the epoch budget based on this epoch_parameter budget
-            epoch_budget_left = math.ceil(
-                epoch_parameters_left / ideal_size)
-            print('epoch_budget_left', epoch_budget_left)
-            # Calculate the total_epochs_left, which is a budget based on the max_total_epochs
-            if len(histories.keys()) == 0:
-                total_epochs_left = task.max_total_epochs
-            else:
-                total_epochs_left = task.max_total_epochs - \
-                    len(histories['loss'])
-            print('total_epochs_left', total_epochs_left)
-            # The epochs to run the next size for becomes the minimum of these two budgets
-            epochs_left = min(total_epochs_left, epoch_budget_left)
-            print('per_size_epoch_budget', per_size_epoch_budget)
-            # And that budget is used in the case that it is less than the per size budget set by the run_config.
-            if epochs_left < per_size_epoch_budget:
-                prepared_config['epochs'] = epochs_left
-            else:
-                prepared_config['epochs'] = per_size_epoch_budget
+            target_size: int = min(
+                task.size,
+                int(math.floor(
+                    task.initial_size *
+                    math.pow(task.growth_scale, growth_step))))
 
-            # If our epoch budget has run out, stop
-            if prepared_config['epochs'] == 0:
+            # When we reach or get very close to the max size, we just go to it
+            if target_size > max_size_threshold:
+                target_size = task.size
+                go = False
+
+            # print('growing', growth_phase, num_free_parameters, ideal_size)
+
+            parameter_count = self.make_network(target_size)
+
+            
+            # TODO: Grow Here
+
+
+            self.make_keras_model()  # callbacks discarded (replaced later)
+
+            max_epochs_at_this_iteration = min(
+                epochs - task.max_total_epochs,
+                int(math.floor(
+                    (task.max_equivalent_epoch_budget * task.size) /
+                    parameter_count))
+            )
+
+            if max_epochs_at_this_iteration <= 0:
                 break
 
+            prepared_config['epochs'] = max_epochs_at_this_iteration
+
             # Train
+            
             additional_history = \
                 growth_test_utils.AdditionalValidationSets(
                     [test_data],
                     batch_size=task.run_config['batch_size'],
                 )
 
-            # If we're not on our last size, use trigger
-            callbacks: List[keras.callbacks.Callback] = [additional_history]
+            callbacks = []
+            callbacks.append(additional_history)
 
-            if growth_phase < growth_number-1:
+            if go:
                 callbacks.append(
                     self.make_growth_trigger_callback(
-                        self.task.growth_trigger))
+                        task.growth_trigger))
 
             history = self.fit_model(prepared_config, callbacks)
 
-            # ---------- Stopped here
-            print(additional_history.history.keys())
-
-            num_epochs = len(history['loss'])
-
-            epoch_parameters_left = epoch_parameters_left - \
-                (ideal_size * num_epochs)
-
-            # Merge history dictionaries, adding metrics from evaluation on test set.
+            # Add test set history into history dict.
             history.update(additional_history.history)
 
-            # Add num_free_parameters to history dictionary and append to master
+            num_epochs = len(history['loss'])
+            epochs += num_epochs
+            epoch_parameters += num_epochs * parameter_count
+
+            # Add num_trainable_parameters to history dictionary and append to master
             # histories dictionary
-            history['parameter_count'] = \
-                [num_free_parameters for _ in range(num_epochs)]
+            history['parameter_count'] = [parameter_count] * num_epochs
 
             # Add growth points to history dictionary
-            history['growth_points'] = [0 for _ in range(num_epochs)]
+            history['growth_points'] = [0] * num_epochs
 
-            # If the growth trigger is EarlyStopping and the 'restore_best_weights' flag is set,
-            # indicate growth point at epoch that achieves lowest val_loss
-            # else growth occured at final epoch
+            # If the growth trigger is EarlyStopping and the 
+            # 'restore_best_weights' flag is set, indicate growth point at epoch
+            # that achieves lowest val_loss else growth occured at final epoch
             if task.growth_trigger == 'EarlyStopping':
                 if 'restore_best_weights' in self.growth_trigger_params and \
                         self.growth_trigger_params['restore_best_weights']:
@@ -228,30 +230,31 @@ class GrowthTestExecutor(AspectTestExecutor):
                 run_eagerly=False,
             )
 
-            # Calculate number of parameters in grown network
-            num_free_parameters = count_trainable_parameters_in_keras_model(
-                self.keras_model)
+            # if target_size >= task.size \
+            #     or epoch_parameters >= task.max_equivalent_epoch_budget * task.size \
+            #     or epochs >= task.max_total_epochs:
+            #     break
 
-            # Rename history keys
-            histories = remap_key_prefixes(
-                histories, [
-                    ('val_', 'validation_'),
-                    ('test_data_', 'test_'),
-                    ('', 'train_'),
-                ])  # type: ignore
+        # Rename history keys
+        histories = remap_key_prefixes(
+            histories, [
+                ('val_', 'validation_'),
+                ('test_data_', 'test_'),
+                ('', 'train_'),
+            ])  # type: ignore
 
-            parameters: Dict[str, Any] = parent.parameters
-            parameters['output_activation'] = self.output_activation
-            parameters['widths'] = self.widths
-            parameters['num_free_parameters'] = num_free_parameters
-            parameters['output_activation'] = self.output_activation
-            parameters['network_structure'] = \
-                jobqueue_marshal.marshal(self.network_structure)
+        parameters: Dict[str, Any] = parent.parameters
+        parameters['output_activation'] = self.output_activation
+        parameters['widths'] = self.widths
+        parameters['num_free_parameters'] = num_free_parameters
+        parameters['output_activation'] = self.output_activation
+        parameters['network_structure'] = \
+            jobqueue_marshal.marshal(self.network_structure)
 
-            parameters.update(histories)
+        parameters.update(histories)
 
-            # return the result record
-            return parameters
+        # return the result record
+        return parameters
 
     def make_growth_trigger_callback(self, growth_trigger_name: str):
         if growth_trigger_name == 'EarlyStopping':

@@ -32,14 +32,20 @@ class AspectTestExecutor():
     outputs: Optional[numpy.ndarray] = None
     widths: Optional[List[int]] = None
 
-    def load_dataset(self):
-        # Load dataset
+    def set_random_seeds(self) -> int:
+        seed: int = self.task.seed
+        numpy.random.seed(seed)
+        tensorflow.random.set_seed(seed)
+        random.seed(seed)
+
+    def load_dataset(self) -> Tuple[Any, Any, Any]:
         self.dataset_series, self.inputs, self.outputs =  \
             pmlb_loader.load_dataset(
                 pmlb_loader.get_datasets(),
                 self.task.dataset)
+        return self.dataset_series, self.inputs, self.outputs
 
-    def make_network(self):
+    def make_network(self, target_size: int) -> int:
         task = self.task
 
         # Generate neural network architecture
@@ -69,19 +75,23 @@ class AspectTestExecutor():
                 task.input_activation,
                 task.activation,
                 self.output_activation,
-                task.size,
+                target_size,
                 widths_factory(shape)(num_outputs, task.depth),
                 layer_args,
             )
 
+        parameter_count = count_num_free_parameters(
+            self.network_structure)
         # reject non-conformant network sizes
-        delta = count_num_free_parameters(self.network_structure) - task.size
+        delta = parameter_count - task.size
         relative_error = delta / task.size
         if numpy.abs(relative_error) > .2:
             raise ValueError(
                 f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
 
-    def make_keras_model(self) -> list:
+        return parameter_count
+
+    def make_keras_model(self):
         task = self.task
 
         with worker.strategy.scope() as s:  # type: ignore
@@ -119,17 +129,11 @@ class AspectTestExecutor():
         )
 
         # Calculate number of parameters in grown network
-        num_free_parameters = count_trainable_parameters_in_keras_model(
+        parameter_count = count_trainable_parameters_in_keras_model(
             self.keras_model)
         if count_num_free_parameters(self.network_structure) \
-                != num_free_parameters:
+                != parameter_count:
             raise RuntimeError('Wrong number of trainable parameters')
-
-        # Configure Keras Callbacks
-        callbacks = []
-        if task.early_stopping is not None:
-            callbacks.append(
-                callbacks.EarlyStopping(**task.early_stopping))
 
         # # optionally enable checkpoints
         # if self.save_every_epochs is not None and self.save_every_epochs > 0:
@@ -215,8 +219,8 @@ class AspectTestExecutor():
 
         task: AspectTestTask = self.task  # for easy access
 
-        self.seed = set_random_seeds(self.seed)
-        self.load_dataset()
+        self.set_random_seeds()
+        self.dataset_series, self.inputs, self.outputs = self.load_dataset()
 
         # -----------
         # prepare dataset shuffle, split, and label noise:
@@ -231,14 +235,21 @@ class AspectTestExecutor():
         )
 
         # -----------
-        self.make_network()
-        callbacks = self.make_keras_model()
+        num_trainable_parameters = self.make_network(task.size)
+        self.make_keras_model()
         make_tensorflow_dataset = \
             self.make_tensorflow_dataset_converter(prepared_config)
         self.setup_tensorflow_training_and_validation_datasets(
             make_tensorflow_dataset,
             prepared_config,
         )
+
+        # Configure Keras Callbacks
+        callbacks = []
+        if task.early_stopping is not None:
+            callbacks.append(
+                tensorflow.keras.callbacks.EarlyStopping(
+                    **task.early_stopping))
 
         history = self.fit_model(prepared_config, callbacks)
 
@@ -252,7 +263,7 @@ class AspectTestExecutor():
         parameters: Dict[str, Any] = parent.parameters
         parameters['output_activation'] = self.output_activation
         parameters['widths'] = self.widths
-        parameters['num_free_parameters'] = num_free_parameters
+        parameters['num_free_parameters'] = num_trainable_parameters
         parameters['output_activation'] = self.output_activation
         parameters['network_structure'] = \
             jobqueue_marshal.marshal(self.network_structure)

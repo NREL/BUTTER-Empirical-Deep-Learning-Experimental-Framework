@@ -19,16 +19,6 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Model
 
 
-def set_random_seeds(seed: Optional[int]) -> int:
-    if seed is None:
-        seed = time.time_ns()
-
-    numpy.random.seed(seed)
-    tensorflow.random.set_seed(seed)
-    random.seed(seed)
-    return seed
-
-
 def add_label_noise(label_noise, run_task, train_outputs):
     if label_noise is not None and label_noise != 'none' and label_noise != 0.0:
         train_size = len(train_outputs)
