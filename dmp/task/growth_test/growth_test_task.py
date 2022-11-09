@@ -7,7 +7,7 @@ from .growth_test_utils import *
 
 
 @dataclass
-class GrowthTestTask(AspectTestTask):
+class GrowthExperimentTask(AspectTestTask):
     val_split:  float = .1
     growth_trigger: str = 'EarlyStopping'
     growth_trigger_params: dict = field(default_factory=dict)
@@ -19,5 +19,5 @@ class GrowthTestTask(AspectTestTask):
     max_equivalent_epoch_budget: int = 3000
 
     def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
-        from .growth_test_executor import GrowthTestExecutor
-        return GrowthTestExecutor(*dataclasses.astuple(self))(self, worker, *args, **kwargs)
+        from .growth_test_executor import GrowthExperimentExecutor
+        return GrowthExperimentExecutor(*dataclasses.astuple(self))(self, worker, *args, **kwargs)

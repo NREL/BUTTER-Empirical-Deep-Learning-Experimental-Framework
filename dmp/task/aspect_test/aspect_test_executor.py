@@ -21,37 +21,178 @@ from pytest import param
 class AspectTestExecutor():
     '''
     '''
-    task: AspectTestTask
-    output_activation: Optional[str] = None
-    # tensorflow_strategy: Optional[tensorflow.distribute.Strategy] = None
-    keras_model: Optional[tensorflow.keras.Model] = None
-    run_loss: Optional[tensorflow.keras.losses.Loss] = None
-    network_structure: Optional[NetworkModule] = None
-    dataset_series: Optional[pandas.Series] = None
-    inputs: Optional[numpy.ndarray] = None
-    outputs: Optional[numpy.ndarray] = None
-    widths: Optional[List[int]] = None
 
-    def set_random_seeds(self) -> int:
-        seed: int = self.task.seed
+    # task: AspectTestTask
+    # output_activation: Optional[str] = None
+    # keras_model: Optional[tensorflow.keras.Model] = None
+    # run_loss: Optional[tensorflow.keras.losses.Loss] = None
+    # network_structure: Optional[NetworkModule] = None
+
+    # dataset_series: Optional[pandas.Series] = None
+    # inputs: Optional[numpy.ndarray] = None
+    # outputs: Optional[numpy.ndarray] = None
+
+    # widths: Optional[List[int]] = None
+
+    def __call__(self, task: AspectTestTask, worker, *args, **kwargs) \
+            -> Dict[str, Any]:
+
+        self.set_random_seeds(task)
+
+        (
+            ml_task,
+            input_shape,
+            output_shape,
+            prepared_config,
+            make_tensorflow_dataset,
+        ) = self.load_and_prepare_dataset(task)
+
+        (
+            network_structure,
+            widths,
+            num_free_parameters,
+            run_loss,
+            output_activation,
+        ) = self.make_network(
+            task,
+            input_shape,
+            output_shape,
+            ml_task,
+            task.size,
+        )
+
+        keras_model = self.make_keras_model(
+            task,
+            network_structure,
+            run_loss,
+        )
+
+        # Configure Keras Callbacks
+        callbacks = []
+        if task.early_stopping is not None:
+            callbacks.append(
+                tensorflow.keras.callbacks.EarlyStopping(
+                    **task.early_stopping))
+
+        history = self.fit_model(
+            task,
+            keras_model,
+            prepared_config,
+            callbacks,
+        )
+
+        # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
+        history = remap_key_prefixes(history, [
+            ('val_', 'test_'),
+            ('', 'train_'),
+        ])  # type: ignore
+
+        return self.make_result_record(
+            task,
+            worker,
+            network_structure,
+            widths,
+            num_free_parameters,
+            output_activation,
+            history,
+        )
+
+    def make_result_record(
+        self,
+        task: AspectTestTask,
+        worker,
+        network_structure: NetworkModule,
+        widths: List[int],
+        num_free_parameters: int,
+        output_activation: str,
+        history: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        parameters: Dict[str, Any] = task.parameters
+        parameters['widths'] = widths
+        parameters['num_free_parameters'] = num_free_parameters
+        parameters['output_activation'] = output_activation
+        parameters['network_structure'] = \
+            jobqueue_marshal.marshal(network_structure)
+
+        parameters.update(history)
+        parameters.update(worker.worker_info)
+
+        # return the result record
+        return parameters
+
+    def load_and_prepare_dataset(
+        self,
+        task: AspectTestTask,
+        val_portion: Optional[float] = None,
+    ) -> Tuple[str, Tuple[int], Tuple[int], dict, Callable]:
+        dataset_series, inputs, outputs = self.load_dataset(task)
+        ml_task = str(dataset_series['Task'])
+        input_shape = inputs.shape
+        output_shape = outputs.shape
+
+        # prepare dataset shuffle, split, and label noise:
+        prepared_config = prepare_dataset(
+            task.test_split_method,
+            task.test_split,
+            task.label_noise,
+            task.run_config,
+            ml_task,
+            inputs,
+            outputs,
+            val_portion=val_portion,
+        )
+        make_tensorflow_dataset = \
+            self.make_tensorflow_dataset_converter(
+                task,
+                inputs,
+                outputs,
+                prepared_config,
+            )
+        self.setup_tensorflow_training_and_validation_datasets(
+            prepared_config,
+            make_tensorflow_dataset,
+        )
+
+        return (
+            ml_task,
+            input_shape,
+            output_shape,
+            prepared_config,
+            make_tensorflow_dataset,
+        )
+
+    def set_random_seeds(
+        self,
+        task: AspectTestTask,
+    ) -> None:
+        seed: int = task.seed
         numpy.random.seed(seed)
         tensorflow.random.set_seed(seed)
         random.seed(seed)
 
-    def load_dataset(self) -> Tuple[Any, Any, Any]:
-        self.dataset_series, self.inputs, self.outputs =  \
+    def load_dataset(
+        self,
+        task: AspectTestTask,
+    ) -> Tuple[Any, Any, Any]:
+        dataset_series, inputs, outputs =  \
             pmlb_loader.load_dataset(
                 pmlb_loader.get_datasets(),
-                self.task.dataset)
-        return self.dataset_series, self.inputs, self.outputs
+                task.dataset)
+        return dataset_series, inputs, outputs
 
-    def make_network(self, target_size: int) -> int:
-        task = self.task
-
+    def make_network(
+        self,
+        task: AspectTestTask,
+        input_shape: Tuple[int],
+        output_shape: Tuple[int],
+        ml_task: str,
+        target_size: int,
+    ) -> Tuple[NetworkModule, List[int], int, tensorflow.keras.losses.Loss,
+               str, ]:
         # Generate neural network architecture
-        num_outputs = self.outputs.shape[1]
-        self.output_activation, self.run_loss = \
-            compute_network_configuration(num_outputs, self.dataset_series)
+        num_outputs = output_shape[1]
+        output_activation, run_loss = \
+            compute_network_configuration(num_outputs, ml_task)
 
         # TODO: make it so we don't need this hack
         shape = task.shape
@@ -68,41 +209,49 @@ class AspectTestExecutor():
         }
 
         # Build NetworkModule network
-        delta, self.widths, self.network_structure = \
+        delta, widths, network_structure = \
             find_best_layout_for_budget_and_depth(
-                self.inputs.shape,
+                input_shape,
                 residual_mode,
                 task.input_activation,
                 task.activation,
-                self.output_activation,
+                output_activation,
                 target_size,
                 widths_factory(shape)(num_outputs, task.depth),
                 layer_args,
             )
 
-        parameter_count = count_num_free_parameters(
-            self.network_structure)
+        num_free_parameters = count_num_free_parameters(network_structure)
         # reject non-conformant network sizes
-        delta = parameter_count - task.size
+        delta = num_free_parameters - task.size
         relative_error = delta / task.size
         if numpy.abs(relative_error) > .2:
             raise ValueError(
-                f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.')
+                f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.'
+            )
 
-        return parameter_count
+        return (
+            network_structure,
+            widths,
+            num_free_parameters,
+            run_loss,
+            output_activation,
+        )
 
-    def make_keras_model(self):
-        task = self.task
+    def make_keras_model(
+        self,
+        task: AspectTestTask,
+        network_structure: NetworkModule,
+        run_loss: tensorflow.keras.losses.Loss,
+    ) -> tensorflow.keras.Model:
 
         with worker.strategy.scope() as s:  # type: ignore
             tensorflow.config.optimizer.set_jit(True)
-            print(f'Tensorflow scope: {s}')
+
             # Build Keras model
-            self.keras_model = make_keras_network_from_network_module(
-                self.network_structure)
-            if len(self.keras_model.inputs) != 1:  # type: ignore
-                print(
-                    f'weird error: {len(self.keras_model.inputs)}, {json.dumps(jobqueue_marshal.marshal(self.network_structure))}')  # type: ignore
+            keras_model = make_keras_network_from_network_module(
+                network_structure)
+            if len(keras_model.inputs) != 1:  # type: ignore
                 raise ValueError('Wrong number of keras inputs generated')
 
             # Compile Keras Model
@@ -121,18 +270,18 @@ class AspectTestExecutor():
 
             run_optimizer = tensorflow.keras.optimizers.get(task.optimizer)
 
-        self.keras_model.compile(
-            loss=self.run_loss,
+        keras_model.compile(
+            loss=run_loss,
             optimizer=run_optimizer,
             metrics=run_metrics,
             run_eagerly=False,
         )
 
         # Calculate number of parameters in grown network
-        parameter_count = count_trainable_parameters_in_keras_model(
-            self.keras_model)
-        if count_num_free_parameters(self.network_structure) \
-                != parameter_count:
+        num_free_parameters = count_trainable_parameters_in_keras_model(
+            keras_model)
+        if count_num_free_parameters(network_structure) \
+                != num_free_parameters:
             raise RuntimeError('Wrong number of trainable parameters')
 
         # # optionally enable checkpoints
@@ -145,26 +294,27 @@ class AspectTestExecutor():
         #     save_path = os.path.join(
         #         DMP_CHECKPOINT_DIR, self.job_id + '.h5')
 
-        #     self.keras_model = ResumableModel(
-        #         self.keras_model,
+        #     keras_model = ResumableModel(
+        #         keras_model,
         #         save_every_epochs=self.save_every_epochs,
         #         to_path=save_path)
-        return callbacks
+        return keras_model
 
     def make_tensorflow_dataset_converter(
         self,
+        task: AspectTestTask,
+        inputs,
+        outputs,
         prepared_config: dict,
-    ):
+    ) -> Callable:
         dataset_options = tensorflow.data.Options()
         dataset_options.experimental_distribute.auto_shard_policy = \
             tensorflow.data.experimental.AutoShardPolicy.DATA
 
-        inputs_dataset = tensorflow.data.Dataset.from_tensor_slices(
-            self.inputs)
+        inputs_dataset = tensorflow.data.Dataset.from_tensor_slices(inputs)
         inputs_dataset = inputs_dataset.with_options(dataset_options)
 
-        outputs_dataset = tensorflow.data.Dataset.from_tensor_slices(
-            self.outputs)
+        outputs_dataset = tensorflow.data.Dataset.from_tensor_slices(outputs)
         outputs_dataset = outputs_dataset.with_options(dataset_options)
 
         def make_tensorflow_dataset(x, y):
@@ -176,26 +326,30 @@ class AspectTestExecutor():
             ds = ds.batch(task.run_config['batch_size'])
             print(f'ds inspection: {ds.element_spec}')
             return ds
+
         return make_tensorflow_dataset
 
     def setup_tensorflow_training_and_validation_datasets(
         self,
-        prepared_config,
-        make_tensorflow_dataset,
+        prepared_config: Dict[str, Any],
+        make_tensorflow_dataset: Callable,
     ) -> None:
-        prepared_config['x'] = make_tensorflow_dataset(
-            prepared_config['x'], prepared_config['y'])
+        prepared_config['x'] = make_tensorflow_dataset(prepared_config['x'],
+                                                       prepared_config['y'])
         del prepared_config['y']
 
         test_data = prepared_config['validation_data']
         prepared_config['validation_data'] = make_tensorflow_dataset(
             *test_data)
 
-    def fit_model(self,
-                  prepared_config: dict,
-                  callbacks: list,
-                  ) -> Any:
-        history = self.keras_model.fit(
+    def fit_model(
+        self,
+        task: AspectTestTask,
+        keras_model: tensorflow.keras.Model,
+        prepared_config: Dict[str, Any],
+        callbacks: list,
+    ) -> Any:
+        history = keras_model.fit(
             callbacks=callbacks,
             **prepared_config,
         )
@@ -203,8 +357,8 @@ class AspectTestExecutor():
         # Tensorflow models return a History object from their fit function,
         # but ResumableModel objects returns History.history. This smooths
         # out that incompatibility.
-        if self.task.save_every_epochs is None \
-                or self.task.save_every_epochs == 0:
+        if task.save_every_epochs is None \
+                or task.save_every_epochs == 0:
             history = history.history  # type: ignore
 
         # Direct method of saving the model (or just weights). This is automatically done by the ResumableModel interface if you enable checkpointing.
@@ -213,63 +367,3 @@ class AspectTestExecutor():
         # model.save(f'./log/models/{run_name}.h5', save_format='h5')
 
         return history
-
-    def __call__(self, parent: AspectTestTask, worker, *args, **kwargs) \
-            -> Dict[str, Any]:
-
-        task: AspectTestTask = self.task  # for easy access
-
-        self.set_random_seeds()
-        self.dataset_series, self.inputs, self.outputs = self.load_dataset()
-
-        # -----------
-        # prepare dataset shuffle, split, and label noise:
-        prepared_config = prepare_dataset(
-            task.test_split_method,
-            task.test_split,
-            task.label_noise,
-            task.run_config,
-            str(self.dataset_series['Task']),
-            self.inputs,
-            self.outputs,
-        )
-
-        # -----------
-        num_trainable_parameters = self.make_network(task.size)
-        self.make_keras_model()
-        make_tensorflow_dataset = \
-            self.make_tensorflow_dataset_converter(prepared_config)
-        self.setup_tensorflow_training_and_validation_datasets(
-            make_tensorflow_dataset,
-            prepared_config,
-        )
-
-        # Configure Keras Callbacks
-        callbacks = []
-        if task.early_stopping is not None:
-            callbacks.append(
-                tensorflow.keras.callbacks.EarlyStopping(
-                    **task.early_stopping))
-
-        history = self.fit_model(prepared_config, callbacks)
-
-        # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
-        history = remap_key_prefixes(
-            history, [
-                ('val_', 'test_'),
-                ('', 'train_'),
-            ])  # type: ignore
-
-        parameters: Dict[str, Any] = parent.parameters
-        parameters['output_activation'] = self.output_activation
-        parameters['widths'] = self.widths
-        parameters['num_free_parameters'] = num_trainable_parameters
-        parameters['output_activation'] = self.output_activation
-        parameters['network_structure'] = \
-            jobqueue_marshal.marshal(self.network_structure)
-
-        parameters.update(history)
-        parameters.update(worker.worker_info)
-
-        # return the result record
-        return parameters

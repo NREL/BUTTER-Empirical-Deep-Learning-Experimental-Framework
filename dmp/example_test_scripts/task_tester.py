@@ -1,11 +1,11 @@
-from dmp.task.growth_test.growth_test_task import GrowthTestTask
+from dmp.task.growth_test.growth_test_task import GrowthExperimentTask
 from dmp.worker import Worker
 import pandas as pd
 import tensorflow as tf
 import pickle
 
 def main():
-    task = GrowthTestTask(seed=0,batch='growth_test_1',
+    task = GrowthExperimentTask(seed=0,batch='growth_test_1',
                           dataset='201_pol',
                           input_activation='relu',
                           activation='relu',

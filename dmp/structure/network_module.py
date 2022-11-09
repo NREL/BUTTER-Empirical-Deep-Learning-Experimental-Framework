@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import Any, List
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)

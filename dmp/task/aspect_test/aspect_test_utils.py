@@ -245,19 +245,25 @@ class MakeKerasLayersFromNetwork:
 
     def __init__(self, target: NetworkModule) -> None:
         self._inputs: list = []
-        self._nodes: dict = {}
+        self._nodes: Dict[NetworkModule, tensorflow.keras.Layer] = {}
         self._outputs: list = []
 
         output = self._visit(target)
         self._outputs = [output]
 
-    def __call__(self) -> Tuple[list, Any]:
-        return self._inputs, self._outputs
+    def __call__(self) -> Tuple[
+        list,
+        list,
+        Dict[NetworkModule, tensorflow.keras.Layer],
+    ]:
+        return self._inputs, self._outputs, self._nodes
 
-    def _visit(self, target: NetworkModule) -> Any:
+    def _visit(self, target: NetworkModule) \
+            -> Tuple[Any, List[Any], Dict[NetworkModule, Any], List[Any]]:
         if target not in self._nodes:
             keras_inputs = [self._visit(i) for i in target.inputs]
-            self._nodes[target] = self._visit_raw(target, keras_inputs)
+            keras_layer = self._visit_raw(target, keras_inputs)
+            self._nodes[target] = keras_layer
         return self._nodes[target]
 
     @singledispatchmethod
@@ -293,34 +299,31 @@ class MakeKerasLayersFromNetwork:
         return tensorflow.keras.layers.add(keras_inputs)
 
 
-def make_keras_network_from_network_module(target: NetworkModule) -> keras.Model:
+def make_keras_network_from_network_module(target: NetworkModule) \
+        -> keras.Model:
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
     :param model_cache: optional, used internally to preserve information through recursive calls
     """
-    inputs, outputs = MakeKerasLayersFromNetwork(target)()
+    inputs, outputs, node_layer_map = MakeKerasLayersFromNetwork(target)()
     return Model(inputs=inputs, outputs=outputs)
 
 
-def compute_network_configuration(num_outputs, dataset) -> Tuple[Any, Any]:
+def compute_network_configuration(num_outputs, ml_task: str) -> Tuple[Any, Any]:
     output_activation = 'relu'
-    run_task = dataset['Task']
-    if run_task == 'regression':
+    if ml_task == 'regression':
         run_loss = losses.mean_squared_error
         output_activation = 'sigmoid'
-        # print('mean_squared_error')
-    elif run_task == 'classification':
+    elif ml_task == 'classification':
         if num_outputs == 1:
             output_activation = 'sigmoid'
             run_loss = losses.binary_crossentropy
-            # print('binary_crossentropy')
         else:
             output_activation = 'softmax'
             run_loss = losses.categorical_crossentropy
-            # print('categorical_crossentropy')
     else:
-        raise Exception('Unknown task "{}"'.format(run_task))
+        raise Exception('Unknown task "{}"'.format(ml_task))
 
     return output_activation, run_loss
 

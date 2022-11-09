@@ -19,7 +19,7 @@ from dmp.jobqueue_interface.common import jobqueue_marshal
 
 import sys
 
-from dmp.task.growth_test.growth_test_task import GrowthTestTask
+from dmp.task.growth_test.growth_test_task import GrowthExperimentTask
 from dmp.task.aspect_test.aspect_test_utils import find_best_layout_for_budget_and_depth
 
 
@@ -37,7 +37,7 @@ def do_parameter_sweep(sweep_config, task_handler):
         if key_index < 0:
             for rep in range(repetitions):
                 task_config['seed'] = seed
-                task = GrowthTestTask(**task_config)
+                task = GrowthExperimentTask(**task_config)
                 task_handler(task)
                 seed += 1
         else:
