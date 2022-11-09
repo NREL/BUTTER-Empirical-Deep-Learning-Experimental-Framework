@@ -245,7 +245,7 @@ class MakeKerasLayersFromNetwork:
 
     def __init__(self, target: NetworkModule) -> None:
         self._inputs: list = []
-        self._nodes: Dict[NetworkModule, tensorflow.keras.Layer] = {}
+        self._node_layer_map: Dict[NetworkModule, tensorflow.keras.Layer] = {}
         self._outputs: list = []
 
         output = self._visit(target)
@@ -256,15 +256,15 @@ class MakeKerasLayersFromNetwork:
         list,
         Dict[NetworkModule, tensorflow.keras.Layer],
     ]:
-        return self._inputs, self._outputs, self._nodes
+        return self._inputs, self._outputs, self._node_layer_map
 
     def _visit(self, target: NetworkModule) \
             -> Tuple[Any, List[Any], Dict[NetworkModule, Any], List[Any]]:
-        if target not in self._nodes:
+        if target not in self._node_layer_map:
             keras_inputs = [self._visit(i) for i in target.inputs]
             keras_layer = self._visit_raw(target, keras_inputs)
-            self._nodes[target] = keras_layer
-        return self._nodes[target]
+            self._node_layer_map[target] = keras_layer
+        return self._node_layer_map[target]
 
     @singledispatchmethod
     def _visit_raw(self, target, keras_inputs) -> Any:
