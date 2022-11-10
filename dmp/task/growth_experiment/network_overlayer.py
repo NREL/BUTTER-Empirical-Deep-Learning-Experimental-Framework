@@ -9,7 +9,7 @@ from dmp.structure.network_module import NetworkModule
 import tensorflow.keras.layers as layers
 
 
-class GrowNetworkVisitor:
+class NetworkOverlayer:
     """
     Visitor that fills one network with the values from another. 
     If the destination network is larger, this will 'grow' the source into
@@ -31,7 +31,7 @@ class GrowNetworkVisitor:
         new_to_new_scale: float = 1.0,
         old_to_new_scale: float = 1.0,
         new_to_old_scale: float = 0.0,
-        old_vs_new_blending: float = 0.0,
+        new_add_to_old_scale: float = 0.0,
     ) -> None:
         self._source: NetworkModule = source
         self._source_node_layer_map: Dict[NetworkModule,
@@ -44,7 +44,7 @@ class GrowNetworkVisitor:
         self.new_to_new_scale: float = new_to_new_scale
         self.old_to_new_scale: float = old_to_new_scale
         self.new_to_old_scale: float = new_to_old_scale
-        self.old_vs_new_blending : float = old_vs_new_blending
+        self.new_add_to_old_scale: float = new_add_to_old_scale
 
         self._visited: Set[NetworkModule] = set()
 
@@ -109,64 +109,43 @@ class GrowNetworkVisitor:
         src_out_idx = sw_shape[1]
 
         # scale old to new nodes
-        dest_weights[:src_in_idx, src_out_idx:] = \
-            self.scale_block(
-            source_weights,
+        self._scale_block(
             dest_weights[:src_in_idx, src_out_idx:],
             self.old_to_new_scale,
-            dest_weights[:src_in_idx, src_out_idx:])
+        )
 
         # scale new to old nodes
-        dest_weights[src_in_idx:, :src_out_idx] = \
-            self.scale_block(
-            source_weights,
+        self._scale_block(
             dest_weights[src_in_idx:, :src_out_idx],
             self.new_to_old_scale,
-            dest_weights[src_in_idx:, :src_out_idx])
+        )
 
         # scale new nodes
-        dest_weights[src_in_idx:, src_out_idx:] = \
-            self.scale_block(
-            source_weights,
+        self._scale_block(
             dest_weights[src_in_idx:, src_out_idx:],
             self.new_to_new_scale,
-            dest_weights[src_in_idx:, src_out_idx:])
-        
-        dest_biases[sb_shape[0]:] = \
-            self.scale_block(
-                source_biases,
-                dest_biases[sb_shape[0]:],
-                self.new_to_new_scale,
-                dest_biases[sb_shape[0]:])
-        
-        # scale old nodes
-        dest_weights[src_in_idx:, src_out_idx:] = \
-            self.scale_block(
-            source_weights,
-            dest_weights[src_in_idx:, src_out_idx:],
+        )
+        self._scale_block(
+            dest_biases[sb_shape[0]:],
             self.new_to_new_scale,
-            dest_weights[src_in_idx:, src_out_idx:])
-            
-        blend = self.old_vs_new_blending
-        dest_weights[:src_in_idx, :src_out_idx] = \
-            source_weights * (1-blend) + \
-            blend * dest_weights[:src_in_idx, :src_out_idx]
-        dest_biases[:sb_shape[0]] = \
-            source_biases * (1-blend) + \
-            blend * dest_biases[:sb_shape[0]]
+        )
 
-        
+        # copy and scale old nodes
+        self._blend_blocks(
+            source_weights,
+            self.new_add_to_old_scale,
+            dest_weights[:src_in_idx, :src_out_idx],
+            self.old_to_old_scale,
+        )
 
-        # set old-to-old to be the same
-        new_weights[0][:old_weights[0].shape[0], :old_weights[0].
-                       shape[1], ] = old_weights[0]
-        new_weights[1][:old_weights[1].shape[0]] = old_weights[1]
+        self._blend_blocks(
+            source_biases,
+            self.new_add_to_old_scale,
+            dest_biases[:sb_shape[0]],
+            self.old_to_old_scale,
+        )
 
-        # scale new-to-old weights
-        new_weights[0] = self._scale * new_weights[0]
-        new_weights[1] = self._scale * new_weights[1]
-
-        dest_layer.set_weights(new_weights)
+        dest_layer.set_weights(dest_weights)
 
     @_do_visit.register
     def _(
@@ -194,26 +173,35 @@ class GrowNetworkVisitor:
             else:
                 yield x
 
-    def scale_block(
+    def _scale_block(
         self,
-        source_population,
-        dest_population,
-        scale_setting,
-        target_block,
-    )->None:
-        if scale_setting is None \
-                or target_block.size <= 0 \
-            or source_population.size <= 0 \
-                or dest_population.size <= 0:
-            return target_block
+        target: numpy.ndarray,
+        scale: float,
+    ) -> None:
+        if scale == 1.0:
+            pass
+        elif scale == 0.0:
+            target[:] = 0
+        else:
+            target[:] *= scale
 
-        source_std = numpy.std(
-            numpy.fromiter(self.flatten(source_population), dtype=float))
-        new_std = numpy.std(
-            numpy.fromiter(self.flatten(dest_population), dtype=float))
-        # if numpy .isnan(new_std) or numpy .isnan(source_std):
-        #     print(f'Numerical error in setting adjustment {source_std} {new_std} {source_population.size} {dest_population.size}')
-        #     return target_block
-        # print(f'Numerical error in setting adjustment {source_std} {new_std} {scale_setting} {source_population.size} {dest_population.size}')
-        adjustment = (scale_setting * source_std) / new_std
-        return target_block * adjustment
+    def _blend_blocks(
+        self,
+        source_weights: numpy.ndarray,
+        source_scale: float,
+        dest_block: numpy.ndarray,
+        dest_scale: float,
+    ) -> None:
+        if source_scale == 0.0:
+            dest_block[:] = source_weights
+            self._scale_block(
+                dest_block,
+                source_scale,
+            )
+        else:
+            self._scale_block(
+                dest_block,
+                dest_scale,
+            )
+            dest_block[:] += source_weights * source_scale
+            

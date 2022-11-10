@@ -49,7 +49,7 @@ class AspectTestTask(Task):
 
     def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
         from .aspect_test_executor import AspectTestExecutor
-        return AspectTestExecutor(self)(self, worker, *args, **kwargs)
+        return AspectTestExecutor()(self, worker, *args, **kwargs)
 
     @property
     def version(self) -> int:

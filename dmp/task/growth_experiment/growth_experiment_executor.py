@@ -1,34 +1,19 @@
-from dataclasses import dataclass
-import json
-import os
-import platform
-import subprocess
-
-from pytest import param
-# from sympy import per
-
-from dmp.data.pmlb import pmlb_loader
-from dmp.jobqueue_interface.common import jobqueue_marshal
-
-import tensorflow.keras.metrics as metrics
-from tensorflow.keras.callbacks import EarlyStopping
-from dmp.task.aspect_test.aspect_test_executor import AspectTestExecutor
-
-from dmp.task.growth_test.growth_test_task import GrowthExperimentTask
-from dmp.task.aspect_test.aspect_test_utils import *
-import dmp.task.growth_test.growth_test_utils as growth_test_utils
-from dmp.task.task import Parameter
-from typing import Optional, Dict, Any
-
-import pandas
-import numpy
-import sys
 import copy
 import math
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
+import numpy
+import tensorflow.keras as keras
+from pytest import param
+
+import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
+from dmp.jobqueue_interface.common import jobqueue_marshal
+from dmp.task.aspect_test.aspect_test_executor import AspectTestExecutor
+from dmp.task.aspect_test.aspect_test_utils import *
+from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
+from dmp.task.growth_experiment.network_overlayer import NetworkOverlayer
 from dmp.task.task_util import remap_key_prefixes
-
-# from keras_buoy.models import ResumableModel
 
 
 @dataclass
@@ -36,7 +21,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
     '''
     '''
 
-    def __call__(self, task: GrowthExperimentTask, worker, *args, **kwargs) \
+    def __call__(self, task: GrowthExperiment, worker, *args, **kwargs) \
             -> Dict[str, Any]:
 
         # check to make sure the growth scale is larger than 1
@@ -66,13 +51,12 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         growth_step: int = 0
         epoch_parameters: int = 0
         epochs: int = 0
-        keras_model = None
-        network_structure = None
-        widths = None
+        prev_network_structure = None
+        prev_node_layer_map = None
         output_activation = None
         num_free_parameters: int = 0
-        go: bool = True
-        while go:
+        on_final_iteration: bool = False
+        while not on_final_iteration:
 
             target_size: int = int(
                 math.floor(task.initial_size *
@@ -85,7 +69,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
 
             # if we topped out at the maximum size, this is the last iteration
             if target_size >= task.size:
-                go = False
+                on_final_iteration = True
                 target_size = task.size
 
             (
@@ -111,38 +95,37 @@ class GrowthExperimentExecutor(AspectTestExecutor):
             if max_epochs_at_this_iteration <= 0:
                 break
 
-            # TODO: Grow Here
+            keras_model, node_layer_map, run_metrics, run_optimizer = \
+                self.make_keras_model(task, network_structure)
 
-            # print('growing', growth_phase, num_free_parameters, ideal_size)
+            if prev_network_structure is not None and \
+                prev_node_layer_map is not None:
+                self.grow_network(
+                    task.growth_method,
+                    prev_network_structure,
+                    prev_node_layer_map,
+                    network_structure,
+                    node_layer_map,
+                )
 
-            # # grow each layer by the difference between old and new widths
-            # config = {i: (w-old_widths[i]) for i, w in enumerate(widths)}
-            # print(config)
-
-            # # Grow
-            # self.keras_model = getattr(growth_test_utils, task.growth_method)(
-            #     self.keras_model,
-            #     config,
-            #     **self.growth_method_params,
-            # )
-
-            keras_model = self.make_keras_model(
-                task,
+            self.compile_keras_network(
                 network_structure,
                 run_loss,
+                keras_model,
+                run_metrics,
+                run_optimizer,
             )
 
             prepared_config['epochs'] = max_epochs_at_this_iteration
 
-            test_history = growth_test_utils.AdditionalValidationSets(
+            test_history = growth_experiment_utils.AdditionalValidationSets(
                 [test_data],
                 batch_size=task.run_config['batch_size'],
             )
 
-            callbacks = []
-            callbacks.append(test_history)
+            callbacks: List[keras.callbacks.Callback] = [test_history]
 
-            if go:
+            if not on_final_iteration:
                 callbacks.append(
                     self.make_growth_trigger_callback(task.growth_trigger))
 
@@ -156,29 +139,25 @@ class GrowthExperimentExecutor(AspectTestExecutor):
             # Add test set history into history dict.
             iteration_history.update(test_history.history)
 
-            growth_step += 1
             num_epochs = len(iteration_history['loss'])
-            epochs += num_epochs
-            epoch_parameters += num_epochs * num_free_parameters
 
             # Add num_free_parameters to history dictionary and append to master
             # histories dictionary
-            iteration_history['parameter_count'] = [num_free_parameters
-                                                    ] * num_epochs
+            iteration_history['parameter_count'] = \
+                [num_free_parameters] * num_epochs
 
             # Add growth points to history dictionary
-            iteration_history['growth_points'] = [0] * num_epochs
+            iteration_history['growth_points'] = \
+                [0] * num_epochs
 
             # If the growth trigger is EarlyStopping and the
             # 'restore_best_weights' flag is set, indicate growth point at epoch
             # that achieves lowest val_loss else growth occured at final epoch
-            if task.growth_trigger == 'EarlyStopping':
-                if 'restore_best_weights' in task.growth_trigger_params and \
-                        task.growth_trigger_params['restore_best_weights']:
-                    iteration_history['growth_points'][numpy.argmin(
-                        iteration_history['val_loss'])] = 1
-                else:
-                    iteration_history['growth_points'][-1] = 1
+            if task.growth_trigger.get('restore_best_weights', False):
+                iteration_history['growth_points'][\
+                    numpy.argmin(iteration_history['val_loss'])] = 1
+            else:
+                iteration_history['growth_points'][-1] = 1
 
             # Extend histories dictionary
             if len(history.keys()) == 0:
@@ -188,41 +167,12 @@ class GrowthExperimentExecutor(AspectTestExecutor):
                     if type(history[k]) is list:
                         history[k].extend(iteration_history[k])
 
-            # # Calculate config to pass to growth function
-            # old_widths = widths
-            # _, widths, _ = find_best_layout_for_budget_and_depth(
-            #     self.inputs.shape,
-            #     residual_mode,
-            #     task.input_activation,
-            #     task.activation,
-            #     self.output_activation,
-            #     task.growth_scale * ideal_size,  # Grows by the ideal size based on growth scale
-            #     widths_factory(shape)(num_outputs, task.depth),
-            #     layer_args,
-            # )
-            # # grow each layer by the difference between old and new widths
-            # config = {i: (w-old_widths[i]) for i, w in enumerate(widths)}
-            # print(config)
-
-            # # Grow
-            # self.keras_model = getattr(growth_test_utils, task.growth_method)(
-            #     self.keras_model,
-            #     config,
-            #     **self.growth_method_params,
-            # )
-
-            # # Compile
-            # self.keras_model.compile(
-            #     loss=self.run_loss,
-            #     optimizer=run_optimizer,
-            #     metrics=run_metrics,
-            #     run_eagerly=False,
-            # )
-
-            # if target_size >= task.size \
-            #     or epoch_parameters >= task.max_equivalent_epoch_budget * task.size \
-            #     or epochs >= task.max_total_epochs:
-            #     break
+            prev_network_structure = network_structure
+            prev_node_layer_map = node_layer_map
+            growth_step += 1
+            epochs += num_epochs
+            epoch_parameters += num_epochs * num_free_parameters
+            continue  # just put this here for better readability
 
         # Rename history keys
         history = remap_key_prefixes(history, [
@@ -241,10 +191,30 @@ class GrowthExperimentExecutor(AspectTestExecutor):
             history,
         )
 
-    def make_growth_trigger_callback(self, growth_trigger_name: str):
-        if growth_trigger_name == 'EarlyStopping':
-            clss = EarlyStopping
-        else:
-            raise NotImplementedError(
-                f'Unsupported growth trigger, "{growth_trigger_name}".')
-        return clss(**self.task.growth_trigger_params)  # type: ignore
+    def grow_network(
+        self,
+        config: dict,
+        source: NetworkModule,
+        source_node_layer_map: Dict[NetworkModule, keras.layers.Layer],
+        dest: NetworkModule,
+        dest_node_layer_map: Dict[NetworkModule, keras.layers.Layer],
+    ) -> None:
+        make_from_config(
+            config,
+            {
+                'NetworkOverlayer': NetworkOverlayer,
+            },
+            'growth_method',
+            source,
+            source_node_layer_map,
+            dest,
+            dest_node_layer_map,
+        )
+
+    def make_growth_trigger_callback(
+        self,
+        config: dict,
+    ) -> keras.callbacks.Callback:
+        return make_from_config(config, {
+            'EarlyStopping': keras.callbacks.EarlyStopping,
+        }, 'growth_trigger')

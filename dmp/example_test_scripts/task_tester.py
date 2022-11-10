@@ -1,11 +1,11 @@
-from dmp.task.growth_test.growth_test_task import GrowthExperimentTask
+from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.worker import Worker
 import pandas as pd
 import tensorflow as tf
 import pickle
 
 def main():
-    task = GrowthExperimentTask(seed=0,batch='growth_test_1',
+    task = GrowthExperiment(seed=0,batch='growth_experiment_1',
                           dataset='201_pol',
                           input_activation='relu',
                           activation='relu',
@@ -37,8 +37,8 @@ def main():
     
     result = task(worker)
     # print(result)
-    # pd.DataFrame(result).to_csv('growth_test_dataframe.csv')
-    with open('growth_test_results.pkl','wb') as f:
+    # pd.DataFrame(result).to_csv('growth_experiment_dataframe.csv')
+    with open('growth_experiment_results.pkl','wb') as f:
         pickle.dump(result,f)
 
 if __name__ == '__main__':

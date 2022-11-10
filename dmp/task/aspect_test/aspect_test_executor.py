@@ -1,10 +1,7 @@
-import json
 from dataclasses import dataclass
 from typing import Any
 
 import numpy
-import pandas
-import tensorflow.keras.callbacks as callbacks
 import tensorflow.keras.metrics as metrics
 from dmp.data.pmlb import pmlb_loader
 from dmp.jobqueue_interface.common import jobqueue_marshal
@@ -12,7 +9,6 @@ from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 from dmp.task.aspect_test.aspect_test_utils import *
 from dmp.task.task import Parameter
 from dmp.task.task_util import remap_key_prefixes
-from pytest import param
 
 # from keras_buoy.models import ResumableModel
 
@@ -61,10 +57,16 @@ class AspectTestExecutor():
             task.size,
         )
 
-        keras_model = self.make_keras_model(
-            task,
+
+        keras_model, node_layer_map, run_metrics, run_optimizer = \
+            self.make_keras_model(task, network_structure)
+
+        self.compile_keras_network(
             network_structure,
             run_loss,
+            keras_model,
+            run_metrics,
+            run_optimizer,
         )
 
         # Configure Keras Callbacks
@@ -238,38 +240,8 @@ class AspectTestExecutor():
             output_activation,
         )
 
-    def make_keras_model(
-        self,
-        task: AspectTestTask,
-        network_structure: NetworkModule,
-        run_loss: tensorflow.keras.losses.Loss,
-    ) -> tensorflow.keras.Model:
-
-        with worker.strategy.scope() as s:  # type: ignore
-            tensorflow.config.optimizer.set_jit(True)
-
-            # Build Keras model
-            keras_model = make_keras_network_from_network_module(
-                network_structure)
-            if len(keras_model.inputs) != 1:  # type: ignore
-                raise ValueError('Wrong number of keras inputs generated')
-
-            # Compile Keras Model
-            run_metrics = [
-                # metrics.CategoricalAccuracy(),
-                'accuracy',
-                metrics.CosineSimilarity(),
-                metrics.Hinge(),
-                metrics.KLDivergence(),
-                metrics.MeanAbsoluteError(),
-                metrics.MeanSquaredError(),
-                metrics.MeanSquaredLogarithmicError(),
-                metrics.RootMeanSquaredError(),
-                metrics.SquaredHinge(),
-            ]
-
-            run_optimizer = tensorflow.keras.optimizers.get(task.optimizer)
-
+    def compile_keras_network(self, network_structure, run_loss, keras_model,
+                              run_metrics, run_optimizer):
         keras_model.compile(
             loss=run_loss,
             optimizer=run_optimizer,
@@ -298,7 +270,32 @@ class AspectTestExecutor():
         #         keras_model,
         #         save_every_epochs=self.save_every_epochs,
         #         to_path=save_path)
-        return keras_model
+
+    def make_keras_model(self, task, network_structure):
+        with worker.strategy.scope() as s:  # type: ignore
+            tensorflow.config.optimizer.set_jit(True)
+
+            # Build Keras model
+            keras_model, node_layer_map = make_keras_network_from_network_module(
+                network_structure)
+            if len(keras_model.inputs) != 1:  # type: ignore
+                raise ValueError('Wrong number of keras inputs generated')
+
+            # Compile Keras Model
+            run_metrics = [
+                'accuracy',
+                metrics.CosineSimilarity(),
+                metrics.Hinge(),
+                metrics.KLDivergence(),
+                metrics.MeanAbsoluteError(),
+                metrics.MeanSquaredError(),
+                metrics.MeanSquaredLogarithmicError(),
+                metrics.RootMeanSquaredError(),
+                metrics.SquaredHinge(),
+            ]
+
+            run_optimizer = tensorflow.keras.optimizers.get(task.optimizer)
+        return keras_model, node_layer_map, run_metrics, run_optimizer
 
     def make_tensorflow_dataset_converter(
         self,

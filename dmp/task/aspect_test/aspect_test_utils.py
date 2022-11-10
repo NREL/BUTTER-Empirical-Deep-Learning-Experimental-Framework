@@ -65,7 +65,7 @@ def prepare_dataset(
     outputs,
     val_portion: Optional[float] = None,
 ) -> Dict[str, Any]:
-    run_config = deepcopy(run_config)
+    prepared_config = deepcopy(run_config)
     if test_split_method == 'shuffled_train_test_split':
 
         train_inputs, test_inputs, train_outputs, test_outputs = \
@@ -77,9 +77,9 @@ def prepare_dataset(
             )
         add_label_noise(label_noise, run_task, train_outputs)
 
-        run_config['validation_data'] = (test_inputs, test_outputs)
-        run_config['x'] = train_inputs
-        run_config['y'] = train_outputs
+        prepared_config['validation_data'] = (test_inputs, test_outputs)
+        prepared_config['x'] = train_inputs
+        prepared_config['y'] = train_outputs
     elif test_split_method == 'shuffled_train_val_test_split':
 
         train_inputs, test_inputs, train_outputs, test_outputs = \
@@ -101,16 +101,16 @@ def prepare_dataset(
             )
         add_label_noise(label_noise, run_task, train_outputs)
 
-        run_config['test_data'] = (test_inputs, test_outputs)
-        run_config['validation_data'] = (val_inputs, val_outputs)
-        run_config['x'] = train_inputs
-        run_config['y'] = train_outputs
+        prepared_config['test_data'] = (test_inputs, test_outputs)
+        prepared_config['validation_data'] = (val_inputs, val_outputs)
+        prepared_config['x'] = train_inputs
+        prepared_config['y'] = train_outputs
     else:
         raise NotImplementedError(
             f'Unknown test_split_method {test_split_method}.')
         # run_config['x'] = inputs
         # run_config['y'] = outputs
-    return run_config
+    return prepared_config
 
 
 def count_vars_in_keras_model(model: Model, var_getter) -> int:
@@ -216,26 +216,40 @@ def make_network(
         current = layer
     return current
 
+def get_params_and_type_from_config(
+    config:dict, 
+    type_key:str = 'type',
+    ) -> Tuple[str, dict]:
+    params = config.copy()
+    del params['type']
+    return config['type'], params
 
-def make_regularizer(regularization_settings: Optional[Dict]) \
-        -> keras.regularizers.Regularizer:
-    if regularization_settings is None:
+def make_from_config(
+    config:dict,
+    mapping:Dict[str, Callable],
+    config_name : str,
+    *args,
+    **kwargs,
+) -> Any:
+    type, params = get_params_and_type_from_config(config)
+    factory = mapping.get(type, None)
+    if factory is None:
+        raise NotImplementedError(f'Unknown {config_name} type "{type}".')
+    return factory(*args, **kwargs, **params)
+
+def make_regularizer(config: Optional[Dict]) \
+        -> Optional[keras.regularizers.Regularizer]:
+    if config is None:
         return None
-    name = regularization_settings['type']
-    args = regularization_settings.copy()
-    del args['type']
-
-    cls = None
-    if name == 'l1':
-        cls = keras.regularizers.L1
-    elif name == 'l2':
-        cls = keras.regularizers.L2
-    elif name == 'l1l2':
-        cls = keras.regularizers.L1L2
-    else:
-        raise NotImplementedError(f'Unknown regularizer "{name}".')
-
-    return cls(**args)
+    return make_from_config(
+        config,
+        {
+            'l1':keras.regularizers.L1,
+            'l2':keras.regularizers.L2,
+            'l1l2':keras.regularizers.L1L2
+        },
+        'regularizer'
+    )
 
 
 class MakeKerasLayersFromNetwork:
@@ -300,14 +314,14 @@ class MakeKerasLayersFromNetwork:
 
 
 def make_keras_network_from_network_module(target: NetworkModule) \
-        -> keras.Model:
+        -> Tuple[keras.Model, Dict[NetworkModule, tensorflow.keras.Layer] ]:
     """
     Recursively builds a keras network from the given network module and its directed acyclic graph of inputs
     :param target: starting point module
     :param model_cache: optional, used internally to preserve information through recursive calls
     """
     inputs, outputs, node_layer_map = MakeKerasLayersFromNetwork(target)()
-    return Model(inputs=inputs, outputs=outputs)
+    return Model(inputs=inputs, outputs=outputs), node_layer_map
 
 
 def compute_network_configuration(num_outputs, ml_task: str) -> Tuple[Any, Any]:
