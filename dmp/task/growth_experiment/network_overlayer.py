@@ -98,8 +98,8 @@ class NetworkOverlayer:
         dest_layer: layers.Dense = \
             self._dest_node_layer_map[dest_node]  # type: ignore
 
-        source_weights, source_biases = source_layer.get_weights(
-        )  # type: ignore
+        source_weights, source_biases = \
+            source_layer.get_weights()  # type: ignore
         dest_weights, dest_biases = dest_layer.get_weights()  # type: ignore
 
         sw_shape = source_weights.shape

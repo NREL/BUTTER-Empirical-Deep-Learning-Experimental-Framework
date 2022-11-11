@@ -134,7 +134,7 @@ def count_parameters_in_keras_model(model: Model) -> int:
 def count_non_trainable_parameters_in_keras_model(model: Model) -> int:
     return count_vars_in_keras_model(model, lambda m: m.non_trainable_variables)
 
-
+# TODO: clean up this visitor
 def count_num_free_parameters(target: NetworkModule) -> int:
     def build_set_of_modules(target: NetworkModule) -> set:
         cache = {target}
@@ -148,7 +148,7 @@ def count_num_free_parameters(target: NetworkModule) -> int:
 
         @singledispatchmethod
         def visit(self, target) -> Any:
-            raise Exception(
+            raise NotImplementedError(
                 'Unsupported module of type "{}".'.format(type(target)))
 
         @visit.register

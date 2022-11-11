@@ -46,7 +46,6 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         test_data = \
             (make_tensorflow_dataset(test_data[0], test_data[1]), test_data_key)
 
-        # fit / train model
         history: dict = dict()
         growth_step: int = 0
         epoch_parameters: int = 0

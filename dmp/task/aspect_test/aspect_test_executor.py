@@ -74,7 +74,7 @@ class AspectTestExecutor():
         if task.early_stopping is not None:
             callbacks.append(
                 tensorflow.keras.callbacks.EarlyStopping(
-                    **task.early_stopping))
+                    **task.early_stopping)) # TODO: decide what to do with this guy
 
         history = self.fit_model(
             task,
