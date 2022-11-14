@@ -75,6 +75,8 @@ def _fetch_keras_data(dataset_name: str) -> Tuple[ndarray, ndarray]:
         raise Exception('No matching dataset "{}".'.format(dataset_name))
     # concatenate train and test data into raw_inputs, raw_outputs
     raw_inputs = np.concatenate((xtrain, xtest), axis=0)
+    if dataset_name == 'mnist' or dataset_name == 'fashion_mnist':
+        raw_inputs = raw_inputs.reshape(raw_inputs.shape[0], 28, 28, 1)
     raw_outputs = np.concatenate((ytrain, ytest), axis=0)
     return raw_inputs, raw_outputs
 
