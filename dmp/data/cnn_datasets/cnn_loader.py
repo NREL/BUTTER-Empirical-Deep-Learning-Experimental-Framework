@@ -78,10 +78,84 @@ def _fetch_keras_data(dataset_name: str) -> Tuple[ndarray, ndarray]:
     raw_outputs = np.concatenate((ytrain, ytest), axis=0)
     return raw_inputs, raw_outputs
 
+def _fetch_tf_data(dataset_name: str) -> Tuple[ndarray, ndarray]:
+    import tensorflow_datasets as tfds
+    dl_config = tfds.download.DownloadConfig(verify_ssl=False)
+    if dataset_name == 'colorectal_histology':
+        ds = tfds.load('dataset_name', 
+                        split='train', 
+                        shuffle_files=False,
+                        as_supervised=True, 
+                        download_and_prepare_kwargs={'download_config': dl_config})
+    elif dataset_name == 'eurosat_all':
+        ds = tfds.load('eurosat/all', 
+                        split='train', 
+                        shuffle_files=False,
+                        as_supervised=True, 
+                        download_and_prepare_kwargs={'download_config': dl_config})
+    elif dataset_name == 'eurosat_rgb':
+        ds = tfds.load('eurosat/rgb', 
+                        split='train', 
+                        shuffle_files=False,
+                        as_supervised=True, 
+                        download_and_prepare_kwargs={'download_config': dl_config})
+    elif dataset_name == 'horses_or_humans':
+        ds = tfds.load('horses_or_humans', 
+                        split='train', 
+                        shuffle_files=False,
+                        as_supervised=True, 
+                        download_and_prepare_kwargs={'download_config': dl_config})
+        ds1 = tfds.load('horses_or_humans',
+                        split='test',
+                        shuffle_files=False,
+                        as_supervised=True,
+                        download_and_prepare_kwargs={'download_config': dl_config})
+    elif dataset_name == 'patch_camelyon' or dataset_name == 'places365_small':
+        ds = tfds.load(dataset_name, 
+                        split='train', 
+                        shuffle_files=False,
+                        as_supervised=True, 
+                        download_and_prepare_kwargs={'download_config': dl_config})
+        ds1 = tfds.load(dataset_name,
+                        split='test',
+                        shuffle_files=False,
+                        as_supervised=True,
+                        download_and_prepare_kwargs={'download_config': dl_config})
+        ds2 = tfds.load(dataset_name,
+                        split='validation',
+                        shuffle_files=False,
+                        as_supervised=True,
+                        download_and_prepare_kwargs={'download_config': dl_config})
+    else:
+        raise Exception('No matching dataset "{}".'.format(dataset_name))
+    ds = tfds.as_numpy(ds)
+    raw_inputs = []
+    raw_outputs = []
+    for ex in ds:
+        raw_inputs.append(ex[0])
+        raw_outputs.append(ex[1])
+    if dataset_name == 'horses_or_humans' or dataset_name == 'patch_camelyon' or dataset_name == 'places365_small':
+        ds1 = tfds.as_numpy(ds1)
+        for ex in ds1:
+            raw_inputs.append(ex[0])
+            raw_outputs.append(ex[1])
+        if dataset_name == 'patch_camelyon' or dataset_name == 'places365_small':
+            ds2 = tfds.as_numpy(ds2)
+            for ex in ds2:
+                raw_inputs.append(ex[0])
+                raw_outputs.append(ex[1])
+    raw_inputs = np.array(raw_inputs)
+    raw_outputs = np.array(raw_outputs)
+    return raw_inputs, raw_outputs
+
 def _fetch_data(dataset_name: str) -> Tuple[ndarray, ndarray]:
     keras_datasets = ['mnist', 'fashion_mnist', 'cifar10', 'cifar100']
+    tf_datasets = ['colorectal_histology', 'eurosat_all', 'eurosat_rgb', 
+                'horses_or_humans', 'patch_camelyon', 'places365_small']
     if dataset_name in keras_datasets:
         raw_inputs, raw_outputs = _fetch_keras_data(dataset_name)
+    elif dataset_name in tf_datasets:
+        raw_inputs, raw_outputs = _fetch_tf_data(dataset_name)
     else:
         raise Exception('No matching dataset "{}".'.format(dataset_name))
     return raw_inputs, raw_outputs
@@ -105,13 +179,27 @@ def _default_loader(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray,
     return inputs, outputs, None
 
 
-def _load_MNIST(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
-    inputs = _prepare_matrix(raw_inputs, lambda value: value / 255.0)
+def _load_image(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
+    inputs = raw_inputs / 255.0
     outputs = _prepare_value(raw_outputs, _one_hot)
     return inputs, outputs, 'classification'
 
+def _load_image_binary(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
+    inputs = raw_inputs / 255.0
+    outputs = _prepare_value(raw_outputs, _binary)
+    return inputs, outputs, 'classification'
+
 _custom_loaders: Dict[str, Callable[[ndarray, ndarray], Tuple[ndarray, ndarray]]] = {
-    'mnist': _load_MNIST,
+    'mnist': _load_image,
+    'fashion_mnist': _load_image,
+    'cifar10': _load_image,
+    'cifar100': _load_image,
+    'colorectal_histology': _load_image,
+    'eurosat_all': _load_image,
+    'eurosat_rgb': _load_image,
+    'places365_small': _load_image,
+    'horses_or_humans': _load_image_binary,
+    'patch_camelyon': _load_image_binary,
 }
 
 
@@ -119,7 +207,7 @@ def _prepare_data(value) -> ndarray:
     shape = value.shape
     if len(shape) == 1:
         return _prepare_value(value)
-    if len(shape) > 1:
+    elif len(shape) > 1:
         return _prepare_matrix(value)
     raise Exception('Invalid shape {}.'.format(shape))
 
@@ -164,6 +252,13 @@ def _prepare_matrix(
         if transformed_value is not None:
             transformed_list.append(transformed_value)
     return numpy.hstack(transformed_list)
+
+def _prepare_tensor(
+        values: ndarray,
+        value_transform: Optional[Callable[[ndarray], ndarray]] = _dynamic_value_transform,
+) -> ndarray:
+    # apply value_transform to all entries
+    return value_transform(values)
 
 
 def _min_max(value: ndarray) -> ndarray:
