@@ -19,19 +19,20 @@ import tensorflow.keras.layers as layers
 #--------------------------------------------------------------------------------------#
 ########################################################################################
 
-activation_dict = {'relu': keras.activations.relu,
-                    'relu6': tf.nn.relu6,
-                    'leaky_relu': keras.layers.LeakyReLU(),
-                    'elu': keras.activations.elu,
-                    'selu': keras.activations.selu,
-                    'sigmoid': keras.activations.sigmoid,
-                    'hard_sigmoid': keras.activations.hard_sigmoid,
-                    'swish': keras.activations.swish,
-                    'tanh': keras.activations.tanh,
-                    'softplus': keras.activations.softplus,
-                    'softsign': keras.activations.softsign,
-                    'softmax': keras.activations.softmax,
-                    }
+activation_dict = {
+    'relu': keras.activations.relu,
+    'relu6': tf.nn.relu6,
+    'leaky_relu': keras.layers.LeakyReLU(),
+    'elu': keras.activations.elu,
+    'selu': keras.activations.selu,
+    'sigmoid': keras.activations.sigmoid,
+    'hard_sigmoid': keras.activations.hard_sigmoid,
+    'swish': keras.activations.swish,
+    'tanh': keras.activations.tanh,
+    'softplus': keras.activations.softplus,
+    'softsign': keras.activations.softsign,
+    'softmax': keras.activations.softmax,
+}
 
 ########################################################################################
 #--------------------------------------------------------------------------------------#
@@ -39,119 +40,191 @@ activation_dict = {'relu': keras.activations.relu,
 #--------------------------------------------------------------------------------------#
 ########################################################################################
 
-# 3x3 conv bn activation 
+
+# 3x3 conv bn activation
 class Conv3x3Operation(layers.Layer):
-    def __init__(self, channels=128, batch_norm='none', activation='relu', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=128,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         super(Conv3x3Operation, self).__init__()
         self.batch_norm = batch_norm
-        self.conv = layers.Conv2D(channels, 3, padding='same', activation='linear', 
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer, **kwargs)
+        self.conv = layers.Conv2D(channels,
+                                  3,
+                                  padding='same',
+                                  activation='linear',
+                                  kernel_regularizer=kernel_regularizer,
+                                  bias_regularizer=bias_regularizer,
+                                  activity_regularizer=activity_regularizer,
+                                  **kwargs)
         if self.batch_norm == 'all':
             self.bn = layers.BatchNormalization()
         elif self.batch_norm == 'none':
             self.bn = None
         else:
-            raise ValueError('Invalid batch_norm value: ' + str(self.batch_norm))
+            raise NotImplementedError(
+                f'Invalid batch_norm value: {self.batch_norm}.')
         self.act = activation_dict[activation]
-    
+
     def call(self, x):
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
         x = self.act(x)
         return x
+
 
 # 5x5 conv bn activation
 class Conv5x5Operation(layers.Layer):
-    def __init__(self, channels=128, batch_norm='none', activation='relu', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=128,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         super(Conv5x5Operation, self).__init__()
         self.batch_norm = batch_norm
-        self.conv = layers.Conv2D(channels, 5, padding='same', activation='linear', 
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer, **kwargs)
+        self.conv = layers.Conv2D(channels,
+                                  5,
+                                  padding='same',
+                                  activation='linear',
+                                  kernel_regularizer=kernel_regularizer,
+                                  bias_regularizer=bias_regularizer,
+                                  activity_regularizer=activity_regularizer,
+                                  **kwargs)
         if self.batch_norm == 'all':
             self.bn = layers.BatchNormalization()
         elif self.batch_norm == 'none':
             self.bn = None
         else:
-            raise ValueError('Invalid batch_norm value: ' + str(self.batch_norm))
+            raise NotImplementedError(
+                f'Invalid batch_norm value {self.batch_norm}.')
         self.act = activation_dict[activation]
-    
+
     def call(self, x):
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
         x = self.act(x)
         return x
+
 
 # 3x3 separable conv bn activation
 class SepConv3x3Operation(layers.Layer):
-    def __init__(self, channels=128, batch_norm='none', activation='relu', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=128,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         super(SepConv3x3Operation, self).__init__()
         self.batch_norm = batch_norm
-        self.conv = layers.SeparableConv2D(channels, 3, padding='same', activation='linear', 
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer, **kwargs)
+        self.conv = layers.SeparableConv2D(
+            channels,
+            3,
+            padding='same',
+            activation='linear',
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+            **kwargs)
         if self.batch_norm == 'all':
             self.bn = layers.BatchNormalization()
         elif self.batch_norm == 'none':
             self.bn = None
         else:
-            raise ValueError('Invalid batch_norm value: ' + str(self.batch_norm))
+            raise NotImplementedError(
+                f'Invalid batch_norm value {self.batch_norm}.')
         self.act = activation_dict[activation]
-    
+
     def call(self, x):
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
         x = self.act(x)
         return x
+
 
 # 5x5 separable conv bn activation
 class SepConv5x5Operation(layers.Layer):
-    def __init__(self, channels=128, batch_norm='none', activation='relu', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=128,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         super(SepConv5x5Operation, self).__init__()
         self.batch_norm = batch_norm
-        self.conv = layers.SeparableConv2D(channels, 5, padding='same', activation='linear',
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer, **kwargs)
+        self.conv = layers.SeparableConv2D(
+            channels,
+            5,
+            padding='same',
+            activation='linear',
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+            **kwargs)
         if self.batch_norm == 'all':
             self.bn = layers.BatchNormalization()
         elif self.batch_norm == 'none':
             self.bn = None
         else:
-            raise ValueError('Invalid batch_norm value: ' + str(self.batch_norm))
+            raise NotImplementedError(
+                f'Invalid batch_norm value {self.batch_norm}.')
         self.act = activation_dict[activation]
-    
+
     def call(self, x):
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
         x = self.act(x)
         return x
+
 
 # 1x1 conv bn activation
 class Conv1x1Operation(layers.Layer):
-    def __init__(self, channels=128, batch_norm='none', activation='relu', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=128,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         super(Conv1x1Operation, self).__init__()
         self.batch_norm = batch_norm
-        self.conv = layers.Conv2D(channels, 1, padding='same', activation='linear',
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer, **kwargs)
+        self.conv = layers.Conv2D(channels,
+                                  1,
+                                  padding='same',
+                                  activation='linear',
+                                  kernel_regularizer=kernel_regularizer,
+                                  bias_regularizer=bias_regularizer,
+                                  activity_regularizer=activity_regularizer,
+                                  **kwargs)
         if self.batch_norm == 'all':
             self.bn = layers.BatchNormalization()
         elif self.batch_norm == 'none':
             self.bn = None
         else:
-            raise ValueError('Invalid batch_norm value: ' + str(self.batch_norm))
+            raise NotImplementedError(
+                f'Invalid batch_norm value {self.batch_norm}.')
         self.act = activation_dict[activation]
-    
+
     def call(self, x):
         x = self.conv(x)
         if self.bn is not None:
@@ -159,68 +232,114 @@ class Conv1x1Operation(layers.Layer):
         x = self.act(x)
         return x
 
-# projection operation 
+
+# projection operation
 class ProjectionOperation(layers.Layer):
-    def __init__(self, channels=128, batch_norm='none', activation='relu', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=128,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         super(ProjectionOperation, self).__init__()
         # batch norm and activation are not used in projection operation
         self.batch_norm = batch_norm
-        self.conv = layers.Conv2D(channels, 1, padding='same', activation='linear', 
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer, **kwargs)
-    
+        self.conv = layers.Conv2D(channels,
+                                  1,
+                                  padding='same',
+                                  activation='linear',
+                                  kernel_regularizer=kernel_regularizer,
+                                  bias_regularizer=bias_regularizer,
+                                  activity_regularizer=activity_regularizer,
+                                  **kwargs)
+
     def call(self, x):
         x = self.conv(x)
         return x
 
+
 # 3x3 max pooling
 class MaxPool3x3Operation(layers.Layer):
-    def __init__(self, channels=None, batch_norm='none', activation='relu',
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=None,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         # channels is not used here, but is included for consistency with other operations
         # batch_norm and activation are not used here, but are included for consistency with other operations
         super(MaxPool3x3Operation, self).__init__()
         self.pool = layers.MaxPool2D(3, strides=1, padding='same')
-    
+
     def call(self, x):
         x = self.pool(x)
         return x
 
+
 # 3x3 avg pooling
 class AvgPool3x3Operation(layers.Layer):
-    def __init__(self, channels=None, batch_norm='none', activation='relu',
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=None,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         # channels is not used here, but is included for consistency with other operations
         # batch_norm and activation are not used here, but are included for consistency with other operations
         super(AvgPool3x3Operation, self).__init__()
         self.pool = layers.AvgPool2D(3, strides=1, padding='same')
-    
+
     def call(self, x):
         x = self.pool(x)
         return x
 
-# Identity connection 
+
+# Identity connection
 class IdentityOperation(layers.Layer):
-    def __init__(self, channels=None, batch_norm='none', activation='relu',
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=None,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         # channels is not used here, but is included for consistency with other operations
         # batch_norm and activation are not used here, but are included for consistency with other operations
         super(IdentityOperation, self).__init__()
-    
+
     def call(self, x):
         return x
 
+
 # zeroize connection
 class ZeroizeOperation(layers.Layer):
-    def __init__(self, channels=None, batch_norm='none', activation='relu',
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+
+    def __init__(self,
+                 channels=None,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
         # channels is not used here, but is included for consistency with other operations
         # batch_norm and activation are not used here, but are included for consistency with other operations
         super(ZeroizeOperation, self).__init__()
-    
+
     def call(self, x):
         return tf.zeros_like(x)
+
 
 ########################################################################################
 #--------------------------------------------------------------------------------------#
@@ -241,60 +360,94 @@ operation_dict = {
     'projection': ProjectionOperation,
 }
 
+
 def num_node_operations(nodes):
-    by_node = [nodes-i-1 for i in range(nodes-1)]
+    by_node = [nodes - i - 1 for i in range(nodes - 1)]
     return by_node
 
+
 # Generic graph cell
-def make_graph_cell(nodes, operations, channels=16, batch_norm='none', activation='relu', 
-    kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+def make_graph_cell(nodes,
+                    operations,
+                    channels=16,
+                    batch_norm='none',
+                    activation='relu',
+                    kernel_regularizer=None,
+                    bias_regularizer=None,
+                    activity_regularizer=None,
+                    **kwargs):
+
     class GraphCell(layers.Layer):
         # Graph cell connects node i to all nodes j where j>i and sums at every node
-        def __init__(self, nodes, operations, channels, batch_norm, activation, 
-            kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs):
+        def __init__(self, nodes, operations, channels, batch_norm, activation,
+                     kernel_regularizer, bias_regularizer,
+                     activity_regularizer, **kwargs):
             super(GraphCell, self).__init__()
             # nodes is the number of nodes where operations are summed in the cell with node 1 being the input tensor
             # operations is a list of lists operations corresponding to each node
-            assert nodes >= 2 # 'nodes must be greater than or equal to 2'
+            assert nodes >= 2  # 'nodes must be greater than or equal to 2'
             self.nodes = nodes
             by_node = num_node_operations(nodes)
             self.by_node = by_node
             # create operations
-            for i in range(nodes-1):
+            for i in range(nodes - 1):
                 for j in range(by_node[i]):
-                    setattr(self, f'operation_{i}_{j}', operation_dict[operations[i][j]](channels, batch_norm, activation, 
-                        kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs))
+                    setattr(
+                        self, f'operation_{i}_{j}',
+                        operation_dict[operations[i][j]](channels, batch_norm,
+                                                         activation,
+                                                         kernel_regularizer,
+                                                         bias_regularizer,
+                                                         activity_regularizer,
+                                                         **kwargs))
 
         def call(self, x):
-            node_x = [x] + [tf.zeros_like(x) for _ in range(self.nodes-1)]
-            for i in range(self.nodes-1):
+            node_x = [x] + [tf.zeros_like(x) for _ in range(self.nodes - 1)]
+            for i in range(self.nodes - 1):
                 for j in range(self.by_node[i]):
-                    node_x[i+1] += getattr(self, f'operation_{i}_{j}')(node_x[i])
+                    node_x[i + 1] += getattr(self,
+                                             f'operation_{i}_{j}')(node_x[i])
             return node_x[-1]
+
     return GraphCell(nodes, operations, channels, batch_norm, activation,
-        kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs)
+                     kernel_regularizer, bias_regularizer,
+                     activity_regularizer, **kwargs)
+
 
 # Generic parallel cell with concatenation of outputs
-def make_parallel_concat_cell(nodes, operations, channels=16, batch_norm='none', activation='relu', 
-    kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+def make_parallel_concat_cell(nodes,
+                              operations,
+                              channels=16,
+                              batch_norm='none',
+                              activation='relu',
+                              kernel_regularizer=None,
+                              bias_regularizer=None,
+                              activity_regularizer=None,
+                              **kwargs):
+
     class ParallelConcatCell(layers.Layer):
         # Parallel cell has one parallel track per node and concatenates the output at the end
-        def __init__(self, nodes, operations, channels, batch_norm, activation, 
-            kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs):
+        def __init__(self, nodes, operations, channels, batch_norm, activation,
+                     kernel_regularizer, bias_regularizer,
+                     activity_regularizer, **kwargs):
             super(ParallelConcatCell, self).__init__()
             # Nodes is the number of parallel tracks
             # Operations is a list of lists corresponding to the operations at each node
             assert len(operations) == nodes
             self.nodes = nodes
-            self.channels = [channels//nodes for _ in range(nodes)]
+            self.channels = [channels // nodes for _ in range(nodes)]
             for i in range(channels % nodes):
                 self.channels[i] += 1
             self.by_node = [len(operations[i]) for i in range(nodes)]
-            # create operations 
+            # create operations
             for i in range(nodes):
                 for j in range(self.by_node[i]):
-                    setattr(self, f'operation_{i}_{j}', operation_dict[operations[i][j]](self.channels[i], batch_norm, activation, 
-                        kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs))
+                    setattr(
+                        self, f'operation_{i}_{j}',
+                        operation_dict[operations[i][j]](
+                            self.channels[i], batch_norm, activation,
+                            kernel_regularizer, bias_regularizer,
+                            activity_regularizer, **kwargs))
 
         def call(self, x):
             node_x = [x for _ in range(self.nodes)]
@@ -302,27 +455,45 @@ def make_parallel_concat_cell(nodes, operations, channels=16, batch_norm='none',
                 for j in range(self.by_node[i]):
                     node_x[i] = getattr(self, f'operation_{i}_{j}')(node_x[i])
             return tf.concat(node_x, axis=-1)
-    return ParallelConcatCell(nodes, operations, channels, batch_norm, activation,
-        kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs)
+
+    return ParallelConcatCell(nodes, operations, channels, batch_norm,
+                              activation, kernel_regularizer, bias_regularizer,
+                              activity_regularizer, **kwargs)
+
 
 # Generic parallel cell with addition of outputs
-def make_parallel_add_cell(nodes, operations, channels=16, batch_norm='none', activation='relu', 
-    kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
+def make_parallel_add_cell(nodes,
+                           operations,
+                           channels=16,
+                           batch_norm='none',
+                           activation='relu',
+                           kernel_regularizer=None,
+                           bias_regularizer=None,
+                           activity_regularizer=None,
+                           **kwargs):
+
     class ParallelAddCell(layers.Layer):
         # Parallel cell has one parallel track per node and addss the output at the end
-        def __init__(self, nodes, operations, channels, batch_norm, activation, 
-            kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs):
+        def __init__(self, nodes, operations, channels, batch_norm, activation,
+                     kernel_regularizer, bias_regularizer,
+                     activity_regularizer, **kwargs):
             super(ParallelAddCell, self).__init__()
             # Nodes is the number of parallel tracks
             # Operations is a list of lists corresponding to the operations at each node
             assert len(operations) == nodes
             self.nodes = nodes
             self.by_node = [len(operations[i]) for i in range(nodes)]
-            # create operations 
+            # create operations
             for i in range(nodes):
                 for j in range(self.by_node[i]):
-                    setattr(self, f'operation_{i}_{j}', operation_dict[operations[i][j]](channels, batch_norm, activation, 
-                        kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs))
+                    setattr(
+                        self, f'operation_{i}_{j}',
+                        operation_dict[operations[i][j]](channels, batch_norm,
+                                                         activation,
+                                                         kernel_regularizer,
+                                                         bias_regularizer,
+                                                         activity_regularizer,
+                                                         **kwargs))
 
         def call(self, x):
             node_x = [x for _ in range(self.nodes)]
@@ -330,8 +501,11 @@ def make_parallel_add_cell(nodes, operations, channels=16, batch_norm='none', ac
                 for j in range(self.by_node[i]):
                     node_x[i] = getattr(self, f'operation_{i}_{j}')(node_x[i])
             return tf.add_n(node_x)
+
     return ParallelAddCell(nodes, operations, channels, batch_norm, activation,
-        kernel_regularizer, bias_regularizer, activity_regularizer, **kwargs)
+                           kernel_regularizer, bias_regularizer,
+                           activity_regularizer, **kwargs)
+
 
 ########################################################################################
 #--------------------------------------------------------------------------------------#
@@ -339,39 +513,67 @@ def make_parallel_add_cell(nodes, operations, channels=16, batch_norm='none', ac
 #--------------------------------------------------------------------------------------#
 ########################################################################################
 
-# Downsample cell 
+
+# Downsample cell
 class DownsampleCell(layers.Layer):
-    def __init__(self, out_filters=128, activation='relu', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
-        super(DownsampleCell, self).__init__() 
+
+    def __init__(self,
+                 out_filters=128,
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
+        super(DownsampleCell, self).__init__()
         if activation in activation_dict:
             act = activation_dict[activation]
         else:
             raise ValueError('Activation function not supported.')
         self.pool = layers.MaxPool2D(2, strides=2, padding='valid')
-        self.conv1x1 = layers.Conv2D(out_filters, 1, strides=1, padding='same', activation=act, 
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer, 
-            activity_regularizer=activity_regularizer, **kwargs)
+        self.conv1x1 = layers.Conv2D(out_filters,
+                                     1,
+                                     strides=1,
+                                     padding='same',
+                                     activation=act,
+                                     kernel_regularizer=kernel_regularizer,
+                                     bias_regularizer=bias_regularizer,
+                                     activity_regularizer=activity_regularizer,
+                                     **kwargs)
 
     def call(self, inputs):
         x = self.pool(inputs)
         x = self.conv1x1(x)
         return x
 
-# Convolution Stem 
+
+# Convolution Stem
 class ConvStem(layers.Layer):
-    def __init__(self, filters=128, batch_norm='none', activation='relu', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
-        super(ConvStem, self).__init__() 
-        self.conv3x3 = layers.Conv2D(filters, 3, strides=2, padding='same', activation='linear', 
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer, **kwargs)
+
+    def __init__(self,
+                 filters=128,
+                 batch_norm='none',
+                 activation='relu',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
+        super(ConvStem, self).__init__()
+        self.conv3x3 = layers.Conv2D(filters,
+                                     3,
+                                     strides=2,
+                                     padding='same',
+                                     activation='linear',
+                                     kernel_regularizer=kernel_regularizer,
+                                     bias_regularizer=bias_regularizer,
+                                     activity_regularizer=activity_regularizer,
+                                     **kwargs)
         if self.batch_norm == 'all':
             self.bn = layers.BatchNormalization()
         elif self.batch_norm == 'none':
             self.bn = None
         else:
-            raise ValueError('Invalid batch_norm value: ' + str(self.batch_norm))
+            raise ValueError('Invalid batch_norm value: ' +
+                             str(self.batch_norm))
         if activation in activation_dict:
             self.activation = activation_dict[activation]
         else:
@@ -384,20 +586,30 @@ class ConvStem(layers.Layer):
         x = self.activation(x)
         return x
 
-# Final Classifier 
+
+# Final Classifier
 class FinalClassifier(layers.Layer):
-    def __init__(self, num_classes=100, activation='softmax', 
-        kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, **kwargs):
-        super(FinalClassifier, self).__init__() 
+
+    def __init__(self,
+                 num_classes=100,
+                 activation='softmax',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 **kwargs):
+        super(FinalClassifier, self).__init__()
         if activation in activation_dict:
             act = activation_dict[activation]
         else:
             raise ValueError('Activation function not supported.')
         self.global_avg_pool = layers.GlobalAveragePooling2D()
         self.flatten = layers.Flatten()
-        self.fc = layers.Dense(num_classes, activation=act, 
-            kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer, **kwargs)
+        self.fc = layers.Dense(num_classes,
+                               activation=act,
+                               kernel_regularizer=kernel_regularizer,
+                               bias_regularizer=bias_regularizer,
+                               activity_regularizer=activity_regularizer,
+                               **kwargs)
 
     def call(self, inputs):
         x = self.global_avg_pool(inputs)
@@ -405,13 +617,14 @@ class FinalClassifier(layers.Layer):
         x = self.fc(x)
         return x
 
+
 ########################################################################################
 #--------------------------------------------------------------------------------------#
 #                        Standard Convolution Cells **Outdated**
 #--------------------------------------------------------------------------------------#
 ########################################################################################
 
-# # Simple 3x3 convolution cell 
+# # Simple 3x3 convolution cell
 # class Conv3x3Cell(layers.Layer):
 #     def __init__(self, filters=128, batch_norm=False, activation='relu'):
 #         super(Conv3x3Cell, self).__init__()
@@ -597,7 +810,7 @@ class FinalClassifier(layers.Layer):
 #             self.activation = activation_dict[activation]
 #         else:
 #             raise ValueError('Activation function not supported.')
-    
+
 #     def call(self, inputs):
 #         x1 = self.layer1(inputs)
 #         if self.batch_norm1 is not None:
@@ -618,7 +831,7 @@ class FinalClassifier(layers.Layer):
 #         x = tf.concat([x1, x2, x3, x4], axis=-1)
 #         return x
 
-# # Standard ResNet cell 
+# # Standard ResNet cell
 # class ResNetCell(layers.Layer):
 #     def __init__(self, filters=128, batch_norm=False, activation='relu'):
 #         super(ResNetCell, self).__init__()
@@ -630,7 +843,7 @@ class FinalClassifier(layers.Layer):
 #             self.activation = activation_dict[activation]
 #         else:
 #             raise ValueError('Activation function not supported.')
-    
+
 #     def call(self, inputs):
 #         x = self.layer1(inputs)
 #         if self.batch_norm1 is not None:
@@ -658,7 +871,7 @@ class FinalClassifier(layers.Layer):
 #             self.activation = activation_dict[activation]
 #         else:
 #             raise ValueError('Activation function not supported.')
-    
+
 #     def call(self, inputs):
 #         x = self.layer1(inputs)
 #         if self.batch_norm1 is not None:
@@ -681,14 +894,14 @@ class FinalClassifier(layers.Layer):
 # #--------------------------------------------------------------------------------------#
 # ########################################################################################
 
-# # NASBench 101 cell 
+# # NASBench 101 cell
 # class NASBench101Cell(layers.Layer):
 #     def __init__(self, filters=128, batch_norm=False, activation='relu'):
-#         super(NASBench101Cell, self).__init__() 
+#         super(NASBench101Cell, self).__init__()
 #         self.proj1 = layers.Conv2D(filters, 1, strides=1, padding='same', activation='relu')
 #         self.proj2 = layers.Conv2D(filters, 1, strides=1, padding='same', activation='relu')
 #         self.proj3 = layers.Conv2D(filters, 1, strides=1, padding='same', activation='relu')
-#         self.proj4 = layers.Conv2D(filters, 1, strides=1, padding='same', activation='relu') 
+#         self.proj4 = layers.Conv2D(filters, 1, strides=1, padding='same', activation='relu')
 #         self.conv3x3_1 = layers.Conv2D(filters, 3, strides=1, padding='same', activation='linear')
 #         self.conv3x3_2 = layers.Conv2D(filters, 3, strides=1, padding='same', activation='linear')
 #         self.conv3x3_3 = layers.Conv2D(filters, 3, strides=1, padding='same', activation='linear')
@@ -711,7 +924,7 @@ class FinalClassifier(layers.Layer):
 #             x1 = self.batch_norm1(x1)
 #         x1 = self.activation(x1)
 #         x1 = self.pool(x1)
-#         x1 = self.conv3x3_2(x1) 
+#         x1 = self.conv3x3_2(x1)
 #         if self.batch_norm2 is not None:
 #             x1 = self.batch_norm2(x1)
 #         x1 = self.activation(x1)
@@ -721,10 +934,10 @@ class FinalClassifier(layers.Layer):
 #         if self.batch_norm3 is not None:
 #             x2 = self.batch_norm3(x2)
 #         x2 = self.activation(x2)
-#         # Third Branch 
-#         x3 = self.proj3(inputs) 
-#         # Fourth Branch 
-#         x4 = self.proj4(inputs) 
+#         # Third Branch
+#         x3 = self.proj3(inputs)
+#         # Fourth Branch
+#         x4 = self.proj4(inputs)
 
 #         # Combine Branches
 #         x123 = tf.add(x1, x2)
@@ -739,7 +952,7 @@ class FinalClassifier(layers.Layer):
 # # NASBench 201 cell
 # class NASBench201Cell(layers.Layer):
 #     def __init__(self, filters=128, batch_norm=False, activation='relu'):
-#         super(NASBench201Cell, self).__init__() 
+#         super(NASBench201Cell, self).__init__()
 #         self.conv3x3_1 = layers.Conv2D(filters, 3, strides=1, padding='same', activation='linear')
 #         self.conv3x3_2 = layers.Conv2D(filters, 3, strides=1, padding='same', activation='linear')
 #         self.conv1x1 = layers.Conv2D(filters, 1, strides=1, padding='same', activation='linear')
@@ -752,8 +965,8 @@ class FinalClassifier(layers.Layer):
 #             raise ValueError('Activation function not supported.')
 
 #     def call(self, inputs):
-#         # First branch 
-#         x1 = self.conv3x3_1(inputs) 
+#         # First branch
+#         x1 = self.conv3x3_1(inputs)
 #         if self.batch_norm1 is not None:
 #             x1 = self.batch_norm1(x1)
 #         x1 = self.activation(x1)
@@ -778,10 +991,10 @@ class FinalClassifier(layers.Layer):
 # #--------------------------------------------------------------------------------------#
 # ########################################################################################
 
-# # Downsample cell 
+# # Downsample cell
 # class DownsampleCell(layers.Layer):
 #     def __init__(self, out_filters=128, activation='relu'):
-#         super(DownsampleCell, self).__init__() 
+#         super(DownsampleCell, self).__init__()
 #         if activation in activation_dict:
 #             act = activation_dict[activation]
 #         else:
@@ -794,10 +1007,10 @@ class FinalClassifier(layers.Layer):
 #         x = self.conv1x1(x)
 #         return x
 
-# # Convolution Stem 
+# # Convolution Stem
 # class ConvStem(layers.Layer):
 #     def __init__(self, filters=128, batch_norm=False, activation='relu'):
-#         super(ConvStem, self).__init__() 
+#         super(ConvStem, self).__init__()
 #         self.conv3x3 = layers.Conv2D(filters, 3, strides=2, padding='same', activation='linear')
 #         self.batch_norm = layers.BatchNormalization() if batch_norm else None
 #         if activation in activation_dict:
@@ -812,10 +1025,10 @@ class FinalClassifier(layers.Layer):
 #         x = self.activation(x)
 #         return x
 
-# # Final Classifier 
+# # Final Classifier
 # class FinalClassifier(layers.Layer):
 #     def __init__(self, num_classes=100, activation='softmax'):
-#         super(FinalClassifier, self).__init__() 
+#         super(FinalClassifier, self).__init__()
 #         if activation in activation_dict:
 #             act = activation_dict[activation]
 #         else:

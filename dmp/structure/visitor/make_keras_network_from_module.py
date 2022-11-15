@@ -41,8 +41,8 @@ class MakeKerasNetworkFromModuleVisitor:
 
     @singledispatchmethod
     def _visit_raw(self, target, keras_inputs) -> Any:
-        raise NotImplementedError('Unsupported module of type "{}".'.format(
-            type(target)))
+        raise NotImplementedError(
+            f'Unsupported module of type "{type(target)}".')
 
     @_visit_raw.register
     def _(self, target: NInput, keras_inputs) -> Any:
@@ -180,7 +180,7 @@ class MakeKerasNetworkFromModuleVisitor:
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer,
             activity_regularizer=activity_regularizer,
-        )(*keras_inputs)  # Expands a list as though it were separate arguments
+        )(*keras_inputs)
 
     @_visit_raw.register
     def _(self, target: NDownsample, keras_inputs) -> Any:

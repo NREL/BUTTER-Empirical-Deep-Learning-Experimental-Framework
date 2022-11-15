@@ -1,16 +1,10 @@
 from dataclasses import dataclass
 from typing import Optional, Union
-
-from dmp.structure.network_module import NetworkModule
+from dmp.structure.n_neuron_layer import NNeuronLayer
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NDense(NetworkModule):
-    activation: str = 'relu'
-    kernel_regularizer: Optional[dict] = None
-    bias_regularizer: Optional[dict] = None
-    activity_regularizer: Optional[dict] = None
-    kernel_initializer: str = 'glorot_uniform'
+class NDense(NNeuronLayer):
 
     @property
     def num_free_parameters_in_module(self) -> int:

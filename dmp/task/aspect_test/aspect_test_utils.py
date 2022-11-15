@@ -339,15 +339,6 @@ def binary_search_int(objective: Callable[[int], Union[int, float]],
     return candidate, False
 
 
-# def count_fully_connected_parameters(widths: [int]) -> int:
-#     depth = len(widths)
-#     p = (num_inputs + 1) * widths[0]
-#     if depth > 1:
-#         for k in range(1, depth):
-#             p += (widths[k - 1] + 1) * widths[k]
-#     return p
-
-
 def find_best_layout_for_budget_and_depth(
     input_shape: Tuple[int, ...],
     residual_mode: Optional[str],

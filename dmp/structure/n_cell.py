@@ -1,19 +1,16 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 from dmp.structure.network_module import NetworkModule
+from dmp.structure.n_neuron_layer import NNeuronLayer
 from dmp.structure.n_dense import NDense
 from dmp.structure.n_add import NAdd
 from dmp.structure.n_conv import *
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NBasicCell(NetworkModule):
-    activation: str = 'relu'
+class NBasicCell(NNeuronLayer):
     channels: int = 16
-    kernel_regularizer: Optional[dict] = None
-    bias_regularizer: Optional[dict] = None
-    activity_regularizer: Optional[dict] = None
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
@@ -29,7 +26,7 @@ class NConvStem(NBasicCell):
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NCell(NBasicCell):
     batch_norm: str = 'none'
-    operations: list = None
+    operations: List[str] = field(default_factory=list)
     nodes: int = 2
     cell_type: str = 'graph'
 
@@ -103,36 +100,42 @@ class NFinalClassifier(NetworkModule):
 ########################################################################################
 
 
-def generate_conv_stem(inputs,
-                       channels=16,
-                       batch_norm='none',
-                       activation='relu',
-                       kernel_regularizer=None,
-                       bias_regularizer=None,
-                       activity_regularizer=None):
-    module = NConv(label=0,
-                   inputs=[
-                       inputs,
-                   ],
-                   channels=channels,
-                   kernel_size=3,
-                   stride=1,
-                   padding='same',
-                   batch_norm=batch_norm,
-                   activation=activation,
-                   kernel_regularizer=kernel_regularizer,
-                   bias_regularizer=bias_regularizer,
-                   activity_regularizer=activity_regularizer)
+def generate_conv_stem(
+    inputs,
+    channels=16,
+    batch_norm='none',
+    activation='relu',
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+):
+    module = NConv(
+        label=0,
+        inputs=[
+            inputs,
+        ],
+        channels=channels,
+        kernel_size=3,
+        stride=1,
+        padding='same',
+        batch_norm=batch_norm,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        bias_regularizer=bias_regularizer,
+        activity_regularizer=activity_regularizer,
+    )
     return module
 
 
-def generate_downsample(inputs,
-                        channels=16,
-                        batch_norm='none',
-                        activation='relu',
-                        kernel_regularizer=None,
-                        bias_regularizer=None,
-                        activity_regularizer=None):
+def generate_downsample(
+    inputs,
+    channels=16,
+    batch_norm='none',
+    activation='relu',
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+):
     module = NMaxPool(
         label=0,
         inputs=[
@@ -144,45 +147,51 @@ def generate_downsample(inputs,
         padding='same',
         activation=activation,
     )
-    module = NConv(label=0,
-                   inputs=[
-                       module,
-                   ],
-                   channels=channels,
-                   kernel_size=1,
-                   stride=1,
-                   padding='same',
-                   batch_norm=batch_norm,
-                   activation=activation,
-                   kernel_regularizer=kernel_regularizer,
-                   bias_regularizer=bias_regularizer,
-                   activity_regularizer=activity_regularizer)
+    module = NConv(
+        label=0,
+        inputs=[
+            module,
+        ],
+        channels=channels,
+        kernel_size=1,
+        stride=1,
+        padding='same',
+        batch_norm=batch_norm,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        bias_regularizer=bias_regularizer,
+        activity_regularizer=activity_regularizer,
+    )
     return module
 
 
-def generate_final_classifier(inputs,
-                              classes=10,
-                              activation='softmax',
-                              kernel_regularizer=None,
-                              bias_regularizer=None,
-                              activity_regularizer=None):
+def generate_final_classifier(
+    inputs,
+    classes=10,
+    activation='softmax',
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+):
     module = NGlobalPool(
         label=0,
         inputs=[
             inputs,
         ],
     )
-    module = NDense(label=0,
-                    inputs=[
-                        module,
-                    ],
-                    shape=[
-                        classes,
-                    ],
-                    activation=activation,
-                    kernel_regularizer=kernel_regularizer,
-                    bias_regularizer=bias_regularizer,
-                    activity_regularizer=activity_regularizer)
+    module = NDense(
+        label=0,
+        inputs=[
+            module,
+        ],
+        shape=[
+            classes,
+        ],
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        bias_regularizer=bias_regularizer,
+        activity_regularizer=activity_regularizer,
+    )
     return module
 
 
@@ -193,80 +202,97 @@ def generate_final_classifier(inputs,
 ########################################################################################
 
 
-def generate_module(inp, op, channels, batch_norm, activation,
-                    kernel_regularizer, bias_regularizer,
-                    activity_regularizer):
+def generate_module(
+    inp,
+    op,
+    channels,
+    batch_norm,
+    activation,
+    kernel_regularizer,
+    bias_regularizer,
+    activity_regularizer,
+):
     module = None
     if op == 'conv3x3':
-        module = NConv(label=0,
-                       inputs=[
-                           inp,
-                       ],
-                       channels=channels,
-                       kernel_size=3,
-                       stride=1,
-                       padding='same',
-                       batch_norm=batch_norm,
-                       activation=activation,
-                       kernel_regularizer=kernel_regularizer,
-                       bias_regularizer=bias_regularizer,
-                       activity_regularizer=activity_regularizer)
+        module = NConv(
+            label=0,
+            inputs=[
+                inp,
+            ],
+            channels=channels,
+            kernel_size=3,
+            stride=1,
+            padding='same',
+            batch_norm=batch_norm,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )
     elif op == 'conv5x5':
-        module = NConv(label=0,
-                       inputs=[
-                           inp,
-                       ],
-                       channels=channels,
-                       kernel_size=5,
-                       stride=1,
-                       padding='same',
-                       batch_norm=batch_norm,
-                       activation=activation,
-                       kernel_regularizer=kernel_regularizer,
-                       bias_regularizer=bias_regularizer,
-                       activity_regularizer=activity_regularizer)
+        module = NConv(
+            label=0,
+            inputs=[
+                inp,
+            ],
+            channels=channels,
+            kernel_size=5,
+            stride=1,
+            padding='same',
+            batch_norm=batch_norm,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )
     elif op == 'conv1x1':
-        module = NConv(label=0,
-                       inputs=[
-                           inp,
-                       ],
-                       channels=channels,
-                       kernel_size=1,
-                       stride=1,
-                       padding='same',
-                       batch_norm=batch_norm,
-                       activation=activation,
-                       kernel_regularizer=kernel_regularizer,
-                       bias_regularizer=bias_regularizer,
-                       activity_regularizer=activity_regularizer)
+        module = NConv(
+            label=0,
+            inputs=[
+                inp,
+            ],
+            channels=channels,
+            kernel_size=1,
+            stride=1,
+            padding='same',
+            batch_norm=batch_norm,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )
     elif op == 'sepconv3x3':
-        module = NSepConv(label=0,
-                          inputs=[
-                              inp,
-                          ],
-                          channels=channels,
-                          kernel_size=3,
-                          stride=1,
-                          padding='same',
-                          batch_norm=batch_norm,
-                          activation=activation,
-                          kernel_regularizer=kernel_regularizer,
-                          bias_regularizer=bias_regularizer,
-                          activity_regularizer=activity_regularizer)
+        module = NSepConv(
+            label=0,
+            inputs=[
+                inp,
+            ],
+            channels=channels,
+            kernel_size=3,
+            stride=1,
+            padding='same',
+            batch_norm=batch_norm,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )
     elif op == 'sepconv5x5':
-        module = NSepConv(label=0,
-                          inputs=[
-                              inp,
-                          ],
-                          channels=channels,
-                          kernel_size=5,
-                          stride=1,
-                          padding='same',
-                          batch_norm=batch_norm,
-                          activation=activation,
-                          kernel_regularizer=kernel_regularizer,
-                          bias_regularizer=bias_regularizer,
-                          activity_regularizer=activity_regularizer)
+        module = NSepConv(
+            label=0,
+            inputs=[
+                inp,
+            ],
+            channels=channels,
+            kernel_size=5,
+            stride=1,
+            padding='same',
+            batch_norm=batch_norm,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+        )
     elif op == 'maxpool3x3':
         module = NMaxPool(
             label=0,
@@ -299,15 +325,17 @@ def generate_module(inp, op, channels, batch_norm, activation,
     return module
 
 
-def generate_graph_cell(inputs,
-                        nodes,
-                        operations,
-                        channels=16,
-                        batch_norm='none',
-                        activation='relu',
-                        kernel_regularizer=None,
-                        bias_regularizer=None,
-                        activity_regularizer=None):
+def generate_graph_cell(
+    inputs,
+    nodes,
+    operations,
+    channels=16,
+    batch_norm='none',
+    activation='relu',
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+):
     # Graph cell connects node i to all nodes j where j>i and sums at every node
     # nodes is the number of nodes where operations are summed in the cell with node 1 being the input tensor
     # operations is a list of lists operations corresponding to each node
@@ -324,9 +352,16 @@ def generate_graph_cell(inputs,
         storage[i - 1] = []
         for j in range(len(ops)):
             op = ops[j]
-            module = generate_module(inp, op, channels, batch_norm, activation,
-                                     kernel_regularizer, bias_regularizer,
-                                     activity_regularizer)
+            module = generate_module(
+                inp,
+                op,
+                channels,
+                batch_norm,
+                activation,
+                kernel_regularizer,
+                bias_regularizer,
+                activity_regularizer,
+            )
             storage[i - 1].append(module)
         ins = [storage[k][inds[k]] for k in range(i)]
         if len(ins) > 1:
@@ -342,15 +377,17 @@ def generate_graph_cell(inputs,
     return node_list[-1]
 
 
-def generate_parallel_concat_cell(inputs,
-                                  nodes,
-                                  operations,
-                                  channels=16,
-                                  batch_norm='none',
-                                  activation='relu',
-                                  kernel_regularizer=None,
-                                  bias_regularizer=None,
-                                  activity_regularizer=None):
+def generate_parallel_concat_cell(
+    inputs,
+    nodes,
+    operations,
+    channels=16,
+    batch_norm='none',
+    activation='relu',
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+):
     # Nodes is the number of parallel tracks
     # Operations is a list of lists corresponding to the operations at each node
     assert len(operations) == nodes
@@ -366,9 +403,16 @@ def generate_parallel_concat_cell(inputs,
         for j in range(by_node[i]):
             inp = inputs if j == 0 else module
             op = ops[j]
-            module = generate_module(inp, op, channels, batch_norm, activation,
-                                     kernel_regularizer, bias_regularizer,
-                                     activity_regularizer)
+            module = generate_module(
+                inp,
+                op,
+                channels,
+                batch_norm,
+                activation,
+                kernel_regularizer,
+                bias_regularizer,
+                activity_regularizer,
+            )
         tracks[i] = module
     if len(tracks) > 1:
         module = NConcat(
@@ -381,15 +425,17 @@ def generate_parallel_concat_cell(inputs,
     return module
 
 
-def generate_parallel_add_cell(inputs,
-                               nodes,
-                               operations,
-                               channels=16,
-                               batch_norm='none',
-                               activation='relu',
-                               kernel_regularizer=None,
-                               bias_regularizer=None,
-                               activity_regularizer=None):
+def generate_parallel_add_cell(
+    inputs,
+    nodes,
+    operations,
+    channels=16,
+    batch_norm='none',
+    activation='relu',
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+):
     # Nodes is the number of parallel tracks
     # Operations is a list of lists corresponding to the operations at each node
     assert len(operations) == nodes
@@ -401,9 +447,16 @@ def generate_parallel_add_cell(inputs,
         for j in range(by_node[i]):
             inp = inputs if j == 0 else module
             op = ops[j]
-            module = generate_module(inp, op, channels, batch_norm, activation,
-                                     kernel_regularizer, bias_regularizer,
-                                     activity_regularizer)
+            module = generate_module(
+                inp,
+                op,
+                channels,
+                batch_norm,
+                activation,
+                kernel_regularizer,
+                bias_regularizer,
+                activity_regularizer,
+            )
         tracks[i] = module
     if len(tracks) > 1:
         module = NAdd(
@@ -416,16 +469,18 @@ def generate_parallel_add_cell(inputs,
     return module
 
 
-def generate_generic_cell(type,
-                          inputs,
-                          nodes,
-                          operations,
-                          channels=16,
-                          batch_norm='none',
-                          activation='relu',
-                          kernel_regularizer=None,
-                          bias_regularizer=None,
-                          activity_regularizer=None):
+def generate_generic_cell(
+    type,
+    inputs,
+    nodes,
+    operations,
+    channels=16,
+    batch_norm='none',
+    activation='relu',
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+):
     args = {
         'inputs': inputs,
         'nodes': nodes,
@@ -435,7 +490,7 @@ def generate_generic_cell(type,
         'activation': activation,
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
-        'activity_regularizer': activity_regularizer
+        'activity_regularizer': activity_regularizer,
     }
     if type == 'graph':
         return generate_graph_cell(**args)
