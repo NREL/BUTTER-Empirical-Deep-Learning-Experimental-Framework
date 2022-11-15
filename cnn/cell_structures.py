@@ -8,7 +8,7 @@
 ########################################################################################
 ########################################################################################
 
-from typing import Callable
+from typing import Any, Callable
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras import backend as K
@@ -27,21 +27,20 @@ class ConvolutionalLayer(layers.Layer):
 
     def __init__(
         self,
-        conv_layer_factory: Callable[[int, Any, ...], layers.Layer],
-        channels: int = 128,
+        conv_layer_factory: Callable,
+        filters: int = 128,
         batch_norm: str = 'none',
         activation: str = 'relu',
         # padding: str = 'same',
         **conv_layer_args,
     ):
         self.batch_norm = batch_norm
-        self.conv_layer = \
-            conv_layer_factory(
-                channels,
-                activation='linear',
-                padding=padding,
-                **conv_layer_args,
-            )
+        self.conv_layer = conv_layer_factory(
+            filters,
+            activation=keras.activations.linear,
+            # padding=padding,
+            **conv_layer_args,
+        )
         self.batch_normalizer = \
             get_batch_normalization_factory(self.batch_norm)
         self.activation_function = get_activation_factory(activation)
@@ -81,7 +80,7 @@ class SeparableConvolutionalLayer(ConvolutionalLayer):
     def __init__(
         self,
         kernel_size,
-        **conv_layer_args,
+        **kwargs,
     ):
 
         def make_conv_layer(filters: int,
@@ -133,7 +132,7 @@ class ProjectionOperation(layers.Layer):
 
     def __init__(
         self,
-        channels=128,
+        filters=128,
         batch_norm='none',
         activation='relu',
         kernel_regularizer=None,
@@ -145,7 +144,7 @@ class ProjectionOperation(layers.Layer):
         # batch norm and activation are not used in projection operation
         self.batch_norm = batch_norm
         self.conv = layers.Conv2D(
-            channels,
+            filters,
             1,
             padding='same',
             activation='linear',
@@ -165,7 +164,7 @@ class MaxPool3x3Operation(layers.Layer):
 
     def __init__(
         self,
-        channels=None,
+        filters=None,
         batch_norm='none',
         activation='relu',
         kernel_regularizer=None,
@@ -173,7 +172,7 @@ class MaxPool3x3Operation(layers.Layer):
         activity_regularizer=None,
         **kwargs,
     ):
-        # channels is not used here, but is included for consistency with other operations
+        # filters is not used here, but is included for consistency with other operations
         # batch_norm and activation are not used here, but are included for consistency with other operations
         super(MaxPool3x3Operation, self).__init__()
         self.pool = layers.MaxPool2D(3, strides=1, padding='same')
@@ -188,7 +187,7 @@ class AvgPool3x3Operation(layers.Layer):
 
     def __init__(
         self,
-        channels=None,
+        filters=None,
         batch_norm='none',
         activation='relu',
         kernel_regularizer=None,
@@ -196,7 +195,7 @@ class AvgPool3x3Operation(layers.Layer):
         activity_regularizer=None,
         **kwargs,
     ):
-        # channels is not used here, but is included for consistency with other operations
+        # filters is not used here, but is included for consistency with other operations
         # batch_norm and activation are not used here, but are included for consistency with other operations
         super(AvgPool3x3Operation, self).__init__()
         self.pool = layers.AvgPool2D(3, strides=1, padding='same')
@@ -211,7 +210,7 @@ class IdentityOperation(layers.Layer):
 
     def __init__(
         self,
-        channels=None,
+        filters=None,
         batch_norm='none',
         activation='relu',
         kernel_regularizer=None,
@@ -219,7 +218,7 @@ class IdentityOperation(layers.Layer):
         activity_regularizer=None,
         **kwargs,
     ):
-        # channels is not used here, but is included for consistency with other operations
+        # filters is not used here, but is included for consistency with other operations
         # batch_norm and activation are not used here, but are included for consistency with other operations
         super(IdentityOperation, self).__init__()
 
@@ -232,7 +231,7 @@ class ZeroizeOperation(layers.Layer):
 
     def __init__(
         self,
-        channels=None,
+        filters=None,
         batch_norm='none',
         activation='relu',
         kernel_regularizer=None,
@@ -240,7 +239,7 @@ class ZeroizeOperation(layers.Layer):
         activity_regularizer=None,
         **kwargs,
     ):
-        # channels is not used here, but is included for consistency with other operations
+        # filters is not used here, but is included for consistency with other operations
         # batch_norm and activation are not used here, but are included for consistency with other operations
         super(ZeroizeOperation, self).__init__()
 
@@ -277,7 +276,7 @@ def num_node_operations(nodes):
 def make_graph_cell(
     nodes,
     operations,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -292,7 +291,7 @@ def make_graph_cell(
             self,
             nodes,
             operations,
-            channels,
+            filters,
             batch_norm,
             activation,
             kernel_regularizer,
@@ -313,7 +312,7 @@ def make_graph_cell(
                     setattr(
                         self, f'operation_{i}_{j}',
                         operation_dict[operations[i][j]](
-                            channels,
+                            filters,
                             batch_norm,
                             activation,
                             kernel_regularizer,
@@ -333,7 +332,7 @@ def make_graph_cell(
     return GraphCell(
         nodes,
         operations,
-        channels,
+        filters,
         batch_norm,
         activation,
         kernel_regularizer,
@@ -347,7 +346,7 @@ def make_graph_cell(
 def make_parallel_concat_cell(
     nodes,
     operations,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -362,7 +361,7 @@ def make_parallel_concat_cell(
             self,
             nodes,
             operations,
-            channels,
+            filters,
             batch_norm,
             activation,
             kernel_regularizer,
@@ -375,9 +374,9 @@ def make_parallel_concat_cell(
             # Operations is a list of lists corresponding to the operations at each node
             assert len(operations) == nodes
             self.nodes = nodes
-            self.channels = [channels // nodes for _ in range(nodes)]
-            for i in range(channels % nodes):
-                self.channels[i] += 1
+            self.filters = [filters // nodes for _ in range(nodes)]
+            for i in range(filters % nodes):
+                self.filters[i] += 1
             self.by_node = [len(operations[i]) for i in range(nodes)]
             # create operations
             for i in range(nodes):
@@ -385,7 +384,7 @@ def make_parallel_concat_cell(
                     setattr(
                         self, f'operation_{i}_{j}',
                         operation_dict[operations[i][j]](
-                            self.channels[i],
+                            self.filters[i],
                             batch_norm,
                             activation,
                             kernel_regularizer,
@@ -404,7 +403,7 @@ def make_parallel_concat_cell(
     return ParallelConcatCell(
         nodes,
         operations,
-        channels,
+        filters,
         batch_norm,
         activation,
         kernel_regularizer,
@@ -418,7 +417,7 @@ def make_parallel_concat_cell(
 def make_parallel_add_cell(
     nodes,
     operations,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -433,7 +432,7 @@ def make_parallel_add_cell(
             self,
             nodes,
             operations,
-            channels,
+            filters,
             batch_norm,
             activation,
             kernel_regularizer,
@@ -453,7 +452,7 @@ def make_parallel_add_cell(
                     setattr(
                         self, f'operation_{i}_{j}',
                         operation_dict[operations[i][j]](
-                            channels,
+                            filters,
                             batch_norm,
                             activation,
                             kernel_regularizer,
@@ -472,7 +471,7 @@ def make_parallel_add_cell(
     return ParallelAddCell(
         nodes,
         operations,
-        channels,
+        filters,
         batch_norm,
         activation,
         kernel_regularizer,
@@ -763,17 +762,17 @@ class FinalClassifier(layers.Layer):
 # class InceptionCell(layers.Layer):
 #     def __init__(self, filters=128, batch_norm=False, activation='relu'):
 #         super(InceptionCell, self).__init__()
-#         channels = [filters//4 for _ in range(4)]
+#         filters = [filters//4 for _ in range(4)]
 #         remainder = filters % 4
 #         for i in range(remainder):
-#             channels[i] += 1
-#         self.layer1 = layers.Conv2D(channels[0], 1, strides=1, padding='same', activation='linear')
-#         self.layer2_1 = layers.Conv2D(channels[1], 1, strides=1, padding='same', activation='relu')
-#         self.layer2_2 = layers.Conv2D(channels[1], 3, strides=1, padding='same', activation='linear')
-#         self.layer3_1 = layers.Conv2D(channels[2], 1, strides=1, padding='same', activation='relu')
-#         self.layer3_2 = layers.Conv2D(channels[2], 5, strides=1, padding='same', activation='linear')
+#             filters[i] += 1
+#         self.layer1 = layers.Conv2D(filters[0], 1, strides=1, padding='same', activation='linear')
+#         self.layer2_1 = layers.Conv2D(filters[1], 1, strides=1, padding='same', activation='relu')
+#         self.layer2_2 = layers.Conv2D(filters[1], 3, strides=1, padding='same', activation='linear')
+#         self.layer3_1 = layers.Conv2D(filters[2], 1, strides=1, padding='same', activation='relu')
+#         self.layer3_2 = layers.Conv2D(filters[2], 5, strides=1, padding='same', activation='linear')
 #         self.layer4_1 = layers.MaxPool2D(3, strides=1, padding='same')
-#         self.layer4_2 = layers.Conv2D(channels[3], 1, strides=1, padding='same', activation='relu')
+#         self.layer4_2 = layers.Conv2D(filters[3], 1, strides=1, padding='same', activation='relu')
 #         self.batch_norm1 = layers.BatchNormalization() if batch_norm else None
 #         self.batch_norm2 = layers.BatchNormalization() if batch_norm else None
 #         self.batch_norm3 = layers.BatchNormalization() if batch_norm else None

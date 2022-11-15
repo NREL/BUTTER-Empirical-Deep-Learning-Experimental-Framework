@@ -98,7 +98,7 @@ class MakeKerasNetworkFromModuleVisitor:
                 f'Unsupported NConv kernel size {target.kernel_size}.')
 
         return cell_factory(
-            target.channels,
+            target.filters,
             activation=target.activation,
             batch_norm=target.batch_norm,
             kernel_regularizer=kernel_regularizer,
@@ -121,7 +121,7 @@ class MakeKerasNetworkFromModuleVisitor:
                 f'Unsupported NSepConv kernel size {target.kernel_size}.')
 
         return cell(
-            target.channels,
+            target.filters,
             activation=target.activation,
             batch_norm=target.batch_norm,
             kernel_regularizer=kernel_regularizer,
@@ -158,7 +158,7 @@ class MakeKerasNetworkFromModuleVisitor:
             type=target.cell_type,
             nodes=target.nodes,
             operations=target.operations,
-            channels=target.channels,
+            filters=target.filters,
             batch_norm=target.batch_norm,
             activation=target.activation,
             kernel_regularizer=kernel_regularizer,
@@ -174,7 +174,7 @@ class MakeKerasNetworkFromModuleVisitor:
         print(keras_inputs)
 
         return ConvStem(
-            target.channels,
+            target.filters,
             activation=target.activation,
             batch_norm=target.batch_norm,
             kernel_regularizer=kernel_regularizer,
@@ -189,7 +189,7 @@ class MakeKerasNetworkFromModuleVisitor:
         activity_regularizer = make_regularizer(target.activity_regularizer)
 
         return DownsampleCell(
-            target.channels,
+            target.filters,
             activation=target.activation,
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer,

@@ -229,6 +229,7 @@ def get_activation_factory(name: str) -> Callable:
             'softplus': keras.activations.softplus,
             'softsign': keras.activations.softsign,
             'softmax': keras.activations.softmax,
+            'linear': keras.activations.linear,
         },
         'activation',
     )
@@ -294,13 +295,13 @@ def make_conv_network(
                 layer = generate_generic_cell(type=cell_type,
                                               inputs=current,
                                               nodes=cell_nodes,
-                                              channels=layer_width,
+                                              filters=layer_width,
                                               operations=cell_ops,
                                               batch_norm=batch_norm,
                                               activation=internal_activation)
             elif layer_type == 'downsample':
                 layer = generate_downsample(inputs=current,
-                                            channels=layer_width,
+                                            filters=layer_width,
                                             batch_norm=batch_norm,
                                             activation=internal_activation)
             else:
@@ -315,7 +316,7 @@ def make_conv_network(
                 input_layer,
             ],
             activation=internal_activation,
-            channels=widths[0],
+            filters=widths[0],
             batch_norm=batch_norm,
             input_channels=input_shape[-1],
         )
@@ -329,7 +330,7 @@ def make_conv_network(
                         current,
                     ],
                     activation=internal_activation,
-                    channels=layer_width,
+                    filters=layer_width,
                     batch_norm=batch_norm,
                     cell_type=cell_type,
                     nodes=cell_nodes,
@@ -341,7 +342,7 @@ def make_conv_network(
                         current,
                     ],
                     activation=internal_activation,
-                    channels=layer_width,
+                    filters=layer_width,
                 )
             else:
                 raise ValueError(f'Unknown layer type {layer_type}')

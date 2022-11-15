@@ -27,7 +27,7 @@ def make_cell(
     type: str = 'graph',
     nodes: int = 2,
     operations=None,
-    channels: int = 16,
+    filters: int = 16,
     batch_norm: str = 'none',
     activation: str = 'relu',
     **kwargs,
@@ -36,7 +36,7 @@ def make_cell(
         return make_graph_cell(
             nodes,
             operations,
-            channels,
+            filters,
             batch_norm,
             activation,
             **kwargs,
@@ -45,7 +45,7 @@ def make_cell(
         return make_parallel_concat_cell(
             nodes,
             operations,
-            channels,
+            filters,
             batch_norm,
             activation,
             **kwargs,
@@ -54,7 +54,7 @@ def make_cell(
         return make_parallel_add_cell(
             nodes,
             operations,
-            channels,
+            filters,
             batch_norm,
             activation,
             **kwargs,
@@ -97,13 +97,13 @@ def make_net(
     },
     downsamples: int = 1,
     cell_depth: int = 2,
-    channels: List[int] = [16, 16],
+    filters: List[int] = [16, 16],
     dataset: str = 'cifar10',
     batch_norm: str = 'none',
     activation: str = 'relu',
     output_activation: str = 'softmax',
 ):
-    # Check downsamples and cell depth and channels
+    # Check downsamples and cell depth and filters
     if downsamples > max_downsamples_dict[dataset]:
         raise ValueError(
             f'Cannot have more downsamples than {max_downsamples_dict[dataset]} for {dataset} dataset'
@@ -112,9 +112,9 @@ def make_net(
         raise ValueError(
             f'Cell depth must be at least {downsamples + 1} for {downsamples} downsamples'
         )
-    if len(channels) != downsamples + 1:
+    if len(filters) != downsamples + 1:
         raise ValueError(
-            f'Number of channels must have {downsamples + 1} elements for {downsamples} downsamples'
+            f'Number of filters must have {downsamples + 1} elements for {downsamples} downsamples'
         )
 
     # Get input size and number of classes
@@ -131,16 +131,16 @@ def make_net(
     # Create sequential net
     net = models.Sequential()
     net.add(layers.InputLayer(input_size))
-    net.add(ConvStem(channels[0], batch_norm, activation))
+    net.add(ConvStem(filters[0], batch_norm, activation))
     for i in range(downsamples + 1):
         for j in range(stack_cells[i]):
             net.add(
                 make_cell(**cell_info,
-                          channels=channels[i],
+                          filters=filters[i],
                           batch_norm=batch_norm,
                           activation=activation))
         if i < downsamples:
-            net.add(DownsampleCell(channels[i + 1], activation=activation))
+            net.add(DownsampleCell(filters[i + 1], activation=activation))
     net.add(FinalClassifier(classes, activation=output_activation))
     return net
 

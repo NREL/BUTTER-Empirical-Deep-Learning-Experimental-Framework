@@ -28,7 +28,7 @@ cell_info = cell_info_dict['inception']
 
 downsamples = 1 
 cell_depth = 2 
-channels = [16, 32]
+filters = [16, 32]
 dataset = 'cifar10'
 batch_norm = True
 
@@ -40,7 +40,7 @@ y_train = tf.keras.utils.to_categorical(y_train, 10)
 y_test = tf.keras.utils.to_categorical(y_test, 10)
 
 # Create model
-model = make_net(cell_info, downsamples, cell_depth, channels, dataset, batch_norm)
+model = make_net(cell_info, downsamples, cell_depth, filters, dataset, batch_norm)
 
 # Compile model
 model.compile(loss='categorical_crossentropy',

@@ -10,7 +10,7 @@ from dmp.structure.n_conv import *
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NConvolutionalCell(NNeuronLayer):
-    channels: int = 16
+    filters: int = 16
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
@@ -20,7 +20,7 @@ class NConvStem(NConvolutionalCell):
 
     @property
     def num_free_parameters_in_module(self) -> int:
-        return 9 * self.channels * self.input_channels
+        return 9 * self.filters * self.input_channels
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
@@ -33,13 +33,13 @@ class NCell(NConvolutionalCell):
     @property
     def num_free_parameters_in_module(self) -> int:
         if self.cell_type == 'parallelconcat':
-            channels = [self.channels // self.nodes for _ in range(self.nodes)]
-            for i in range(self.channels % self.nodes):
-                channels[i] += 1
+            filters = [self.filters // self.nodes for _ in range(self.nodes)]
+            for i in range(self.filters % self.nodes):
+                filters[i] += 1
         else:
-            channels = [self.channels for _ in range(self.nodes)]
+            filters = [self.filters for _ in range(self.nodes)]
         params = 0
-        in_channels = self.inputs[0].channels
+        in_channels = self.convolutional_inputs[0].filters
         params_dict = {
             'conv3x3': 9,
             'conv5x5': 25,
@@ -53,7 +53,7 @@ class NCell(NConvolutionalCell):
             'projection': 0
         }
         for i in range(self.nodes):
-            num_channels = channels[i]
+            num_channels = filters[i]
             ops = self.operations[i]
             for j in range(len(ops)):
                 op = ops[j]
@@ -71,8 +71,8 @@ class NDownsample(NConvolutionalCell):
     def num_free_parameters_in_module(self) -> int:
         params = 1
         for i in self.inputs:
-            params *= i.channels
-        params *= self.channels
+            params *= i.filters
+        params *= self.filters
         return params
 
 
@@ -88,7 +88,7 @@ class NFinalClassifier(NetworkModule):
     def num_free_parameters_in_module(self) -> int:
         params = 1
         for i in self.inputs:
-            params *= i.channels
+            params *= i.filters
         params *= self.classes
         return params
 
@@ -102,7 +102,7 @@ class NFinalClassifier(NetworkModule):
 
 def generate_conv_stem(
     inputs,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -114,7 +114,7 @@ def generate_conv_stem(
         inputs=[
             inputs,
         ],
-        channels=channels,
+        filters=filters,
         kernel_size=3,
         stride=1,
         padding='same',
@@ -129,7 +129,7 @@ def generate_conv_stem(
 
 def generate_downsample(
     inputs,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -141,7 +141,7 @@ def generate_downsample(
         inputs=[
             inputs,
         ],
-        channels=channels,
+        filters=filters,
         kernel_size=2,
         stride=2,
         padding='same',
@@ -152,7 +152,7 @@ def generate_downsample(
         inputs=[
             module,
         ],
-        channels=channels,
+        filters=filters,
         kernel_size=1,
         stride=1,
         padding='same',
@@ -205,7 +205,7 @@ def generate_final_classifier(
 def generate_module(
     inp,
     op,
-    channels,
+    filters,
     batch_norm,
     activation,
     kernel_regularizer,
@@ -219,7 +219,7 @@ def generate_module(
             inputs=[
                 inp,
             ],
-            channels=channels,
+            filters=filters,
             kernel_size=3,
             stride=1,
             padding='same',
@@ -235,7 +235,7 @@ def generate_module(
             inputs=[
                 inp,
             ],
-            channels=channels,
+            filters=filters,
             kernel_size=5,
             stride=1,
             padding='same',
@@ -251,7 +251,7 @@ def generate_module(
             inputs=[
                 inp,
             ],
-            channels=channels,
+            filters=filters,
             kernel_size=1,
             stride=1,
             padding='same',
@@ -267,7 +267,7 @@ def generate_module(
             inputs=[
                 inp,
             ],
-            channels=channels,
+            filters=filters,
             kernel_size=3,
             stride=1,
             padding='same',
@@ -283,7 +283,7 @@ def generate_module(
             inputs=[
                 inp,
             ],
-            channels=channels,
+            filters=filters,
             kernel_size=5,
             stride=1,
             padding='same',
@@ -299,7 +299,7 @@ def generate_module(
             inputs=[
                 inp,
             ],
-            channels=channels,
+            filters=filters,
             kernel_size=3,
             stride=1,
             padding='same',
@@ -329,7 +329,7 @@ def generate_graph_cell(
     inputs,
     nodes,
     operations,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -355,7 +355,7 @@ def generate_graph_cell(
             module = generate_module(
                 inp,
                 op,
-                channels,
+                filters,
                 batch_norm,
                 activation,
                 kernel_regularizer,
@@ -381,7 +381,7 @@ def generate_parallel_concat_cell(
     inputs,
     nodes,
     operations,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -391,14 +391,14 @@ def generate_parallel_concat_cell(
     # Nodes is the number of parallel tracks
     # Operations is a list of lists corresponding to the operations at each node
     assert len(operations) == nodes
-    channel_list = [channels // nodes for _ in range(nodes)]
-    for i in range(channels % nodes):
+    channel_list = [filters // nodes for _ in range(nodes)]
+    for i in range(filters % nodes):
         channel_list[i] += 1
     by_node = [len(operations[i]) for i in range(nodes)]
     tracks = [None for _ in range(nodes)]
     module = None
     for i in range(nodes):
-        channels = channel_list[i]
+        filters = channel_list[i]
         ops = operations[i]
         for j in range(by_node[i]):
             inp = inputs if j == 0 else module
@@ -406,7 +406,7 @@ def generate_parallel_concat_cell(
             module = generate_module(
                 inp,
                 op,
-                channels,
+                filters,
                 batch_norm,
                 activation,
                 kernel_regularizer,
@@ -429,7 +429,7 @@ def generate_parallel_add_cell(
     inputs,
     nodes,
     operations,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -450,7 +450,7 @@ def generate_parallel_add_cell(
             module = generate_module(
                 inp,
                 op,
-                channels,
+                filters,
                 batch_norm,
                 activation,
                 kernel_regularizer,
@@ -474,7 +474,7 @@ def generate_generic_cell(
     inputs,
     nodes,
     operations,
-    channels=16,
+    filters=16,
     batch_norm='none',
     activation='relu',
     kernel_regularizer=None,
@@ -485,7 +485,7 @@ def generate_generic_cell(
         'inputs': inputs,
         'nodes': nodes,
         'operations': operations,
-        'channels': channels,
+        'filters': filters,
         'batch_norm': batch_norm,
         'activation': activation,
         'kernel_regularizer': kernel_regularizer,

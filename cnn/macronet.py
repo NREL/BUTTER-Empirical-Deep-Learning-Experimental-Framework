@@ -35,9 +35,9 @@ cell_dict = {'3x3': Conv3x3Cell,
              'nasbench101': NASBench101Cell,
              'nasbench201': NASBench201Cell}
 
-def get_cell(type='3x3', channels=16, batch_norm=False, activation='relu'):
+def get_cell(type='3x3', filters=16, batch_norm=False, activation='relu'):
     if type in cell_dict.keys():
-        return cell_dict[type](channels, batch_norm, activation)
+        return cell_dict[type](filters, batch_norm, activation)
     else:
         raise ValueError('Cell type not recognized.')
 
@@ -69,7 +69,7 @@ max_downsamples_dict = {
 def make_net(cell_type='3x3', 
             downsamples=1, 
             cell_depth=2, 
-            channels=[16.32], 
+            filters=[16.32], 
             dataset='cifar10', 
             batch_norm=False, 
             activation='relu', 
@@ -81,17 +81,17 @@ def make_net(cell_type='3x3',
         classes = classes_dict[dataset]
     else:
         raise ValueError('Dataset not recognized.')
-    if len(channels) < downsamples+1:
-        raise ValueError('Too few numbers of channels items specified.')
-    elif len(channels) > downsamples+1:
-        raise ValueError('Too many numbers of channels items specified.')
+    if len(filters) < downsamples+1:
+        raise ValueError('Too few numbers of filters items specified.')
+    elif len(filters) > downsamples+1:
+        raise ValueError('Too many numbers of filters items specified.')
     if downsamples > max_downsamples_dict[dataset]:
         raise ValueError('Too many downsamples for specified dataset.')
     
     # Initialize inputs and conv stem
     net = models.Sequential()
     net.add(layers.InputLayer(input_size))
-    net.add(ConvStem(channels[0], batch_norm, activation))
+    net.add(ConvStem(filters[0], batch_norm, activation))
 
     # Determine cells per cell block
     cells = [cell_depth // (downsamples+1) for _ in range(downsamples + 1)]
@@ -102,9 +102,9 @@ def make_net(cell_type='3x3',
     # Add cell blocks
     for block in range(len(cells)):
         for _ in range(cells[block]):
-            net.add(get_cell(cell_type, channels[block], batch_norm, activation))
+            net.add(get_cell(cell_type, filters[block], batch_norm, activation))
         if block < len(cells)-1:
-            net.add(DownsampleCell(channels[block+1], activation))
+            net.add(DownsampleCell(filters[block+1], activation))
     
     # Add final layers
     net.add(FinalClassifier(classes, out_activation))
