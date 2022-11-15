@@ -22,7 +22,7 @@ network_module_types: Tuple[Type, ...] = (
     NZeroize,
 
     # CNN Cell modules
-    NBasicCell,
+    NConvolutionalCell,
     NConvStem,
     NCell,
     NDownsample,

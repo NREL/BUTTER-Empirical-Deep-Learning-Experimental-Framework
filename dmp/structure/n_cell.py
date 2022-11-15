@@ -9,12 +9,12 @@ from dmp.structure.n_conv import *
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NBasicCell(NNeuronLayer):
+class NConvolutionalCell(NNeuronLayer):
     channels: int = 16
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NConvStem(NBasicCell):
+class NConvStem(NConvolutionalCell):
     batch_norm: str = 'none'
     input_channels: int = 3
 
@@ -24,7 +24,7 @@ class NConvStem(NBasicCell):
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NCell(NBasicCell):
+class NCell(NConvolutionalCell):
     batch_norm: str = 'none'
     operations: List[str] = field(default_factory=list)
     nodes: int = 2
@@ -65,7 +65,7 @@ class NCell(NBasicCell):
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NDownsample(NBasicCell):
+class NDownsample(NConvolutionalCell):
 
     @property
     def num_free_parameters_in_module(self) -> int:

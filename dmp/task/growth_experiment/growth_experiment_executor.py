@@ -198,7 +198,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         dest: NetworkModule,
         dest_node_layer_map: Dict[NetworkModule, keras.layers.Layer],
     ) -> None:
-        make_from_config(
+        make_from_typed_config(
             config,
             {
                 'NetworkOverlayer': OverlayGrowthMethod,
@@ -214,6 +214,6 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         self,
         config: dict,
     ) -> keras.callbacks.Callback:
-        return make_from_config(config, {
+        return make_from_typed_config(config, {
             'EarlyStopping': keras.callbacks.EarlyStopping,
         }, 'growth_trigger')

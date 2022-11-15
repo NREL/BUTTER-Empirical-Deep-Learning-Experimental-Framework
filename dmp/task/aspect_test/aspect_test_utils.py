@@ -30,8 +30,9 @@ def add_label_noise(label_noise, run_task, train_outputs):
         # print(f'sample\n{outputs_train[0:20, :]}')
         if run_task == 'classification':
             num_to_perturb = int(train_size * label_noise)
-            noisy_labels_idx = numpy.random.choice(
-                train_size, size=num_to_perturb, replace=False)
+            noisy_labels_idx = numpy.random.choice(train_size,
+                                                   size=num_to_perturb,
+                                                   replace=False)
 
             num_outputs = train_outputs.shape[1]
             if num_outputs == 1:
@@ -39,8 +40,8 @@ def add_label_noise(label_noise, run_task, train_outputs):
                 train_outputs[noisy_labels_idx] ^= 1
             else:
                 # one-hot response variable...
-                rolls = numpy.random.choice(numpy.arange(
-                    num_outputs - 1) + 1, noisy_labels_idx.size)
+                rolls = numpy.random.choice(
+                    numpy.arange(num_outputs - 1) + 1, noisy_labels_idx.size)
                 for i, idx in enumerate(noisy_labels_idx):
                     train_outputs[noisy_labels_idx] = numpy.roll(
                         train_outputs[noisy_labels_idx], rolls[i])
@@ -56,7 +57,8 @@ def add_label_noise(label_noise, run_task, train_outputs):
                     loc=0, scale=noise_std[i], size=train_outputs[:, i].shape)
         else:
             raise ValueError(
-                f'Do not know how to add label noise to dataset task {run_task}.')
+                f'Do not know how to add label noise to dataset task {run_task}.'
+            )
 
 
 def prepare_dataset(
@@ -118,19 +120,17 @@ def prepare_dataset(
 
 
 def make_network_module_graph(
-        input_shape: Tuple[int, ...],
-        widths: List[int],
-        residual_mode: Optional[str],
-        input_activation: str,
-        internal_activation: str,
-        output_activation: str,
-        layer_args: dict,
+    input_shape: Tuple[int, ...],
+    widths: List[int],
+    residual_mode: Optional[str],
+    input_activation: str,
+    internal_activation: str,
+    output_activation: str,
+    layer_args: dict,
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput(label=0,
-                         inputs=[],
-                         shape=list(input_shape[1:]))
+    input_layer = NInput(label=0, inputs=[], shape=list(input_shape[1:]))
     current = input_layer
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d, layer_width in enumerate(widths):
@@ -144,11 +144,14 @@ def make_network_module_graph(
 
         # Fully connected layer
         layer = NDense(label=0,
-                       inputs=[current, ],
-                       shape=[layer_width, ],
+                       inputs=[
+                           current,
+                       ],
+                       shape=[
+                           layer_width,
+                       ],
                        activation=activation,
-                       **layer_args
-                       )
+                       **layer_args)
 
         # Skip connections for residual modes
         if residual_mode is None or residual_mode == 'none':
@@ -157,7 +160,7 @@ def make_network_module_graph(
             # If this isn't the first or last layer, and the previous layer is
             # of the same width insert a residual sum between layers
             # NB: Only works for rectangle
-            if d > 0 and d < len(widths)-1 and layer_width == widths[d-1]:
+            if d > 0 and d < len(widths) - 1 and layer_width == widths[d - 1]:
                 layer = NAdd(label=0,
                              inputs=[layer, current],
                              shape=layer.shape.copy())
@@ -167,40 +170,80 @@ def make_network_module_graph(
         current = layer
     return current
 
-def get_params_and_type_from_config(
-    config:dict, 
-    type_key:str = 'type',
-    ) -> Tuple[str, dict]:
-    params = config.copy()
-    del params['type']
-    return config['type'], params
 
-def make_from_config(
-    config:dict,
-    mapping:Dict[str, Callable],
-    config_name : str,
+def get_from_config_mapping(
+    name: str,
+    mapping: Dict[str, Any],
+    config_name: str,
+) -> Any:
+    if name in mapping:
+        return mapping[name]
+    raise NotImplementedError(f'Unknown {config_name} "{type}".')
+
+
+def get_params_and_type_from_config(
+    config: dict,
+    type_key: str = 'type',
+) -> Tuple[str, dict]:
+    params = config.copy()
+    del params[type_key]
+    return config[type_key], params
+
+
+def make_from_typed_config(
+    config: dict,
+    mapping: Dict[str, Callable],
+    config_name: str,
     *args,
     **kwargs,
 ) -> Any:
     type, params = get_params_and_type_from_config(config)
-    factory = mapping.get(type, None)
-    if factory is None:
-        raise NotImplementedError(f'Unknown {config_name} type "{type}".')
+    factory = get_from_config_mapping(type, mapping, config_name)
     return factory(*args, **kwargs, **params)
 
 def make_regularizer(config: Optional[Dict]) \
         -> Optional[keras.regularizers.Regularizer]:
     if config is None:
         return None
-    return make_from_config(
-        config,
+    return make_from_typed_config(
+        config, {
+            'l1': keras.regularizers.L1,
+            'l2': keras.regularizers.L2,
+            'l1l2': keras.regularizers.L1L2
+        }, 'regularizer')
+
+
+def get_activation_factory(name: str) -> Callable:
+    return get_from_config_mapping(
+        name,
         {
-            'l1':keras.regularizers.L1,
-            'l2':keras.regularizers.L2,
-            'l1l2':keras.regularizers.L1L2
+            'relu': keras.activations.relu,
+            'relu6': tf.nn.relu6,
+            'leaky_relu': lambda: keras.layers.LeakyReLU(),
+            'elu': keras.activations.elu,
+            'selu': keras.activations.selu,
+            'sigmoid': keras.activations.sigmoid,
+            'hard_sigmoid': keras.activations.hard_sigmoid,
+            'swish': keras.activations.swish,
+            'tanh': keras.activations.tanh,
+            'softplus': keras.activations.softplus,
+            'softsign': keras.activations.softsign,
+            'softmax': keras.activations.softmax,
         },
-        'regularizer'
+        'activation',
     )
+
+
+def get_batch_normalization_factory(name: str) -> Any:
+    return get_from_config_mapping(
+        name,
+        {
+            'all': lambda: layers.BatchNormalization(),
+            'none': lambda x : x,
+        },
+        'batch_norm',
+    )
+
 
 def make_conv_network(
     input_shape: List[int],
@@ -218,14 +261,16 @@ def make_conv_network(
 ) -> NetworkModule:
     """ Construct CNN out of NetworkModules. """
     cell_setup = False
-    # Determine internal structure 
-    layer_list = [] 
+    # Determine internal structure
+    layer_list = []
     widths_list = []
-    cell_depths = [cell_depth//(downsamples+1) for _ in range(downsamples+1)]
-    for i in range(cell_depth%(downsamples+1)):
-        cell_depths[-i-1] += 1
+    cell_depths = [
+        cell_depth // (downsamples + 1) for _ in range(downsamples + 1)
+    ]
+    for i in range(cell_depth % (downsamples + 1)):
+        cell_depths[-i - 1] += 1
 
-    for i in range(downsamples+1):
+    for i in range(downsamples + 1):
         # Add downsampling layer
         if i > 0:
             layer_list.append('downsample')
@@ -235,41 +280,54 @@ def make_conv_network(
             layer_list.append('cell')
             widths_list.append(widths[i])
 
-    input_layer = NInput(label=0,
-                shape=input_shape,)
-    if not cell_setup: # do the updated keras layer wise construction
+    input_layer = NInput(
+        label=0,
+        shape=input_shape,
+    )
+    if not cell_setup:  # do the updated keras layer wise construction
         current = generate_conv_stem(input_layer, widths[0], batch_norm)
-        # Loop through layers 
+        # Loop through layers
         for i in range(len(layer_list)):
             layer_width = widths_list[i]
             layer_type = layer_list[i]
             if layer_type == 'cell':
-                layer = generate_generic_cell(type=cell_type, inputs=current, nodes=cell_nodes,
-                    channels=layer_width, operations=cell_ops, batch_norm=batch_norm, activation=internal_activation)
+                layer = generate_generic_cell(type=cell_type,
+                                              inputs=current,
+                                              nodes=cell_nodes,
+                                              channels=layer_width,
+                                              operations=cell_ops,
+                                              batch_norm=batch_norm,
+                                              activation=internal_activation)
             elif layer_type == 'downsample':
-                layer = generate_downsample(inputs=current, channels=layer_width, 
-                                batch_norm=batch_norm, activation=internal_activation)
+                layer = generate_downsample(inputs=current,
+                                            channels=layer_width,
+                                            batch_norm=batch_norm,
+                                            activation=internal_activation)
             else:
                 raise ValueError(f'Unknown layer type {layer_type}')
             current = layer
         # Add final classifier
-        final_classifier = generate_final_classifier(inputs=current, classes=classes,
-                                                    activation=output_activation)
-    else: # Do the outdated cell-wise construction
+        final_classifier = generate_final_classifier(
+            inputs=current, classes=classes, activation=output_activation)
+    else:  # Do the outdated cell-wise construction
         current = NConvStem(
-            inputs=[input_layer, ],
+            inputs=[
+                input_layer,
+            ],
             activation=internal_activation,
             channels=widths[0],
             batch_norm=batch_norm,
             input_channels=input_shape[-1],
         )
-        # Loop through layers 
+        # Loop through layers
         for i in range(len(layer_list)):
             layer_width = widths_list[i]
             layer_type = layer_list[i]
             if layer_type == 'cell':
                 layer = NCell(
-                    inputs=[current, ],
+                    inputs=[
+                        current,
+                    ],
                     activation=internal_activation,
                     channels=layer_width,
                     batch_norm=batch_norm,
@@ -279,7 +337,9 @@ def make_conv_network(
                 )
             elif layer_type == 'downsample':
                 layer = NDownsample(
-                    inputs=[current, ],
+                    inputs=[
+                        current,
+                    ],
                     activation=internal_activation,
                     channels=layer_width,
                 )
@@ -289,13 +349,17 @@ def make_conv_network(
 
         # Add final classifier
         final_classifier = NFinalClassifier(
-            inputs=[current, ],
+            inputs=[
+                current,
+            ],
             activation=output_activation,
             classes=classes,
         )
     return final_classifier
 
-def compute_network_configuration(num_outputs, ml_task: str) -> Tuple[Any, Any]:
+
+def compute_network_configuration(num_outputs,
+                                  ml_task: str) -> Tuple[Any, Any]:
     output_activation = 'relu'
     if ml_task == 'regression':
         run_loss = losses.mean_squared_error
@@ -313,10 +377,11 @@ def compute_network_configuration(num_outputs, ml_task: str) -> Tuple[Any, Any]:
     return output_activation, run_loss
 
 
-def binary_search_int(objective: Callable[[int], Union[int, float]],
-                      minimum: int,
-                      maximum: int,
-                      ) -> Tuple[int, bool]:
+def binary_search_int(
+    objective: Callable[[int], Union[int, float]],
+    minimum: int,
+    maximum: int,
+) -> Tuple[int, bool]:
     """
     :param objective: function for which to find fixed point
     :param minimum: min value of search
@@ -340,28 +405,25 @@ def binary_search_int(objective: Callable[[int], Union[int, float]],
 
 
 def find_best_layout_for_budget_and_depth(
-    input_shape: Tuple[int, ...],
-    residual_mode: Optional[str],
-    input_activation: str,
-    internal_activation: str,
-    output_activation: str,
-    target_size: int,
-    make_widths: Callable[[int], List[int]],
-    layer_args: dict
-) -> Tuple[int, List[int], NetworkModule]:
+        input_shape: Tuple[int, ...], residual_mode: Optional[str],
+        input_activation: str, internal_activation: str,
+        output_activation: str, target_size: int,
+        make_widths: Callable[[int], List[int]],
+        layer_args: dict) -> Tuple[int, List[int], NetworkModule]:
     best = (math.inf, None, None)
 
     def search_objective(w0):
         nonlocal best
         widths = make_widths(w0)
-        network = make_network_module_graph(input_shape,
-                               widths,
-                               residual_mode,
-                               input_activation,
-                               internal_activation,
-                               output_activation,
-                               layer_args,
-                               )
+        network = make_network_module_graph(
+            input_shape,
+            widths,
+            residual_mode,
+            input_activation,
+            internal_activation,
+            output_activation,
+            layer_args,
+        )
         delta = network.num_free_parameters_in_graph - target_size
 
         if abs(delta) < abs(best[0]):
@@ -369,11 +431,13 @@ def find_best_layout_for_budget_and_depth(
 
         return delta
 
-    binary_search_int(search_objective, 1, int(2 ** 30))
+    binary_search_int(search_objective, 1, int(2**30))
     return best  # type: ignore
 
 
-def get_rectangular_widths(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+def get_rectangular_widths(num_outputs: int,
+                           depth: int) -> Callable[[float], List[int]]:
+
     def make_layout(w0):
         layout = []
         if depth > 1:
@@ -384,7 +448,9 @@ def get_rectangular_widths(num_outputs: int, depth: int) -> Callable[[float], Li
     return make_layout
 
 
-def get_trapezoidal_widths(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+def get_trapezoidal_widths(num_outputs: int,
+                           depth: int) -> Callable[[float], List[int]]:
+
     def make_layout(w0):
         beta = (w0 - num_outputs) / (depth - 1)
         return [int(round(w0 - beta * k)) for k in range(0, depth)]
@@ -392,17 +458,25 @@ def get_trapezoidal_widths(num_outputs: int, depth: int) -> Callable[[float], Li
     return make_layout
 
 
-def get_exponential_widths(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
+def get_exponential_widths(num_outputs: int,
+                           depth: int) -> Callable[[float], List[int]]:
+
     def make_layout(w0):
         beta = math.exp(math.log(num_outputs / w0) / (depth - 1))
-        return [max(num_outputs, int(round(w0 * (beta ** k)))) for k in range(0, depth)]
+        return [
+            max(num_outputs, int(round(w0 * (beta**k))))
+            for k in range(0, depth)
+        ]
 
     return make_layout
 
 
 def get_wide_first_layer_rectangular_other_layers_widths(
-        num_outputs: int, depth: int, first_layer_width_multiplier: float = 10,
+    num_outputs: int,
+    depth: int,
+    first_layer_width_multiplier: float = 10,
 ) -> Callable[[float], List[int]]:
+
     def make_layout(w0):
         layout = []
         if depth > 1:
@@ -416,28 +490,40 @@ def get_wide_first_layer_rectangular_other_layers_widths(
     return make_layout
 
 
-def get_wide_first_2x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 2)
+def get_wide_first_2x(num_outputs: int,
+                      depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(
+        num_outputs, depth, 2)
 
 
-def get_wide_first_4x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 4)
+def get_wide_first_4x(num_outputs: int,
+                      depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(
+        num_outputs, depth, 4)
 
 
-def get_wide_first_8x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 8)
+def get_wide_first_8x(num_outputs: int,
+                      depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(
+        num_outputs, depth, 8)
 
 
-def get_wide_first_16x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 16)
+def get_wide_first_16x(num_outputs: int,
+                       depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(
+        num_outputs, depth, 16)
 
 
-def get_wide_first_5x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 5)
+def get_wide_first_5x(num_outputs: int,
+                      depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(
+        num_outputs, depth, 5)
 
 
-def get_wide_first_20x(num_outputs: int, depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(num_outputs, depth, 20)
+def get_wide_first_20x(num_outputs: int,
+                       depth: int) -> Callable[[float], List[int]]:
+    return get_wide_first_layer_rectangular_other_layers_widths(
+        num_outputs, depth, 20)
 
 
 def widths_factory(shape):
