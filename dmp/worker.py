@@ -6,7 +6,7 @@ from jobqueue.job_queue import JobQueue
 from dmp.logging.result_logger import ResultLogger
 from dmp.task.task import Task
 
-from dmp.jobqueue_interface.common import jobqueue_marshal
+from dmp.jobqueue_interface import jobqueue_marshal
 from lmarshal.src.marshal import Marshal
 import tensorflow
 

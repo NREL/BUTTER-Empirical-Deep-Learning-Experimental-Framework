@@ -5,7 +5,7 @@ Enqueues jobs from stdin into the JobQueue
 import argparse
 
 from command_line_tools import command_line_config
-from dmp.jobqueue_interface.common import jobqueue_marshal
+from dmp.jobqueue_interface import jobqueue_marshal
 
 import sys
 

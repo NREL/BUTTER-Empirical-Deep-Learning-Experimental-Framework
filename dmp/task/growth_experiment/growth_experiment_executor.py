@@ -8,11 +8,11 @@ import tensorflow.keras as keras
 from pytest import param
 
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
-from dmp.jobqueue_interface.common import jobqueue_marshal
+from dmp.jobqueue_interface import jobqueue_marshal
 from dmp.task.aspect_test.aspect_test_executor import AspectTestExecutor
 from dmp.task.aspect_test.aspect_test_utils import *
 from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.growth_experiment.network_overlayer import NetworkOverlayer
+from dmp.task.growth_experiment.growth_methods.overlay_growth_method import OverlayGrowthMethod
 from dmp.task.task_util import remap_key_prefixes
 
 
@@ -46,7 +46,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         test_data = \
             (make_tensorflow_dataset(test_data[0], test_data[1]), test_data_key)
 
-        history: dict = dict()
+        history: dict = {}
         growth_step: int = 0
         epoch_parameters: int = 0
         epochs: int = 0
@@ -201,7 +201,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         make_from_config(
             config,
             {
-                'NetworkOverlayer': NetworkOverlayer,
+                'NetworkOverlayer': OverlayGrowthMethod,
             },
             'growth_method',
             source,

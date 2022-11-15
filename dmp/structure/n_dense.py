@@ -11,3 +11,7 @@ class NDense(NetworkModule):
     bias_regularizer: Optional[dict] = None
     activity_regularizer: Optional[dict] = None
     kernel_initializer: str = 'glorot_uniform'
+
+    @property
+    def num_free_parameters_in_module(self) -> int:
+        return (sum((i.size for i in self.inputs)) + 1) * self.size

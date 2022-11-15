@@ -9,7 +9,7 @@ from dmp.structure.network_module import NetworkModule
 import tensorflow.keras.layers as layers
 
 
-class NetworkOverlayer:
+class OverlayGrowthMethod:
     """
     Visitor that fills one network with the values from another. 
     If the destination network is larger, this will 'grow' the source into

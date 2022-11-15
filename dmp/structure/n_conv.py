@@ -15,6 +15,8 @@ class NBasicCNN(NetworkModule):
     bias_regularizer : Optional[dict] = None
     activity_regularizer : Optional[dict] = None
 
+    
+
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)
 # class NCNNInput(NetworkModule):
 #     channels: int = 16
@@ -22,9 +24,24 @@ class NBasicCNN(NetworkModule):
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NConv(NBasicCNN):
     batch_norm: str = 'none'
+    
+    @property
+    def num_free_parameters_in_module(self) -> int:
+        params = self.kernel_size ** 2 * self.channels
+        for i in self.inputs:
+            params *= i.channels
+        return params
+
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NSepConv(NBasicCNN):
     batch_norm: str = 'none'
+
+    @property
+    def num_free_parameters_in_module(self) -> int:
+        params = 2 * self.kernel_size * self.channels
+        for i in self.inputs:
+            params *= i.channels
+        return params
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NMaxPool(NBasicCNN):

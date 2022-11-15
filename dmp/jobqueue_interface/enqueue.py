@@ -6,7 +6,7 @@ import argparse
 
 from jobqueue.connect import connect
 from jobqueue.job_queue import JobQueue
-from dmp.jobqueue_interface.common import jobqueue_marshal
+from dmp.jobqueue_interface import jobqueue_marshal
 
 import sys
 

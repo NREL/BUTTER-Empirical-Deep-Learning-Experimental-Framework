@@ -8,12 +8,12 @@ from pprint import pprint
 import sys
 from jobqueue.cursor_manager import CursorManager
 from dmp.logging.postgres_result_logger import PostgresResultLogger
-from dmp.structure.algorithm.network_json_deserializer import NetworkJSONDeserializer
+from dmp.structure.visitor.network_json_deserializer import NetworkJSONDeserializer
 
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
-from dmp.jobqueue_interface.common import jobqueue_marshal
+from dmp.jobqueue_interface import jobqueue_marshal
 
 sys.path.append("../../")
 

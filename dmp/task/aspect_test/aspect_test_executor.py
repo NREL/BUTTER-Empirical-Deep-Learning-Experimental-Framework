@@ -4,9 +4,11 @@ from typing import Any
 import numpy
 import tensorflow.keras.metrics as metrics
 from dmp.data.pmlb import pmlb_loader
-from dmp.jobqueue_interface.common import jobqueue_marshal
+from dmp.jobqueue_interface import jobqueue_marshal
+from dmp.structure.visitor.make_keras_network_from_module import make_keras_network_from_network_module
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 from dmp.task.aspect_test.aspect_test_utils import *
+import dmp.task.aspect_test.keras_utils as keras_utils
 from dmp.task.task import Parameter
 from dmp.task.task_util import remap_key_prefixes
 
@@ -73,8 +75,8 @@ class AspectTestExecutor():
         callbacks = []
         if task.early_stopping is not None:
             callbacks.append(
-                tensorflow.keras.callbacks.EarlyStopping(
-                    **task.early_stopping)) # TODO: decide what to do with this guy
+                tensorflow.keras.callbacks.EarlyStopping(**task.early_stopping)
+            )  # TODO: decide what to do with this guy
 
         history = self.fit_model(
             task,
@@ -223,7 +225,7 @@ class AspectTestExecutor():
                 layer_args,
             )
 
-        num_free_parameters = count_num_free_parameters(network_structure)
+        num_free_parameters = network_structure.num_free_parameters_in_graph
         # reject non-conformant network sizes
         delta = num_free_parameters - task.size
         relative_error = delta / task.size
@@ -250,10 +252,9 @@ class AspectTestExecutor():
         )
 
         # Calculate number of parameters in grown network
-        num_free_parameters = count_trainable_parameters_in_keras_model(
+        num_free_parameters = keras_utils.count_trainable_parameters_in_keras_model(
             keras_model)
-        if count_num_free_parameters(network_structure) \
-                != num_free_parameters:
+        if network_structure.num_free_parameters_in_graph != num_free_parameters:
             raise RuntimeError('Wrong number of trainable parameters')
 
         # # optionally enable checkpoints
@@ -276,8 +277,13 @@ class AspectTestExecutor():
             tensorflow.config.optimizer.set_jit(True)
 
             # Build Keras model
-            keras_model, node_layer_map = make_keras_network_from_network_module(
-                network_structure)
+            keras_inputs, keras_outputs, node_layer_map = \
+                make_keras_network_from_network_module(network_structure)
+            keras_model = keras.Model(
+                inputs=keras_inputs,
+                outputs=keras_outputs,
+            )
+
             if len(keras_model.inputs) != 1:  # type: ignore
                 raise ValueError('Wrong number of keras inputs generated')
 
