@@ -319,8 +319,8 @@ def make_conv_network(
             layer_list.append('cell')
             widths_list.append(widths[i])
 
-    input_layer = NInput(label=0,
-                shape=input_shape,)
+    input_layer = NCNNInput(label=0,
+                shape=input_shape, channels=input_shape[2])
     if not cell_setup: # do the updated keras layer wise construction
         current = generate_conv_stem(input_layer, widths[0], batch_norm)
         # Loop through layers 
@@ -461,10 +461,10 @@ class MakeKerasLayersFromNetwork:
 
     # CNN visitors 
     @_visit_raw.register
-    # def _(self, target: NCNNInput, keras_inputs) -> any:
-    #     result = Input(shape=target.shape)
-    #     self._inputs.append(result)
-    #     return result
+    def _(self, target: NCNNInput, keras_inputs) -> any:
+        result = Input(shape=target.shape)
+        self._inputs.append(result)
+        return result
 
     @_visit_raw.register
     def _(self, target: NConv, keras_inputs) -> any:
