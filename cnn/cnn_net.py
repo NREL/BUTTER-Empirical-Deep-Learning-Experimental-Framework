@@ -25,6 +25,7 @@ from cnn.cell_structures import make_graph_cell, make_parallel_concat_cell, make
 
 def make_cell(
     type: str = 'graph',
+    dimension: int = 2,
     nodes: int = 2,
     operations=None,
     filters: int = 16,
@@ -34,29 +35,32 @@ def make_cell(
 ):
     if type == 'graph':
         return make_graph_cell(
-            nodes,
-            operations,
-            filters,
-            batch_norm,
-            activation,
+            nodes=nodes,
+            operations=operations,
+            dimension=dimension,
+            filters=filters,
+            batch_norm=batch_norm,
+            activation=activation,
             **kwargs,
         )
     elif type == 'parallelconcat':
         return make_parallel_concat_cell(
-            nodes,
-            operations,
-            filters,
-            batch_norm,
-            activation,
+            nodes=nodes,
+            operations=operations,
+            dimension=dimension,
+            filters=filters,
+            batch_norm=batch_norm,
+            activation=activation,
             **kwargs,
         )
     elif type == 'paralleladd':
         return make_parallel_add_cell(
-            nodes,
-            operations,
-            filters,
-            batch_norm,
-            activation,
+            nodes=nodes,
+            operations=operations,
+            dimension=dimension,
+            filters=filters,
+            batch_norm=batch_norm,
+            activation=activation,
             **kwargs,
         )
     else:
@@ -135,10 +139,12 @@ def make_net(
     for i in range(downsamples + 1):
         for j in range(stack_cells[i]):
             net.add(
-                make_cell(**cell_info,
-                          filters=filters[i],
-                          batch_norm=batch_norm,
-                          activation=activation))
+                make_cell(
+                    **cell_info,
+                    filters=filters[i],
+                    batch_norm=batch_norm,
+                    activation=activation,
+                ))
         if i < downsamples:
             net.add(DownsampleCell(filters[i + 1], activation=activation))
     net.add(FinalClassifier(classes, activation=output_activation))

@@ -8,7 +8,7 @@
 ########################################################################################
 ########################################################################################
 
-from typing import Any, Callable
+from typing import Any, Callable, List, Tuple, Union
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras import backend as K
@@ -22,21 +22,25 @@ from dmp.task.aspect_test.aspect_test_utils import get_activation_factory, get_b
 #--------------------------------------------------------------------------------------#
 ########################################################################################
 
+KernelSize = Union[int, List[int], Tuple[int, ...]]
+
 
 class ConvolutionalLayer(layers.Layer):
 
     def __init__(
         self,
         conv_layer_factory: Callable,
-        filters: int = 128,
-        batch_norm: str = 'none',
-        activation: str = 'relu',
+        filters: int,  #=128
+        kernel_size: KernelSize,
+        batch_norm: str,  # = 'none',
+        activation: str,  # = 'relu',
         # padding: str = 'same',
         **conv_layer_args,
     ):
         self.batch_norm = batch_norm
         self.conv_layer = conv_layer_factory(
             filters,
+            kernel_size,
             activation=keras.activations.linear,
             # padding=padding,
             **conv_layer_args,
@@ -58,19 +62,19 @@ class DenseConvolutionalLayer(ConvolutionalLayer):
 
     def __init__(
         self,
-        kernel_size,
+        dimension,
         **kwargs,
     ):
-
-        def make_conv_layer(filters: int, **conv_layer_args) -> layers.Conv2D:
-            return layers.Conv2D(
-                filters,
-                kernel_size,
-                **conv_layer_args,
-            )
-
         super().__init__(
-            make_conv_layer,
+            get_from_config_mapping(
+                dimension,
+                {
+                    1: keras.layers.Conv1D,
+                    2: keras.layers.Conv2D,
+                    3: keras.layers.Conv3D,
+                },
+                'DenseConvolutionalLayer dimension',
+            ),
             **kwargs,
         )
 
@@ -79,20 +83,18 @@ class SeparableConvolutionalLayer(ConvolutionalLayer):
 
     def __init__(
         self,
-        kernel_size,
+        dimension,
         **kwargs,
     ):
-
-        def make_conv_layer(filters: int,
-                            **conv_layer_args) -> layers.SeparableConv2D:
-            return layers.SeparableConv2D(
-                filters,
-                kernel_size,
-                **conv_layer_args,
-            )
-
         super().__init__(
-            make_conv_layer,
+            get_from_config_mapping(
+                dimension,
+                {
+                    1: keras.layers.SeparableConv1D,
+                    2: keras.layers.SeparableConv2D,
+                },
+                'SeparableConvolutionalLayer dimension',
+            ),
             **kwargs,
         )
 
@@ -100,31 +102,31 @@ class SeparableConvolutionalLayer(ConvolutionalLayer):
 class Conv1x1Operation(DenseConvolutionalLayer):
 
     def __init__(self, **kwargs):
-        super().__init__(1, **kwargs)
+        super().__init__(kernel_size=1, **kwargs)
 
 
 class Conv3x3Operation(DenseConvolutionalLayer):
 
     def __init__(self, **kwargs):
-        super().__init__(3, **kwargs)
+        super().__init__(kernel_size=3, **kwargs)
 
 
 class Conv5x5Operation(DenseConvolutionalLayer):
 
     def __init__(self, **kwargs):
-        super().__init__(5, **kwargs)
+        super().__init__(kernel_size=5, **kwargs)
 
 
 class SepConv3x3Operation(SeparableConvolutionalLayer):
 
     def __init__(self, **kwargs):
-        super().__init__(3, **kwargs)
+        super().__init__(kernel_size=3, **kwargs)
 
 
 class SepConv5x5Operation(SeparableConvolutionalLayer):
 
     def __init__(self, **kwargs):
-        super().__init__(5, **kwargs)
+        super().__init__(kernel_size=5, **kwargs)
 
 
 # projection operation
@@ -276,6 +278,7 @@ def num_node_operations(nodes):
 def make_graph_cell(
     nodes,
     operations,
+    dimension=2,
     filters=16,
     batch_norm='none',
     activation='relu',
@@ -312,12 +315,13 @@ def make_graph_cell(
                     setattr(
                         self, f'operation_{i}_{j}',
                         operation_dict[operations[i][j]](
-                            filters,
-                            batch_norm,
-                            activation,
-                            kernel_regularizer,
-                            bias_regularizer,
-                            activity_regularizer,
+                            dimension=dimension,
+                            filters=filters,
+                            batch_norm=batch_norm,
+                            activation=activation,
+                            kernel_regularizer=kernel_regularizer,
+                            bias_regularizer=bias_regularizer,
+                            activity_regularizer=activity_regularizer,
                             **kwargs,
                         ))
 
@@ -346,6 +350,7 @@ def make_graph_cell(
 def make_parallel_concat_cell(
     nodes,
     operations,
+    dimension=2,
     filters=16,
     batch_norm='none',
     activation='relu',
@@ -384,12 +389,13 @@ def make_parallel_concat_cell(
                     setattr(
                         self, f'operation_{i}_{j}',
                         operation_dict[operations[i][j]](
-                            self.filters[i],
-                            batch_norm,
-                            activation,
-                            kernel_regularizer,
-                            bias_regularizer,
-                            activity_regularizer,
+                            dimension=dimension,
+                            filters=self.filters[i],
+                            batch_norm=batch_norm,
+                            activation=activation,
+                            kernel_regularizer=kernel_regularizer,
+                            bias_regularizer=bias_regularizer,
+                            activity_regularizer=activity_regularizer,
                             **kwargs,
                         ))
 
@@ -417,6 +423,7 @@ def make_parallel_concat_cell(
 def make_parallel_add_cell(
     nodes,
     operations,
+    dimension=2,
     filters=16,
     batch_norm='none',
     activation='relu',
@@ -452,12 +459,13 @@ def make_parallel_add_cell(
                     setattr(
                         self, f'operation_{i}_{j}',
                         operation_dict[operations[i][j]](
-                            filters,
-                            batch_norm,
-                            activation,
-                            kernel_regularizer,
-                            bias_regularizer,
-                            activity_regularizer,
+                            dimension=dimension,
+                            filters=filters,
+                            batch_norm=batch_norm,
+                            activation=activation,
+                            kernel_regularizer=kernel_regularizer,
+                            bias_regularizer=bias_regularizer,
+                            activity_regularizer=activity_regularizer,
                             **kwargs,
                         ))
 

@@ -172,13 +172,13 @@ def make_network_module_graph(
 
 
 def get_from_config_mapping(
-    name: str,
-    mapping: Dict[str, Any],
+    name: Any,
+    mapping: Dict[Any, Any],
     config_name: str,
 ) -> Any:
     if name in mapping:
         return mapping[name]
-    raise NotImplementedError(f'Unknown {config_name} "{type}".')
+    raise NotImplementedError(f'Unknown {config_name} "{name}".')
 
 
 def get_params_and_type_from_config(
