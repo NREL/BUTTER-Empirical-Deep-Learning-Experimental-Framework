@@ -286,30 +286,35 @@ def make_conv_network(
         shape=input_shape,
     )
     if not cell_setup:  # do the updated keras layer wise construction
-        current = generate_conv_stem(input_layer, widths[0], batch_norm)
+        current = make_conv_stem(input_layer, widths[0], batch_norm)
         # Loop through layers
         for i in range(len(layer_list)):
             layer_width = widths_list[i]
             layer_type = layer_list[i]
             if layer_type == 'cell':
-                layer = generate_generic_cell(type=cell_type,
-                                              inputs=current,
-                                              nodes=cell_nodes,
-                                              filters=layer_width,
-                                              operations=cell_ops,
-                                              batch_norm=batch_norm,
-                                              activation=internal_activation)
+                layer = make_cell(
+                    type=cell_type,
+                    inputs=current,
+                    nodes=cell_nodes,
+                    filters=layer_width,
+                    operations=cell_ops,
+                    batch_norm=batch_norm,
+                    activation=internal_activation,
+                )
             elif layer_type == 'downsample':
-                layer = generate_downsample(inputs=current,
-                                            filters=layer_width,
-                                            batch_norm=batch_norm,
-                                            activation=internal_activation)
+                layer = make_downsample(
+                    inputs=current,
+                    filters=layer_width,
+                    batch_norm=batch_norm,
+                    activation=internal_activation,
+                )
             else:
                 raise ValueError(f'Unknown layer type {layer_type}')
             current = layer
         # Add final classifier
-        final_classifier = generate_final_classifier(
-            inputs=current, classes=classes, activation=output_activation)
+        final_classifier = make_final_classifier(inputs=current,
+                                                 classes=classes,
+                                                 activation=output_activation)
     else:  # Do the outdated cell-wise construction
         current = NConvStem(
             inputs=[

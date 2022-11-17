@@ -100,7 +100,7 @@ class NFinalClassifier(NetworkModule):
 ########################################################################################
 
 
-def generate_conv_stem(
+def make_conv_stem(
     inputs,
     filters=16,
     batch_norm='none',
@@ -127,7 +127,7 @@ def generate_conv_stem(
     return module
 
 
-def generate_downsample(
+def make_downsample(
     inputs,
     filters=16,
     batch_norm='none',
@@ -165,7 +165,7 @@ def generate_downsample(
     return module
 
 
-def generate_final_classifier(
+def make_final_classifier(
     inputs,
     classes=10,
     activation='softmax',
@@ -202,7 +202,7 @@ def generate_final_classifier(
 ########################################################################################
 
 
-def generate_module(
+def make_module(
     input,
     op,
     filters,
@@ -325,7 +325,7 @@ def generate_module(
     return module
 
 
-def generate_graph_cell(
+def make_graph_cell(
     inputs,
     nodes,  # The number of nodes where operations are summed in the cell with node 1 being the input tensor
     operations,  # a list of lists operations corresponding to each node
@@ -353,7 +353,7 @@ def generate_graph_cell(
         storage[i - 1] = []
         for j in range(len(ops)):
             op = ops[j]
-            module = generate_module(
+            module = make_module(
                 input,
                 op,
                 filters,
@@ -378,7 +378,7 @@ def generate_graph_cell(
     return node_list[-1]
 
 
-def generate_parallel_concat_cell(
+def make_parallel_concat_cell(
     inputs,
     nodes,
     operations,
@@ -404,7 +404,7 @@ def generate_parallel_concat_cell(
         for j in range(by_node[i]):
             input = inputs if j == 0 else module
             op = ops[j]
-            module = generate_module(
+            module = make_module(
                 input,
                 op,
                 filters,
@@ -426,7 +426,7 @@ def generate_parallel_concat_cell(
     return module
 
 
-def generate_parallel_add_cell(
+def make_parallel_add_cell(
     inputs,
     nodes,
     operations,
@@ -448,7 +448,7 @@ def generate_parallel_add_cell(
         for j in range(by_node[i]):
             input = inputs if j == 0 else module
             op = ops[j]
-            module = generate_module(
+            module = make_module(
                 input,
                 op,
                 filters,
@@ -470,7 +470,7 @@ def generate_parallel_add_cell(
     return module
 
 
-def generate_generic_cell(
+def make_cell(
     type,
     inputs,
     nodes,
@@ -494,10 +494,10 @@ def generate_generic_cell(
         'activity_regularizer': activity_regularizer,
     }
     if type == 'graph':
-        return generate_graph_cell(**args)
+        return make_graph_cell(**args)
     elif type == 'parallelconcat':
-        return generate_parallel_concat_cell(**args)
+        return make_parallel_concat_cell(**args)
     elif type == 'paralleladd':
-        return generate_parallel_add_cell(**args)
+        return make_parallel_add_cell(**args)
     else:
         raise ValueError(f'Invalid cell type: {type}')
