@@ -1,0 +1,75 @@
++ Test/fix revised aspect and growth experiments
+
++ Do CNN merge
+
++ simplify cnn arg passing?
++ Refine CNN task specification
+    + Micro vs macro
+        + defined by simple 'cell type' or 'shape'?
+            + cell type
+            + cell depth (# cells between downsample stages)
+            + downsamples (# downsampling stages)
+            + cell widths (# channels/filters at each level/depth)
+            -> alternative:
+                + cell type
+                + depth (in terms of levels (cells + downsamples))
+                + num_downsamples
+                    + evenly distributed; remaining levels are normal cells
+                + shape, size 
+                + dense output section?
+                    + depth
+                    + size (output width determined by dataset/task)
+                    + width(s) (maybe uniform/rectangular?)
+                    + shape (maybe all rectangular?)
+                + num dense parameters
+                -> also log:
+                    + widths (# channels/filters at each level)
+                    + total num layers
+                        + num cell layers
+                    + total num levels
+                    + total num downsamples
+                    + total num cells
+        + log cell structure? 
+            -> experiment data like widths
+            -> is it forced to be unique?
+    + possibly log cell structure to use with microarch searches?
+
+
++ Data/DB storage improvement?
+    + store run data as single blob or byte array?
+        + could be a parquet encoding-> perhaps a single row table?
+            + wrap python bytes in BytesIO (https://docs.python.org/3/library/io.html#io.BytesIO)
+            + wrap BytesIO in pyarrow.PythonFile (https://arrow.apache.org/docs/python/generated/pyarrow.PythonFile.html#pyarrow.PythonFile)
+            + store as parquet table: https://arrow.apache.org/docs/python/parquet.html
+        - Need a script to link runs to experiments
+            - or, we need to keep using the experiment table when storing a result
+        - Need a worker script to do aggregation and materialization
+            - can't do work in DB query alone for this one
+            - load runs for experiment, compute aggregation, store in summary table
+        + Easier to extract subsets into parquet files
+        + smaller, possibly faster to deal with (mainly because smaller)
+        + simpler in some ways (single blob to move around)
+        + might reduce chances of issues with Yuma
+
+
++ add initializer config?
+
++ organize aspect test utils, etc
+
++ rename 'type' to 'name' in configs?
+
++ make worker run script?
+    + how to pop from the queue efficiently?
+        + worker just pops one job? 
+        + pass worker a max wait time?
+        + exit codes to indicate worker status?
+
++ Rename AspectTestTask to TrainingExperiment?
+    + could probably get away with only renaming parameters
+
+
++ Rename some parameters? (esp. based on CNN merge)
+    + must rename command for pending tasks as well as parameter table entries
+
++ slurm re-queueing script for Vermilion, etc?
+

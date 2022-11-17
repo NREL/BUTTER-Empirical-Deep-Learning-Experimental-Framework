@@ -203,7 +203,7 @@ def generate_final_classifier(
 
 
 def generate_module(
-    inp,
+    input,
     op,
     filters,
     batch_norm,
@@ -217,7 +217,7 @@ def generate_module(
         module = NConv(
             label=0,
             inputs=[
-                inp,
+                input,
             ],
             filters=filters,
             kernel_size=3,
@@ -233,7 +233,7 @@ def generate_module(
         module = NConv(
             label=0,
             inputs=[
-                inp,
+                input,
             ],
             filters=filters,
             kernel_size=5,
@@ -249,7 +249,7 @@ def generate_module(
         module = NConv(
             label=0,
             inputs=[
-                inp,
+                input,
             ],
             filters=filters,
             kernel_size=1,
@@ -265,7 +265,7 @@ def generate_module(
         module = NSepConv(
             label=0,
             inputs=[
-                inp,
+                input,
             ],
             filters=filters,
             kernel_size=3,
@@ -281,7 +281,7 @@ def generate_module(
         module = NSepConv(
             label=0,
             inputs=[
-                inp,
+                input,
             ],
             filters=filters,
             kernel_size=5,
@@ -297,7 +297,7 @@ def generate_module(
         module = NMaxPool(
             label=0,
             inputs=[
-                inp,
+                input,
             ],
             filters=filters,
             kernel_size=3,
@@ -309,14 +309,14 @@ def generate_module(
         module = NIdentity(
             label=0,
             inputs=[
-                inp,
+                input,
             ],
         )
     elif op == 'zeroize':
         module = NZeroize(
             label=0,
             inputs=[
-                inp,
+                input,
             ],
         )
     else:
@@ -327,8 +327,8 @@ def generate_module(
 
 def generate_graph_cell(
     inputs,
-    nodes,
-    operations,
+    nodes,  # The number of nodes where operations are summed in the cell with node 1 being the input tensor
+    operations,  # a list of lists operations corresponding to each node
     filters=16,
     batch_norm='none',
     activation='relu',
@@ -337,23 +337,24 @@ def generate_graph_cell(
     activity_regularizer=None,
 ):
     # Graph cell connects node i to all nodes j where j>i and sums at every node
-    # nodes is the number of nodes where operations are summed in the cell with node 1 being the input tensor
-    # operations is a list of lists operations corresponding to each node
-    assert nodes >= 2  # 'nodes must be greater than or equal to 2'
-    assert len(
-        operations
-    ) == nodes - 1  # 'operations must be a list of lists of operations corresponding to each node'
+    if nodes < 2:
+        raise ValueError(f'Nodes must be greater than or equal to 2.')
+    if len(operations) - 1 != nodes:
+        raise ValueError(
+            f'Operations must be a list of lists of operations corresponding to each node'
+        )
+
     node_list = [inputs] + [None] * (nodes - 1)
     inds = [0 for _ in range(nodes - 1)]
     storage = {}
     for i in range(1, nodes):
         ops = operations[i - 1]
-        inp = node_list[i - 1]
+        input = node_list[i - 1]
         storage[i - 1] = []
         for j in range(len(ops)):
             op = ops[j]
             module = generate_module(
-                inp,
+                input,
                 op,
                 filters,
                 batch_norm,
@@ -401,10 +402,10 @@ def generate_parallel_concat_cell(
         filters = channel_list[i]
         ops = operations[i]
         for j in range(by_node[i]):
-            inp = inputs if j == 0 else module
+            input = inputs if j == 0 else module
             op = ops[j]
             module = generate_module(
-                inp,
+                input,
                 op,
                 filters,
                 batch_norm,
@@ -445,10 +446,10 @@ def generate_parallel_add_cell(
     for i in range(nodes):
         ops = operations[i]
         for j in range(by_node[i]):
-            inp = inputs if j == 0 else module
+            input = inputs if j == 0 else module
             op = ops[j]
             module = generate_module(
-                inp,
+                input,
                 op,
                 filters,
                 batch_norm,

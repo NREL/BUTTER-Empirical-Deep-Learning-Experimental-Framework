@@ -240,7 +240,7 @@ def get_batch_normalization_factory(name: str) -> Any:
         name,
         {
             'all': lambda: layers.BatchNormalization(),
-            'none': lambda x : x,
+            'none': lambda x: x,
         },
         'batch_norm',
     )

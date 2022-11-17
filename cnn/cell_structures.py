@@ -50,12 +50,11 @@ class ConvolutionalLayer(layers.Layer):
         self.activation_function = get_activation_factory(activation)
         super().__init__()
 
-    def call(self, x):
+    def call(self, input):
         # see https://stackoverflow.com/questions/55827660/batchnormalization-implementation-in-keras-tf-backend-before-or-after-activa
-        x = self.conv_layer(x)
+        x = self.conv_layer(input)
         x = self.batch_normalizer(x)
-        x = self.activation_function(x)
-        return x
+        return self.activation_function(x)
 
 
 class DenseConvolutionalLayer(ConvolutionalLayer):
