@@ -24,7 +24,7 @@ network_module_types: Tuple[Type, ...] = (
     # CNN Cell modules
     NConvolutionalCell,
     NConvStem,
-    NCell,
     NDownsample,
     NFinalClassifier,
+    # NCell,
 )

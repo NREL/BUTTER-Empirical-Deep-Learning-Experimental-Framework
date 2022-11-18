@@ -27,16 +27,22 @@ class Marshal:
         Demarshaler.initialize_type_map(self._demarshaler_type_map, config)
 
         self.register_type(
-            tuple, self._config.tuple_type_code, lambda m, s:
+            tuple,
+            self._config.tuple_type_code,
+            lambda m, s:
             {config.flat_dict_key: Marshaler.marshal_list(m, (e for e in s))},
-            lambda d, s: tuple(s[config.flat_dict_key]),
-            Marshal.initialize_tuple)
+            lambda d, s: (None, ) * len(s[config.flat_dict_key]),
+            Marshal.initialize_tuple,
+        )
 
         self.register_type(
-            set, self._config.set_type_code, lambda m, s:
+            set,
+            self._config.set_type_code,
+            lambda m, s:
             {config.flat_dict_key: Marshaler.marshal_list(m, (e for e in s))},
             lambda d, s: set(),
-            lambda d, s, r: r.update(d.demarshal(s[config.flat_dict_key])))
+            lambda d, s, r: r.update(d.demarshal(s[config.flat_dict_key])),
+        )
 
     def register_types(
         self,
@@ -88,8 +94,11 @@ class Marshal:
         return Demarshaler(self._config, self._demarshaler_type_map, source)()
 
     @staticmethod
-    def initialize_tuple(demarshaler: Demarshaler, source: dict,
-                         result: tuple) -> None:
+    def initialize_tuple(
+        demarshaler: Demarshaler,
+        source: dict,
+        result: tuple,
+    ) -> None:
 
         class APIFunctions:
             PyGILState_Ensure = staticmethod(

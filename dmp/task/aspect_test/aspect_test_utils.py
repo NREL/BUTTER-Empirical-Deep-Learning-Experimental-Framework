@@ -20,7 +20,6 @@ from tensorflow.keras.models import Model
 from dmp.structure.n_conv import *
 from dmp.structure.n_cell import *
 from cnn.cell_structures import *
-from cnn.cnn_net import make_cell
 
 
 def add_label_noise(label_noise, run_task, train_outputs):
@@ -201,7 +200,7 @@ def make_from_typed_config(
     factory = get_from_config_mapping(type, mapping, config_name)
     return factory(*args, **kwargs, **params)
 
-def make_regularizer(config: Optional[Dict]) \
+def make_keras_regularizer(config: Optional[Dict]) \
         -> Optional[keras.regularizers.Regularizer]:
     if config is None:
         return None
@@ -285,82 +284,86 @@ def make_conv_network(
         label=0,
         shape=input_shape,
     )
-    if not cell_setup:  # do the updated keras layer wise construction
-        current = make_conv_stem(input_layer, widths[0], batch_norm)
-        # Loop through layers
-        for i in range(len(layer_list)):
-            layer_width = widths_list[i]
-            layer_type = layer_list[i]
-            if layer_type == 'cell':
-                layer = make_cell(
-                    type=cell_type,
-                    inputs=current,
-                    nodes=cell_nodes,
-                    filters=layer_width,
-                    operations=cell_ops,
-                    batch_norm=batch_norm,
-                    activation=internal_activation,
-                )
-            elif layer_type == 'downsample':
-                layer = make_downsample(
-                    inputs=current,
-                    filters=layer_width,
-                    batch_norm=batch_norm,
-                    activation=internal_activation,
-                )
-            else:
-                raise ValueError(f'Unknown layer type {layer_type}')
-            current = layer
-        # Add final classifier
-        final_classifier = make_final_classifier(inputs=current,
-                                                 classes=classes,
-                                                 activation=output_activation)
-    else:  # Do the outdated cell-wise construction
-        current = NConvStem(
-            inputs=[
-                input_layer,
-            ],
-            activation=internal_activation,
-            filters=widths[0],
-            batch_norm=batch_norm,
-            input_channels=input_shape[-1],
-        )
-        # Loop through layers
-        for i in range(len(layer_list)):
-            layer_width = widths_list[i]
-            layer_type = layer_list[i]
-            if layer_type == 'cell':
-                layer = NCell(
-                    inputs=[
-                        current,
-                    ],
-                    activation=internal_activation,
-                    filters=layer_width,
-                    batch_norm=batch_norm,
-                    cell_type=cell_type,
-                    nodes=cell_nodes,
-                    operations=cell_ops,
-                )
-            elif layer_type == 'downsample':
-                layer = NDownsample(
-                    inputs=[
-                        current,
-                    ],
-                    activation=internal_activation,
-                    filters=layer_width,
-                )
-            else:
-                raise ValueError(f'Unknown layer type {layer_type}')
-            current = layer
+    if cell_setup:  
+        raise NotImplementedError() # TODO: remove this
 
-        # Add final classifier
-        final_classifier = NFinalClassifier(
-            inputs=[
-                current,
-            ],
-            activation=output_activation,
-            classes=classes,
-        )
+    # do the updated keras layer wise construction
+    current = make_conv_stem(input_layer, widths[0], batch_norm)
+    # Loop through layers
+    for i in range(len(layer_list)):
+        layer_width = widths_list[i]
+        layer_type = layer_list[i]
+        if layer_type == 'cell':
+            layer = make_cell(
+                type=cell_type,
+                inputs=current,
+                nodes=cell_nodes,
+                operations=cell_ops,
+                filters=layer_width,                    
+                batch_norm=batch_norm,
+                activation=internal_activation,
+                # TODO: include regularizers, etc
+            )
+        elif layer_type == 'downsample':
+            layer = make_downsample(
+                inputs=current,
+                filters=layer_width,
+                batch_norm=batch_norm,
+                activation=internal_activation,
+            )
+        else:
+            raise ValueError(f'Unknown layer type {layer_type}')
+        current = layer
+    # Add final classifier
+    final_classifier = make_final_classifier(inputs=current,
+                                                classes=classes,
+                                                activation=output_activation)
+    # else:  # Do the outdated cell-wise construction
+    #     current = NConvStem(
+    #         inputs=[
+    #             input_layer,
+    #         ],
+    #         activation=internal_activation,
+    #         filters=widths[0],
+    #         batch_norm=batch_norm,
+    #         input_channels=input_shape[-1],
+    #     )
+    #     # Loop through layers
+    #     for i in range(len(layer_list)):
+    #         layer_width = widths_list[i]
+    #         layer_type = layer_list[i]
+    #         if layer_type == 'cell':
+    #             layer = NCell(
+    #                 inputs=[
+    #                     current,
+    #                 ],
+    #                 activation=internal_activation,
+    #                 filters=layer_width,
+    #                 batch_norm=batch_norm,
+    #                 cell_type=cell_type,
+    #                 nodes=cell_nodes,
+    #                 operations=cell_ops,
+    #             )
+    #         elif layer_type == 'downsample':
+    #             layer = NDownsample(
+    #                 inputs=[
+    #                     current,
+    #                 ],
+    #                 activation=internal_activation,
+    #                 filters=layer_width,
+    #             )
+    #         else:
+    #             raise ValueError(f'Unknown layer type {layer_type}')
+    #         current = layer
+
+    #     # Add final classifier
+    #     final_classifier = NFinalClassifier(
+    #         inputs=[
+    #             current,
+    #         ],
+    #         activation=output_activation,
+    #         classes=classes,
+    #     )
     return final_classifier
 
 

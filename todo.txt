@@ -1,6 +1,19 @@
++ macronet.py
+
+
 + Test/fix revised aspect and growth experiments
 
 + Do CNN merge
+
++ Does intermediate language specifying cells, etc make sense for CNNs?
+    - there will be a higher-level definition for macro tasks
+    - there will be a lower-level network module graph logged
+    + could be used for mid-level arch sweeps
+        - but not using it now to do that
+    -> what about a simpler more programatic representation?
+        -> could serialize this later, if needed
+
+    
 
 + simplify cnn arg passing?
 + Refine CNN task specification
@@ -29,6 +42,7 @@
                     + total num levels
                     + total num downsamples
                     + total num cells
+                    + level types array (like widths but for levels not layers)
         + log cell structure? 
             -> experiment data like widths
             -> is it forced to be unique?

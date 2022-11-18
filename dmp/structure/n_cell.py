@@ -23,45 +23,45 @@ class NConvStem(NConvolutionalCell):
         return 9 * self.filters * self.input_channels
 
 
-@dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NCell(NConvolutionalCell):
-    batch_norm: str = 'none'
-    operations: List[str] = field(default_factory=list)
-    nodes: int = 2
-    cell_type: str = 'graph'
-
-    @property
-    def num_free_parameters_in_module(self) -> int:
-        if self.cell_type == 'parallelconcat':
-            filters = [self.filters // self.nodes for _ in range(self.nodes)]
-            for i in range(self.filters % self.nodes):
-                filters[i] += 1
-        else:
-            filters = [self.filters for _ in range(self.nodes)]
-        params = 0
-        in_channels = self.convolutional_inputs[0].filters
-        params_dict = {
-            'conv3x3': 9,
-            'conv5x5': 25,
-            'sepconv3x3': 6,
-            'sepconv5x5': 10,
-            'conv1x1': 1,
-            'maxpool3x3': 0,
-            'avgpool3x3': 0,
-            'identity': 0,
-            'zeroize': 0,
-            'projection': 0
-        }
-        for i in range(self.nodes):
-            num_channels = filters[i]
-            ops = self.operations[i]
-            for j in range(len(ops)):
-                op = ops[j]
-                if j > 0:
-                    params += params_dict[op] * num_channels**2
-                else:
-                    params += params_dict[op] * num_channels * in_channels
-        return params
+# @dataclass(frozen=False, eq=False, unsafe_hash=False)
+# class NCell(NConvolutionalCell): # old cell-wise version
+#     batch_norm: str = 'none'
+#     operations: List[str] = field(default_factory=list)
+#     nodes: int = 2
+#     cell_type: str = 'graph'
+# 
+#     @property
+#     def num_free_parameters_in_module(self) -> int:
+#         if self.cell_type == 'parallelconcat':
+#             filters = [self.filters // self.nodes for _ in range(self.nodes)]
+#             for i in range(self.filters % self.nodes):
+#                 filters[i] += 1
+#         else:
+#             filters = [self.filters for _ in range(self.nodes)]
+#         params = 0
+#         in_channels = self.convolutional_inputs[0].filters
+#         params_dict = {
+#             'conv3x3': 9,
+#             'conv5x5': 25,
+#             'sepconv3x3': 6,
+#             'sepconv5x5': 10,
+#             'conv1x1': 1,
+#             'maxpool3x3': 0,
+#             'avgpool3x3': 0,
+#             'identity': 0,
+#             'zeroize': 0,
+#             'projection': 0
+#         }
+#         for i in range(self.nodes):
+#             num_channels = filters[i]
+#             ops = self.operations[i]
+#             for j in range(len(ops)):
+#                 op = ops[j]
+#                 if j > 0:
+#                     params += params_dict[op] * num_channels**2
+#                 else:
+#                     params += params_dict[op] * num_channels * in_channels
+#         return params
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)

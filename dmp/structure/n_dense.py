@@ -9,3 +9,7 @@ class NDense(NNeuronLayer):
     @property
     def num_free_parameters_in_module(self) -> int:
         return (sum((i.size for i in self.inputs)) + 1) * self.size
+    
+    @property
+    def dimension(self) -> int:
+        return len(self.shape)

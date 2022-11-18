@@ -4,9 +4,9 @@ from typing import Any, Iterable, Iterator, List, Set
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NetworkModule:
-    label: int = 0
+    label: int = 0 # TODO: deprecate
     inputs: List['NetworkModule'] = field(default_factory=list)
-    shape: List[int] = field(default_factory=list)
+    shape: List[int] = field(default_factory=list) # TODO: Deprecate, move into NInput, NDense
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -29,6 +29,10 @@ class NetworkModule:
     def num_free_parameters_in_graph(self) -> int:
         return sum((n.num_free_parameters_in_module
                     for n in self.all_modules_in_graph))
+
+    @property
+    def dimension(self) -> int:
+        return self.inputs[0].dimension
 
     @property
     def all_modules_in_graph(self) -> Iterator['NetworkModule']:
