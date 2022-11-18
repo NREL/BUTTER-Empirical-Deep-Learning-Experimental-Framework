@@ -8,19 +8,19 @@ from dmp.structure.n_add import NAdd
 from dmp.structure.n_conv import *
 
 
-@dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NConvolutionalCell(NNeuronLayer):
-    filters: int = 16
+# @dataclass(frozen=False, eq=False, unsafe_hash=False)
+# class NConvolutionalCell(NNeuronLayer):
+#     filters: int = 16
 
 
-@dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NConvStem(NConvolutionalCell):
-    batch_norm: str = 'none'
-    input_channels: int = 3
+# @dataclass(frozen=False, eq=False, unsafe_hash=False)
+# class NConvStem(NConvolutionalCell):
+#     batch_norm: str = 'none'
+#     input_channels: int = 3
 
-    @property
-    def num_free_parameters_in_module(self) -> int:
-        return 9 * self.filters * self.input_channels
+#     @property
+#     def num_free_parameters_in_module(self) -> int:
+#         return 9 * self.filters * self.input_channels
 
 
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)
@@ -64,33 +64,33 @@ class NConvStem(NConvolutionalCell):
 #         return params
 
 
-@dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NDownsample(NConvolutionalCell):
+# @dataclass(frozen=False, eq=False, unsafe_hash=False)
+# class NDownsample(NConvolutionalCell):
 
-    @property
-    def num_free_parameters_in_module(self) -> int:
-        params = 1
-        for i in self.inputs:
-            params *= i.filters
-        params *= self.filters
-        return params
+#     @property
+#     def num_free_parameters_in_module(self) -> int:
+#         params = 1
+#         for i in self.inputs:
+#             params *= i.filters
+#         params *= self.filters
+#         return params
 
 
-@dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NFinalClassifier(NetworkModule):
-    classes: int = 10
-    activation: str = 'softmax'
-    kernel_regularizer: Optional[dict] = None
-    bias_regularizer: Optional[dict] = None
-    activity_regularizer: Optional[dict] = None
+# @dataclass(frozen=False, eq=False, unsafe_hash=False)
+# class NFinalClassifier(NetworkModule):
+#     classes: int = 10
+#     activation: str = 'softmax'
+#     kernel_regularizer: Optional[dict] = None
+#     bias_regularizer: Optional[dict] = None
+#     activity_regularizer: Optional[dict] = None
 
-    @property
-    def num_free_parameters_in_module(self) -> int:
-        params = 1
-        for i in self.inputs:
-            params *= i.filters
-        params *= self.classes
-        return params
+#     @property
+#     def num_free_parameters_in_module(self) -> int:
+#         params = 1
+#         for i in self.inputs:
+#             params *= i.filters
+#         params *= self.classes
+#         return params
 
 
 ########################################################################################

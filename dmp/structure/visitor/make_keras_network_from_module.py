@@ -166,49 +166,49 @@ class MakeKerasNetworkFromModuleVisitor:
     #         activity_regularizer=activity_regularizer,
     #     )(*keras_inputs)
 
-    @_visit_raw.register
-    def _(self, target: NConvStem, keras_inputs) -> Any:
-        kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
-        bias_regularizer = make_keras_regularizer(target.bias_regularizer)
-        activity_regularizer = make_keras_regularizer(target.activity_regularizer)
-        print(keras_inputs)
+    # @_visit_raw.register
+    # def _(self, target: NConvStem, keras_inputs) -> Any:
+    #     kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
+    #     bias_regularizer = make_keras_regularizer(target.bias_regularizer)
+    #     activity_regularizer = make_keras_regularizer(target.activity_regularizer)
+    #     print(keras_inputs)
 
-        return ConvStem(
-            target.filters,
-            activation=target.activation,
-            batch_norm=target.batch_norm,
-            kernel_regularizer=kernel_regularizer,
-            bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer,
-        )(*keras_inputs)
+    #     return ConvStem(
+    #         target.filters,
+    #         activation=target.activation,
+    #         batch_norm=target.batch_norm,
+    #         kernel_regularizer=kernel_regularizer,
+    #         bias_regularizer=bias_regularizer,
+    #         activity_regularizer=activity_regularizer,
+    #     )(*keras_inputs)
 
-    @_visit_raw.register
-    def _(self, target: NDownsample, keras_inputs) -> Any:
-        kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
-        bias_regularizer = make_keras_regularizer(target.bias_regularizer)
-        activity_regularizer = make_keras_regularizer(target.activity_regularizer)
+    # @_visit_raw.register
+    # def _(self, target: NDownsample, keras_inputs) -> Any:
+    #     kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
+    #     bias_regularizer = make_keras_regularizer(target.bias_regularizer)
+    #     activity_regularizer = make_keras_regularizer(target.activity_regularizer)
 
-        return DownsampleCell(
-            target.filters,
-            activation=target.activation,
-            kernel_regularizer=kernel_regularizer,
-            bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer,
-        )(*keras_inputs)
+    #     return DownsampleCell(
+    #         target.filters,
+    #         activation=target.activation,
+    #         kernel_regularizer=kernel_regularizer,
+    #         bias_regularizer=bias_regularizer,
+    #         activity_regularizer=activity_regularizer,
+    #     )(*keras_inputs)
 
-    @_visit_raw.register
-    def _(self, target: NFinalClassifier, keras_inputs) -> Any:
-        kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
-        bias_regularizer = make_keras_regularizer(target.bias_regularizer)
-        activity_regularizer = make_keras_regularizer(target.activity_regularizer)
+    # @_visit_raw.register
+    # def _(self, target: NFinalClassifier, keras_inputs) -> Any:
+    #     kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
+    #     bias_regularizer = make_keras_regularizer(target.bias_regularizer)
+    #     activity_regularizer = make_keras_regularizer(target.activity_regularizer)
 
-        return FinalClassifier(
-            target.classes,
-            activation=target.activation,
-            kernel_regularizer=kernel_regularizer,
-            bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer,
-        )(*keras_inputs)
+    #     return FinalClassifier(
+    #         target.classes,
+    #         activation=target.activation,
+    #         kernel_regularizer=kernel_regularizer,
+    #         bias_regularizer=bias_regularizer,
+    #         activity_regularizer=activity_regularizer,
+    #     )(*keras_inputs)
 
 
 def make_keras_network_from_network_module(
