@@ -60,10 +60,11 @@ class ConvolutionalLayer(layers.Layer):
 class DenseConvolutionalLayer(ConvolutionalLayer):
 
     def __init__(
-        self,
-        dimension,
-        **kwargs,
+            self,
+            kernel_size=(3, 3),
+            **kwargs,
     ):
+        dimension = len(kernel_size)
         super().__init__(
             get_from_config_mapping(
                 dimension,
@@ -74,6 +75,7 @@ class DenseConvolutionalLayer(ConvolutionalLayer):
                 },
                 'DenseConvolutionalLayer dimension',
             ),
+            kernel_size=kernel_size,
             **kwargs,
         )
 
@@ -81,10 +83,11 @@ class DenseConvolutionalLayer(ConvolutionalLayer):
 class SeparableConvolutionalLayer(ConvolutionalLayer):
 
     def __init__(
-        self,
-        dimension,
-        **kwargs,
+            self,
+            kernel_size=(3, 3),
+            **kwargs,
     ):
+        dimension = len(kernel_size)
         super().__init__(
             get_from_config_mapping(
                 dimension,
@@ -94,38 +97,9 @@ class SeparableConvolutionalLayer(ConvolutionalLayer):
                 },
                 'SeparableConvolutionalLayer dimension',
             ),
+            kernel_size=kernel_size,
             **kwargs,
         )
-
-
-class Conv1x1Operation(DenseConvolutionalLayer):
-
-    def __init__(self, **kwargs):
-        super().__init__(kernel_size=1, **kwargs)
-
-
-class Conv3x3Operation(DenseConvolutionalLayer):
-
-    def __init__(self, **kwargs):
-        super().__init__(kernel_size=3, **kwargs)
-
-
-class Conv5x5Operation(DenseConvolutionalLayer):
-
-    def __init__(self, **kwargs):
-        super().__init__(kernel_size=5, **kwargs)
-
-
-class SepConv3x3Operation(SeparableConvolutionalLayer):
-
-    def __init__(self, **kwargs):
-        super().__init__(kernel_size=3, **kwargs)
-
-
-class SepConv5x5Operation(SeparableConvolutionalLayer):
-
-    def __init__(self, **kwargs):
-        super().__init__(kernel_size=5, **kwargs)
 
 
 # projection operation

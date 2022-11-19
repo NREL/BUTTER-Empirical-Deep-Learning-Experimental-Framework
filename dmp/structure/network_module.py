@@ -1,12 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Iterator, List, Set
+from typing import Any, Iterable, Iterator, List, Set, Sequence
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NetworkModule:
-    label: int = 0 # TODO: deprecate
     inputs: List['NetworkModule'] = field(default_factory=list)
-    shape: List[int] = field(default_factory=list) # TODO: Deprecate, move into NInput, NDense
+
+    # Deprecated members:
+    # label: int = 0
+    # shape: List[int] = field(default_factory=list)
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -15,9 +17,21 @@ class NetworkModule:
         return id(self) == id(other)
 
     @property
-    def size(self) -> int:
+    def input(self) -> 'NetworkModule':
+        return self.inputs[0]
+
+    @property
+    def input_shape(self) -> Sequence[int]:
+        return self.input.output_shape
+
+    @property
+    def output_shape(self) -> Sequence[int]:
+        return self.input_shape
+
+    @property
+    def output_size(self) -> int:
         acc = 1
-        for dim in self.shape:
+        for dim in self.output_shape:
             acc *= dim
         return acc
 
@@ -32,7 +46,7 @@ class NetworkModule:
 
     @property
     def dimension(self) -> int:
-        return self.inputs[0].dimension
+        return self.input.dimension
 
     @property
     def all_modules_in_graph(self) -> Iterator['NetworkModule']:

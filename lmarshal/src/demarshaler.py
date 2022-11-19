@@ -120,10 +120,11 @@ class Demarshaler(CommonMarshaler):
         for k, v in demarshaler.dict_demarshaling_generator(source):
             setattr(result, k, v)
 
-    @staticmethod
-    def default_dataclass_initializer(demarshaler: 'Demarshaler', source: Any, result: Any) -> None:
-        kwargs = dict(demarshaler.dict_demarshaling_generator(source))
-        result.__init__(**kwargs)
+    # @staticmethod
+    # def default_dataclass_initializer(demarshaler: 'Demarshaler', source: Any, result: Any) -> None:
+    #     #dataclasses.fields(C)
+    #     kwargs = dict(demarshaler.dict_demarshaling_generator(source))
+    #     result.__init__(**kwargs)
 
     @staticmethod
     def initialize_type_map(type_map: Dict[TypeCode, ObjectDemarshaler], config: MarshalConfig) -> None:

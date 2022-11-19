@@ -12,7 +12,7 @@ network_module_types: Tuple[Type, ...] = (
     NAdd,
 
     # CNN Modules
-    NBasicCNN,
+    NSpatitialOperation,
     # NCNNInput,
     NConv,
     NSepConv,

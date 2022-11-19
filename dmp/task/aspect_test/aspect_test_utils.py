@@ -129,7 +129,7 @@ def make_network_module_graph(
 ) -> NetworkModule:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput(label=0, inputs=[], shape=list(input_shape[1:]))
+    input_layer = NInput(shape=list(input_shape[1:]))
     current = input_layer
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d, layer_width in enumerate(widths):
@@ -142,15 +142,16 @@ def make_network_module_graph(
             activation = output_activation
 
         # Fully connected layer
-        layer = NDense(label=0,
-                       inputs=[
-                           current,
-                       ],
-                       shape=[
-                           layer_width,
-                       ],
-                       activation=activation,
-                       **layer_args)
+        layer = NDense(
+            inputs=[
+                current,
+            ],
+            shape=[
+                layer_width,
+            ],
+            activation=activation,
+            **layer_args,
+        )
 
         # Skip connections for residual modes
         if residual_mode is None or residual_mode == 'none':
@@ -160,9 +161,7 @@ def make_network_module_graph(
             # of the same width insert a residual sum between layers
             # NB: Only works for rectangle
             if d > 0 and d < len(widths) - 1 and layer_width == widths[d - 1]:
-                layer = NAdd(label=0,
-                             inputs=[layer, current],
-                             shape=layer.shape.copy())
+                layer = NAdd(inputs=[layer, current])
         else:
             raise NotImplementedError(
                 f'Unknown residual mode "{residual_mode}".')
@@ -280,12 +279,9 @@ def make_conv_network(
             layer_list.append('cell')
             widths_list.append(widths[i])
 
-    input_layer = NInput(
-        label=0,
-        shape=input_shape,
-    )
-    if cell_setup:  
-        raise NotImplementedError() # TODO: remove this
+    input_layer = NInput(shape=input_shape)
+    if cell_setup:
+        raise NotImplementedError()  # TODO: remove this
 
     # do the updated keras layer wise construction
     current = make_conv_stem(input_layer, widths[0], batch_norm)
@@ -299,7 +295,7 @@ def make_conv_network(
                 inputs=current,
                 nodes=cell_nodes,
                 operations=cell_ops,
-                filters=layer_width,                    
+                filters=layer_width,
                 batch_norm=batch_norm,
                 activation=internal_activation,
                 # TODO: include regularizers, etc
@@ -316,8 +312,8 @@ def make_conv_network(
         current = layer
     # Add final classifier
     final_classifier = make_final_classifier(inputs=current,
-                                                classes=classes,
-                                                activation=output_activation)
+                                             classes=classes,
+                                             activation=output_activation)
     # else:  # Do the outdated cell-wise construction
     #     current = NConvStem(
     #         inputs=[

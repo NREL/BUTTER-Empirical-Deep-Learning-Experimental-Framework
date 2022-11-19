@@ -2,6 +2,7 @@ import ctypes
 import dataclasses
 from typing import Any, Dict, Iterable, Optional, Type
 
+from .api_functions import APIFunctions
 from .demarshaler import Demarshaler
 from .marshal_config import MarshalConfig
 from .marshaler import Marshaler
@@ -71,10 +72,10 @@ class Marshal:
             demarshaling_factory = _demarshaling_factory
 
         if demarshaling_initializer is None:
-            if dataclasses.is_dataclass(target_type):
-                demarshaling_initializer = Demarshaler.default_dataclass_initializer
-            else:
-                demarshaling_initializer = Demarshaler.default_object_initializer
+            # if dataclasses.is_dataclass(target_type):
+            #     demarshaling_initializer = Demarshaler.default_dataclass_initializer
+            # else:
+            demarshaling_initializer = Demarshaler.default_object_initializer
 
         if type_code is None:
             raise NotImplementedError()  # should never happen
@@ -99,18 +100,8 @@ class Marshal:
         source: dict,
         result: tuple,
     ) -> None:
-
-        class APIFunctions:
-            PyGILState_Ensure = staticmethod(
-                ctypes.pythonapi.PyGILState_Ensure)
-            PyGILState_Release = staticmethod(
-                ctypes.pythonapi.PyGILState_Release)
-            Py_DecRef = staticmethod(ctypes.pythonapi.Py_DecRef)
-            Py_IncRef = staticmethod(ctypes.pythonapi.Py_IncRef)
-            PyTuple_SetItem = staticmethod(ctypes.pythonapi.PyTuple_SetItem)
-
-        values = demarshaler.demarshal(
-            source[demarshaler._config.flat_dict_key])
+        values = \
+            demarshaler.demarshal(source[demarshaler._config.flat_dict_key])
         if not isinstance(values, list):
             raise TypeError(
                 f'Found a {type(values)} when expecting list of values while demarshaling a tuple.'
@@ -120,17 +111,20 @@ class Marshal:
         APIFunctions.PyGILState_Ensure()
         try:
             py_object_target = ctypes.py_object(result)
-            ref_count = ctypes.cast(id(result),
-                                    ref_count_ptr).contents.value - 1
+            ref_count = \
+                ctypes.cast(id(result), ref_count_ptr).contents.value - 1
             for _ in range(ref_count):
                 APIFunctions.Py_DecRef(py_object_target)
+
             try:
                 for i, v in enumerate(values):
                     value_py_object = ctypes.py_object(v)
                     APIFunctions.Py_IncRef(value_py_object)
-                    if APIFunctions.PyTuple_SetItem(py_object_target,
-                                                    ctypes.c_ssize_t(i),
-                                                    value_py_object):
+                    if APIFunctions.PyTuple_SetItem(
+                            py_object_target,
+                            ctypes.c_ssize_t(i),
+                            value_py_object,
+                    ):
                         raise SystemError('Tuple mutation failed.')
             finally:
                 for _ in range(ref_count):

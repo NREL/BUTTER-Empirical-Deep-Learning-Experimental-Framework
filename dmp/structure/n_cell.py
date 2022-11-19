@@ -7,11 +7,9 @@ from dmp.structure.n_dense import NDense
 from dmp.structure.n_add import NAdd
 from dmp.structure.n_conv import *
 
-
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)
 # class NConvolutionalCell(NNeuronLayer):
 #     filters: int = 16
-
 
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)
 # class NConvStem(NConvolutionalCell):
@@ -22,14 +20,13 @@ from dmp.structure.n_conv import *
 #     def num_free_parameters_in_module(self) -> int:
 #         return 9 * self.filters * self.input_channels
 
-
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)
 # class NCell(NConvolutionalCell): # old cell-wise version
 #     batch_norm: str = 'none'
 #     operations: List[str] = field(default_factory=list)
 #     nodes: int = 2
 #     cell_type: str = 'graph'
-# 
+#
 #     @property
 #     def num_free_parameters_in_module(self) -> int:
 #         if self.cell_type == 'parallelconcat':
@@ -63,7 +60,6 @@ from dmp.structure.n_conv import *
 #                     params += params_dict[op] * num_channels * in_channels
 #         return params
 
-
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)
 # class NDownsample(NConvolutionalCell):
 
@@ -74,7 +70,6 @@ from dmp.structure.n_conv import *
 #             params *= i.filters
 #         params *= self.filters
 #         return params
-
 
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)
 # class NFinalClassifier(NetworkModule):
@@ -91,7 +86,6 @@ from dmp.structure.n_conv import *
 #             params *= i.filters
 #         params *= self.classes
 #         return params
-
 
 ########################################################################################
 #--------------------------------------------------------------------------------------#
@@ -110,7 +104,6 @@ def make_conv_stem(
     activity_regularizer=None,
 ):
     module = NConv(
-        label=0,
         inputs=[
             inputs,
         ],
@@ -137,7 +130,6 @@ def make_downsample(
     activity_regularizer=None,
 ):
     module = NMaxPool(
-        label=0,
         inputs=[
             inputs,
         ],
@@ -148,7 +140,6 @@ def make_downsample(
         activation=activation,
     )
     module = NConv(
-        label=0,
         inputs=[
             module,
         ],
@@ -173,14 +164,10 @@ def make_final_classifier(
     bias_regularizer=None,
     activity_regularizer=None,
 ):
-    module = NGlobalPool(
-        label=0,
-        inputs=[
-            inputs,
-        ],
-    )
+    module = NGlobalPool(inputs=[
+        inputs,
+    ], )
     module = NDense(
-        label=0,
         inputs=[
             module,
         ],
@@ -215,7 +202,6 @@ def make_module(
     module = None
     if op == 'conv3x3':
         module = NConv(
-            label=0,
             inputs=[
                 input,
             ],
@@ -231,7 +217,6 @@ def make_module(
         )
     elif op == 'conv5x5':
         module = NConv(
-            label=0,
             inputs=[
                 input,
             ],
@@ -247,7 +232,6 @@ def make_module(
         )
     elif op == 'conv1x1':
         module = NConv(
-            label=0,
             inputs=[
                 input,
             ],
@@ -263,7 +247,6 @@ def make_module(
         )
     elif op == 'sepconv3x3':
         module = NSepConv(
-            label=0,
             inputs=[
                 input,
             ],
@@ -279,7 +262,6 @@ def make_module(
         )
     elif op == 'sepconv5x5':
         module = NSepConv(
-            label=0,
             inputs=[
                 input,
             ],
@@ -295,7 +277,6 @@ def make_module(
         )
     elif op == 'maxpool3x3':
         module = NMaxPool(
-            label=0,
             inputs=[
                 input,
             ],
@@ -306,19 +287,13 @@ def make_module(
             activation=activation,
         )
     elif op == 'identity':
-        module = NIdentity(
-            label=0,
-            inputs=[
-                input,
-            ],
-        )
+        module = NIdentity(inputs=[
+            input,
+        ], )
     elif op == 'zeroize':
-        module = NZeroize(
-            label=0,
-            inputs=[
-                input,
-            ],
-        )
+        module = NZeroize(inputs=[
+            input,
+        ], )
     else:
         raise ValueError(f'Unknown operation {op}')
 
@@ -367,7 +342,6 @@ def make_graph_cell(
         ins = [storage[k][inds[k]] for k in range(i)]
         if len(ins) > 1:
             node = NAdd(
-                label=0,
                 inputs=ins,  # all the operations at node i
             )
         else:
@@ -416,10 +390,7 @@ def make_parallel_concat_cell(
             )
         tracks[i] = module
     if len(tracks) > 1:
-        module = NConcat(
-            label=0,
-            inputs=tracks,
-        )
+        module = NConcat(inputs=tracks, )
     else:
         module = tracks[0]
 
@@ -460,10 +431,7 @@ def make_parallel_add_cell(
             )
         tracks[i] = module
     if len(tracks) > 1:
-        module = NAdd(
-            label=0,
-            inputs=tracks,
-        )
+        module = NAdd(inputs=tracks, )
     else:
         module = tracks[0]
 
