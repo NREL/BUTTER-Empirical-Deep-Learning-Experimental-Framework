@@ -1,19 +1,16 @@
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
 from dmp.structure.n_neuron_layer import NNeuronLayer
 
 from dmp.structure.network_module import NetworkModule
 import math
 
 
+
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NSpatitialOperation(NNeuronLayer):
-    stride: Sequence[int] = (1, 1)
-    padding: str = 'same'
-
-    @property
-    def dimension(self) -> int:
-        return len(self.stride)
+    dimension: int = 2
+    data_format: str = 'channels_last' # 'channels_first' or 'channels_last'
 
     @property
     def num_input_channels(self) -> int:
@@ -21,28 +18,53 @@ class NSpatitialOperation(NNeuronLayer):
         return \
             sum((max(1, sum(i.output_shape[dimension:]))
             for i in self.inputs))
+    
+    def _on_data_format(
+        self,
+        on_channels_last: Callable[[], Any],
+        on_channels_first: Callable[[], Any],
+    ) -> Any:
+        data_format = self.data_format
+        if data_format == 'channels_last':
+            return on_channels_last()
+        elif data_format == 'channels_first':
+            return on_channels_first()
+        else:
+            raise NotImplementedError(f'Unsupported data_format {data_format}.')
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
+class NSpatitialScan(NSpatitialOperation):
+    stride: Sequence[int] = (1, 1)
+    padding: str = 'same' # 'same' or 'valid'
+
+    def _on_padding(
+        self,
+        on_same: Callable[[], Any],
+        on_valid: Callable[[], Any],
+    ) -> Any:
+        padding = self.padding
+        if padding == 'same':
+            return on_same()
+        elif padding == 'valid':
+            return on_valid()
+        else:
+            raise NotImplementedError(f'Unsupported padding method {padding}.')
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NConv(NSpatitialOperation):
+class NConv(NSpatitialScan):
     filters: int = 16
     kernel_size: Sequence[int] = (3, 3)
-    batch_norm: str = 'none'
+    batch_norm: str = 'none' # 'all' or 'none'
 
     @property
     def output_shape(self) -> Sequence[int]:
         input_conv_shape = self.input_shape[self.dimension:]
-        output_conv_shape = input_conv_shape
-
-        padding = self.padding
-        if padding == 'same':
-            pass
-        elif padding == 'valid':
-            output_conv_shape = \
-                (max(0, input_dim - kernel_dim + 1)
-                for input_dim, kernel_dim in zip(input_conv_shape, self.kernel_size))
-        else:
-            raise NotImplementedError(f'Unsupported padding method {padding}.')
+        output_conv_shape = self._on_padding(
+            lambda: input_conv_shape,
+            lambda: (max(0, input_dim - kernel_dim + 1) for input_dim,
+                     kernel_dim in zip(input_conv_shape, self.kernel_size)),
+        )
 
         return (*output_conv_shape, self.filters)
 
@@ -68,7 +90,7 @@ class NSepConv(NConv):
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
-class NMaxPool(NSpatitialOperation):
+class NMaxPool(NSpatitialScan):
     pool_size: Sequence[int] = (2, 2)
 
     @property
@@ -76,15 +98,10 @@ class NMaxPool(NSpatitialOperation):
         dimension = self.dimension
         input_conv_shape = self.input_shape[dimension:]
         output_conv_shape = input_conv_shape
-        
-        delta = self.pool_size
-        padding = self.padding
-        if padding == 'same':
-            delta = (1) * dimension
-        elif padding == 'valid':
-            pass
-        else:
-            raise NotImplementedError(f'Unsupported padding method {padding}.')
+        delta = self._on_padding(
+            lambda: (1, ) * dimension,
+            lambda: self.pool_size,
+        )
 
         output_conv_shape = (\
                 int(math.floor((i - d) / s)) + 1
@@ -97,14 +114,17 @@ class NMaxPool(NSpatitialOperation):
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class NGlobalPool(NSpatitialOperation):
-    keepdims : bool = False
+    keepdims: bool = False
 
     @property
     def output_shape(self) -> Sequence[int]:
+        num_channels = (self.num_input_channels,)
         if self.keepdims:
-            return (self.num_input_channels)
-        else:
-            pass
+            ones = (1,) * self.dimension
+            if self.data_format=='channels_last':
+                return ones + num_channels
+            return num_channels + ones
+        return num_channels
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)

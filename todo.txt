@@ -1,3 +1,5 @@
+
+
 + macronet.py
 
 
@@ -50,6 +52,7 @@
 
 
 + Data/DB storage improvement?
+    + convert network module structures into layer structures
     + store run data as single blob or byte array?
         + could be a parquet encoding-> perhaps a single row table?
             + wrap python bytes in BytesIO (https://docs.python.org/3/library/io.html#io.BytesIO)

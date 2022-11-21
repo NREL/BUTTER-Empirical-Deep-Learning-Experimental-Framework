@@ -9,7 +9,7 @@ from dmp.structure.n_input import NInput
 
 import tensorflow.keras as keras
 
-from dmp.task.aspect_test.aspect_test_utils import make_keras_regularizer
+from dmp.task.aspect_test.aspect_test_utils import setup_keras_regularizer
 
 
 class MakeKerasNetworkFromModuleVisitor:
@@ -51,9 +51,9 @@ class MakeKerasNetworkFromModuleVisitor:
     @_visit_raw.register
     def _(self, target: NDense, keras_inputs) -> Any:
 
-        kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
-        bias_regularizer = make_keras_regularizer(target.bias_regularizer)
-        activity_regularizer = make_keras_regularizer(
+        kernel_regularizer = setup_keras_regularizer(target.kernel_regularizer)
+        bias_regularizer = setup_keras_regularizer(target.bias_regularizer)
+        activity_regularizer = setup_keras_regularizer(
             target.activity_regularizer)
 
         return keras.layers.Dense(
@@ -75,9 +75,9 @@ class MakeKerasNetworkFromModuleVisitor:
 
     @_visit_raw.register
     def _(self, target: NConv, keras_inputs) -> Any:
-        kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
-        bias_regularizer = make_keras_regularizer(target.bias_regularizer)
-        activity_regularizer = make_keras_regularizer(
+        kernel_regularizer = setup_keras_regularizer(target.kernel_regularizer)
+        bias_regularizer = setup_keras_regularizer(target.bias_regularizer)
+        activity_regularizer = setup_keras_regularizer(
             target.activity_regularizer)
 
         return DenseConvolutionalLayer(
@@ -92,9 +92,9 @@ class MakeKerasNetworkFromModuleVisitor:
 
     @_visit_raw.register
     def _(self, target: NSepConv, keras_inputs) -> Any:
-        kernel_regularizer = make_keras_regularizer(target.kernel_regularizer)
-        bias_regularizer = make_keras_regularizer(target.bias_regularizer)
-        activity_regularizer = make_keras_regularizer(
+        kernel_regularizer = setup_keras_regularizer(target.kernel_regularizer)
+        bias_regularizer = setup_keras_regularizer(target.bias_regularizer)
+        activity_regularizer = setup_keras_regularizer(
             target.activity_regularizer)
 
         return SeparableConvolutionalLayer(

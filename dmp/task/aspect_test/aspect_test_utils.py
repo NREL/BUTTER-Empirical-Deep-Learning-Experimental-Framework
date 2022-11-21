@@ -189,26 +189,21 @@ def get_params_and_type_from_config(
 
 
 def make_from_typed_config(
-    config: dict,
+    config: Optional[Dict],
     mapping: Dict[str, Callable],
     config_name: str,
     *args,
     **kwargs,
 ) -> Any:
+    if config is None:
+        return None
+
     type, params = get_params_and_type_from_config(config)
     factory = get_from_config_mapping(type, mapping, config_name)
     return factory(*args, **kwargs, **params)
 
-def make_keras_regularizer(config: Optional[Dict]) \
-        -> Optional[keras.regularizers.Regularizer]:
-    if config is None:
-        return None
-    return make_from_typed_config(
-        config, {
-            'l1': keras.regularizers.L1,
-            'l2': keras.regularizers.L2,
-            'l1l2': keras.regularizers.L1L2
-        }, 'regularizer')
+
+
 
 
 def get_activation_factory(name: str) -> Callable:

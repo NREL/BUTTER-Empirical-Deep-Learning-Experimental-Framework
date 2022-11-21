@@ -1,5 +1,19 @@
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Iterator, List, Set, Sequence
+from typing import Any, Dict, Iterable, Iterator, List, Set, Sequence
+
+
+'''
+
+Purposes:
+    + To preserve network graphs for analysis and reproduction
+    + To allow network sizing without making a keras network
+
+Alternative:
+    + simple dict or dataclass for all layers
+        + inputs, type, config members
+        + use type-indexed visitor-like pattern to compute inputs, etc
+'''
+
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)

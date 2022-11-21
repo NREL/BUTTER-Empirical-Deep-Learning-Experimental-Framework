@@ -10,4 +10,5 @@ class NNeuronLayer(NetworkModule):
     bias_regularizer: Optional[dict] = None
     activity_regularizer: Optional[dict] = None
     kernel_initializer: str = 'glorot_uniform'
+    bias_initializer: str = 'zeros'
     use_bias: bool = True
