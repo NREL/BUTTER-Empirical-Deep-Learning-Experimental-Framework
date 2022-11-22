@@ -40,6 +40,16 @@ class ComputeFreeParametersVisitor:
     @_visit.register
     def _(self, target: AConvolutionalLayer, config: Dict) -> int:
         num_nodes_per_filter = math.prod(config['kernel_size'])
+        return self._get_count_for_conv_layer(target, config,
+                                              num_nodes_per_filter)
+
+    @_visit.register
+    def _(self, target: SeparableConvolutionalLayer, config: Dict) -> int:
+        num_nodes_per_filter = sum(config['kernel_size'])
+        return self._get_count_for_conv_layer(target, config,
+                                              num_nodes_per_filter)
+
+    def _get_count_for_conv_layer(self, target, config, num_nodes_per_filter):
         num_nodes = num_nodes_per_filter * config['filters']
 
         input_conv_shape, input_channels = \

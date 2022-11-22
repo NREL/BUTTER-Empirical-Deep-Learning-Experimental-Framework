@@ -155,6 +155,10 @@ class MaxPool(APoolingLayer):
     pass
 
 
+class AvgPool(APoolingLayer):
+    pass
+
+
 class AGlobalPoolingLayer(ASpatitialLayer):
     pass
 
@@ -163,9 +167,17 @@ class GlobalAveragePooling(AGlobalPoolingLayer):
     pass
 
 
+class GlobalMaxPooling(AGlobalPoolingLayer):
+    pass
+
+
 class IdentityOperation(AElementWiseOperatorLayer):
     pass
 
 
 class ZeroizeOperation(AElementWiseOperatorLayer):
+    pass
+
+
+class ProjectionOperation(AConvolutionalLayer):
     pass

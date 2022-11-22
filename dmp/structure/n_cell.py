@@ -1,10 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from dmp.structure.network_module import NetworkModule
-from dmp.structure.n_neuron_layer import NNeuronLayer
-from dmp.structure.n_dense import NDense
-from dmp.structure.n_add import NAdd
 from dmp.structure.n_conv import *
 
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)

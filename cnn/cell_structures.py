@@ -22,29 +22,19 @@ from dmp.task.aspect_test.aspect_test_utils import get_activation_factory, get_b
 #--------------------------------------------------------------------------------------#
 ########################################################################################
 
-KernelSize = Union[int, List[int], Tuple[int, ...]]
-
 
 class ConvolutionalLayer(layers.Layer):
 
     def __init__(
         self,
         conv_layer_factory: Callable,
-        filters: int,  #=128
-        kernel_size: KernelSize,
         batch_norm: str,  # = 'none',
         activation: str,  # = 'relu',
-        # padding: str = 'same',
         **conv_layer_args,
     ):
+        conv_layer_args['activation'] = keras.activations.linear
+        self.conv_layer = conv_layer_factory(**conv_layer_args)
         self.batch_norm = batch_norm
-        self.conv_layer = conv_layer_factory(
-            filters,
-            kernel_size,
-            activation=keras.activations.linear,
-            # padding=padding,
-            **conv_layer_args,
-        )
         self.batch_normalizer = \
             get_batch_normalization_factory(self.batch_norm)
         self.activation_function = get_activation_factory(activation)
@@ -55,51 +45,6 @@ class ConvolutionalLayer(layers.Layer):
         x = self.conv_layer(input)
         x = self.batch_normalizer(x)
         return self.activation_function(x)
-
-
-class DenseConvolutionalLayer(ConvolutionalLayer):
-
-    def __init__(
-            self,
-            kernel_size=(3, 3),
-            **kwargs,
-    ):
-        dimension = len(kernel_size)
-        super().__init__(
-            get_from_config_mapping(
-                dimension,
-                {
-                    1: keras.layers.Conv1D,
-                    2: keras.layers.Conv2D,
-                    3: keras.layers.Conv3D,
-                },
-                'DenseConvolutionalLayer dimension',
-            ),
-            kernel_size=kernel_size,
-            **kwargs,
-        )
-
-
-class SeparableConvolutionalLayer(ConvolutionalLayer):
-
-    def __init__(
-            self,
-            kernel_size=(3, 3),
-            **kwargs,
-    ):
-        dimension = len(kernel_size)
-        super().__init__(
-            get_from_config_mapping(
-                dimension,
-                {
-                    1: keras.layers.SeparableConv1D,
-                    2: keras.layers.SeparableConv2D,
-                },
-                'SeparableConvolutionalLayer dimension',
-            ),
-            kernel_size=kernel_size,
-            **kwargs,
-        )
 
 
 # projection operation
@@ -134,93 +79,89 @@ class ProjectionOperation(layers.Layer):
         return x
 
 
-# 3x3 max pooling
-class MaxPool3x3Operation(layers.Layer):
+# # 3x3 max pooling
+# class MaxPool3x3Operation(layers.Layer):
 
-    def __init__(
-        self,
-        filters=None,
-        batch_norm='none',
-        activation='relu',
-        kernel_regularizer=None,
-        bias_regularizer=None,
-        activity_regularizer=None,
-        **kwargs,
-    ):
-        # filters is not used here, but is included for consistency with other operations
-        # batch_norm and activation are not used here, but are included for consistency with other operations
-        super(MaxPool3x3Operation, self).__init__()
-        self.pool = layers.MaxPool2D(3, strides=1, padding='same')
+#     def __init__(
+#         self,
+#         filters=None,
+#         batch_norm='none',
+#         activation='relu',
+#         kernel_regularizer=None,
+#         bias_regularizer=None,
+#         activity_regularizer=None,
+#         **kwargs,
+#     ):
+#         # filters is not used here, but is included for consistency with other operations
+#         # batch_norm and activation are not used here, but are included for consistency with other operations
+#         super(MaxPool3x3Operation, self).__init__()
+#         self.pool = layers.MaxPool2D(3, strides=1, padding='same')
 
-    def call(self, x):
-        x = self.pool(x)
-        return x
+#     def call(self, x):
+#         x = self.pool(x)
+#         return x
 
+# # 3x3 avg pooling
+# class AvgPool3x3Operation(layers.Layer):
 
-# 3x3 avg pooling
-class AvgPool3x3Operation(layers.Layer):
+#     def __init__(
+#         self,
+#         filters=None,
+#         batch_norm='none',
+#         activation='relu',
+#         kernel_regularizer=None,
+#         bias_regularizer=None,
+#         activity_regularizer=None,
+#         **kwargs,
+#     ):
+#         # filters is not used here, but is included for consistency with other operations
+#         # batch_norm and activation are not used here, but are included for consistency with other operations
+#         super(AvgPool3x3Operation, self).__init__()
+#         self.pool = layers.AvgPool2D(3, strides=1, padding='same')
 
-    def __init__(
-        self,
-        filters=None,
-        batch_norm='none',
-        activation='relu',
-        kernel_regularizer=None,
-        bias_regularizer=None,
-        activity_regularizer=None,
-        **kwargs,
-    ):
-        # filters is not used here, but is included for consistency with other operations
-        # batch_norm and activation are not used here, but are included for consistency with other operations
-        super(AvgPool3x3Operation, self).__init__()
-        self.pool = layers.AvgPool2D(3, strides=1, padding='same')
+#     def call(self, x):
+#         x = self.pool(x)
+#         return x
 
-    def call(self, x):
-        x = self.pool(x)
-        return x
+# # Identity connection
+# class IdentityOperation(layers.Layer):
 
+#     def __init__(
+#         self,
+#         filters=None,
+#         batch_norm='none',
+#         activation='relu',
+#         kernel_regularizer=None,
+#         bias_regularizer=None,
+#         activity_regularizer=None,
+#         **kwargs,
+#     ):
+#         # filters is not used here, but is included for consistency with other operations
+#         # batch_norm and activation are not used here, but are included for consistency with other operations
+#         super(IdentityOperation, self).__init__()
 
-# Identity connection
-class IdentityOperation(layers.Layer):
+#     def call(self, x):
+#         return x
 
-    def __init__(
-        self,
-        filters=None,
-        batch_norm='none',
-        activation='relu',
-        kernel_regularizer=None,
-        bias_regularizer=None,
-        activity_regularizer=None,
-        **kwargs,
-    ):
-        # filters is not used here, but is included for consistency with other operations
-        # batch_norm and activation are not used here, but are included for consistency with other operations
-        super(IdentityOperation, self).__init__()
+# # zeroize connection
+# class ZeroizeOperation(layers.Layer):
 
-    def call(self, x):
-        return x
+#     def __init__(
+#         self,
+#         filters=None,
+#         batch_norm='none',
+#         activation='relu',
+#         kernel_regularizer=None,
+#         bias_regularizer=None,
+#         activity_regularizer=None,
+#         **kwargs,
+#     ):
+#         # filters is not used here, but is included for consistency with other operations
+#         # batch_norm and activation are not used here, but are included for consistency with other operations
+#         super(ZeroizeOperation, self).__init__()
 
-
-# zeroize connection
-class ZeroizeOperation(layers.Layer):
-
-    def __init__(
-        self,
-        filters=None,
-        batch_norm='none',
-        activation='relu',
-        kernel_regularizer=None,
-        bias_regularizer=None,
-        activity_regularizer=None,
-        **kwargs,
-    ):
-        # filters is not used here, but is included for consistency with other operations
-        # batch_norm and activation are not used here, but are included for consistency with other operations
-        super(ZeroizeOperation, self).__init__()
-
-    def call(self, x):
-        return tf.zeros_like(x)
-
+#     def call(self, x):
+#         return tf.zeros_like(x)
 
 ########################################################################################
 #--------------------------------------------------------------------------------------#
