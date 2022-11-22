@@ -12,11 +12,13 @@ class ComputeFreeParametersVisitor:
         layer_shapes: Dict[Layer, Tuple],
     ) -> None:
         self._layer_shapes: Dict[Layer, Tuple] = layer_shapes
+        self._layer_parameters: Dict[Layer, int] = \
+            {layer : self._visit(layer) for layer in target.all_descendants}
         self._num_free_parameters: int = \
-            sum((self._visit(l, l.config) for l in target.all_descendants))
+            sum((n for n in self._layer_parameters.values()))
 
-    def __call__(self) -> int:
-        return self._num_free_parameters
+    def __call__(self) -> Tuple[int, Dict[Layer, int]]:
+        return self._num_free_parameters, self._layer_parameters
 
     def _get_shape(self, target: Layer) -> Tuple:
         return self._layer_shapes[target]
@@ -45,3 +47,10 @@ class ComputeFreeParametersVisitor:
 
         params_per_node = input_channels + (1 if target.use_bias else 0)
         return num_nodes * params_per_node
+
+
+def compute_free_parameters(
+    target: Layer,
+    layer_shapes: Dict[Layer, Tuple],
+) -> Tuple[int, Dict[Layer, int]]:
+    return ComputeFreeParametersVisitor(target, layer_shapes)()
