@@ -12,9 +12,9 @@ class LayerVisitor(ABC, Generic[ReturnType]):
         'Input':
         lambda v, t, *args, **kwargs: \
             v._visit_Input(t, *args, **kwargs),
-        'add':
+        'Add':
         lambda v, t, *args, **kwargs: \
-            v._visit_add(t, *args, **kwargs),
+            v._visit_Add(t, *args, **kwargs),
         'Concatenate':
         lambda v, t, *args, **kwargs: \
             v._visit_Concatenate(t, *args, **kwargs),
@@ -24,12 +24,12 @@ class LayerVisitor(ABC, Generic[ReturnType]):
         'SeparableConvolutionalLayer':
         lambda v, t, *args, **kwargs: \
             v._visit_SeparableConvolutionalLayer(t, *args, **kwargs),
-        'MaxPool2D':
+        'MaxPool':
         lambda v, t, *args, **kwargs:  \
-            v._visit_MaxPool2D(t, *args, **kwargs),
-        'GlobalAveragePooling2D':
+            v._visit_MaxPool(t, *args, **kwargs),
+        'GlobalAveragePooling':
         lambda v, t, *args, **kwargs:  \
-            v._visit_GlobalAveragePooling2D(t, *args, **kwargs),
+            v._visit_GlobalAveragePooling(t, *args, **kwargs),
         'IdentityOperation':
         lambda v, t, *args, **kwargs:  \
             v._visit_IdentityOperation(t, *args, **kwargs),
@@ -51,7 +51,7 @@ class LayerVisitor(ABC, Generic[ReturnType]):
         )
 
     @abstractmethod
-    def _visit_add(self, layer: Layer, *args, **kwargs) -> ReturnType:
+    def _visit_Add(self, layer: Layer, *args, **kwargs) -> ReturnType:
         pass
 
     @abstractmethod
@@ -69,11 +69,11 @@ class LayerVisitor(ABC, Generic[ReturnType]):
         pass
 
     @abstractmethod
-    def _visit_MaxPool2D(self, layer: Layer, *args, **kwargs) -> ReturnType:
+    def _visit_MaxPool(self, layer: Layer, *args, **kwargs) -> ReturnType:
         pass
 
     @abstractmethod
-    def _visit_GlobalAveragePooling2D(self, layer: Layer, *args,
+    def _visit_GlobalAveragePooling(self, layer: Layer, *args,
                                       **kwargs) -> ReturnType:
         pass
 

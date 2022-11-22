@@ -17,16 +17,16 @@ class LayerToKerasVisitor(LayerVisitor[KerasLayer]):
         self._layer_to_keras_map: Dict[Layer, KerasLayer] = {}
         self._outputs: list = []
 
-        output = self._convert(target)
+        output = self._do_visit(target)
         self._outputs = [output]
 
     def __call__(self) -> Tuple[list, list, Dict[Layer, KerasLayer]]:
         return self._inputs, self._outputs, self._layer_to_keras_map
 
-    def _convert(self, target: Layer) -> KerasLayer:
+    def _do_visit(self, target: Layer) -> KerasLayer:
         if target not in self._layer_to_keras_map:
             keras_inputs = \
-                [ci for ci in (self._convert(i) for i in target.inputs)
+                [ci for ci in (self._do_visit(i) for i in target.inputs)
                 if ci is not None]
 
             keras_layer = self._visit(
@@ -57,13 +57,13 @@ class LayerToKerasVisitor(LayerVisitor[KerasLayer]):
         _setup_keras_regularizers(config)
         return keras.layers.Dense(**config)(*keras_inputs)
 
-    def _visit_add(
+    def _visit_Add(
         self,
         target: Layer,
         config: Dict,
         keras_inputs: List,
     ) -> KerasLayer:
-        return keras.layers.add(keras_inputs)
+        return keras.layers.Add(*keras_inputs)
 
     def _visit_Concatenate(
         self,
@@ -91,20 +91,35 @@ class LayerToKerasVisitor(LayerVisitor[KerasLayer]):
         _setup_keras_regularizers(config)
         return SeparableConvolutionalLayer(**config)(*keras_inputs)
 
-    def _visit_MaxPool2D(
+    def _visit_MaxPool(
         self,
         target: Layer,
         config: Dict,
         keras_inputs: List,
     ) -> KerasLayer:
-        return keras.layers.MaxPool2D(**config)(*keras_inputs)
+        dimension = len(target.config['stride'])
+        clss = {
+            1: keras.layers.MaxPool1D,
+            2: keras.layers.MaxPool2D,
+            3: keras.layers.MaxPool3D,
+        }[dimension]
 
-    def _visit_GlobalAveragePooling2D(
+        return clss(**config)(*keras_inputs)
+
+    def _visit_GlobalAveragePooling(
         self,
         target: Layer,
         config: Dict,
         keras_inputs: List,
     ) -> KerasLayer:
+        config = target.config
+        dimension = config['dimension']
+        del config['dimension']
+        clss = {
+            1: keras.layers.GlobalAveragePooling1D,
+            2: keras.layers.GlobalAveragePooling2D,
+            3: keras.layers.GlobalAveragePooling3D,
+        }[dimension]
         return keras.layers.GlobalAveragePooling2D(**config)(*keras_inputs)
 
     def _visit_IdentityOperation(
