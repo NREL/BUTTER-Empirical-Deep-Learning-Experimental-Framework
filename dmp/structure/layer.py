@@ -1,6 +1,24 @@
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Iterator, Any, Set
 
+'''
++ single class:
+    + simple 
+    + data-oriented
+    - complex abstract visitor class 
+        - two things to add for each type:
+            - dispatch entry
+            - abstract method
+        - inflexible visitor interface
+
++ class per type
+    + clean oo 
+    - many classes
+    - one class to add for each type
+    + can easily implement polymorphic methods
+    + more compact serialization
+    + could avoid serializing config or inputs in a few cases
+'''
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
 class Layer():
