@@ -1,15 +1,15 @@
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeAlias, TypeVar, Union
 import tensorflow.keras as keras
-from tensorflow import Tensor
+import tensorflow
 from cnn.cell_structures import DenseConvolutionalLayer, SeparableConvolutionalLayer
 from dmp.structure.layer import Layer
 from dmp.structure.layer_visitor import LayerVisitor
 from dmp.task.aspect_test.aspect_test_utils import make_from_typed_config
 
-KerasLayer: TypeAlias = Any
+KerasLayer: TypeAlias = Union[keras.layers.Layer, tensorflow.Tensor]
 
 
-class LayerToKerasVisitor(LayerVisitor[KerasLayer]):
+class LayerToKerasVisitor:
 
     def __init__(self, target: Layer) -> None:
 
