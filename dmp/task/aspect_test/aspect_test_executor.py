@@ -5,12 +5,14 @@ import numpy
 import tensorflow.keras.metrics as metrics
 from dmp.data.pmlb import pmlb_loader
 from dmp.jobqueue_interface import jobqueue_marshal
-from dmp.structure.visitor.make_keras_network_from_module import make_keras_network_from_network_module
+from dmp.structure.visitor.layer_to_keras import KerasLayer, make_keras_network_from_layer
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 from dmp.task.aspect_test.aspect_test_utils import *
 import dmp.task.aspect_test.keras_utils as keras_utils
 from dmp.task.task import Parameter
 from dmp.task.task_util import remap_key_prefixes
+import tensorflow
+import tensorflow.keras as keras
 
 # from keras_buoy.models import ResumableModel
 
@@ -22,8 +24,8 @@ class AspectTestExecutor():
 
     # task: AspectTestTask
     # output_activation: Optional[str] = None
-    # keras_model: Optional[tensorflow.keras.Model] = None
-    # run_loss: Optional[tensorflow.keras.losses.Loss] = None
+    # keras_model: Optional[keras.Model] = None
+    # run_loss: Optional[keras.losses.Loss] = None
     # network_structure: Optional[NetworkModule] = None
 
     # dataset_series: Optional[pandas.Series] = None
@@ -47,6 +49,7 @@ class AspectTestExecutor():
 
         (
             network_structure,
+            layer_shapes,
             widths,
             num_free_parameters,
             run_loss,
@@ -60,11 +63,11 @@ class AspectTestExecutor():
         )
 
 
-        keras_model, node_layer_map, run_metrics, run_optimizer = \
-            self.make_keras_model(task, network_structure)
+        keras_model, layer_to_keras_map, run_metrics, run_optimizer = \
+            self.make_keras_model(worker, task, network_structure, layer_shapes)
 
         self.compile_keras_network(
-            network_structure,
+            num_free_parameters,
             run_loss,
             keras_model,
             run_metrics,
@@ -75,7 +78,7 @@ class AspectTestExecutor():
         callbacks = []
         if task.early_stopping is not None:
             callbacks.append(
-                tensorflow.keras.callbacks.EarlyStopping(**task.early_stopping)
+                keras.callbacks.EarlyStopping(**task.early_stopping)
             )  # TODO: decide what to do with this guy
 
         history = self.fit_model(
@@ -105,7 +108,7 @@ class AspectTestExecutor():
         self,
         task: AspectTestTask,
         worker,
-        network_structure: NetworkModule,
+        network_structure: Layer,
         widths: List[int],
         num_free_parameters: int,
         output_activation: str,
@@ -187,11 +190,11 @@ class AspectTestExecutor():
     def make_network(
         self,
         task: AspectTestTask,
-        input_shape: Tuple[int],
-        output_shape: Tuple[int],
+        input_shape: Tuple,
+        output_shape: Tuple,
         ml_task: str,
         target_size: int,
-    ) -> Tuple[NetworkModule, List[int], int, tensorflow.keras.losses.Loss,
+    ) -> Tuple[Layer, Dict[Layer, Tuple], List[int], int, keras.losses.Loss,
                str, ]:
         # Generate neural network architecture
         num_outputs = output_shape[1]
@@ -213,7 +216,7 @@ class AspectTestExecutor():
         }
 
         # Build NetworkModule network
-        delta, widths, network_structure = \
+        delta, widths, network_structure, num_free_parameters, layer_shapes = \
             find_best_layout_for_budget_and_depth(
                 input_shape,
                 residual_mode,
@@ -225,7 +228,6 @@ class AspectTestExecutor():
                 layer_args,
             )
 
-        num_free_parameters = network_structure.num_free_parameters_in_graph
         # reject non-conformant network sizes
         delta = num_free_parameters - task.size
         relative_error = delta / task.size
@@ -236,14 +238,21 @@ class AspectTestExecutor():
 
         return (
             network_structure,
+            layer_shapes,
             widths,
             num_free_parameters,
             run_loss,
             output_activation,
         )
 
-    def compile_keras_network(self, network_structure, run_loss, keras_model,
-                              run_metrics, run_optimizer):
+    def compile_keras_network(
+        self,
+        num_free_parameters: int,
+        run_loss,
+        keras_model: keras.Model,
+        run_metrics: List,
+        run_optimizer,
+    ):
         keras_model.compile(
             loss=run_loss,
             optimizer=run_optimizer,
@@ -252,9 +261,9 @@ class AspectTestExecutor():
         )
 
         # Calculate number of parameters in grown network
-        num_free_parameters = keras_utils.count_trainable_parameters_in_keras_model(
+        keras_num_free_parameters = keras_utils.count_trainable_parameters_in_keras_model(
             keras_model)
-        if network_structure.num_free_parameters_in_graph != num_free_parameters:
+        if keras_num_free_parameters != num_free_parameters:
             raise RuntimeError('Wrong number of trainable parameters')
 
         # # optionally enable checkpoints
@@ -272,13 +281,20 @@ class AspectTestExecutor():
         #         save_every_epochs=self.save_every_epochs,
         #         to_path=save_path)
 
-    def make_keras_model(self, task, network_structure):
+    def make_keras_model(
+        self,
+        worker,
+        task: AspectTestTask,
+        network_structure: Layer,
+        layer_shapes: Dict[Layer, Tuple],
+    ) -> Tuple[keras.Model, Dict[Layer, Tuple[KerasLayer, tensorflow.Tensor]],
+               List, Any]:
         with worker.strategy.scope() as s:  # type: ignore
             tensorflow.config.optimizer.set_jit(True)
 
             # Build Keras model
-            keras_inputs, keras_outputs, node_layer_map = \
-                make_keras_network_from_network_module(network_structure)
+            keras_inputs, keras_outputs, layer_to_keras_map = \
+                make_keras_network_from_layer(network_structure, layer_shapes)
             keras_model = keras.Model(
                 inputs=keras_inputs,
                 outputs=keras_outputs,
@@ -300,8 +316,8 @@ class AspectTestExecutor():
                 metrics.SquaredHinge(),
             ]
 
-            run_optimizer = tensorflow.keras.optimizers.get(task.optimizer)
-        return keras_model, node_layer_map, run_metrics, run_optimizer
+            run_optimizer = keras.optimizers.get(task.optimizer)
+        return keras_model, layer_to_keras_map, run_metrics, run_optimizer
 
     def make_tensorflow_dataset_converter(
         self,
@@ -348,7 +364,7 @@ class AspectTestExecutor():
     def fit_model(
         self,
         task: AspectTestTask,
-        keras_model: tensorflow.keras.Model,
+        keras_model: keras.Model,
         prepared_config: Dict[str, Any],
         callbacks: list,
     ) -> Any:

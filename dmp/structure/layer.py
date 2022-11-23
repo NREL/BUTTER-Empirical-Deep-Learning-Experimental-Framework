@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Iterator, Any, Set, Tuple, TypeVar
+from typing import Callable, Dict, List, Iterator, Any, Set, Tuple, TypeVar, Type
 '''
 + single class:
     + simple 
@@ -19,6 +19,8 @@ from typing import Callable, Dict, List, Iterator, Any, Set, Tuple, TypeVar
     + could avoid serializing config or inputs in a few cases
 '''
 T = TypeVar('T')
+
+network_module_types: List[Type] = []
 
 
 @dataclass(frozen=False, eq=False, unsafe_hash=False)
@@ -59,26 +61,41 @@ class Layer():
         return self.config.get('use_bias', True)
 
 
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class AElementWiseOperatorLayer(Layer):
     pass
 
 
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class Dense(Layer):
     pass
 
 
+network_module_types.append(Dense)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class Input(Layer):
     pass
 
 
+network_module_types.append(Input)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class Add(AElementWiseOperatorLayer):
     pass
 
 
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class Concatenate(Layer):
     pass
 
 
+network_module_types.append(Concatenate)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class ASpatitialLayer(Layer):
 
     def on_padding(
@@ -128,18 +145,36 @@ class ASpatitialLayer(Layer):
         )
 
 
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class AConvolutionalLayer(ASpatitialLayer):
     pass
 
 
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class DenseConvolutionalLayer(AConvolutionalLayer):
     pass
 
 
+network_module_types.append(DenseConvolutionalLayer)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
+class ProjectionOperation(AConvolutionalLayer):
+    pass
+
+
+network_module_types.append(ProjectionOperation)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class SeparableConvolutionalLayer(AConvolutionalLayer):
     pass
 
 
+network_module_types.append(SeparableConvolutionalLayer)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class APoolingLayer(ASpatitialLayer):
 
     @property
@@ -151,33 +186,54 @@ class APoolingLayer(ASpatitialLayer):
         return config['pool_size']
 
 
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class MaxPool(APoolingLayer):
     pass
 
 
+network_module_types.append(MaxPool)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class AvgPool(APoolingLayer):
     pass
 
 
+network_module_types.append(AvgPool)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class AGlobalPoolingLayer(ASpatitialLayer):
     pass
 
 
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class GlobalAveragePooling(AGlobalPoolingLayer):
     pass
 
 
+network_module_types.append(GlobalAveragePooling)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class GlobalMaxPooling(AGlobalPoolingLayer):
     pass
 
 
+network_module_types.append(GlobalMaxPooling)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class IdentityOperation(AElementWiseOperatorLayer):
     pass
 
 
+network_module_types.append(IdentityOperation)
+
+
+@dataclass(frozen=False, eq=False, unsafe_hash=False)
 class ZeroizeOperation(AElementWiseOperatorLayer):
     pass
 
 
-class ProjectionOperation(AConvolutionalLayer):
-    pass
+network_module_types.append(ZeroizeOperation)

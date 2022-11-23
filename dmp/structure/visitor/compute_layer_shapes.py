@@ -61,15 +61,22 @@ class ComputeLayerShapesVisitor:
         input_conv_shape, input_channels = \
             target.to_conv_shape_and_channels(
                 self._get_input_shape(target))
+        strides = config['strides']
 
-        output_conv_shape = target.on_padding(
-            lambda: input_conv_shape,
-            lambda: tuple((max(0, input_dim - kernel_dim + 1)
-                           for input_dim, kernel_dim in zip(
-                               input_conv_shape,
-                               config['kernel_size'],
-                           ))),
-        )
+        output_conv_shape = tuple(
+            target.on_padding(
+                lambda: (math.ceil(float(d) / float(s)) \
+                    for d, s in zip(
+                    input_conv_shape,
+                    strides,
+                )),
+                lambda: (math.ceil(float(d - k + 1) / float(s))\
+                    for d, s, k in zip(
+                        input_conv_shape,
+                        strides,
+                        config['kernel_size'],
+                    )),
+            ))
 
         return target.to_shape(
             output_conv_shape,
@@ -111,7 +118,6 @@ class ComputeLayerShapesVisitor:
                 input_channels,
             )
         return (input_channels, )
-
 
 
 def compute_layer_shapes(target: Layer) -> Dict[Layer, Tuple]:

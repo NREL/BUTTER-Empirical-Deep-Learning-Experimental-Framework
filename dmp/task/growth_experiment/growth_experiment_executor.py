@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import numpy
+import tensorflow
 import tensorflow.keras as keras
+from dmp.structure.visitor.layer_to_keras import KerasLayer
 from pytest import param
 
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
@@ -51,7 +53,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         epoch_parameters: int = 0
         epochs: int = 0
         prev_network_structure = None
-        prev_node_layer_map = None
+        prev_layer_to_keras_map = None
         output_activation = None
         num_free_parameters: int = 0
         on_final_iteration: bool = False
@@ -73,6 +75,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
 
             (
                 network_structure,
+                layer_shapes,
                 widths,
                 num_free_parameters,
                 run_loss,
@@ -94,21 +97,21 @@ class GrowthExperimentExecutor(AspectTestExecutor):
             if max_epochs_at_this_iteration <= 0:
                 break
 
-            keras_model, node_layer_map, run_metrics, run_optimizer = \
-                self.make_keras_model(task, network_structure)
+            keras_model, layer_to_keras_map, run_metrics, run_optimizer = \
+                self.make_keras_model(worker, task, network_structure, layer_shapes)
 
             if prev_network_structure is not None and \
-                prev_node_layer_map is not None:
+                prev_layer_to_keras_map is not None:
                 self.grow_network(
                     task.growth_method,
                     prev_network_structure,
-                    prev_node_layer_map,
+                    prev_layer_to_keras_map,
                     network_structure,
-                    node_layer_map,
+                    layer_to_keras_map,
                 )
 
             self.compile_keras_network(
-                network_structure,
+                num_free_parameters,
                 run_loss,
                 keras_model,
                 run_metrics,
@@ -167,7 +170,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
                         history[k].extend(iteration_history[k])
 
             prev_network_structure = network_structure
-            prev_node_layer_map = node_layer_map
+            prev_layer_to_keras_map = layer_to_keras_map
             growth_step += 1
             epochs += num_epochs
             epoch_parameters += num_epochs * num_free_parameters
@@ -193,10 +196,10 @@ class GrowthExperimentExecutor(AspectTestExecutor):
     def grow_network(
         self,
         config: dict,
-        source: NetworkModule,
-        source_node_layer_map: Dict[NetworkModule, keras.layers.Layer],
-        dest: NetworkModule,
-        dest_node_layer_map: Dict[NetworkModule, keras.layers.Layer],
+        source: Layer,
+        source_layer_to_keras_map: Dict[Layer, Tuple[KerasLayer,tensorflow.Tensor]],
+        dest: Layer,
+        dest_layer_to_keras_map: Dict[Layer, Tuple[KerasLayer,tensorflow.Tensor]],
     ) -> None:
         make_from_typed_config(
             config,
@@ -205,9 +208,9 @@ class GrowthExperimentExecutor(AspectTestExecutor):
             },
             'growth_method',
             source,
-            source_node_layer_map,
+            source_layer_to_keras_map,
             dest,
-            dest_node_layer_map,
+            dest_layer_to_keras_map,
         )
 
     def make_growth_trigger_callback(

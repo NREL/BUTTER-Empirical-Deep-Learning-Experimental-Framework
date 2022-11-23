@@ -2,6 +2,7 @@ from functools import singledispatchmethod
 import math
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeAlias, TypeVar, Union
 from dmp.structure.layer import *
+from dmp.structure.visitor.compute_layer_shapes import compute_layer_shapes
 
 
 class ComputeFreeParametersVisitor:
@@ -64,6 +65,8 @@ class ComputeFreeParametersVisitor:
 
 def compute_free_parameters(
     target: Layer,
-    layer_shapes: Dict[Layer, Tuple],
+    layer_shapes: Optional[Dict[Layer, Tuple]] = None,
 ) -> Tuple[int, Dict[Layer, int]]:
+    if layer_shapes is None:
+        layer_shapes = compute_layer_shapes(target)
     return ComputeFreeParametersVisitor(target, layer_shapes)()

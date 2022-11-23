@@ -1,6 +1,6 @@
 from typing import Tuple, Type
 from lmarshal import MarshalConfig, Marshal
-import dmp.structure
+import dmp.structure.layer
 import dmp.task
 
 jobqueue_marshal: Marshal = Marshal(
@@ -16,4 +16,4 @@ jobqueue_marshal: Marshal = Marshal(
 
 jobqueue_marshal.register_types(dmp.task.task_types)
 
-jobqueue_marshal.register_types(dmp.structure.network_module_types)
+jobqueue_marshal.register_types(dmp.structure.layer.network_module_types)

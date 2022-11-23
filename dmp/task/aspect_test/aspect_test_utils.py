@@ -2,24 +2,17 @@ import math
 import random
 import time
 from copy import deepcopy
-from dataclasses import dataclass
-from functools import singledispatchmethod
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
-import tensorflow
 import tensorflow.keras as keras
-from dmp.structure.n_add import NAdd
-from dmp.structure.n_dense import NDense
-from dmp.structure.n_input import NInput
-from dmp.structure.network_module import NetworkModule
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import Input, losses
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.models import Model
-from dmp.structure.n_conv import *
+from tensorflow.keras import losses
 from dmp.structure.n_cell import *
 from cnn.cell_structures import *
+
+from dmp.structure.layer import *
+from dmp.structure.visitor.compute_free_parameters import compute_free_parameters
 
 
 def add_label_noise(label_noise, run_task, train_outputs):
@@ -126,10 +119,10 @@ def make_network_module_graph(
     internal_activation: str,
     output_activation: str,
     layer_args: dict,
-) -> NetworkModule:
+) -> Layer:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = NInput(shape=list(input_shape[1:]))
+    input_layer = Input({'shape': input_shape}, [])
     current = input_layer
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d, layer_width in enumerate(widths):
@@ -142,16 +135,11 @@ def make_network_module_graph(
             activation = output_activation
 
         # Fully connected layer
-        layer = NDense(
-            inputs=[
-                current,
-            ],
-            shape=[
-                layer_width,
-            ],
-            activation=activation,
-            **layer_args,
-        )
+        args = layer_args.copy()
+        args['activation'] = activation
+        args['units'] = layer_width
+
+        layer = Dense(args, inputs=[current])
 
         # Skip connections for residual modes
         if residual_mode is None or residual_mode == 'none':
@@ -161,7 +149,7 @@ def make_network_module_graph(
             # of the same width insert a residual sum between layers
             # NB: Only works for rectangle
             if d > 0 and d < len(widths) - 1 and layer_width == widths[d - 1]:
-                layer = NAdd(inputs=[layer, current])
+                layer = Add({}, inputs=[layer, current])
         else:
             raise NotImplementedError(
                 f'Unknown residual mode "{residual_mode}".')
@@ -203,9 +191,6 @@ def make_from_typed_config(
     return factory(*args, **kwargs, **params)
 
 
-
-
-
 def get_activation_factory(name: str) -> Callable:
     return get_from_config_mapping(
         name,
@@ -237,6 +222,76 @@ def get_batch_normalization_factory(name: str) -> Any:
         },
         'batch_norm',
     )
+
+
+def make_cnn_network(
+    input_shape: List[int],
+    downsamples: int,
+    widths: List[int],
+    input_activation: str,
+    internal_activation: str,
+    output_activation: str,
+    cell_depth: int,
+    cell_type: str,
+    cell_nodes: int,
+    cell_ops: List[List[str]],
+    classes: int,
+    batch_norm: str,
+) -> NetworkModule:
+    """ Construct CNN out of Layers. """
+    # Determine internal structure
+    layer_list = []
+    widths_list = []
+    cell_depths = [
+        cell_depth // (downsamples + 1) for _ in range(downsamples + 1)
+    ]
+    for i in range(cell_depth % (downsamples + 1)):
+        cell_depths[-i - 1] += 1
+
+    for i in range(downsamples + 1):
+        # Add downsampling layer
+        if i > 0:
+            layer_list.append('downsample')
+            widths_list.append(widths[i])
+        # Add cells
+        for _ in range(cell_depths[i]):
+            layer_list.append('cell')
+            widths_list.append(widths[i])
+
+    input_layer = Input(shape=input_shape)
+
+    # do the updated keras layer wise construction
+    current = make_conv_stem(input_layer, widths[0], batch_norm)
+    # Loop through layers
+    for i in range(len(layer_list)):
+        layer_width = widths_list[i]
+        layer_type = layer_list[i]
+        if layer_type == 'cell':
+            layer = make_cell(
+                type=cell_type,
+                inputs=current,
+                nodes=cell_nodes,
+                operations=cell_ops,
+                filters=layer_width,
+                batch_norm=batch_norm,
+                activation=internal_activation,
+                # TODO: include regularizers, etc
+            )
+        elif layer_type == 'downsample':
+            layer = make_downsample(
+                inputs=current,
+                filters=layer_width,
+                batch_norm=batch_norm,
+                activation=internal_activation,
+            )
+        else:
+            raise ValueError(f'Unknown layer type {layer_type}')
+        current = layer
+    # Add final classifier
+    final_classifier = make_final_classifier(inputs=current,
+                                             classes=classes,
+                                             activation=output_activation)
+    return final_classifier
 
 
 def make_conv_network(
@@ -405,11 +460,15 @@ def binary_search_int(
 
 
 def find_best_layout_for_budget_and_depth(
-        input_shape: Tuple[int, ...], residual_mode: Optional[str],
-        input_activation: str, internal_activation: str,
-        output_activation: str, target_size: int,
-        make_widths: Callable[[int], List[int]],
-        layer_args: dict) -> Tuple[int, List[int], NetworkModule]:
+    input_shape: Tuple[int, ...],
+    residual_mode: Optional[str],
+    input_activation: str,
+    internal_activation: str,
+    output_activation: str,
+    target_num_free_parameters: int,
+    make_widths: Callable[[int], List[int]],
+    layer_args: dict,
+) -> Tuple[int, List[int], Layer, int, Dict[Layer, Tuple]]:
     best = (math.inf, None, None)
 
     def search_objective(w0):
@@ -424,10 +483,11 @@ def find_best_layout_for_budget_and_depth(
             output_activation,
             layer_args,
         )
-        delta = network.num_free_parameters_in_graph - target_size
+        num_free_parameters, layer_shapes = compute_free_parameters(network)
+        delta = num_free_parameters - target_num_free_parameters
 
         if abs(delta) < abs(best[0]):
-            best = (delta, widths, network)
+            best = (delta, widths, network, num_free_parameters, layer_shapes)
 
         return delta
 

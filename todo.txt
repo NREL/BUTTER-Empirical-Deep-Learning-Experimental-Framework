@@ -1,4 +1,3 @@
-+ add striding and dilation to layer shape visitor
 
 + Do CNN merge
     + convert CNN builder code to use Layers
