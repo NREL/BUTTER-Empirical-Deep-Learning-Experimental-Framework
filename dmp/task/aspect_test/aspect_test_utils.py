@@ -237,7 +237,7 @@ def make_cnn_network(
     cell_ops: List[List[str]],
     classes: int,
     batch_norm: str,
-) -> NetworkModule:
+) -> Layer:
     """ Construct CNN out of Layers. """
     # Determine internal structure
     layer_list = []
@@ -258,10 +258,10 @@ def make_cnn_network(
             layer_list.append('cell')
             widths_list.append(widths[i])
 
-    input_layer = Input(shape=input_shape)
+    input_layer : Layer = Input({'shape':input_shape}, [])
 
     # do the updated keras layer wise construction
-    current = make_conv_stem(input_layer, widths[0], batch_norm)
+    current : Layer = make_conv_stem(input_layer, widths[0], batch_norm)
     # Loop through layers
     for i in range(len(layer_list)):
         layer_width = widths_list[i]

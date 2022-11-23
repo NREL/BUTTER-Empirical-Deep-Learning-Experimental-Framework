@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from dmp.structure.n_conv import *
+from dmp.structure.layer import *
 
 # @dataclass(frozen=False, eq=False, unsafe_hash=False)
 # class NConvolutionalCell(NNeuronLayer):
@@ -91,18 +91,16 @@ from dmp.structure.n_conv import *
 
 
 def make_conv_stem(
-    inputs,
-    filters=16,
-    batch_norm='none',
+    input:Layer,
+    filters:int,
+    batch_norm:str,
     activation='relu',
     kernel_regularizer=None,
     bias_regularizer=None,
     activity_regularizer=None,
-):
-    module = NConv(
-        inputs=[
-            inputs,
-        ],
+) -> Layer:
+    module = DenseConvolutionalLayer(
+
         filters=filters,
         kernel_size=3,
         stride=1,
@@ -112,6 +110,7 @@ def make_conv_stem(
         kernel_regularizer=kernel_regularizer,
         bias_regularizer=bias_regularizer,
         activity_regularizer=activity_regularizer,
+        [input],
     )
     return module
 
