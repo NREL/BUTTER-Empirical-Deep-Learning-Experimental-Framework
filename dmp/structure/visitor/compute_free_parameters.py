@@ -32,22 +32,25 @@ class ComputeFreeParametersVisitor:
 
     @_visit.register
     def _(self, target: Dense, config: Dict) -> int:
-
         return config['units'] * \
             (sum((self._get_size(i) for i in target.inputs)) +\
                  (1 if target.use_bias else 0))
 
     @_visit.register
     def _(self, target: AConvolutionalLayer, config: Dict) -> int:
-        num_nodes_per_filter = math.prod(config['kernel_size'])
-        return self._get_count_for_conv_layer(target, config,
-                                              num_nodes_per_filter)
+        return self._get_count_for_conv_layer(
+            target,
+            config,
+            math.prod(config['kernel_size']),
+        )
 
     @_visit.register
     def _(self, target: SeparableConvolutionalLayer, config: Dict) -> int:
-        num_nodes_per_filter = sum(config['kernel_size'])
-        return self._get_count_for_conv_layer(target, config,
-                                              num_nodes_per_filter)
+        return self._get_count_for_conv_layer(
+            target,
+            config,
+            sum(config['kernel_size']),
+        )
 
     def _get_count_for_conv_layer(self, target, config, num_nodes_per_filter):
         num_nodes = num_nodes_per_filter * config['filters']

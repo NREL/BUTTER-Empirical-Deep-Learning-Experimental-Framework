@@ -1,9 +1,4 @@
-
-
-+ macronet.py
-
-
-+ Test/fix revised aspect and growth experiments
++ add striding and dilation to layer shape visitor
 
 + Do CNN merge
     + convert CNN builder code to use Layers
@@ -12,6 +7,9 @@
             + might need to remap Tasks in DB
         + make CNN logging work properly (see below)
     + make growth visitor compatible with CNNs
+
++ Test/fix revised aspect and growth experiments
+
 
 + test parquet DB storage
     + possibly convert to parquet
