@@ -6,18 +6,27 @@
 + Test/fix revised aspect and growth experiments
 
 + Do CNN merge
+    + convert CNN builder code to use Layers
+    + make CNN task (or figure out how to specify it)
+        + might need to rename parameters in DB
+            + might need to remap Tasks in DB
+        + make CNN logging work properly (see below)
+    + make growth visitor compatible with CNNs
 
-+ Does intermediate language specifying cells, etc make sense for CNNs?
-    - there will be a higher-level definition for macro tasks
-    - there will be a lower-level network module graph logged
-    + could be used for mid-level arch sweeps
-        - but not using it now to do that
-    -> what about a simpler more programatic representation?
-        -> could serialize this later, if needed
++ test parquet DB storage
+    + possibly convert to parquet
+        + update result logger
+        + update summary materialization script
 
-    
++ make worker run script?
+    + how to pop from the queue efficiently?
+        + worker just pops one job? 
+        + pass worker a max wait time?
+        + exit codes to indicate worker status?
 
-+ simplify cnn arg passing?
+
+------------
+
 + Refine CNN task specification
     + Micro vs macro
         + defined by simple 'cell type' or 'shape'?
@@ -74,12 +83,6 @@
 + organize aspect test utils, etc
 
 + rename 'type' to 'name' in configs?
-
-+ make worker run script?
-    + how to pop from the queue efficiently?
-        + worker just pops one job? 
-        + pass worker a max wait time?
-        + exit codes to indicate worker status?
 
 + Rename AspectTestTask to TrainingExperiment?
     + could probably get away with only renaming parameters
