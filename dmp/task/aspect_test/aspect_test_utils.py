@@ -118,12 +118,11 @@ def make_network_module_graph(
     input_activation: str,
     internal_activation: str,
     output_activation: str,
-    layer_args: dict,
+    layer_config: Dict[str, Any],
 ) -> Layer:
     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    input_layer = Input({'shape': input_shape}, [])
-    current = input_layer
+    parent = Input({'shape': input_shape}, [])
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
     for d, layer_width in enumerate(widths):
 
@@ -135,11 +134,11 @@ def make_network_module_graph(
             activation = output_activation
 
         # Fully connected layer
-        args = layer_args.copy()
-        args['activation'] = activation
-        args['units'] = layer_width
+        config = layer_config.copy()
+        config['activation'] = activation
+        config['units'] = layer_width
 
-        layer = Dense(args, inputs=[current])
+        layer = Dense(config, inputs=[parent])
 
         # Skip connections for residual modes
         if residual_mode is None or residual_mode == 'none':
@@ -149,12 +148,12 @@ def make_network_module_graph(
             # of the same width insert a residual sum between layers
             # NB: Only works for rectangle
             if d > 0 and d < len(widths) - 1 and layer_width == widths[d - 1]:
-                layer = Add({}, inputs=[layer, current])
+                layer = Add({}, inputs=[layer, parent])
         else:
             raise NotImplementedError(
                 f'Unknown residual mode "{residual_mode}".')
-        current = layer
-    return current
+        parent = layer
+    return parent
 
 
 def get_from_config_mapping(
@@ -226,28 +225,36 @@ def get_batch_normalization_factory(name: str) -> Any:
 
 def make_cnn_network(
     input_shape: List[int],
-    downsamples: int,
     widths: List[int],
+    # residual_mode: Optional[str],
     input_activation: str,
     internal_activation: str,
     output_activation: str,
+    # global_config : Dict[str, Any],
     cell_depth: int,
     cell_type: str,
-    cell_nodes: int,
+    # cell_nodes: int,
     cell_ops: List[List[str]],
     classes: int,
     batch_norm: str,
 ) -> Layer:
     """ Construct CNN out of Layers. """
+    layer_config : Dict[str, Any] = {
+        'batch_norm':batch_norm,
+        'activation':internal_activation,
+    } # TODO 
+    
+    downsamples = len(widths) - 1
+
     # Determine internal structure
-    layer_list = []
-    widths_list = []
+    layer_list = ['stem']
+    widths_list = [0]
     cell_depths = [
         cell_depth // (downsamples + 1) for _ in range(downsamples + 1)
     ]
     for i in range(cell_depth % (downsamples + 1)):
         cell_depths[-i - 1] += 1
-
+    
     for i in range(downsamples + 1):
         # Add downsampling layer
         if i > 0:
@@ -255,40 +262,61 @@ def make_cnn_network(
             widths_list.append(widths[i])
         # Add cells
         for _ in range(cell_depths[i]):
-            layer_list.append('cell')
+            layer_list.append(cell_type)
             widths_list.append(widths[i])
 
-    input_layer : Layer = Input({'shape':input_shape}, [])
-
     # do the updated keras layer wise construction
-    current : Layer = make_conv_stem(input_layer, widths[0], batch_norm)
+    parent : Layer = Input({'shape':input_shape}, [])
     # Loop through layers
     for i in range(len(layer_list)):
         layer_width = widths_list[i]
         layer_type = layer_list[i]
-        if layer_type == 'cell':
-            layer = make_cell(
-                type=cell_type,
-                inputs=current,
-                nodes=cell_nodes,
-                operations=cell_ops,
-                filters=layer_width,
-                batch_norm=batch_norm,
-                activation=internal_activation,
-                # TODO: include regularizers, etc
+        
+        config = layer_config.copy()
+
+        if layer_type == 'stem':
+            #current = make_conv_stem(input_layer, widths[0], batch_norm)
+            config['kernel_size'] = 3
+            config['stride'] = (1,1)
+            config['padding'] = 'same'
+            config['filters'] = widths[i+1]
+            config['kernel_activation'] = input_activation
+            layer = Dense(config, [parent])
+        elif layer_type == 'graph':
+            config['filters'] = layer_width
+            layer = make_graph_cell(
+                config,
+                parent,
+                cell_ops,
             )
+            # layer = make_graph_cell(
+            #     type=cell_type,
+            #     inputs=parent,
+            #     nodes=cell_nodes,
+            #     operations=cell_ops,
+            #     filters=layer_width,
+            #     batch_norm=batch_norm,
+            #     activation=internal_activation,
+            #     # TODO: include regularizers, etc
+            # )
+        elif layer_type == 'parallelconcat':
+            # layer = make_parallel_concat_cell(
+            pass
+        elif layer_type == 'paralleladd':
+            # layer = make_parallel_add_cell(
+            pass
         elif layer_type == 'downsample':
             layer = make_downsample(
-                inputs=current,
+                inputs=parent,
                 filters=layer_width,
                 batch_norm=batch_norm,
                 activation=internal_activation,
             )
         else:
             raise ValueError(f'Unknown layer type {layer_type}')
-        current = layer
+        parent = layer
     # Add final classifier
-    final_classifier = make_final_classifier(inputs=current,
+    final_classifier = make_final_classifier(inputs=parent,
                                              classes=classes,
                                              activation=output_activation)
     return final_classifier

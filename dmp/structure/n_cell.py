@@ -90,29 +90,29 @@ from dmp.structure.layer import *
 ########################################################################################
 
 
-def make_conv_stem(
-    input:Layer,
-    filters:int,
-    batch_norm:str,
-    activation='relu',
-    kernel_regularizer=None,
-    bias_regularizer=None,
-    activity_regularizer=None,
-) -> Layer:
-    module = DenseConvolutionalLayer(
+# def make_conv_stem(
+#     input:Layer,
+#     filters:int,
+#     batch_norm:str,
+#     activation='relu',
+#     kernel_regularizer=None,
+#     bias_regularizer=None,
+#     activity_regularizer=None,
+# ) -> Layer:
+#     module = DenseConvolutionalLayer(
 
-        filters=filters,
-        kernel_size=3,
-        stride=1,
-        padding='same',
-        batch_norm=batch_norm,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        bias_regularizer=bias_regularizer,
-        activity_regularizer=activity_regularizer,
-        [input],
-    )
-    return module
+#         filters=filters,
+#         kernel_size=3,
+#         stride=1,
+#         padding='same',
+#         batch_norm=batch_norm,
+#         activation=activation,
+#         kernel_regularizer=kernel_regularizer,
+#         bias_regularizer=bias_regularizer,
+#         activity_regularizer=activity_regularizer,
+#         [input],
+#     )
+#     return module
 
 
 def make_downsample(
@@ -185,14 +185,9 @@ def make_final_classifier(
 
 
 def make_module(
-    input,
-    op,
-    filters,
-    batch_norm,
-    activation,
-    kernel_regularizer,
-    bias_regularizer,
-    activity_regularizer,
+    config : Dict[str, Any],
+    inputs : List[Layer],
+    op : str,
 ):
     module = None
     if op == 'conv3x3':
@@ -209,6 +204,10 @@ def make_module(
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer,
             activity_regularizer=activity_regularizer,
+        )
+        module = DenseConvolutionalLayer(
+            config,
+            inputs
         )
     elif op == 'conv5x5':
         module = NConv(
@@ -296,55 +295,93 @@ def make_module(
 
 
 def make_graph_cell(
-    inputs,
-    nodes,  # The number of nodes where operations are summed in the cell with node 1 being the input tensor
-    operations,  # a list of lists operations corresponding to each node
-    filters=16,
-    batch_norm='none',
-    activation='relu',
-    kernel_regularizer=None,
-    bias_regularizer=None,
-    activity_regularizer=None,
+    layer_config: Dict[str, Any], # layer configuration
+    input : Layer, # cell input
+    operations:List[List[str]],  # a list of lists operations corresponding to each node
 ):
     # Graph cell connects node i to all nodes j where j>i and sums at every node
-    if nodes < 2:
-        raise ValueError(f'Nodes must be greater than or equal to 2.')
-    if len(operations) - 1 != nodes:
-        raise ValueError(
-            f'Operations must be a list of lists of operations corresponding to each node'
-        )
+    num_nodes = len(operations) - 1
 
-    node_list = [inputs] + [None] * (nodes - 1)
-    inds = [0 for _ in range(nodes - 1)]
+    if num_nodes < 2:
+        raise ValueError(f'Nodes must be greater than or equal to 2.')
+
+    node_list = [input]
+    inds = [0 for _ in range(num_nodes - 1)]
     storage = {}
-    for i in range(1, nodes):
+    for i in range(1, num_nodes):
         ops = operations[i - 1]
-        input = node_list[i - 1]
+        input = node_list[i - 1] # previous node
         storage[i - 1] = []
         for j in range(len(ops)):
             op = ops[j]
             module = make_module(
-                input,
+                layer_config.copy(),
+                [input],
                 op,
-                filters,
-                batch_norm,
-                activation,
-                kernel_regularizer,
-                bias_regularizer,
-                activity_regularizer,
             )
             storage[i - 1].append(module)
-        ins = [storage[k][inds[k]] for k in range(i)]
+        ins = [storage[k][inds[k]] for k in range(i)] # all modules so far
         if len(ins) > 1:
-            node = NAdd(
-                inputs=ins,  # all the operations at node i
-            )
+            node = Add({}, ins) # sum of all modules so far 
         else:
             node = ins[0]
+        
         for k in range(i):
             inds[k] += 1
-        node_list[i] = node
+
+        node_list.append(node)
     return node_list[-1]
+
+# def make_graph_cell(
+#     inputs,
+#     nodes,  # The number of nodes where operations are summed in the cell with node 1 being the input tensor
+#     operations,  # a list of lists operations corresponding to each node
+#     filters=16,
+#     batch_norm='none',
+#     activation='relu',
+#     kernel_regularizer=None,
+#     bias_regularizer=None,
+#     activity_regularizer=None,
+# ):
+#     # Graph cell connects node i to all nodes j where j>i and sums at every node
+#     if nodes < 2:
+#         raise ValueError(f'Nodes must be greater than or equal to 2.')
+#     if len(operations) - 1 != nodes:
+#         raise ValueError(
+#             f'Operations must be a list of lists of operations corresponding to each node'
+#         )
+
+#     node_list = [inputs] + [None] * (nodes - 1)
+#     inds = [0 for _ in range(nodes - 1)]
+#     storage = {}
+#     for i in range(1, nodes):
+#         ops = operations[i - 1]
+#         input = node_list[i - 1]
+#         storage[i - 1] = []
+#         for j in range(len(ops)):
+#             op = ops[j]
+#             module = make_module(
+#                 input,
+#                 op,
+#                 filters,
+#                 batch_norm,
+#                 activation,
+#                 kernel_regularizer,
+#                 bias_regularizer,
+#                 activity_regularizer,
+#             )
+#             storage[i - 1].append(module)
+#         ins = [storage[k][inds[k]] for k in range(i)]
+#         if len(ins) > 1:
+#             node = NAdd(
+#                 inputs=ins,  # all the operations at node i
+#             )
+#         else:
+#             node = ins[0]
+#         for k in range(i):
+#             inds[k] += 1
+#         node_list[i] = node
+#     return node_list[-1]
 
 
 def make_parallel_concat_cell(
@@ -433,34 +470,34 @@ def make_parallel_add_cell(
     return module
 
 
-def make_cell(
-    type,
-    inputs,
-    nodes,
-    operations,
-    filters=16,
-    batch_norm='none',
-    activation='relu',
-    kernel_regularizer=None,
-    bias_regularizer=None,
-    activity_regularizer=None,
-):
-    args = {
-        'inputs': inputs,
-        'nodes': nodes,
-        'operations': operations,
-        'filters': filters,
-        'batch_norm': batch_norm,
-        'activation': activation,
-        'kernel_regularizer': kernel_regularizer,
-        'bias_regularizer': bias_regularizer,
-        'activity_regularizer': activity_regularizer,
-    }
-    if type == 'graph':
-        return make_graph_cell(**args)
-    elif type == 'parallelconcat':
-        return make_parallel_concat_cell(**args)
-    elif type == 'paralleladd':
-        return make_parallel_add_cell(**args)
-    else:
-        raise ValueError(f'Invalid cell type: {type}')
+# def make_cell(
+#     type,
+#     inputs,
+#     nodes,
+#     operations,
+#     filters=16,
+#     batch_norm='none',
+#     activation='relu',
+#     kernel_regularizer=None,
+#     bias_regularizer=None,
+#     activity_regularizer=None,
+# ):
+#     args = {
+#         'inputs': inputs,
+#         'nodes': nodes,
+#         'operations': operations,
+#         'filters': filters,
+#         'batch_norm': batch_norm,
+#         'activation': activation,
+#         'kernel_regularizer': kernel_regularizer,
+#         'bias_regularizer': bias_regularizer,
+#         'activity_regularizer': activity_regularizer,
+#     }
+#     if type == 'graph':
+#         return make_graph_cell(**args)
+#     elif type == 'parallelconcat':
+#         return make_parallel_concat_cell(**args)
+#     elif type == 'paralleladd':
+#         return make_parallel_add_cell(**args)
+#     else:
+#         raise ValueError(f'Invalid cell type: {type}')

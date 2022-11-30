@@ -188,76 +188,76 @@ def num_node_operations(nodes):
     return by_node
 
 
-# Generic graph cell
-def make_graph_cell(
-    nodes,
-    operations,
-    dimension=2,
-    filters=16,
-    batch_norm='none',
-    activation='relu',
-    kernel_regularizer=None,
-    bias_regularizer=None,
-    activity_regularizer=None,
-    **kwargs,
-):
+# # Generic graph cell
+# def make_graph_cell(
+#     nodes,
+#     operations,
+#     dimension=2,
+#     filters=16,
+#     batch_norm='none',
+#     activation='relu',
+#     kernel_regularizer=None,
+#     bias_regularizer=None,
+#     activity_regularizer=None,
+#     **kwargs,
+# ):
 
-    class GraphCell(layers.Layer):
-        # Graph cell connects node i to all nodes j where j>i and sums at every node
-        def __init__(
-            self,
-            nodes,
-            operations,
-            filters,
-            batch_norm,
-            activation,
-            kernel_regularizer,
-            bias_regularizer,
-            activity_regularizer,
-            **kwargs,
-        ):
-            super(GraphCell, self).__init__()
-            # nodes is the number of nodes where operations are summed in the cell with node 1 being the input tensor
-            # operations is a list of lists operations corresponding to each node
-            assert nodes >= 2  # 'nodes must be greater than or equal to 2'
-            self.nodes = nodes
-            by_node = num_node_operations(nodes)
-            self.by_node = by_node
-            # create operations
-            for i in range(nodes - 1):
-                for j in range(by_node[i]):
-                    setattr(
-                        self, f'operation_{i}_{j}',
-                        operation_dict[operations[i][j]](
-                            dimension=dimension,
-                            filters=filters,
-                            batch_norm=batch_norm,
-                            activation=activation,
-                            kernel_regularizer=kernel_regularizer,
-                            bias_regularizer=bias_regularizer,
-                            activity_regularizer=activity_regularizer,
-                            **kwargs,
-                        ))
+#     class GraphCell(layers.Layer):
+#         # Graph cell connects node i to all nodes j where j>i and sums at every node
+#         def __init__(
+#             self,
+#             nodes,
+#             operations,
+#             filters,
+#             batch_norm,
+#             activation,
+#             kernel_regularizer,
+#             bias_regularizer,
+#             activity_regularizer,
+#             **kwargs,
+#         ):
+#             super(GraphCell, self).__init__()
+#             # nodes is the number of nodes where operations are summed in the cell with node 1 being the input tensor
+#             # operations is a list of lists operations corresponding to each node
+#             assert nodes >= 2  # 'nodes must be greater than or equal to 2'
+#             self.nodes = nodes
+#             by_node = num_node_operations(nodes)
+#             self.by_node = by_node
+#             # create operations
+#             for i in range(nodes - 1):
+#                 for j in range(by_node[i]):
+#                     setattr(
+#                         self, f'operation_{i}_{j}',
+#                         operation_dict[operations[i][j]](
+#                             dimension=dimension,
+#                             filters=filters,
+#                             batch_norm=batch_norm,
+#                             activation=activation,
+#                             kernel_regularizer=kernel_regularizer,
+#                             bias_regularizer=bias_regularizer,
+#                             activity_regularizer=activity_regularizer,
+#                             **kwargs,
+#                         ))
 
-        def call(self, x):
-            node_x = [x] + [tf.zeros_like(x) for _ in range(self.nodes - 1)]
-            for i in range(self.nodes - 1):
-                for j in range(self.by_node[i]):
-                    node_x[i + 1] += getattr(self,
-                                             f'operation_{i}_{j}')(node_x[i])
-            return node_x[-1]
+#         def call(self, x):
+#             node_x = [x] + [tf.zeros_like(x) for _ in range(self.nodes - 1)]
+#             for i in range(self.nodes - 1):
+#                 for j in range(self.by_node[i]):
+#                     node_x[i + 1] += getattr(self,
+#                                              f'operation_{i}_{j}')(node_x[i])
+#             return node_x[-1]
 
-    return GraphCell(
-        nodes,
-        operations,
-        filters,
-        batch_norm,
-        activation,
-        kernel_regularizer,
-        bias_regularizer,
-        activity_regularizer,
-        **kwargs,
-    )
+#     return GraphCell(
+#         nodes,
+#         operations,
+#         filters,
+#         batch_norm,
+#         activation,
+#         kernel_regularizer,
+#         bias_regularizer,
+#         activity_regularizer,
+#         **kwargs,
+#     )
 
 
 # Generic parallel cell with concatenation of outputs
