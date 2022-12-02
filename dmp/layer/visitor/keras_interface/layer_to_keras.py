@@ -118,7 +118,7 @@ class LayerToKerasVisitor:
     @_visit.register
     def visit_DenseConvolutionalLayer(
         self,
-        target: DenseConvolutionalLayer,
+        target: DenseConv,
         config: Dict,
         inputs: List[KerasLayer],
     ) -> Tuple[KerasLayer, tensorflow.Tensor]:
@@ -136,7 +136,7 @@ class LayerToKerasVisitor:
     @_visit.register
     def _(
         self,
-        target: SeparableConvolutionalLayer,
+        target: SeparableConv,
         config: Dict,
         inputs: List[KerasLayer],
     ) -> Tuple[KerasLayer, tensorflow.Tensor]:

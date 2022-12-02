@@ -1,6 +1,8 @@
-from typing import Tuple
+from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
 from dmp.layer.spatitial_layer import ASpatitialLayer
-from dmp.layer.layer import network_module_types
+from dmp.layer.layer import Layer, LayerFactory, network_module_types
+
+T = TypeVar('T')
 
 
 class APoolingLayer(ASpatitialLayer):
@@ -12,6 +14,19 @@ class APoolingLayer(ASpatitialLayer):
         if strides is not None:
             return strides
         return config['pool_size']
+
+    @staticmethod
+    def make(
+        layer_factory: LayerFactory[T],
+        pool_size: Sequence[int],
+        strides: Sequence[int],
+        config: Dict[str, Any],
+        input: Union['Layer', List['Layer']],
+    ) -> T:
+        return layer_factory(config, input, {
+            'pool_size': pool_size,
+            'strides': strides,
+        })
 
 
 class MaxPool(APoolingLayer):

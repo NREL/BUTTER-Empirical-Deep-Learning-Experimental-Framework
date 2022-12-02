@@ -1,6 +1,7 @@
+from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
+from dmp.layer.layer import Layer, LayerFactory, network_module_types
 
-from typing import Tuple
-from dmp.layer.layer import Layer, network_module_types
+T = TypeVar('T')
 
 
 class ASpatitialLayer(Layer):
@@ -11,7 +12,7 @@ class ASpatitialLayer(Layer):
         # on_valid: Callable[[], T],
         on_same,
         on_valid,
-    # ) -> T:
+        # ) -> T:
     ):
         padding = self.config['padding']
         if padding == 'same':
@@ -56,30 +57,4 @@ class ASpatitialLayer(Layer):
             lambda: conv_shape + (num_channels, ),
             lambda: (num_channels, ) + conv_shape,
         )
-
-class AConvolutionalLayer(ASpatitialLayer):
-    pass
-
-
-class DenseConvolutionalLayer(AConvolutionalLayer):
-    pass
-
-
-network_module_types.append(DenseConvolutionalLayer)
-
-
-class ProjectionOperation(AConvolutionalLayer):
-    pass
-
-
-network_module_types.append(ProjectionOperation)
-
-
-class SeparableConvolutionalLayer(AConvolutionalLayer):
-    pass
-
-
-network_module_types.append(SeparableConvolutionalLayer)
-
-
 

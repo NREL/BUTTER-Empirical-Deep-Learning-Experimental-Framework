@@ -1,16 +1,29 @@
-from typing import Any, Dict, Iterator, List, Set, Type
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Type, TypeVar, Union, Callable
 
 network_module_types: List[Type] = []
+
+T = TypeVar('T')
 
 
 class Layer():
 
-    def __init__(self, config: Dict[str, Any], inputs: List['Layer']) -> None:
-        self.config: Dict[str, Any] = config
-        self.inputs: List['Layer'] = inputs
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        input: Union['Layer', List['Layer']],
+        overrides: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        if not isinstance(input, List):
+            input = [input]
+        else:
+            input = input.copy()  # defensive copy
 
-    # config: Dict[str, Any]
-    # inputs: List['Layer']
+        config = config.copy()  # defensive copy
+        if overrides is not None:
+            config.update(overrides)
+
+        self.config: Dict[str, Any] = config
+        self.inputs: List['Layer'] = input
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -44,6 +57,9 @@ class Layer():
         return self.config.get('use_bias', True)
 
 
+LayerFactory = Callable[
+    [Dict[str, Any], Union[Layer, List[Layer]], Optional[Dict[str, Any]]], T]
+
 # '''
 # + single class:
 #     + simple
@@ -69,7 +85,14 @@ class AElementWiseOperatorLayer(Layer):
 
 
 class Dense(Layer):
-    pass
+
+    @staticmethod
+    def make(
+        units: int,
+        config: Dict[str, Any],
+        input: Union['Layer', List['Layer']],
+    ) -> 'Dense':
+        return Dense(config, input, {'units': units})
 
 
 network_module_types.append(Dense)

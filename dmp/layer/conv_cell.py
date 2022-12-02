@@ -4,106 +4,50 @@ from dmp.layer import *
 
 ########################################################################################
 #--------------------------------------------------------------------------------------#
-#                        Cell Generators
-#--------------------------------------------------------------------------------------#
-########################################################################################
-
-# def make_conv_stem(
-#     input:Layer,
-#     filters:int,
-#     batch_norm:str,
-#     activation='relu',
-#     kernel_regularizer=None,
-#     bias_regularizer=None,
-#     activity_regularizer=None,
-# ) -> Layer:
-#     module = DenseConvolutionalLayer(
-
-#         filters=filters,
-#         kernel_size=3,
-#         stride=1,
-#         padding='same',
-#         batch_norm=batch_norm,
-#         activation=activation,
-#         kernel_regularizer=kernel_regularizer,
-#         bias_regularizer=bias_regularizer,
-#         activity_regularizer=activity_regularizer,
-#         [input],
-#     )
-#     return module
-
-
-# def make_final_classifier(
-#     inputs,
-#     classes=10,
-#     activation='softmax',
-#     kernel_regularizer=None,
-#     bias_regularizer=None,
-#     activity_regularizer=None,
-# ):
-#     module = NGlobalPool(inputs=[
-#         inputs,
-#     ], )
-#     module = NDense(
-#         inputs=[
-#             module,
-#         ],
-#         shape=[
-#             classes,
-#         ],
-#         activation=activation,
-#         kernel_regularizer=kernel_regularizer,
-#         bias_regularizer=bias_regularizer,
-#         activity_regularizer=activity_regularizer,
-#     )
-#     return module
-
-########################################################################################
-#--------------------------------------------------------------------------------------#
 #                        Generic Cell Generators
 #--------------------------------------------------------------------------------------#
 ########################################################################################
 
 
 def make_layer_from_operation(
-    config: Dict[str, Any],
-    inputs: List[Layer],
     op: str,
+    width: int,
+    conv_config: Dict[str, Any],
+    pooling_config: Dict[str, Any],
+    input: Union[Layer, List[Layer]],
 ):
-
-    def make_conv_layer(factory, config, inputs, kernel_size):
-        config['kernel_size'] = (kernel_size, kernel_size)
-        config['strides'] = (1, 1)
-        config['padding'] = 'same'
-        return factory(config, inputs)
-
-    if op == 'conv3x3':
-        return make_conv_layer(DenseConvolutionalLayer, config, inputs, 3)
+    if op == 'conv1x1':
+        return DenseConv.make(\
+            width, (1,1), (1,1), conv_config, input)
+    elif op == 'conv3x3':
+        return DenseConv.make(\
+            width, (3,3), (1,1), conv_config, input)
     elif op == 'conv5x5':
-        return make_conv_layer(DenseConvolutionalLayer, config, inputs, 5)
-    elif op == 'conv1x1':
-        return make_conv_layer(DenseConvolutionalLayer, config, inputs, 1)
+        return DenseConv.make(\
+            width, (5,5), (1,1), conv_config, input)
     elif op == 'sepconv3x3':
-        return make_conv_layer(SeparableConvolutionalLayer, config, inputs, 3)
+        return SeparableConv.make(\
+            width, (3,3), (1,1), conv_config, input)
     elif op == 'sepconv5x5':
-        return make_conv_layer(SeparableConvolutionalLayer, config, inputs, 5)
+        return SeparableConv.make(\
+            width, (5,5), (1,1), conv_config, input)
     elif op == 'maxpool3x3':
-        config['pool_size'] = (3, 3)
-        config['strides'] = (1, 1)
-        config['padding'] = 'same'
-        return MaxPool(config, inputs)
+        return APoolingLayer.make(\
+            MaxPool, (3, 3), (1, 1), pooling_config, input)
     elif op == 'identity':
-        return IdentityOperation(config, inputs)
+        return IdentityOperation({}, input)
     elif op == 'zeroize':
-        return ZeroizeOperation(config, inputs)
+        return ZeroizeOperation({}, input)
 
     raise ValueError(f'Unknown operation {op}')
 
 
 def make_graph_cell(
-        layer_config: Dict[str, Any],  # layer configuration
-        input: Layer,  # cell input
+        width: int,  # width of all layers, including output
         operations: List[List[str]],  # defines the cell structure
+        conv_config: Dict[str, Any],  # conv layer configuration
+        pooling_config: Dict[str, Any],  # pooling layer configuration
+        input: Layer,  # cell input
 ) -> Layer:
     # + first serial layer is the input
     # + each serial layer is the sum of operations applied to the previous serial layers
@@ -115,21 +59,27 @@ def make_graph_cell(
         for input_layer, operation in zip(serial_layers,
                                           cell_layer_operations):
             if operation == 'zeroize':
-                continue # skip 'zeroize' operations
+                continue  # skip 'zeroize' operations
             parallel_operation_layers.append(
                 make_layer_from_operation(
-                    layer_config.copy(),
-                    [input_layer],
                     operation,
+                    width,
+                    conv_config,
+                    pooling_config,
+                    input_layer,
                 ))
         serial_layers.append(Add({}, parallel_operation_layers))
     return serial_layers[-1]
 
+
 def make_parallel_cell(
-        layer_config: Dict[str, Any],  # layer configuration
-        input: Layer,  # cell input
+        output_factory: Callable[[Dict[str, Any], List[Layer]],
+                                 Layer],  # output layer factory
+        width: int,  # width of input and output
         operations: List[List[str]],  # defines the cell structure
-        output_factory: Callable[[Dict[str,Any], List[Layer]], Layer]
+        conv_config: Dict[str, Any],  # conv layer configuration
+        pooling_config: Dict[str, Any],  # pooling layer configuration
+        input: Layer,  # cell input
 ) -> Layer:
     # + multiple parallel paths of serial ops are applied and then combined
     parallel_outputs: List[Layer] = []
@@ -137,26 +87,33 @@ def make_parallel_cell(
         serial_layer = input
         for operation in cell_layer_operations:
             serial_layer = make_layer_from_operation(
-                    layer_config.copy(),
-                    [serial_layer],
-                    operation,
-                )
+                operation,
+                width,
+                conv_config,
+                pooling_config,
+                serial_layer,
+            )
         parallel_outputs.append(serial_layer)
     return output_factory({}, parallel_outputs)
 
-def make_parallel_concat_cell(
-        layer_config: Dict[str, Any],  # layer configuration
-        input: Layer,  # cell input
-        operations: List[List[str]],  # defines the cell structure
-) -> Layer:
-    # + multiple parallel paths of serial ops are applied and then concatenated
-    return make_parallel_cell(layer_config, input, operations, Concatenate)
 
 def make_parallel_add_cell(
-        layer_config: Dict[str, Any],  # layer configuration
-        input: Layer,  # cell input
         operations: List[List[str]],  # defines the cell structure
+        width: int,  # width of input and output
+        conv_config: Dict[str, Any],  # conv layer configuration
+        pooling_config: Dict[str, Any],  # pooling layer configuration
+        input: Layer,  # cell input
 ) -> Layer:
     # + multiple parallel paths of serial ops are applied and then added
-    return make_parallel_cell(layer_config, input, operations, Add)
+    return make_parallel_cell(Add, width, operations, conv_config,
+                              pooling_config, input)
+                              
+# def make_parallel_concat_cell(
+#         layer_config: Dict[str, Any],  # layer configuration
+#         input: Layer,  # cell input
+#         operations: List[List[str]],  # defines the cell structure
+# ) -> Layer:
+#     # + multiple parallel paths of serial ops are applied and then concatenated
+#     return make_parallel_cell(layer_config, input, operations, Concatenate)
+
 

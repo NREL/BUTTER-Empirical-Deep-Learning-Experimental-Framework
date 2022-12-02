@@ -45,7 +45,7 @@ class ComputeFreeParametersVisitor:
         )
 
     @_visit.register
-    def _(self, target: SeparableConvolutionalLayer, config: Dict) -> int:
+    def _(self, target: SeparableConv, config: Dict) -> int:
         return self._get_count_for_conv_layer(
             target,
             config,
