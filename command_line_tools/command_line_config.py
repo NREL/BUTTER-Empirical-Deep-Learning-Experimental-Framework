@@ -1,12 +1,13 @@
 import json
 import re
 from copy import deepcopy
+from typing import List
 
 
 def parse_config_from_args(
-        args: [str],
-        default_config: {},
-        ) -> {}:
+        args: List[str],
+        default_config: dict,
+        ) -> dict:
     """
     Makes a configuration map given a list of (command line) override args and a default configuration
     """

@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterable, Mapping, Set, Tuple, Type
 
 from .common_marshaler import CommonMarshaler
 from .marshal_config import MarshalConfig
-from .types import ObjectMarshaler, TypeCode
+from .marshal_types import ObjectMarshaler, TypeCode
 
 
 class Marshaler(CommonMarshaler):

@@ -6,7 +6,7 @@ from .api_functions import APIFunctions
 from .demarshaler import Demarshaler
 from .marshal_config import MarshalConfig
 from .marshaler import Marshaler
-from .types import ObjectDemarshaler, ObjectMarshaler, TypeCode, DemarshalingFactory, DemarshalingInitializer
+from .marshal_types import ObjectDemarshaler, ObjectMarshaler, TypeCode, DemarshalingFactory, DemarshalingInitializer
 
 
 class Marshal:

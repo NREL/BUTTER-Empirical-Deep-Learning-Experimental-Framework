@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from pprint import pprint
-from typing import Optional
+from typing import Optional, Tuple
 
 from command_line_tools import command_line_config
 
@@ -22,9 +22,9 @@ makedir_if_not_exists(log_path)
 
 
 def setup_run(
-        default_config: {},
+        default_config: dict,
         subrun_name: Optional[str] = None,
-        ) -> ({}, str):
+        ) -> Tuple[dict, str]:
     '''
     Sets up a config and logging prefix for this run. Writes the config to a log file.
     :param default_config:
@@ -40,7 +40,7 @@ def setup_run(
 
 
 def write_config_log(
-        config: {},
+        config: dict,
         run_name: Optional[str] = None,
         suffix: str = '_config',
         path: Optional[str] = None,
@@ -54,10 +54,10 @@ def write_config_log(
     '''
     if run_name is None:
         if 'run_prefix' in config:
-            run_name = config['run_prefix']
+            run_name= config['run_prefix']
         elif 'name' in config:
             run_name = config['name']
-        else:
+        if run_name is None:
             run_name = 'run'
     
     if path is None:
@@ -71,7 +71,7 @@ def write_config_log(
 
 
 def get_run_name(
-        config: {},
+        config: dict,
         subrun_name: Optional[str] = None,
         ) -> str:
     '''

@@ -22,7 +22,10 @@ if __name__ == "__main__":
     job_queue = JobQueue(credentials, int(args.queue), check_table=False)
 
     accumulated = []
-    lines = sys.stdin.readlines()
+    stdin = sys.stdin
+    if stdin is None:
+        raise RuntimeError('stdin is None')
+    lines = stdin.readlines()
 
     for line in lines:
         task = jobqueue_marshal.demarshal(line)

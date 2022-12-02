@@ -16,7 +16,10 @@ if __name__ == "__main__":
         worker = subprocess.Popen(subprocess_args, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, close_fds=True)
         while True:
-            output = worker.stdout.readline()
+            outstream = worker.stdout
+            if outstream is None:
+                break
+            output = outstream.readline()
             if len(output) == 0 and worker.poll() is not None:
                 break
             if output:

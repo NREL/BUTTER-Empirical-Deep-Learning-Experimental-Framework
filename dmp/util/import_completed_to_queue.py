@@ -10,7 +10,7 @@ from pprint import pprint
 import sys
 from jobqueue.cursor_manager import CursorManager
 from dmp.logging.postgres_result_logger import PostgresResultLogger
-from dmp.structure.visitor.network_json_deserializer import NetworkJSONDeserializer
+from dmp.layer.visitor.network_json_deserializer import NetworkJSONDeserializer
 
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 

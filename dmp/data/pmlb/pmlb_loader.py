@@ -18,8 +18,9 @@ from sklearn.preprocessing import (
     OneHotEncoder,
 )
 
-dataset_path = os.path.join(os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__))), 'pmlb.csv')
+dataset_path = os.path.join(
+    os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__))),
+    'pmlb.csv')
 
 _dataset_index: List[Optional[pandas.DataFrame]] = [None]
 
@@ -36,11 +37,14 @@ def get_datasets() -> pandas.DataFrame:
     return _dataset_index[0]
 
 
-def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> Tuple[pandas.Series, ndarray, ndarray]:
+def load_dataset(
+    datasets: pandas.DataFrame,
+    dataset_name: str,
+) -> Tuple[pandas.Series, ndarray, ndarray]:
     matching_datasets = datasets[datasets['Dataset'] == dataset_name]
     if len(matching_datasets) <= 0:
         raise Exception('No matching dataset "{}".'.format(dataset_name))
-    dataset = matching_datasets.iloc[0].copy()
+    dataset = matching_datasets.iloc[0].copy()  # type: ignore
 
     # check cache first for raw inputs and outputs in the working directory
     cache_directory = os.path.join(os.getcwd(), ".pmlb_cache", dataset_name)
@@ -51,7 +55,7 @@ def load_dataset(datasets: pandas.DataFrame, dataset_name: str) -> Tuple[pandas.
     if dataset_name in _custom_loaders:
         loader = _custom_loaders[dataset_name]
 
-    inputs, outputs, task = loader(raw_inputs, raw_outputs)
+    inputs, outputs, task = loader(raw_inputs, raw_outputs)  # type: ignore
     if task is not None:
         dataset['Task'] = task
     return dataset, inputs, outputs
@@ -70,40 +74,50 @@ def _read_raw_pmlb(cache_directory, dataset_name):
             raw_inputs = numpy.load(f, allow_pickle=True)
             raw_outputs = numpy.load(f, allow_pickle=True)
     except FileNotFoundError:
-        raw_inputs, raw_outputs = pmlb.fetch_data(
-            dataset_name, return_X_y=True)
+        raw_inputs, raw_outputs = pmlb.fetch_data(dataset_name,
+                                                  return_X_y=True)
         _save_raw_pmlb(cache_directory, raw_inputs, raw_outputs)
 
     return raw_inputs, raw_outputs
 
 
-def _default_loader(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
+def _default_loader(
+    raw_inputs: ndarray,
+    raw_outputs: ndarray,
+) -> Tuple[ndarray, ndarray, Optional[str]]:
     inputs = _prepare_data(raw_inputs)
     outputs = _prepare_data(raw_outputs)
     return inputs, outputs, None
 
 
-def _load_MNIST(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
+def _load_MNIST(
+    raw_inputs: ndarray,
+    raw_outputs: ndarray,
+) -> Tuple[ndarray, ndarray, Optional[str]]:
     inputs = _prepare_matrix(raw_inputs, lambda value: value / 255.0)
     outputs = _prepare_value(raw_outputs, _one_hot)
-    return inputs, outputs, 'classification'
+    return inputs, outputs, 'classification'  # type: ignore
 
 
-def _load_201_pol(raw_inputs: ndarray, raw_outputs: ndarray) -> Tuple[ndarray, ndarray, Optional[str]]:
+def _load_201_pol(
+    raw_inputs: ndarray,
+    raw_outputs: ndarray,
+) -> Tuple[ndarray, ndarray, Optional[str]]:
     inputs, outputs, _ = _default_loader(raw_inputs, raw_outputs)
     return inputs, outputs, 'classification'
 
 
-_custom_loaders: Dict[str, Callable[[ndarray, ndarray], Tuple[ndarray, ndarray]]] = {
-    'mnist': _load_MNIST,
-    '201_pol': _load_201_pol,
-}
+_custom_loaders: Dict[str, Callable[[ndarray, ndarray],
+                                    Tuple[ndarray, ndarray]]] = {
+                                        'mnist': _load_MNIST,
+                                        '201_pol': _load_201_pol,
+                                    }  # type: ignore
 
 
 def _prepare_data(value) -> ndarray:
     shape = value.shape
     if len(shape) == 1:
-        return _prepare_value(value)
+        return _prepare_value(value)  # type: ignore
     if len(shape) > 1:
         return _prepare_matrix(value)
     raise Exception('Invalid shape {}.'.format(shape))
@@ -121,8 +135,9 @@ def _dynamic_value_transform(value: ndarray) -> Optional[ndarray]:
         return None
     elif num_distinct_values <= 2:
         preprocessed = _binary(value)
-    elif num_distinct_values <= 20 or not isinstance(value[0][0],
-                                                     numbers.Number):  # num_distinct_values > .01 * value.shape[0]
+    elif num_distinct_values <= 20 or not isinstance(
+            value[0][0],
+            numbers.Number):  # num_distinct_values > .01 * value.shape[0]
         preprocessed = _one_hot(value)
     else:
         preprocessed = _min_max(value)
@@ -132,8 +147,8 @@ def _dynamic_value_transform(value: ndarray) -> Optional[ndarray]:
 
 def _prepare_value(
         value: ndarray,
-        value_transform: Optional[Callable[[ndarray],
-                                           ndarray]] = _dynamic_value_transform,
+        value_transform: Callable[
+            [ndarray], ndarray] = _dynamic_value_transform,  # type: ignore
 ) -> Optional[ndarray]:
     value = numpy.reshape(value, (-1, 1))
     return value_transform(value)
@@ -141,8 +156,7 @@ def _prepare_value(
 
 def _prepare_matrix(
         values: ndarray,
-        value_transform: Optional[Callable[[ndarray],
-                                           ndarray]] = _dynamic_value_transform,
+        value_transform: Callable[[ndarray], ndarray] = _dynamic_value_transform,  # type: ignore
 ) -> ndarray:
     transformed_list = []
     for i in range(values.shape[1]):
@@ -162,9 +176,9 @@ def _min_max(value: ndarray) -> ndarray:
 def _one_hot(value: ndarray) -> ndarray:
     preprocessor = OneHotEncoder(handle_unknown='ignore', sparse=False)
     preprocessor.fit(value)
-    return preprocessor.transform(value)
+    return preprocessor.transform(value)  # type: ignore
 
 
 def _binary(value: ndarray) -> ndarray:
     # if there are only two values, set them as 0 and 1
-    return (value == value[0]).astype(np.int)
+    return (value == value[0]).astype(np.int)  # type: ignore

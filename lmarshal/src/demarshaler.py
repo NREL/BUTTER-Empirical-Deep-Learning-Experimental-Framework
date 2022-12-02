@@ -3,7 +3,7 @@ from typing import Dict, Mapping, Iterator, Union, Tuple, Type, Any
 
 from .common_marshaler import CommonMarshaler
 from .marshal_config import MarshalConfig
-from .types import TypeCode, ObjectDemarshaler, DemarshalingFactory, \
+from .marshal_types import TypeCode, ObjectDemarshaler, DemarshalingFactory, \
     DemarshalingInitializer
 
 
@@ -112,7 +112,7 @@ class Demarshaler(CommonMarshaler):
         return result if initialized_dest is None else initialized_dest
 
     @staticmethod
-    def default_object_factory(demarshaler: 'Demarshaler', source: Any, target_type: Type) -> {}:
+    def default_object_factory(demarshaler: 'Demarshaler', source: Any, target_type: Type) -> dict:
         return target_type.__new__(target_type)
 
     @staticmethod

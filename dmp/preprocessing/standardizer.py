@@ -19,8 +19,8 @@ class Standardizer(Preprocessor):
         self.maximum = maximum
         self.range = maximum - minimum
     
-    def forward(self, element: any) -> any:
+    def forward(self, element):
         return (element - self.minimum) / self.range
     
-    def backward(self, element: any) -> any:
+    def backward(self, element):
         return element * self.range + self.minimum

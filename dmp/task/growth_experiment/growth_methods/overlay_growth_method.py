@@ -1,11 +1,11 @@
 from functools import singledispatchmethod
-from typing import Any, Dict, Iterable, Set
+from typing import Any, Dict, Iterable, Set, Tuple
 
 import numpy
 import tensorflow
 import tensorflow.keras.layers as layers
-from dmp.structure.layer import *
-from dmp.structure.visitor.layer_to_keras import KerasLayer
+from dmp.layer.layer import *
+from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer
 
 
 class OverlayGrowthMethod:

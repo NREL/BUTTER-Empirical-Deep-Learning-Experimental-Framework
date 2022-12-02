@@ -42,7 +42,7 @@ def read_pandas(sweep, filters, columns):
     schema_fp.close()
 
     # Read parquet table
-    table = parquet.read_table(path, filesystem=fs, filters=filters, schema=schema, columns=columns)
+    table = parquet.read_table(path, filesystem=fs, filters=filters, schema=schema, columns=columns)  # type: ignore
 
     # Convert to pandas
     return table.to_pandas()

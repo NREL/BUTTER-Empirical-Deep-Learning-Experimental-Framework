@@ -2,17 +2,17 @@ import math
 import random
 import time
 from copy import deepcopy
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy
 import tensorflow.keras as keras
+import tensorflow
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import losses
-from dmp.structure.n_cell import *
-from cnn.cell_structures import *
+from dmp.layer.conv_cell import make_graph_cell, make_parallel_add_cell, make_parallel_concat_cell
 
-from dmp.structure.layer import *
-from dmp.structure.visitor.compute_free_parameters import compute_free_parameters
+from dmp.layer.visitor.compute_free_parameters import compute_free_parameters
+from dmp.layer import *
 
 
 def add_label_noise(label_noise, run_task, train_outputs):
@@ -116,7 +116,6 @@ def make_network_module_graph(
     widths: List[int],
     residual_mode: Optional[str],
     input_activation: str,
-    internal_activation: str,
     output_activation: str,
     layer_config: Dict[str, Any],
 ) -> Layer:
@@ -124,20 +123,17 @@ def make_network_module_graph(
 
     parent = Input({'shape': input_shape}, [])
     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
-    for d, layer_width in enumerate(widths):
+    for depth, width in enumerate(widths):
+        config = layer_config.copy()
 
         # Activation functions may be different for input, output, and hidden layers
-        activation = internal_activation
-        if d == 0:
-            activation = input_activation
-        elif d == len(widths) - 1:
-            activation = output_activation
+        if depth == 0:
+            config['activation'] = input_activation
+        elif depth == len(widths) - 1:
+            config['activation'] = output_activation
 
         # Fully connected layer
-        config = layer_config.copy()
-        config['activation'] = activation
-        config['units'] = layer_width
-
+        config['units'] = width
         layer = Dense(config, inputs=[parent])
 
         # Skip connections for residual modes
@@ -147,7 +143,8 @@ def make_network_module_graph(
             # If this isn't the first or last layer, and the previous layer is
             # of the same width insert a residual sum between layers
             # NB: Only works for rectangle
-            if d > 0 and d < len(widths) - 1 and layer_width == widths[d - 1]:
+            if depth > 0 and depth < len(widths) - 1 and width == widths[depth
+                                                                         - 1]:
                 layer = Add({}, inputs=[layer, parent])
         else:
             raise NotImplementedError(
@@ -195,7 +192,7 @@ def get_activation_factory(name: str) -> Callable:
         name,
         {
             'relu': keras.activations.relu,
-            'relu6': tf.nn.relu6,
+            'relu6': tensorflow.nn.relu6,
             'leaky_relu': lambda: keras.layers.LeakyReLU(),
             'elu': keras.activations.elu,
             'selu': keras.activations.selu,
@@ -216,110 +213,161 @@ def get_batch_normalization_factory(name: str) -> Any:
     return get_from_config_mapping(
         name,
         {
-            'all': lambda: layers.BatchNormalization(),
+            'all': lambda: keras.layers.BatchNormalization(),
             'none': lambda x: x,
         },
         'batch_norm',
     )
 
 
-def make_cnn_network(
-    input_shape: List[int],
-    widths: List[int],
-    # residual_mode: Optional[str],
-    input_activation: str,
-    internal_activation: str,
-    output_activation: str,
-    # global_config : Dict[str, Any],
-    cell_depth: int,
-    cell_type: str,
-    # cell_nodes: int,
-    cell_ops: List[List[str]],
-    classes: int,
-    batch_norm: str,
-) -> Layer:
-    """ Construct CNN out of Layers. """
-    layer_config : Dict[str, Any] = {
-        'batch_norm':batch_norm,
-        'activation':internal_activation,
-    } # TODO 
-    
-    downsamples = len(widths) - 1
+'''
++ Purpose?
+    + Make CNN/NN based on simplified task parameters
+    + Find NN that fits specific size using a shape function
 
-    # Determine internal structure
-    layer_list = ['stem']
-    widths_list = [0]
-    cell_depths = [
-        cell_depth // (downsamples + 1) for _ in range(downsamples + 1)
-    ]
-    for i in range(cell_depth % (downsamples + 1)):
-        cell_depths[-i - 1] += 1
+-> don't need intermediate 'widths here'
+    -> make a 'widths' extractor to log widths instead
+    -> instead work directly off of shape function?
+        -> shapeFunc(search parameter) -> network -> size_visitor -> size
+            -> shape func for nn's could make a widths-list, or not
+            -> maybe direct construction is best?
+            -> function that outputs layer type and width?
+            -> **function that outputs layer**
+'''
+
+
+def make_cnn_network(
+    input_shape: Sequence[int],
+    num_stacks:int,
+    cells_per_stack:int,
+    stem_factory,
+    cell_factory,
+    downsample_factory,
+    pooling_factory,
+    output_factory,
+) -> Layer:
+    '''
+    + Structure:
+        + Stem: 3x3 Conv with input activation
+        + Repeat N times:
+            + Repeat M times:
+                + Cell
+            + Downsample and double channels, optionally with Residual Connection
+                + Residual: 2x2 average pooling layer with stride 2 and a 1x1
+        + Global Pooling Layer
+        + Dense Output Layer with output activation
+
+    + Total depth (layer-wise or stage-wise)
+    + Total number of cells
+    + Total number of downsample steps
+    + Number of Cells per downsample
+    + Width / num channels
+        + Width profile (non-rectangular widths)
+    + Cell choice
+    + Downsample choice (residual mode, pooling type)
+
+    + config code inputs:
+        + stem factory?
+        + cell factory
+        + downsample factory
+        + pooling factory
+        + output factory?
+    '''
     
-    for i in range(downsamples + 1):
-        # Add downsampling layer
-        if i > 0:
-            layer_list.append('downsample')
-            widths_list.append(widths[i])
-        # Add cells
-        for _ in range(cell_depths[i]):
-            layer_list.append(cell_type)
-            widths_list.append(widths[i])
+    layer : Layer = Input({'shape': input_shape}, [])
+    layer = stem_factory(layer)
+    for s in range(num_stacks):
+        stack_input = layer
+        for c in range(cells_per_stack):
+            layer = cell_factory(layer)
+        layer = downsample_factory(layer, stack_input)
+        
+    
+
+
+
+def make_cnn_network_old(
+    input_shape: Sequence[int],
+    widths: Sequence[int],
+    residual_mode: str,
+    input_activation: str,
+    output_activation: str,
+    layer_config: Dict[str, Any],
+    cell_ops: List[List[str]],
+) -> Layer:
 
     # do the updated keras layer wise construction
-    parent : Layer = Input({'shape':input_shape}, [])
+    layer: Layer = Input({'shape': input_shape}, [])
+
     # Loop through layers
-    for i in range(len(layer_list)):
-        layer_width = widths_list[i]
-        layer_type = layer_list[i]
-        
+    for depth, (width, layer_type) in \
+        enumerate(zip(widths, layer_names)):
         config = layer_config.copy()
 
+        # Activation functions may be different for input, output, and hidden layers
+        if depth == 0:
+            config['activation'] = input_activation
+        elif depth == len(widths) - 1:
+            config['activation'] = output_activation
+
         if layer_type == 'stem':
-            #current = make_conv_stem(input_layer, widths[0], batch_norm)
             config['kernel_size'] = 3
-            config['stride'] = (1,1)
+            config['strides'] = (1, 1)
             config['padding'] = 'same'
-            config['filters'] = widths[i+1]
+            config['filters'] = width
             config['kernel_activation'] = input_activation
-            layer = Dense(config, [parent])
+            layer = DenseConvolutionalLayer(config, [layer])
         elif layer_type == 'graph':
-            config['filters'] = layer_width
+            config['filters'] = width
             layer = make_graph_cell(
                 config,
-                parent,
+                layer,
                 cell_ops,
             )
-            # layer = make_graph_cell(
-            #     type=cell_type,
-            #     inputs=parent,
-            #     nodes=cell_nodes,
-            #     operations=cell_ops,
-            #     filters=layer_width,
-            #     batch_norm=batch_norm,
-            #     activation=internal_activation,
-            #     # TODO: include regularizers, etc
-            # )
-        elif layer_type == 'parallelconcat':
-            # layer = make_parallel_concat_cell(
-            pass
+        # elif layer_type == 'parallelconcat':
+        #     layer = make_parallel_concat_cell(
+        #         config,
+        #         layer,
+        #         cell_ops,
+        #     )
         elif layer_type == 'paralleladd':
-            # layer = make_parallel_add_cell(
-            pass
-        elif layer_type == 'downsample':
-            layer = make_downsample(
-                inputs=parent,
-                filters=layer_width,
-                batch_norm=batch_norm,
-                activation=internal_activation,
+            config['filters'] = width
+            layer = make_parallel_add_cell(
+                config,
+                layer,
+                cell_ops,
             )
+        elif layer_type == 'downsample':
+            max_pool_config = config.copy()
+            max_pool_config['kernel_size'] = (2, 2)
+            max_pool_config['stride'] = (2, 2)
+            layer = MaxPool(max_pool_config, [layer])
+
+            conv_config = config.copy()
+            conv_config['kernel_size'] = (1, 1)
+            conv_config['stride'] = (1, 1)
+            layer = DenseConvolutionalLayer(conv_config, [layer])
+        elif layer_type == 'dense':
+            config['units'] = width
+            layer = Dense(config, [layer])
         else:
             raise ValueError(f'Unknown layer type {layer_type}')
-        parent = layer
-    # Add final classifier
-    final_classifier = make_final_classifier(inputs=parent,
-                                             classes=classes,
-                                             activation=output_activation)
-    return final_classifier
+
+        # Skip connections for residual modes
+        if residual_mode is None or residual_mode == 'none':
+            pass
+        elif residual_mode == 'full':
+            # If this isn't the first or last layer, and the previous layer is
+            # of the same width insert a residual sum between layers
+            # NB: Only works for same-sized layers!
+            if depth > 0 and depth < len(widths) - 1 and \
+                width == widths[depth - 1]:
+                layer = Add({}, inputs=[layer, layer.input])
+        else:
+            raise NotImplementedError(
+                f'Unknown residual mode "{residual_mode}".')
+
+    return layer
 
 
 def make_conv_network(
@@ -489,9 +537,8 @@ def binary_search_int(
 
 def find_best_layout_for_budget_and_depth(
     input_shape: Tuple[int, ...],
-    residual_mode: Optional[str],
+    residual_mode: str,
     input_activation: str,
-    internal_activation: str,
     output_activation: str,
     target_num_free_parameters: int,
     make_widths: Callable[[int], List[int]],
@@ -507,7 +554,6 @@ def find_best_layout_for_budget_and_depth(
             widths,
             residual_mode,
             input_activation,
-            internal_activation,
             output_activation,
             layer_args,
         )

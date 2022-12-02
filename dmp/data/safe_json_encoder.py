@@ -1,5 +1,6 @@
-from json.encoder import (JSONEncoder, _make_iterencode, encode_basestring_ascii, encode_basestring, INFINITY)
+from json.encoder import (JSONEncoder, _make_iterencode, encode_basestring_ascii, encode_basestring, INFINITY)  # type: ignore
 
+import json.encoder
 
 class SafeJSONEncoder(JSONEncoder):
 

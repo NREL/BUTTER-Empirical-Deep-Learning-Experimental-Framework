@@ -14,9 +14,9 @@ from typing import Any, Dict, Iterable, Optional, Tuple, List
 import simplejson
 import psycopg2
 
-psycopg2.extras.register_default_json(loads=simplejson.loads, globally=True)
-psycopg2.extras.register_default_jsonb(loads=simplejson.loads, globally=True)
-psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
+psycopg2.extras.register_default_json(loads=simplejson.loads, globally=True)  # type: ignore
+psycopg2.extras.register_default_jsonb(loads=simplejson.loads, globally=True)  # type: ignore
+psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)  # type: ignore
 
 class PostgresResultLogger(ResultLogger):
     _credentials: Dict[str, Any]

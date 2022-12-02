@@ -1,7 +1,8 @@
 from functools import singledispatchmethod
 import math
-from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeAlias, TypeVar, Union
-from dmp.structure.layer import *
+from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
+
+from dmp.layer import *
 
 
 class ComputeLayerShapesVisitor:

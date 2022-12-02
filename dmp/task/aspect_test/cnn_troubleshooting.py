@@ -1,5 +1,5 @@
 # File to troubleshoot the CNN functions in aspect test utils
-from dmp.structure.visitor.make_keras_network_from_module import make_keras_network_from_network_module
+from dmp.layer.visitor.make_keras_network_from_module import make_keras_network_from_network_module
 from dmp.task.aspect_test.aspect_test_utils import make_conv_network
 
 import tensorflow.keras as keras

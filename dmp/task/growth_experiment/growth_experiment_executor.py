@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 import numpy
 import tensorflow
 import tensorflow.keras as keras
-from dmp.structure.visitor.layer_to_keras import KerasLayer
+from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer
 from pytest import param
 
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
@@ -16,7 +16,7 @@ from dmp.task.aspect_test.aspect_test_utils import *
 from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.growth_experiment.growth_methods.overlay_growth_method import OverlayGrowthMethod
 from dmp.task.task_util import remap_key_prefixes
-
+from dmp.layer import *
 
 @dataclass
 class GrowthExperimentExecutor(AspectTestExecutor):

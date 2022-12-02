@@ -5,7 +5,7 @@ import numpy
 import tensorflow.keras.metrics as metrics
 from dmp.data.pmlb import pmlb_loader
 from dmp.jobqueue_interface import jobqueue_marshal
-from dmp.structure.visitor.layer_to_keras import KerasLayer, make_keras_network_from_layer
+from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer, make_keras_network_from_layer
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 from dmp.task.aspect_test.aspect_test_utils import *
 import dmp.task.aspect_test.keras_utils as keras_utils
@@ -203,17 +203,22 @@ class AspectTestExecutor():
 
         # TODO: make it so we don't need this hack
         shape = task.shape
-        residual_mode = None
+        residual_mode = 'none'
         residual_suffix = '_residual'
         if shape.endswith(residual_suffix):
             residual_mode = 'full'
             shape = shape[0:-len(residual_suffix)]
 
+        # TODO: is this the best way to do this? Maybe these could be passed as a dict?
         layer_args = {
             'kernel_regularizer': task.kernel_regularizer,
             'bias_regularizer': task.bias_regularizer,
             'activity_regularizer': task.activity_regularizer,
+            'activation': task.activation,
+            
         }
+        if task.batch_norm:
+            layer_args['batch_norm'] = task.batch_norm, # TODO: add this or use dict to config
 
         # Build NetworkModule network
         delta, widths, network_structure, num_free_parameters, layer_shapes = \
@@ -221,7 +226,6 @@ class AspectTestExecutor():
                 input_shape,
                 residual_mode,
                 task.input_activation,
-                task.activation,
                 output_activation,
                 target_size,
                 widths_factory(shape)(num_outputs, task.depth),
@@ -233,7 +237,7 @@ class AspectTestExecutor():
         relative_error = delta / task.size
         if numpy.abs(relative_error) > .2:
             raise ValueError(
-                f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.'
+                f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {task.size}.'
             )
 
         return (

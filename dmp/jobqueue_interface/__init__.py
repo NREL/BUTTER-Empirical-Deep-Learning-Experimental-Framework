@@ -1,13 +1,13 @@
 from typing import Tuple, Type
 from lmarshal import MarshalConfig, Marshal
-import dmp.structure.layer
+import dmp.layer.layer
 import dmp.task
 
 jobqueue_marshal: Marshal = Marshal(
     MarshalConfig(type_key='',
                   label_key='&',
                   reference_prefix='*',
-                  escape_prefix='!',
+                  escape_prefix='\\',
                   flat_dict_key=':',
                   label_all=False,
                   label_referenced=True,
@@ -16,4 +16,4 @@ jobqueue_marshal: Marshal = Marshal(
 
 jobqueue_marshal.register_types(dmp.task.task_types)
 
-jobqueue_marshal.register_types(dmp.structure.layer.network_module_types)
+jobqueue_marshal.register_types(dmp.layer.layer.network_module_types)

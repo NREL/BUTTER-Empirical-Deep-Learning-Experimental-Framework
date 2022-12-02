@@ -1,13 +1,13 @@
 from functools import singledispatchmethod
-from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeAlias, TypeVar, Union
+from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 import tensorflow.keras as keras
 import tensorflow
-from cnn.cell_structures import ConvolutionalLayer
+from dmp.layer.visitor.keras_interface.convolutional_layer import ConvolutionalLayer
 from dmp.task.aspect_test.aspect_test_utils import make_from_typed_config
+from dmp.layer import *
+# from dmp.cnn.cell_structures import ConvolutionalLayer
 
-from dmp.structure.layer import *
-
-KerasLayer: TypeAlias = Union[keras.layers.Layer, tensorflow.Tensor]
+KerasLayer = Union[keras.layers.Layer, tensorflow.Tensor]
 
 
 class LayerToKerasVisitor:

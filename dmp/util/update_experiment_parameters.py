@@ -14,7 +14,7 @@ from dmp.logging.postgres_parameter_map import PostgresParameterMap
 
 sys.path.append("../../")
 
-psycopg2.extras.register_uuid()
+psycopg2.extras.register_uuid()  # type: ignore
 
 class ParameterUpdate:
 

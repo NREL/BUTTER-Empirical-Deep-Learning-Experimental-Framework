@@ -23,8 +23,8 @@ class Normalizer(Preprocessor):
         self.standard_deviation = numpy.sqrt(M2 / n)
         # self.sampleVariance = M2 / (n - 1)
     
-    def forward(self, element: any) -> any:
+    def forward(self, element):
         return (element - self.mean) / self.standard_deviation
     
-    def backward(self, element: any) -> any:
+    def backward(self, element):
         return (element * self.standard_deviation) + self.mean

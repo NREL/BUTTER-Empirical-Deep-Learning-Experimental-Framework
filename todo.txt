@@ -1,3 +1,4 @@
++ filtering kwargs?
 
 + Do CNN merge
     + convert CNN builder code to use Layers
