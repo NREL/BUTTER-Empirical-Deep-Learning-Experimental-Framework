@@ -18,6 +18,7 @@ from dmp.task.growth_experiment.growth_methods.overlay_growth_method import Over
 from dmp.task.task_util import remap_key_prefixes
 from dmp.layer import *
 
+
 @dataclass
 class GrowthExperimentExecutor(AspectTestExecutor):
     '''
@@ -197,9 +198,11 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         self,
         config: dict,
         source: Layer,
-        source_layer_to_keras_map: Dict[Layer, Tuple[KerasLayer,tensorflow.Tensor]],
+        source_layer_to_keras_map: Dict[Layer, Tuple[KerasLayer,
+                                                     tensorflow.Tensor]],
         dest: Layer,
-        dest_layer_to_keras_map: Dict[Layer, Tuple[KerasLayer,tensorflow.Tensor]],
+        dest_layer_to_keras_map: Dict[Layer, Tuple[KerasLayer,
+                                                   tensorflow.Tensor]],
     ) -> None:
         make_from_typed_config(
             config,
@@ -217,6 +220,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
         self,
         config: dict,
     ) -> keras.callbacks.Callback:
-        return make_from_typed_config(config, {
-            'EarlyStopping': keras.callbacks.EarlyStopping,
-        }, 'growth_trigger')
+        return make_from_typed_config(
+            config, {
+                'EarlyStopping': keras.callbacks.EarlyStopping,
+            }, 'growth_trigger')

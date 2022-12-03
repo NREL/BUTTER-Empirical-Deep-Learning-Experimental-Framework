@@ -7,4 +7,3 @@ task_types: Tuple[Type, ...] = (
     AspectTestTask,
     GrowthExperiment,
 )
-

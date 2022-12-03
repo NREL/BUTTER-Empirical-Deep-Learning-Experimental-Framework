@@ -13,8 +13,8 @@ import sys
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        'project', help='project identifier in your jobqueue.json file')
+    parser.add_argument('project',
+                        help='project identifier in your jobqueue.json file')
     parser.add_argument('queue', help='queue id to use (smallint)')
     args = parser.parse_args()
 

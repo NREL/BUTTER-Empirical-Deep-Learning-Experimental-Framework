@@ -14,20 +14,23 @@ import tensorflow
 def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
 
     devices = []
-    devices.extend(['/GPU:' + str(i)
-                   for i in range(first_gpu, first_gpu + num_gpus)])
+    devices.extend(
+        ['/GPU:' + str(i) for i in range(first_gpu, first_gpu + num_gpus)])
     devices.append('/CPU:0')  # TF batches all CPU's into one device
 
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
     print(
-        f'Found: {len(gpus)} GPUs. Using: {first_gpu} - {first_gpu + num_gpus}.')
+        f'Found: {len(gpus)} GPUs. Using: {first_gpu} - {first_gpu + num_gpus}.'
+    )
     gpu_devices = []
     for i in range(first_gpu, first_gpu + num_gpus):
         gpu = gpus[i]
         gpu_devices.append(gpu)
         tensorflow.config.experimental.set_virtual_device_configuration(
-            gpu,
-            [tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=gpu_mem)])
+            gpu, [
+                tensorflow.config.experimental.VirtualDeviceConfiguration(
+                    memory_limit=gpu_mem)
+            ])
 
     cpus = tensorflow.config.experimental.list_physical_devices('CPU')
     # print(f'cpus: {cpus}')

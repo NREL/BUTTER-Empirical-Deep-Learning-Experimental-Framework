@@ -1,7 +1,8 @@
 from typing import Dict, Iterable, Tuple
 
 
-def remap_key_prefixes(target: Dict, prefix_mapping: Iterable[Tuple[str, str]]) -> dict:
+def remap_key_prefixes(target: Dict,
+                       prefix_mapping: Iterable[Tuple[str, str]]) -> dict:
     result = {}
     for k, v in target.items():
         if isinstance(k, str):

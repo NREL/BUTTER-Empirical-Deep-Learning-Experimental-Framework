@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optio
 from dmp.layer.visitor.compute_layer_shapes import compute_layer_shapes
 from dmp.layer import *
 
+
 class ComputeFreeParametersVisitor:
 
     def __init__(

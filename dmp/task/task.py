@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Tuple, Union
 
 import tensorflow
 
-
 ParameterValue = Union[None, bool, int, float, str]
 ParameterDict = Dict[str, "Parameter"]
 Parameter = Union[ParameterValue, ParameterDict]
@@ -18,14 +17,15 @@ FlatParameterDict = Dict[str, ParameterValue]
 
 @dataclass
 class Task:
-    
+
     seed: int
     batch: str
 
     @abstractmethod
-    def __call__(self, worker, *args, **kwargs
-                 # TODO: fix the history part of this return type
-                 ) -> Dict[str, Any]:
+    def __call__(
+        self, worker, *args, **kwargs
+        # TODO: fix the history part of this return type
+    ) -> Dict[str, Any]:
         pass
 
     @property
@@ -39,8 +39,8 @@ class Task:
 
         parameters['task_version'] = self.version
         parameters['tensorflow_version'] = str(tensorflow.__version__)
-        parameters['python_version'] = str(platform.python_version()) 
-        parameters['platform'] = str(platform.platform()) 
+        parameters['python_version'] = str(platform.python_version())
+        parameters['platform'] = str(platform.platform())
 
         git_hash = None
         try:
@@ -54,7 +54,7 @@ class Task:
 
         parameters['hostname'] = str(platform.node())
         parameters['slurm_job_id'] = os.getenv("SLURM_JOB_ID")
- 
+
         return parameters  # type: ignore
 
     def extract_parameters(

@@ -107,7 +107,8 @@ def make_parallel_add_cell(
     # + multiple parallel paths of serial ops are applied and then added
     return make_parallel_cell(Add, width, operations, conv_config,
                               pooling_config, input)
-                              
+
+
 # def make_parallel_concat_cell(
 #         layer_config: Dict[str, Any],  # layer configuration
 #         input: Layer,  # cell input
@@ -115,5 +116,3 @@ def make_parallel_add_cell(
 # ) -> Layer:
 #     # + multiple parallel paths of serial ops are applied and then concatenated
 #     return make_parallel_cell(layer_config, input, operations, Concatenate)
-
-

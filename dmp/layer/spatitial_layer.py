@@ -57,4 +57,3 @@ class ASpatitialLayer(Layer):
             lambda: conv_shape + (num_channels, ),
             lambda: (num_channels, ) + conv_shape,
         )
-

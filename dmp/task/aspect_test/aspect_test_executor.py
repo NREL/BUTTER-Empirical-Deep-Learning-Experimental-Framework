@@ -215,10 +215,10 @@ class AspectTestExecutor():
             'bias_regularizer': task.bias_regularizer,
             'activity_regularizer': task.activity_regularizer,
             'activation': task.activation,
-            
         }
         if task.batch_norm:
-            layer_args['batch_norm'] = task.batch_norm, # TODO: add this or use dict to config
+            layer_args[
+                'batch_norm'] = task.batch_norm,  # TODO: add this or use dict to config
 
         # Build NetworkModule network
         delta, widths, network_structure, num_free_parameters, layer_shapes = \

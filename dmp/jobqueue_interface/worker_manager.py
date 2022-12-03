@@ -12,9 +12,14 @@ if __name__ == "__main__":
     while True:
         print(f'Start subprocess loop...')
 
-        print(f'Launching subprocess command "{" ".join(subprocess_args)}"...', flush=True)
-        worker = subprocess.Popen(subprocess_args, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE,
-                                  stderr=subprocess.STDOUT, close_fds=True)
+        print(f'Launching subprocess command "{" ".join(subprocess_args)}"...',
+              flush=True)
+        worker = subprocess.Popen(subprocess_args,
+                                  bufsize=1,
+                                  universal_newlines=True,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT,
+                                  close_fds=True)
         while True:
             outstream = worker.stdout
             if outstream is None:
@@ -30,4 +35,6 @@ if __name__ == "__main__":
             break
         print(f'Subprocess failed with returncode {returncode}.', flush=True)
         time.sleep(random.uniform(5, 90))
-    print(f'Subprocess completed with returncode {returncode}, exiting Worker Manager...', flush=True)
+    print(
+        f'Subprocess completed with returncode {returncode}, exiting Worker Manager...',
+        flush=True)

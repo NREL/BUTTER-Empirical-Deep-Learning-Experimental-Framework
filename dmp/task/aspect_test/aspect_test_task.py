@@ -12,31 +12,19 @@ from .aspect_test_utils import *
 
 @dataclass
 class AspectTestTask(Task):
-    # Parameters
-
-    # log: str = './log'
     dataset: str
-    # test_split: int = 0
     input_activation: str
     activation: str
 
-    optimizer: dict
-    # learning_rate = optimizer.config.learning_rate
-    # optimizer = optimizer.class_name
-    # learning_rate: float
+    optimizer: dict  # contains learning rate
 
     shape: str
     size: int
     depth: int
-    # epoch_scale: dict
-    # rep: int
 
     test_split: float
     test_split_method: str
-    run_config: dict
-    # run_config.batch_size
-    # run_config.epochs
-    # run_config.shuffle
+    run_config: dict  # contains batch size, epochs, shuffle
 
     label_noise: float
 

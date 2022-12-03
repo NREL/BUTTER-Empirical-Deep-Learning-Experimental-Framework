@@ -325,7 +325,7 @@ def output_factory_generator(
     config: Dict[str, Any],
     num_outputs: int,
 ) -> Callable[[Layer], Layer]:
-    return lambda input : Dense(config, GlobalAveragePooling({}, input))
+    return lambda input: Dense(config, GlobalAveragePooling({}, input))
 
 
 def compute_network_configuration(num_outputs,
