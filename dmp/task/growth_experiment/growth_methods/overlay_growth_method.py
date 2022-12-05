@@ -7,7 +7,6 @@ import tensorflow.keras.layers as layers
 from dmp.layer.layer import *
 from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer
 
-
 class OverlayGrowthMethod:
     """
     Visitor that fills one network with the values from another. 

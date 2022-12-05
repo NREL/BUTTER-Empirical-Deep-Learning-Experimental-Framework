@@ -16,7 +16,7 @@ from dmp.jobqueue_interface import jobqueue_marshal
 import sys
 
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
-from dmp.task.aspect_test.aspect_test_utils import find_best_layout_for_budget_and_depth
+
 
 
 def do_parameter_sweep(sweep_config, task_handler):

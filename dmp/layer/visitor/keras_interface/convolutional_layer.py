@@ -2,7 +2,7 @@ from typing import Any, Callable, List, Tuple, Union
 import tensorflow.keras as keras
 import tensorflow.keras.layers as layers
 
-from dmp.task.aspect_test.aspect_test_utils import get_activation_factory, get_batch_normalization_factory
+from dmp.task.training_experiment.training_experiment_utils import get_activation_factory, get_batch_normalization_factory
 
 
 class ConvolutionalLayer(layers.Layer):

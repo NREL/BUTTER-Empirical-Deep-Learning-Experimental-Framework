@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optio
 import tensorflow.keras as keras
 import tensorflow
 from dmp.layer.visitor.keras_interface.convolutional_layer import ConvolutionalLayer
-from dmp.task.aspect_test.aspect_test_utils import make_from_typed_config
+from dmp.task.training_experiment.training_experiment_utils import make_from_typed_config
 from dmp.layer import *
 # from dmp.cnn.cell_structures import ConvolutionalLayer
 

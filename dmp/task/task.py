@@ -2,12 +2,7 @@ from abc import ABC, abstractmethod
 import collections as collections
 import collections.abc
 from dataclasses import dataclass
-import os
-import platform
-import subprocess
 from typing import Any, Dict, List, Tuple, Union
-
-import tensorflow
 
 ParameterValue = Union[None, bool, int, float, str]
 ParameterDict = Dict[str, "Parameter"]
@@ -16,7 +11,7 @@ FlatParameterDict = Dict[str, ParameterValue]
 
 
 @dataclass
-class Task:
+class Task(ABC):
 
     seed: int
     batch: str
@@ -36,25 +31,7 @@ class Task:
     def parameters(self) -> ParameterDict:
         parameters = self.extract_parameters()
         parameters['task'] = type(self).__name__
-
         parameters['task_version'] = self.version
-        parameters['tensorflow_version'] = str(tensorflow.__version__)
-        parameters['python_version'] = str(platform.python_version())
-        parameters['platform'] = str(platform.platform())
-
-        git_hash = None
-        try:
-            git_hash = subprocess.check_output(
-                ["git", "describe", "--always"],
-                cwd=os.path.dirname(__file__)).strip().decode()
-        except:
-            pass
-
-        parameters['git_hash'] = git_hash
-
-        parameters['hostname'] = str(platform.node())
-        parameters['slurm_job_id'] = os.getenv("SLURM_JOB_ID")
-
         return parameters  # type: ignore
 
     def extract_parameters(

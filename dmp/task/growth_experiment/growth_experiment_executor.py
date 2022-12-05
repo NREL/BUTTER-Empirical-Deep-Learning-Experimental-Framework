@@ -1,31 +1,26 @@
 import copy
 import math
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import numpy
-import tensorflow
-import tensorflow.keras as keras
-from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer
-from pytest import param
 
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
-from dmp.jobqueue_interface import jobqueue_marshal
-from dmp.task.aspect_test.aspect_test_executor import AspectTestExecutor
-from dmp.task.aspect_test.aspect_test_utils import *
 from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.growth_experiment.growth_methods.overlay_growth_method import OverlayGrowthMethod
 from dmp.task.task_util import remap_key_prefixes
-from dmp.layer import *
+from dmp.task.training_experiment.training_experiment_utils import *
+from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
+from dmp.task.training_experiment.network import Network
 
 
-@dataclass
-class GrowthExperimentExecutor(AspectTestExecutor):
+class GrowthExperimentExecutor(TrainingExperimentExecutor):
     '''
     '''
 
-    def __call__(self, task: GrowthExperiment, worker, *args, **kwargs) \
-            -> Dict[str, Any]:
+    def __call__(self) -> Dict[str, Any]:
+        return self.result
+
+    def __init__(self, task: GrowthExperiment, worker, *args, **kwargs):
 
         # check to make sure the growth scale is larger than 1
         if task.growth_scale < 1:
@@ -37,26 +32,15 @@ class GrowthExperimentExecutor(AspectTestExecutor):
             ml_task,
             input_shape,
             output_shape,
-            prepared_config,
-            make_tensorflow_dataset,
-        ) = self.load_and_prepare_dataset(task, val_portion=task.val_split)
-
-        # prepare test data set
-        test_data_key = 'test_data'
-        test_data = (prepared_config[test_data_key][0],
-                     prepared_config[test_data_key][1], test_data_key)
-        del prepared_config[test_data_key]
-        test_data = \
-            (make_tensorflow_dataset(test_data[0], test_data[1]), test_data_key)
+            fit_config,
+            test_data,
+        ) = self.load_and_prepare_dataset(task)
 
         history: dict = {}
         growth_step: int = 0
         epoch_parameters: int = 0
         epochs: int = 0
-        prev_network_structure = None
-        prev_layer_to_keras_map = None
-        output_activation = None
-        num_free_parameters: int = 0
+        previous_network: Optional[Network] = None
         on_final_iteration: bool = False
         while not on_final_iteration:
 
@@ -65,7 +49,7 @@ class GrowthExperimentExecutor(AspectTestExecutor):
                            math.pow(task.growth_scale, growth_step)))
 
             # if we 'skipped' over a growth step, handle it
-            if target_size <= num_free_parameters:
+            if previous_network is not None and target_size <= previous_network.num_free_parameters:
                 growth_step += 1
                 continue
 
@@ -74,146 +58,90 @@ class GrowthExperimentExecutor(AspectTestExecutor):
                 on_final_iteration = True
                 target_size = task.size
 
-            (
-                network_structure,
-                layer_shapes,
-                widths,
-                num_free_parameters,
-                run_loss,
-                output_activation,
-            ) = self.make_network(
+            network: Network = self.make_network(
                 task,
                 input_shape,
                 output_shape,
-                ml_task,
                 target_size,
+                ml_task,
             )
 
             max_epochs_at_this_iteration = min(
                 epochs - task.max_total_epochs,
-                int(
-                    math.floor((task.max_equivalent_epoch_budget * task.size) /
-                               num_free_parameters)))
-
+                math.floor((task.max_equivalent_epoch_budget * task.size) /
+                           network.num_free_parameters))
+            fit_config['epochs'] = max_epochs_at_this_iteration
             if max_epochs_at_this_iteration <= 0:
                 break
 
-            keras_model, layer_to_keras_map, run_metrics, run_optimizer = \
-                self.make_keras_model(worker, task, network_structure, layer_shapes)
+            if previous_network is not None:
+                self.grow_network(task, previous_network, network)
 
-            if prev_network_structure is not None and \
-                prev_layer_to_keras_map is not None:
-                self.grow_network(
-                    task.growth_method,
-                    prev_network_structure,
-                    prev_layer_to_keras_map,
-                    network_structure,
-                    layer_to_keras_map,
-                )
+            network.compile_model(task.optimizer)
 
-            self.compile_keras_network(
-                num_free_parameters,
-                run_loss,
-                keras_model,
-                run_metrics,
-                run_optimizer,
-            )
-
-            prepared_config['epochs'] = max_epochs_at_this_iteration
-
-            test_history = growth_experiment_utils.AdditionalValidationSets(
-                [test_data],
-                batch_size=task.run_config['batch_size'],
-            )
-
-            callbacks: List[keras.callbacks.Callback] = [test_history]
-
-            if not on_final_iteration:
+            callbacks = self.make_callbacks(task, test_data)
+            if on_final_iteration:
+                self.add_early_stopping_callback(task, callbacks)
+            else:
                 callbacks.append(
                     self.make_growth_trigger_callback(task.growth_trigger))
 
-            iteration_history = self.fit_model(
-                task,
-                keras_model,
-                prepared_config,
-                callbacks,
-            )
+            model_history = self.fit_model(fit_config, network, callbacks)
 
-            # Add test set history into history dict.
-            iteration_history.update(test_history.history)
-
-            num_epochs = len(iteration_history['loss'])
-
-            # Add num_free_parameters to history dictionary and append to master
-            # histories dictionary
-            iteration_history['parameter_count'] = \
-                [num_free_parameters] * num_epochs
-
-            # Add growth points to history dictionary
-            iteration_history['growth_points'] = \
-                [0] * num_epochs
+            num_epochs = len(model_history['loss'])
+            model_history['parameter_count'] = \
+                [network.num_free_parameters] * num_epochs
+            model_history['growth_points'] = [0] * num_epochs
 
             # If the growth trigger is EarlyStopping and the
             # 'restore_best_weights' flag is set, indicate growth point at epoch
             # that achieves lowest val_loss else growth occured at final epoch
             if task.growth_trigger.get('restore_best_weights', False):
-                iteration_history['growth_points'][\
-                    numpy.argmin(iteration_history['val_loss'])] = 1
+                model_history['growth_points'][numpy.argmin(
+                    model_history['val_loss'])] = 1
             else:
-                iteration_history['growth_points'][-1] = 1
+                model_history['growth_points'][-1] = 1
 
             # Extend histories dictionary
             if len(history.keys()) == 0:
-                history = copy.deepcopy(iteration_history)
+                history = copy.deepcopy(model_history)
             else:
-                for k in history.keys():
-                    if type(history[k]) is list:
-                        history[k].extend(iteration_history[k])
+                for k, v in history.items():
+                    if type(v) is list:
+                        v.extend(model_history[k])
 
-            prev_network_structure = network_structure
-            prev_layer_to_keras_map = layer_to_keras_map
+            previous_network = network
             growth_step += 1
             epochs += num_epochs
-            epoch_parameters += num_epochs * num_free_parameters
+            epoch_parameters += num_epochs * network.num_free_parameters
             continue  # just put this here for better readability
 
-        # Rename history keys
-        history = remap_key_prefixes(history, [
-            ('val_', 'validation_'),
-            (test_data_key + '_', 'test_'),
-            ('', 'train_'),
-        ])  # type: ignore
+        if previous_network is None:
+            raise RuntimeError(f'No result record generated for task {task}.')
 
-        return self.make_result_record(
+        self.result = self.make_result_record(
             task,
             worker,
-            network_structure,  # type: ignore
-            widths,  # type: ignore
-            num_free_parameters,
-            output_activation,  # type: ignore
+            previous_network,
             history,
         )
 
     def grow_network(
         self,
-        config: dict,
-        source: Layer,
-        source_layer_to_keras_map: Dict[Layer, Tuple[KerasLayer,
-                                                     tensorflow.Tensor]],
-        dest: Layer,
-        dest_layer_to_keras_map: Dict[Layer, Tuple[KerasLayer,
-                                                   tensorflow.Tensor]],
+        task: GrowthExperiment,
+        source: Network,
+        dest: Network,
     ) -> None:
         make_from_typed_config(
-            config,
+            task.growth_method,
             {
                 'NetworkOverlayer': OverlayGrowthMethod,
             },
             'growth_method',
-            source,
-            source_layer_to_keras_map,
-            dest,
-            dest_layer_to_keras_map,
+            source.network_structure,
+            source.layer_to_keras_map,
+            dest.network_structure,
+            dest.layer_to_keras_map,
         )
 
     def make_growth_trigger_callback(

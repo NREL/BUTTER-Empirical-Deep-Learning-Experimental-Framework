@@ -54,66 +54,51 @@ def add_label_noise(label_noise, run_task, train_outputs):
             )
 
 
-def prepare_dataset(
+def split_dataset(
     test_split_method: str,
-    split_portion: float,
+    test_split: float,
+    validation_split: float,
     label_noise: float,
-    run_config: dict,
     run_task: str,
     inputs,
     outputs,
-    val_portion: Optional[float] = None,
-) -> Dict[str, Any]:
-    prepared_config = deepcopy(run_config)
+) -> Tuple[Tuple[Any, Any], Tuple[Any, Any], Tuple[Any, Any], ]:
+    validation_inputs, validation_outputs = (None, None)
+    train_inputs, train_outputs = (None, None)
+    test_inputs, test_outputs = (None, None)
+
     if test_split_method == 'shuffled_train_test_split':
-
         train_inputs, test_inputs, train_outputs, test_outputs = \
-            train_test_split(
-                inputs,
-                outputs,
-                test_size=split_portion,
-                shuffle=True,
-            )
+                train_test_split(
+                    inputs,
+                    outputs,
+                    test_size=test_split,
+                    shuffle=True,
+                )
+
+        if validation_split is not None and validation_split > 0.0:
+            train_inputs, validation_inputs, train_outputs, validation_outputs = \
+                train_test_split(
+                    train_inputs,
+                    train_outputs,
+                    test_size=int(validation_split/(1-test_split)),
+                    shuffle=True,
+                )
+
         add_label_noise(label_noise, run_task, train_outputs)
-
-        prepared_config['validation_data'] = (test_inputs, test_outputs)
-        prepared_config['x'] = train_inputs
-        prepared_config['y'] = train_outputs
-    elif test_split_method == 'shuffled_train_val_test_split':
-
-        train_inputs, test_inputs, train_outputs, test_outputs = \
-            train_test_split(
-                inputs,
-                outputs,
-                test_size=split_portion,
-                shuffle=True,
-            )
-        if val_portion is None:
-            val_portion = 0.0
-
-        train_inputs, val_inputs, train_outputs, val_outputs = \
-            train_test_split(
-                train_inputs,
-                train_outputs,
-                test_size=int(val_portion/(1-split_portion)),
-                shuffle=True,
-            )
-        add_label_noise(label_noise, run_task, train_outputs)
-
-        prepared_config['test_data'] = (test_inputs, test_outputs)
-        prepared_config['validation_data'] = (val_inputs, val_outputs)
-        prepared_config['x'] = train_inputs
-        prepared_config['y'] = train_outputs
     else:
         raise NotImplementedError(
             f'Unknown test_split_method {test_split_method}.')
-        # run_config['x'] = inputs
-        # run_config['y'] = outputs
-    return prepared_config
+
+    return (
+        (train_inputs, train_outputs),
+        (validation_inputs, validation_outputs),
+        (test_inputs, test_outputs),
+    )
 
 
 def make_simple_dense_network(
-    input_shape: Tuple[int, ...],
+    input_shape: Sequence[int],
     widths: List[int],
     residual_mode: Optional[str],
     input_activation: str,
@@ -328,8 +313,10 @@ def output_factory_generator(
     return lambda input: Dense(config, GlobalAveragePooling({}, input))
 
 
-def compute_network_configuration(num_outputs,
-                                  ml_task: str) -> Tuple[Any, Any]:
+def get_output_activation_and_loss_for_ml_task(
+    num_outputs,
+    ml_task: str,
+) -> Tuple[Any, Any]:
     output_activation = 'relu'
     if ml_task == 'regression':
         run_loss = losses.mean_squared_error
@@ -375,7 +362,7 @@ def binary_search_int(
 
 
 def find_best_layout_for_budget_and_depth(
-    input_shape: Tuple[int, ...],
+    input_shape: Sequence[int],
     residual_mode: str,
     input_activation: str,
     output_activation: str,

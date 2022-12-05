@@ -1,13 +1,7 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict, Optional
 
-from dmp.task.task import Parameter, ParameterDict, Task
-
-from .aspect_test_utils import *
-
-# budget -> size
-# topology -> shape
-#
+from dmp.task.task import ParameterDict, Task
 
 
 @dataclass
@@ -36,8 +30,7 @@ class AspectTestTask(Task):
     save_every_epochs: Optional[int] = None
 
     def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
-        from .aspect_test_executor import AspectTestExecutor
-        return AspectTestExecutor()(self, worker, *args, **kwargs)
+        raise NotImplementedError()
 
     @property
     def version(self) -> int:

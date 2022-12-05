@@ -1,15 +1,14 @@
 import dataclasses
 from dataclasses import dataclass, field
-from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 from typing import Optional, Any, Dict
 
-from .growth_experiment_utils import *
+from dmp.task.training_experiment.training_experiment import TrainingExperiment
 
 
 @dataclass
-class GrowthExperiment(AspectTestTask):
+class GrowthExperiment(TrainingExperiment):
 
-    val_split: float = .1
+    # val_split: float = .1 # moved to TrainingExperiment
     # growth_trigger: str = 'EarlyStopping'
     growth_trigger: dict = \
         field(default_factory=lambda: {
@@ -27,4 +26,4 @@ class GrowthExperiment(AspectTestTask):
 
     def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
         from .growth_experiment_executor import GrowthExperimentExecutor
-        return GrowthExperimentExecutor()(self, worker, *args, **kwargs)
+        return GrowthExperimentExecutor(self, worker, *args, **kwargs)()

@@ -1,3 +1,23 @@
++ new task format
++ new schema design
++ run converter
+
++ experiment with parquet compression
++ update postgres result logger
++ task converter
+
++ new summary schema
++ new materialization script
++ new query script
+
++ update growth visitor
+
++ subprocess runner method
+
+
+
+
+
 + filtering kwargs?
 
 + Do CNN merge
