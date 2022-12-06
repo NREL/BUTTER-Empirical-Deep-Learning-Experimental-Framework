@@ -13,8 +13,9 @@ class TrainingExperiment(Task):
     validation_split: float
     label_noise: float
 
-    run_config: dict  # contains batch size, epochs, shuffle
-    optimizer: dict  # contains learning rate
+    fit_config: dict  # contains batch size, epochs, shuffle (migrate from run_config)
+    optimizer: dict  # contains learning rate (migrate converting to typed config from keras serialization)
+    loss : dict # migrate from runtime (converting from simple string to typed config)
     early_stopping: Optional[dict]
     save_every_epochs: int
 
@@ -37,13 +38,13 @@ class TrainingExperiment(Task):
                 parameters[dest] = parameters[src]
                 del parameters[src]
 
-        rename_param('optimizer.config.learning_rate', 'learning_rate')
-        rename_param('optimizer.class_name', 'optimizer')
-        rename_param('run_config.batch_size', 'batch_size')
-        rename_param('run_config.epochs', 'epochs')
-
-        parameters.pop('run_config.validation_split', None)
-        parameters.pop('run_config.verbose', None)
+        # rename_param('optimizer.config.learning_rate', 'learning_rate') # migrate to optimizer.learning_rate
+        # rename_param('optimizer.class_name', 'optimizer') # migrate to optimizer.type
+        # rename_param('run_config.batch_size', 'batch_size') # migrate to fit_config.batch_size
+        # rename_param('run_config.epochs', 'epochs') # migrate to fit_config.epochs
+        
+        # parameters.pop('run_config.validation_split', None) #??
+        # parameters.pop('run_config.verbose', None) #??
 
         return parameters
 

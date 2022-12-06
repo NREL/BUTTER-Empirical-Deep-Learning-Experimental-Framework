@@ -138,72 +138,81 @@ def split_dataset(
 #         parent = layer
 #     return parent
 
-
-def get_from_config_mapping(
-    name: Any,
-    mapping: Dict[Any, Any],
-    config_name: str,
-) -> Any:
-    if name in mapping:
-        return mapping[name]
-    raise NotImplementedError(f'Unknown {config_name} "{name}".')
+K = TypeVar('K')
+V = TypeVar('V')
 
 
-def get_params_and_type_from_config(
-    config: dict,
-    type_key: str = 'type',
-) -> Tuple[str, dict]:
+def dispatch(
+    key: K,  # key to dispatch on
+    dispatch_table: Dict[K, V],
+    dispatch_name: str,
+) -> V:
+    try:
+        return dispatch_table[key]
+    except KeyError:
+        raise NotImplementedError(f'Unknown {dispatch_name}, "{key}".')
+
+
+def make_dispatch_function(
+    dispatch_name: str,  # used when raising an exception
+    dispatch_table: Dict[K, V],
+) -> Callable[[K], V]:
+
+    def dispatch_function(name: K) -> V:
+        return dispatch(name, dispatch_table, dispatch_name)
+
+    return dispatch_function
+
+
+type_key: str = 'type'
+
+
+def get_params_and_type_from_config(config: dict) -> Tuple[str, dict]:
     params = config.copy()
     del params[type_key]
     return config[type_key], params
 
-
-def make_from_typed_config(
-    config: Optional[Dict],
-    mapping: Dict[str, Callable],
-    config_name: str,
-    *args,
-    **kwargs,
+def make_from_config_using_keras_get(
+        config: dict,
+        keras_get_function: Callable,
+        name: str,  # used for exception messages
 ) -> Any:
     if config is None:
         return None
 
     type, params = get_params_and_type_from_config(config)
-    factory = get_from_config_mapping(type, mapping, config_name)
-    return factory(*args, **kwargs, **params)
+    result = keras_get_function({'class_name': type, 'config': params})
+    if result is None:
+        raise ValueError(f'Unknown {name}, {config}.')
 
 
-def get_activation_factory(name: str) -> Callable:
-    return get_from_config_mapping(
-        name,
-        {
-            'relu': keras.activations.relu,
-            'relu6': tensorflow.nn.relu6,
-            'leaky_relu': lambda: keras.layers.LeakyReLU(),
-            'elu': keras.activations.elu,
-            'selu': keras.activations.selu,
-            'sigmoid': keras.activations.sigmoid,
-            'hard_sigmoid': keras.activations.hard_sigmoid,
-            'swish': keras.activations.swish,
-            'tanh': keras.activations.tanh,
-            'softplus': keras.activations.softplus,
-            'softsign': keras.activations.softsign,
-            'softmax': keras.activations.softmax,
-            'linear': keras.activations.linear,
-        },
-        'activation',
-    )
+def make_typed_config_factory(
+        name: str,  # name of the thing we are making from the config
+        type_dispatch_table: Dict[str, Callable],  # factory dispatch table 
+) -> Callable:
+
+    dispatch_function = make_dispatch_function(name, type_dispatch_table)
+
+    def factory(
+        config: Optional[Dict],  # config to use with type key
+        *args,  # forwarded args
+        **kwargs,
+    ):
+        if config is None:
+            return None
+
+        type, params = get_params_and_type_from_config(config)
+        return dispatch_function(type)(*args, **kwargs, **params)
+
+    return factory
 
 
-def get_batch_normalization_factory(name: str) -> Any:
-    return get_from_config_mapping(
-        name,
-        {
-            'all': lambda: keras.layers.BatchNormalization(),
-            'none': lambda x: x,
-        },
-        'batch_norm',
-    )
+def make_from_optional_typed_config(
+    config: dict,
+    key: str,  # name of the thing we are making from the config
+    dispatch_factory: Callable,
+) -> Any:
+    return dispatch_factory(config.get(key, None))
 
 
 '''
@@ -314,24 +323,24 @@ def output_factory_generator(
 
 
 def get_output_activation_and_loss_for_ml_task(
-    num_outputs,
+    num_outputs: int,
     ml_task: str,
-) -> Tuple[Any, Any]:
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     output_activation = 'relu'
     if ml_task == 'regression':
-        run_loss = losses.mean_squared_error
+        run_loss = 'MeanSquaredError'
         output_activation = 'sigmoid'
     elif ml_task == 'classification':
         if num_outputs == 1:
             output_activation = 'sigmoid'
-            run_loss = losses.binary_crossentropy
+            run_loss = 'BinaryCrossentropy'
         else:
             output_activation = 'softmax'
-            run_loss = losses.categorical_crossentropy
+            run_loss = 'CategoricalCrossentropy'
     else:
         raise Exception('Unknown task "{}"'.format(ml_task))
 
-    return output_activation, run_loss
+    return {type_key: output_activation}, {type_key: run_loss}
 
 
 def binary_search_int(
@@ -379,119 +388,3 @@ def find_best_layout_for_budget_and_depth(
 
     binary_search_int(search_objective, 1, int(2**31))
     return best  # type: ignore
-
-
-def get_rectangular_widths(num_outputs: int,
-                           depth: int) -> Callable[[float], List[int]]:
-
-    def make_layout(search_parameter):
-        layout = []
-        if depth > 1:
-            layout.extend((int(round(search_parameter)) for k in range(0, depth - 1)))
-        layout.append(num_outputs)
-        return layout
-
-    return make_layout
-
-
-def get_trapezoidal_widths(num_outputs: int,
-                           depth: int) -> Callable[[float], List[int]]:
-
-    def make_layout(search_parameter):
-        beta = (search_parameter - num_outputs) / (depth - 1)
-        return [int(round(search_parameter - beta * k)) for k in range(0, depth)]
-
-    return make_layout
-
-
-def get_exponential_widths(num_outputs: int,
-                           depth: int) -> Callable[[float], List[int]]:
-
-    def make_layout(search_parameter):
-        beta = math.exp(math.log(num_outputs / search_parameter) / (depth - 1))
-        return [
-            max(num_outputs, int(round(search_parameter * (beta**k))))
-            for k in range(0, depth)
-        ]
-
-    return make_layout
-
-
-def get_wide_first_layer_rectangular_other_layers_widths(
-    num_outputs: int,
-    depth: int,
-    first_layer_width_multiplier: float = 10,
-) -> Callable[[float], List[int]]:
-
-    def make_layout(search_parameter):
-        layout = []
-        if depth > 1:
-            layout.append(search_parameter)
-        if depth > 2:
-            inner_width = max(1, int(round(search_parameter / first_layer_width_multiplier)))
-            layout.extend((inner_width for k in range(0, depth - 2)))
-        layout.append(num_outputs)
-        return layout
-
-    return make_layout
-
-
-def get_wide_first_2x(num_outputs: int,
-                      depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(
-        num_outputs, depth, 2)
-
-
-def get_wide_first_4x(num_outputs: int,
-                      depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(
-        num_outputs, depth, 4)
-
-
-def get_wide_first_8x(num_outputs: int,
-                      depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(
-        num_outputs, depth, 8)
-
-
-def get_wide_first_16x(num_outputs: int,
-                       depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(
-        num_outputs, depth, 16)
-
-
-def get_wide_first_5x(num_outputs: int,
-                      depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(
-        num_outputs, depth, 5)
-
-
-def get_wide_first_20x(num_outputs: int,
-                       depth: int) -> Callable[[float], List[int]]:
-    return get_wide_first_layer_rectangular_other_layers_widths(
-        num_outputs, depth, 20)
-
-
-def widths_factory(shape):
-    if shape == 'rectangle':
-        return get_rectangular_widths
-    elif shape == 'trapezoid':
-        return get_trapezoidal_widths
-    elif shape == 'exponential':
-        return get_exponential_widths
-    elif shape == 'wide_first_2x':
-        return get_wide_first_2x
-    elif shape == 'wide_first_4x':
-        return get_wide_first_4x
-    elif shape == 'wide_first_5x':
-        return get_wide_first_5x
-    elif shape == 'wide_first_8x':
-        return get_wide_first_8x
-    elif shape in {'wide_first', 'wide_first_10x'}:
-        return get_wide_first_layer_rectangular_other_layers_widths
-    elif shape == 'wide_first_16x':
-        return get_wide_first_16x
-    elif shape == 'wide_first_20x':
-        return get_wide_first_20x
-    else:
-        assert False, 'Shape "{}" not recognized.'.format(shape)

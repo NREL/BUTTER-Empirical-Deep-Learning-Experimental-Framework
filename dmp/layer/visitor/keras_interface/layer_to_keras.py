@@ -3,9 +3,8 @@ from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optio
 import tensorflow.keras as keras
 import tensorflow
 from dmp.layer.visitor.keras_interface.convolutional_layer import ConvolutionalLayer
-from dmp.task.training_experiment.training_experiment_utils import make_from_typed_config
+from dmp.task.training_experiment.training_experiment_utils import get_params_and_type_from_config, make_from_config_using_keras_get, make_from_optional_typed_config, make_from_typed_config, make_typed_config_factory
 from dmp.layer import *
-# from dmp.cnn.cell_structures import ConvolutionalLayer
 
 KerasLayer = Union[keras.layers.Layer, tensorflow.Tensor]
 
@@ -74,7 +73,7 @@ class LayerToKerasVisitor:
         config: Dict,
         inputs: List[KerasLayer],
     ) -> Tuple[KerasLayer, tensorflow.Tensor]:
-        raise NotImplementedError(f'Unsupported Layer of type {type(target)}.')
+        raise NotImplementedError(f'Unknown Layer of type {type(target)}.')
 
     @_visit.register
     def _(
@@ -94,7 +93,8 @@ class LayerToKerasVisitor:
         config: Dict,
         inputs: List[KerasLayer],
     ) -> Tuple[KerasLayer, tensorflow.Tensor]:
-        _setup_keras_regularizers(config)
+        _make_keras_regularizers(config)
+        _make_keras_activation(config)
         return _make_keras(keras.layers.Dense, config, inputs)
 
     @_visit.register
@@ -158,7 +158,7 @@ class LayerToKerasVisitor:
         inputs: List[KerasLayer],
     ) -> Tuple[KerasLayer, tensorflow.Tensor]:
         config['padding'] = 'same'
-        config['activation'] = 'linear'
+        config['activation'] = keras.activations.linear
         config['kernel_size'] = (1, ) * self._dimension(target)
         return self.visit_DenseConvolutionalLayer(
             target,
@@ -249,7 +249,9 @@ class LayerToKerasVisitor:
         inputs: List[KerasLayer],
         dimension_to_factory_map: Dict[int, Callable],
     ) -> Tuple[KerasLayer, tensorflow.Tensor]:
-        _setup_keras_regularizers(config)
+        _make_keras_regularizers(config)
+        _make_keras_activation(config)
+        _make_keras_batch_normalization(config)
         config['conv_layer_factory'] = \
             dimension_to_factory_map[self._dimension(target)]
         return _make_keras(ConvolutionalLayer, config, inputs)
@@ -284,24 +286,75 @@ def _setup_in_config(
     return result
 
 
-def _setup_keras_regularizer(
-        config: Dict, key: str) -> Optional[keras.regularizers.Regularizer]:
-    return _setup_in_config(
+def _make_activation_from_config(config: dict) -> Callable:
+    type, params = get_params_and_type_from_config(config)
+    activation_function = keras.activations.get(type)
+    if activation_function is None:
+        raise ValueError(f'Unknown activation {config}.')
+    return lambda x: activation_function(x, **params)
+
+
+# def _make_activation_factory(activation_function: Callable) -> Callable:
+#     return lambda **params: (lambda x: activation_function(x, **params))
+# _make_activation_from_config = make_typed_config_factory(
+#     'activation', {
+#         k: _make_activation_factory(v)
+#         for k, v in {
+#             'elu': keras.activations.elu,
+#             'exponential': keras.activations.exponential,
+#             'gelu': keras.activations.gelu,
+#             'hard_sigmoid': keras.activations.hard_sigmoid,
+#             'linear': keras.activations.linear,
+#             'relu': keras.activations.relu,
+#             'selu': keras.activations.selu,
+#             'sigmoid': keras.activations.sigmoid,
+#             'softmax': keras.activations.softmax,
+#             'softplus': keras.activations.softplus,
+#             'softsign': keras.activations.softsign,
+#             'swish': keras.activations.swish,
+#             'tanh': keras.activations.tanh,
+#         }.items()
+#     })
+
+
+def _make_keras_regularizer(config: dict) -> keras.regularizers.Regularizer:
+    return make_from_config_using_keras_get(
         config,
-        key,
-        {
-            'l1': keras.regularizers.L1,
-            'l2': keras.regularizers.L2,
-            'l1l2': keras.regularizers.L1L2,
-        },
+        keras.regularizers.get,
         'regularizer',
     )
 
 
-def _setup_keras_regularizers(config: Dict) -> None:
-    _setup_keras_regularizer(config, 'kernel_regularizer')
-    _setup_keras_regularizer(config, 'bias_regularizer')
-    _setup_keras_regularizer(config, 'activity_regularizer')
+# _make_keras_regularizer = make_typed_config_factory(
+#     'regularizer', {
+#         'L1': keras.regularizers.L1,
+#         'L2': keras.regularizers.L2,
+#         'L1L2': keras.regularizers.L1L2,
+#     })
+
+
+def make_in_config(config: dict, key: str, factory: Callable) -> None:
+    config[key] = factory(config.get(key, None))
+
+
+def _make_keras_regularizers(config: dict) -> None:
+    make_in_config(config, 'kernel_regularizer', _make_keras_regularizer)
+    make_in_config(config, 'bias_regularizer', _make_keras_regularizer)
+    make_in_config(config, 'activity_regularizer', _make_keras_regularizer)
+
+
+def _make_keras_activation(config: dict) -> None:
+    make_in_config(config, 'activation', _make_activation_from_config)
+
+
+def _make_batch_norm_from_config(config: Optional[dict]) -> Any:
+    if config is None:
+        return lambda x: x
+    return keras.layers.BatchNormalization(**config)
+
+
+def _make_keras_batch_normalization(config: dict) -> None:
+    make_in_config(config, 'batch_normalization', _make_batch_norm_from_config)
 
 
 def _make_keras(

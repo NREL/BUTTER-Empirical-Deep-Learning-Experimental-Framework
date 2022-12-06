@@ -16,7 +16,7 @@ from dmp.layer import *
 from dmp.task.training_experiment.additional_validation_sets import AdditionalValidationSets
 from dmp.task.training_experiment.training_experiment_utils import *
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
-from dmp.task.network import Network
+from dmp.task.model_data import ModelData
 
 test_history_key: str = 'test'
 
@@ -28,30 +28,30 @@ class TrainingExperimentExecutor():
         self.worker = worker
 
     def __call__(self) -> Dict[str, Any]:
-        self.set_random_seeds()
-        dataset = self.load_and_prepare_dataset()
-        network = self.make_network(dataset, self.task.size)
-        network.compile_model(self.task.optimizer)
-        callbacks = self.make_callbacks()
-        fit_config = deepcopy(self.task.run_config)
-        history = self.fit_model(fit_config, dataset, network, callbacks)
-        return self.make_result_record(network, history)
+        self._set_random_seeds()
+        dataset = self._load_and_prepare_dataset()
+        model = self._make_model(dataset, self.task.size)
+        self._compile_model(model)
+        callbacks = self._make_callbacks()
+        fit_config = deepcopy(self.task.fit_config)
+        history = self._fit_model(fit_config, dataset, model, callbacks)
+        return self._make_result_record(model, history)
 
-    def set_random_seeds(self) -> None:
+    def _set_random_seeds(self) -> None:
         seed: int = self.task.seed
         numpy.random.seed(seed)
         tensorflow.random.set_seed(seed)
         random.seed(seed)
 
-    def load_dataset(self, task: TrainingExperiment) -> Tuple[Any, Any, Any]:
+    def _load_dataset(self, task: TrainingExperiment) -> Tuple[Any, Any, Any]:
         dataset_series, inputs, outputs = pmlb_loader.load_dataset(
             pmlb_loader.get_datasets(), task.dataset)
         return dataset_series, inputs, outputs
 
-    def load_and_prepare_dataset(self) -> Dataset:
+    def _load_and_prepare_dataset(self) -> Dataset:
         task = self.task
         # load dataset
-        dataset_series, inputs, outputs = self.load_dataset(task)
+        dataset_series, inputs, outputs = self._load_dataset(task)
         ml_task = str(dataset_series['Task'])
         input_shape = inputs.shape
         output_shape = outputs.shape
@@ -60,9 +60,9 @@ class TrainingExperimentExecutor():
             train_data,
             validation_data,
             test_data,
-        ) = tuple((self.make_tensorflow_dataset(
+        ) = tuple((self._make_tensorflow_dataset(
             dataset,
-            task.run_config['batch_size'],
+            task.fit_config['batch_size'],
         ) for dataset in split_dataset(
             task.test_split_method,
             task.test_split,
@@ -82,7 +82,7 @@ class TrainingExperimentExecutor():
             test_data,
         )
 
-    def make_tensorflow_dataset(
+    def _make_tensorflow_dataset(
         self,
         datasets: Sequence,
         batch_size: int,
@@ -103,14 +103,14 @@ class TrainingExperimentExecutor():
         tf_datasets = tf_datasets.batch(batch_size)
         return tf_datasets
 
-    def make_network(
+    def _make_model(
         self,
         dataset: Dataset,
         target_size: int,
-    ) -> Network:
+    ) -> ModelData:
         task = self.task
-        output_activation, loss = get_output_activation_and_loss_for_ml_task(
-            dataset.output_shape[1], dataset.ml_task)
+        # output_activation, loss = get_output_activation_and_loss_for_ml_task(
+        #     dataset.output_shape[1], dataset.ml_task)
 
         # # TODO: make it so we don't need this hack
         # shape = task.shape
@@ -174,7 +174,7 @@ class TrainingExperimentExecutor():
             != num_free_parameters:
             raise RuntimeError('Wrong number of trainable parameters')
 
-        return Network(
+        return ModelData(
             network_structure,
             layer_shapes,
             widths,
@@ -184,16 +184,42 @@ class TrainingExperimentExecutor():
             keras_model,  # type: ignore
         )
 
-    def make_callbacks(self) -> List[keras.callbacks.Callback]:
+    def _compile_model(self, model: ModelData) -> None:
+        model.keras_model.compile(
+            loss=make_from_config_using_keras_get(
+                self.task.loss,
+                keras.losses.get,
+                'loss',
+            ),
+            optimizer=make_from_config_using_keras_get(
+                self.task.optimizer,
+                keras.optimizers.get,
+                'optimizer',
+            ),  # type: ignore
+            metrics=[
+                'accuracy',
+                keras.metrics.CosineSimilarity(),
+                keras.metrics.Hinge(),
+                keras.metrics.KLDivergence(),
+                keras.metrics.MeanAbsoluteError(),
+                keras.metrics.MeanSquaredError(),
+                keras.metrics.MeanSquaredLogarithmicError(),
+                keras.metrics.RootMeanSquaredError(),
+                keras.metrics.SquaredHinge(),
+            ],
+            run_eagerly=False,
+        )
+
+    def _make_callbacks(self) -> List[keras.callbacks.Callback]:
         if self.task.early_stopping is None:
             return []
         return [keras.callbacks.EarlyStopping(**self.task.early_stopping)]
 
-    def fit_model(
+    def _fit_model(
         self,
         fit_config: Dict[str, Any],
         dataset: Dataset,
-        network: Network,
+        network: ModelData,
         callbacks: List[keras.callbacks.Callback],
     ) -> Dict:
         # setup training, validation, and test datasets
@@ -205,7 +231,7 @@ class TrainingExperimentExecutor():
             fit_config['validation_data'] = dataset.validation_data
             test_callback = AdditionalValidationSets(
                 [(test_history_key, dataset.test_data)],
-                batch_size=self.task.run_config['batch_size'],
+                batch_size=self.task.fit_config['batch_size'],
             )
             callbacks.append(test_callback)
 
@@ -219,9 +245,9 @@ class TrainingExperimentExecutor():
             history.update(test_callback.history)
         return history
 
-    def make_result_record(
+    def _make_result_record(
         self,
-        network: Network,
+        network: ModelData,
         history: Dict[str, Any],
     ) -> Dict[str, Any]:
         parameters: Dict[str, Any] = self.task.parameters
@@ -231,7 +257,7 @@ class TrainingExperimentExecutor():
             'num_free_parameters': network.num_free_parameters,
             'output_activation': network.output_activation,
             'network_structure': \
-                jobqueue_marshal.marshal(network.network_structure),
+                jobqueue_marshal.marshal(network.structure),
             'python_version': str(platform.python_version()),
             'platform': str(platform.platform()),
             'tensorflow_version': str(tensorflow.__version__),
@@ -262,3 +288,9 @@ class TrainingExperimentExecutor():
             ])  # type: ignore
         parameters.update(history)
         return parameters
+
+    def _make_keras_loss(self) -> keras.losses.Loss:
+        return make_from_config_using_keras_get(
+            self.task.loss,
+            keras.losses.get,
+        )  # type: ignore
