@@ -17,10 +17,7 @@ class Task(ABC):
     batch: str
 
     @abstractmethod
-    def __call__(
-        self, worker, *args, **kwargs
-        # TODO: fix the history part of this return type
-    ) -> Dict[str, Any]:
+    def __call__(self, worker) -> Dict[str, Any]:
         pass
 
     @property

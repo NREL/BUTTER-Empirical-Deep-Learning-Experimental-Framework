@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Optional
+from typing import Any, List, Dict, Tuple, Optional
 import tensorflow.keras as keras
 import tensorflow
 
@@ -13,12 +13,11 @@ class Network():
     layer_shapes: Dict[Layer, Tuple]
     widths: List[int]
     num_free_parameters: int
-    loss: str
     output_activation: str
     layer_to_keras_map: Dict[Layer, Tuple[KerasLayer, tensorflow.Tensor]]
     keras_model: keras.Model
 
-    def compile_model(self, optimizer: Dict) -> None:
+    def compile_model(self, optimizer: Dict, loss: Any) -> None:
         run_metrics = [
             'accuracy',
             keras.metrics.CosineSimilarity(),
@@ -33,7 +32,7 @@ class Network():
 
         run_optimizer = keras.optimizers.get(optimizer)
         self.keras_model.compile(
-            loss=self.loss,
+            loss=loss,
             optimizer=run_optimizer,  # type: ignore
             metrics=run_metrics,
             run_eagerly=False,

@@ -10,53 +10,35 @@ from dmp.data.pmlb import pmlb_loader
 from dmp.jobqueue_interface import jobqueue_marshal
 from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer, make_keras_network_from_layer
 import dmp.task.aspect_test.keras_utils as keras_utils
+from dmp.task.dataset import Dataset
 from dmp.task.task_util import remap_key_prefixes
 from dmp.layer import *
 from dmp.task.training_experiment.additional_validation_sets import AdditionalValidationSets
 from dmp.task.training_experiment.training_experiment_utils import *
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
-from dmp.task.training_experiment.network import Network
+from dmp.task.network import Network
 
 test_history_key: str = 'test'
 
 
 class TrainingExperimentExecutor():
 
-    def __init__(
-        self,
-        task: TrainingExperiment,
-        worker,
-        *args,
-        **kwargs,
-    ) -> None:
-        self.set_random_seeds(task)
-
-        (
-            ml_task,
-            input_shape,
-            output_shape,
-            fit_config,
-            test_data,
-        ) = self.load_and_prepare_dataset(task)
-
-        network: Network = self.make_network(
-            task,
-            input_shape,
-            output_shape,
-            task.size,
-            ml_task,
-        )
-        network.compile_model(task.optimizer)
-        callbacks = self.make_callbacks(task, test_data)
-        self.add_early_stopping_callback(task, callbacks)
-        history = self.fit_model(fit_config, network, callbacks)
-        self.result = self.make_result_record(task, worker, network, history)
+    def __init__(self, task: TrainingExperiment, worker) -> None:
+        self.task: TrainingExperiment = task
+        self.worker = worker
 
     def __call__(self) -> Dict[str, Any]:
-        return self.result
+        self.set_random_seeds()
+        dataset = self.load_and_prepare_dataset()
+        network = self.make_network(dataset, self.task.size)
+        network.compile_model(self.task.optimizer)
+        callbacks = self.make_callbacks()
+        fit_config = deepcopy(self.task.run_config)
+        history = self.fit_model(fit_config, dataset, network, callbacks)
+        return self.make_result_record(network, history)
 
-    def set_random_seeds(self, task: TrainingExperiment) -> None:
-        seed: int = task.seed
+    def set_random_seeds(self) -> None:
+        seed: int = self.task.seed
         numpy.random.seed(seed)
         tensorflow.random.set_seed(seed)
         random.seed(seed)
@@ -66,10 +48,8 @@ class TrainingExperimentExecutor():
             pmlb_loader.get_datasets(), task.dataset)
         return dataset_series, inputs, outputs
 
-    def load_and_prepare_dataset(
-        self,
-        task: TrainingExperiment,
-    ) -> Tuple[str, Sequence[int], Sequence[int], Dict[str, Any], Any]:
+    def load_and_prepare_dataset(self) -> Dataset:
+        task = self.task
         # load dataset
         dataset_series, inputs, outputs = self.load_dataset(task)
         ml_task = str(dataset_series['Task'])
@@ -93,27 +73,17 @@ class TrainingExperimentExecutor():
             outputs,
         )))
 
-        prepared_config = deepcopy(task.run_config)
-        prepared_config['x'] = train_data
-
-        if validation_data is None:
-            prepared_config['validation_data'] = test_data
-            test_data = None
-        else:
-            prepared_config['validation_data'] = validation_data
-
-        # TODO -- resume here
-        return (
+        return Dataset(
             ml_task,
             input_shape,
             output_shape,
-            prepared_config,
+            train_data,
+            validation_data,
             test_data,
         )
 
     def make_tensorflow_dataset(
         self,
-        # task: TrainingExperiment,
         datasets: Sequence,
         batch_size: int,
     ) -> Any:
@@ -135,44 +105,40 @@ class TrainingExperimentExecutor():
 
     def make_network(
         self,
-        task: TrainingExperiment,
-        input_shape: Sequence[int],
-        output_shape: Sequence[int],
+        dataset: Dataset,
         target_size: int,
-        ml_task: str,
     ) -> Network:
+        task = self.task
         output_activation, loss = get_output_activation_and_loss_for_ml_task(
-            output_shape[1], ml_task)
+            dataset.output_shape[1], dataset.ml_task)
 
-        # Generate neural network architecture
-
-        # TODO: make it so we don't need this hack
-        shape = task.shape
-        residual_mode = 'none'
-        residual_suffix = '_residual'
-        if shape.endswith(residual_suffix):
-            residual_mode = 'full'
-            shape = shape[0:-len(residual_suffix)]
+        # # TODO: make it so we don't need this hack
+        # shape = task.shape
+        # residual_mode = 'none'
+        # residual_suffix = '_residual'
+        # if shape.endswith(residual_suffix):
+        #     residual_mode = 'full'
+        #     shape = shape[0:-len(residual_suffix)]
 
         # TODO: is this the best way to do this? Maybe these could be passed as a dict?
-        layer_args = {
-            'kernel_regularizer': task.kernel_regularizer,
-            'bias_regularizer': task.bias_regularizer,
-            'activity_regularizer': task.activity_regularizer,
-            'activation': task.activation,
-        }
-        if task.batch_norm:  # TODO: add this or use dict to config
-            layer_args['batch_norm'] = task.batch_norm
+        # layer_args = {
+        #     'kernel_regularizer': task.kernel_regularizer,
+        #     'bias_regularizer': task.bias_regularizer,
+        #     'activity_regularizer': task.activity_regularizer,
+        #     'activation': task.activation,
+        # }
+        # if task.batch_norm:  # TODO: add this or use dict to config
+        #     layer_args['batch_norm'] = task.batch_norm
 
-        # Build NetworkModule network
+        # Build network
         delta, widths, network_structure, num_free_parameters, layer_shapes = \
             find_best_layout_for_budget_and_depth(
-                input_shape,
+                dataset.input_shape,
                 residual_mode,
-                task.input_activation,
+                # task.input_activation,
                 output_activation,
                 target_size,
-                widths_factory(shape)(output_shape[1], task.depth),
+                widths_factory(shape)(dataset.output_shape[1], task.depth),
                 layer_args,
             )
 
@@ -204,9 +170,8 @@ class TrainingExperimentExecutor():
             if len(keras_model.inputs) != 1:  # type: ignore
                 raise ValueError('Wrong number of keras inputs generated')
 
-        keras_num_free_parameters = keras_utils.count_trainable_parameters_in_keras_model(
-            keras_model)
-        if keras_num_free_parameters != num_free_parameters:
+        if keras_utils.count_trainable_parameters_in_keras_model(keras_model)\
+            != num_free_parameters:
             raise RuntimeError('Wrong number of trainable parameters')
 
         return Network(
@@ -214,60 +179,75 @@ class TrainingExperimentExecutor():
             layer_shapes,
             widths,
             num_free_parameters,
-            loss,
             output_activation,
             layer_to_keras_map,
             keras_model,  # type: ignore
         )
 
-    def make_callbacks(
-        self,
-        task: TrainingExperiment,
-        test_data,
-    ) -> List[keras.callbacks.Callback]:
-        callbacks = []
-        if test_data is not None:
-            callbacks.append(
-                AdditionalValidationSets(
-                    [(test_history_key, test_data)],
-                    batch_size=task.run_config['batch_size'],
-                ))
-        return callbacks
-
-    def add_early_stopping_callback(
-        self,
-        task: TrainingExperiment,
-        callbacks: List[keras.callbacks.Callback],
-    ) -> None:
-        if task.early_stopping is not None:
-            callbacks.append(
-                keras.callbacks.EarlyStopping(**task.early_stopping))
+    def make_callbacks(self) -> List[keras.callbacks.Callback]:
+        if self.task.early_stopping is None:
+            return []
+        return [keras.callbacks.EarlyStopping(**self.task.early_stopping)]
 
     def fit_model(
         self,
         fit_config: Dict[str, Any],
+        dataset: Dataset,
         network: Network,
         callbacks: List[keras.callbacks.Callback],
     ) -> Dict:
+        # setup training, validation, and test datasets
+        fit_config['x'] = dataset.train_data
+        test_callback = None
+        if dataset.validation_data is None:
+            fit_config['validation_data'] = dataset.test_data
+        else:
+            fit_config['validation_data'] = dataset.validation_data
+            test_callback = AdditionalValidationSets(
+                [(test_history_key, dataset.test_data)],
+                batch_size=self.task.run_config['batch_size'],
+            )
+            callbacks.append(test_callback)
+
         history = network.keras_model.fit(
             callbacks=callbacks,
             **fit_config,
         ).history  # type: ignore
 
         # Add test set history into history dict.
-        for cb in callbacks:
-            if isinstance(cb, AdditionalValidationSets):
-                history.update(cb.history)
-
+        if test_callback is not None:
+            history.update(test_callback.history)
         return history
 
     def make_result_record(
         self,
-        task: TrainingExperiment,
-        worker,
         network: Network,
         history: Dict[str, Any],
     ) -> Dict[str, Any]:
+        parameters: Dict[str, Any] = self.task.parameters
+        parameters.update(self.worker.worker_info)
+        parameters.update({
+            'widths': network.widths,
+            'num_free_parameters': network.num_free_parameters,
+            'output_activation': network.output_activation,
+            'network_structure': \
+                jobqueue_marshal.marshal(network.network_structure),
+            'python_version': str(platform.python_version()),
+            'platform': str(platform.platform()),
+            'tensorflow_version': str(tensorflow.__version__),
+            'hostname': str(platform.node()),
+            'slurm_job_id': os.getenv("SLURM_JOB_ID"),
+        })
+
+        git_hash = None
+        try:
+            git_hash = subprocess.check_output(
+                ["git", "describe", "--always"],
+                cwd=os.path.dirname(__file__)).strip().decode()
+        except:
+            pass
+        parameters['git_hash'] = git_hash
+
         # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
         if test_history_key in history:
             history = remap_key_prefixes(history, [
@@ -280,28 +260,5 @@ class TrainingExperimentExecutor():
                 ('val_', 'test_'),
                 ('', 'train_'),
             ])  # type: ignore
-
-        parameters: Dict[str, Any] = task.parameters
-        parameters['widths'] = network.widths
-        parameters['num_free_parameters'] = network.num_free_parameters
-        parameters['output_activation'] = network.output_activation
-        parameters['network_structure'] = jobqueue_marshal.marshal(
-            network.network_structure)
         parameters.update(history)
-
-        parameters.update(worker.worker_info)
-        parameters['python_version'] = str(platform.python_version())
-        parameters['platform'] = str(platform.platform())
-        parameters['tensorflow_version'] = str(tensorflow.__version__)
-        git_hash = None
-        try:
-            git_hash = subprocess.check_output(
-                ["git", "describe", "--always"],
-                cwd=os.path.dirname(__file__)).strip().decode()
-        except:
-            pass
-
-        parameters['git_hash'] = git_hash
-        parameters['hostname'] = str(platform.node())
-        parameters['slurm_job_id'] = os.getenv("SLURM_JOB_ID")
         return parameters

@@ -20,7 +20,7 @@ class GrowthExperiment(TrainingExperiment):
             'type': 'NetworkOverlayer',
             })
     growth_scale: float = 2.0
-    initial_size: int = 1024
+    # initial_size: int = 1024
     max_total_epochs: int = 3000
     max_equivalent_epoch_budget: int = 3000
 

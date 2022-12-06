@@ -97,46 +97,46 @@ def split_dataset(
     )
 
 
-def make_simple_dense_network(
-    input_shape: Sequence[int],
-    widths: List[int],
-    residual_mode: Optional[str],
-    input_activation: str,
-    output_activation: str,
-    layer_config: Dict[str, Any],
-) -> Layer:
-    # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
+# def make_simple_dense_network(
+#     input_shape: Sequence[int],
+#     widths: List[int],
+#     residual_mode: Optional[str],
+#     # input_activation: str,
+#     output_activation: str,
+#     layer_config: Dict[str, Any],
+# ) -> Layer:
+#     # print('input shape {} output shape {}'.format(inputs.shape, outputs.shape))
 
-    parent = Input({'shape': input_shape}, [])
-    # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
-    for depth, width in enumerate(widths):
-        config = layer_config.copy()
+#     parent = Input({'shape': input_shape}, [])
+#     # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
+#     for depth, width in enumerate(widths):
+#         config = layer_config.copy()
 
-        # Activation functions may be different for input, output, and hidden layers
-        if depth == 0:
-            config['activation'] = input_activation
-        elif depth == len(widths) - 1:
-            config['activation'] = output_activation
+#         # Activation functions may be different for input, output, and hidden layers
+#         # if depth == 0:
+#         #     config['activation'] = input_activation
+#         if depth == len(widths) - 1:
+#             config['activation'] = output_activation
 
-        # Fully connected layer
-        config['units'] = width
-        layer = Dense(config, parent)
+#         # Fully connected layer
+#         config['units'] = width
+#         layer = Dense(config, parent)
 
-        # Skip connections for residual modes
-        if residual_mode is None or residual_mode == 'none':
-            pass
-        elif residual_mode == 'full':
-            # If this isn't the first or last layer, and the previous layer is
-            # of the same width insert a residual sum between layers
-            # NB: Only works for rectangle
-            if depth > 0 and depth < len(widths) - 1 and width == widths[depth
-                                                                         - 1]:
-                layer = Add({}, [layer, parent])
-        else:
-            raise NotImplementedError(
-                f'Unknown residual mode "{residual_mode}".')
-        parent = layer
-    return parent
+#         # Skip connections for residual modes
+#         if residual_mode is None or residual_mode == 'none':
+#             pass
+#         elif residual_mode == 'full':
+#             # If this isn't the first or last layer, and the previous layer is
+#             # of the same width insert a residual sum between layers
+#             # NB: Only works for rectangle
+#             if depth > 0 and depth < len(widths) - 1 and width == widths[depth
+#                                                                          - 1]:
+#                 layer = Add({}, [layer, parent])
+#         else:
+#             raise NotImplementedError(
+#                 f'Unknown residual mode "{residual_mode}".')
+#         parent = layer
+#     return parent
 
 
 def get_from_config_mapping(
@@ -362,46 +362,32 @@ def binary_search_int(
 
 
 def find_best_layout_for_budget_and_depth(
-    input_shape: Sequence[int],
-    residual_mode: str,
-    input_activation: str,
-    output_activation: str,
-    target_num_free_parameters: int,
-    make_widths: Callable[[int], List[int]],
-    layer_args: dict,
-) -> Tuple[int, List[int], Layer, int, Dict[Layer, Tuple]]:
+    target_num_free_parameters: int, make_network: Callable[[int], Layer]
+) -> Tuple[int, Layer, int, Dict[Layer, Tuple]]:
     best = (math.inf, None, None)
 
-    def search_objective(w0):
+    def search_objective(search_parameter):
         nonlocal best
-        widths = make_widths(w0)
-        network = make_simple_dense_network(
-            input_shape,
-            widths,
-            residual_mode,
-            input_activation,
-            output_activation,
-            layer_args,
-        )
+        network = make_network(search_parameter)
         num_free_parameters, layer_shapes = compute_free_parameters(network)
         delta = num_free_parameters - target_num_free_parameters
 
         if abs(delta) < abs(best[0]):
-            best = (delta, widths, network, num_free_parameters, layer_shapes)
+            best = (delta, network, num_free_parameters, layer_shapes)
 
         return delta
 
-    binary_search_int(search_objective, 1, int(2**30))
+    binary_search_int(search_objective, 1, int(2**31))
     return best  # type: ignore
 
 
 def get_rectangular_widths(num_outputs: int,
                            depth: int) -> Callable[[float], List[int]]:
 
-    def make_layout(w0):
+    def make_layout(search_parameter):
         layout = []
         if depth > 1:
-            layout.extend((int(round(w0)) for k in range(0, depth - 1)))
+            layout.extend((int(round(search_parameter)) for k in range(0, depth - 1)))
         layout.append(num_outputs)
         return layout
 
@@ -411,9 +397,9 @@ def get_rectangular_widths(num_outputs: int,
 def get_trapezoidal_widths(num_outputs: int,
                            depth: int) -> Callable[[float], List[int]]:
 
-    def make_layout(w0):
-        beta = (w0 - num_outputs) / (depth - 1)
-        return [int(round(w0 - beta * k)) for k in range(0, depth)]
+    def make_layout(search_parameter):
+        beta = (search_parameter - num_outputs) / (depth - 1)
+        return [int(round(search_parameter - beta * k)) for k in range(0, depth)]
 
     return make_layout
 
@@ -421,10 +407,10 @@ def get_trapezoidal_widths(num_outputs: int,
 def get_exponential_widths(num_outputs: int,
                            depth: int) -> Callable[[float], List[int]]:
 
-    def make_layout(w0):
-        beta = math.exp(math.log(num_outputs / w0) / (depth - 1))
+    def make_layout(search_parameter):
+        beta = math.exp(math.log(num_outputs / search_parameter) / (depth - 1))
         return [
-            max(num_outputs, int(round(w0 * (beta**k))))
+            max(num_outputs, int(round(search_parameter * (beta**k))))
             for k in range(0, depth)
         ]
 
@@ -437,12 +423,12 @@ def get_wide_first_layer_rectangular_other_layers_widths(
     first_layer_width_multiplier: float = 10,
 ) -> Callable[[float], List[int]]:
 
-    def make_layout(w0):
+    def make_layout(search_parameter):
         layout = []
         if depth > 1:
-            layout.append(w0)
+            layout.append(search_parameter)
         if depth > 2:
-            inner_width = max(1, int(round(w0 / first_layer_width_multiplier)))
+            inner_width = max(1, int(round(search_parameter / first_layer_width_multiplier)))
             layout.extend((inner_width for k in range(0, depth - 2)))
         layout.append(num_outputs)
         return layout

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Dict
+from dmp.task.network_specification.network_specification import NetworkSpecification
 
 from dmp.task.task import Parameter, ParameterDict, Task
 
@@ -7,7 +8,7 @@ from dmp.task.task import Parameter, ParameterDict, Task
 @dataclass
 class TrainingExperiment(Task):
     dataset: str
-    test_split_method: str
+    split_method: str
     test_split: float
     validation_split: float
     label_noise: float
@@ -17,7 +18,7 @@ class TrainingExperiment(Task):
     early_stopping: Optional[dict]
     save_every_epochs: int
 
-    network : dict # defines network
+    network : NetworkSpecification # defines network
 
     def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
         from .training_experiment_executor import TrainingExperimentExecutor
@@ -55,19 +56,22 @@ class TrainingExperiment(Task):
     + optimizer : optimizer config (same) # contains learning rate
     + dataset : str (same)
     + test_split : float (same)
-    + test_split_method : str (same)
+    + split_method : str (renamed from test_split_method)
     + run_config : dict (same) # contains batch size, epochs, shuffle
     + label_noise : (same)
     + early_stopping : (same)
     + save_every_epochs : (same) (TODO: make sure not part of experiment table)
 
-    + network : NetSpec -> defines and creates network
+    + network : NetworkSpecification -> defines and creates network
+        + input_shape : Sequence[int] (migrate from runtime)
+        + output_activation ??
+        + loss (migrate from runtime calculation)
+            output_activation, loss = get_output_activation_and_loss_for_ml_task(
+            dataset.output_shape[1], dataset.ml_task)
         + DenseBySizeAndShape
             + shape (migrate)
             + size (migrate)
             + depth (migrate)
-            + input_layer : dict
-                + activation (migrate from input_activation)
             + layer : dict
                 + activation (migrate)
                 + kernel_regularizer (migrate)
@@ -75,6 +79,7 @@ class TrainingExperiment(Task):
                 + activity_regularizer (migrate)
             + output_layer : dict 
                 + activation (migrate from runtime compute of output_activation)
+                + units/shape (migrate from runtime)
         + CNNStackAndDownsample
             + num_stacks
             + cells_per_stack

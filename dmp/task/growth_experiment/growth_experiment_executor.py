@@ -10,31 +10,29 @@ from dmp.task.growth_experiment.growth_methods.overlay_growth_method import Over
 from dmp.task.task_util import remap_key_prefixes
 from dmp.task.training_experiment.training_experiment_utils import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
-from dmp.task.training_experiment.network import Network
+from dmp.task.network import Network
 
 
 class GrowthExperimentExecutor(TrainingExperimentExecutor):
     '''
     '''
 
+    def __init__(self, task: GrowthExperiment, worker):
+        if task.growth_scale <= 1:
+            raise RuntimeError(f'Growth scale {task.growth_scale} <= 1.')
+        self.task: GrowthExperiment = task
+        self.worker = worker
+
     def __call__(self) -> Dict[str, Any]:
-        return self.result
+        task = self.task
+        self.set_random_seeds()
+        dataset = self.load_and_prepare_dataset()
 
-    def __init__(self, task: GrowthExperiment, worker, *args, **kwargs):
 
-        # check to make sure the growth scale is larger than 1
-        if task.growth_scale < 1:
-            raise RuntimeError('Growth scale less than one.')
+        # get initial_size
+        target_final_network = self.make_network(dataset, task.network)
+        target_final_network.si
 
-        self.set_random_seeds(task)
-
-        (
-            ml_task,
-            input_shape,
-            output_shape,
-            fit_config,
-            test_data,
-        ) = self.load_and_prepare_dataset(task)
 
         history: dict = {}
         growth_step: int = 0
@@ -49,7 +47,8 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                            math.pow(task.growth_scale, growth_step)))
 
             # if we 'skipped' over a growth step, handle it
-            if previous_network is not None and target_size <= previous_network.num_free_parameters:
+            if previous_network is not None and \
+                target_size <= previous_network.num_free_parameters:
                 growth_step += 1
                 continue
 
@@ -58,35 +57,23 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 on_final_iteration = True
                 target_size = task.size
 
-            network: Network = self.make_network(
-                task,
-                input_shape,
-                output_shape,
-                target_size,
-                ml_task,
-            )
+            network = self.make_network(dataset, self.task.size)
 
             max_epochs_at_this_iteration = min(
                 epochs - task.max_total_epochs,
                 math.floor((task.max_equivalent_epoch_budget * task.size) /
                            network.num_free_parameters))
-            fit_config['epochs'] = max_epochs_at_this_iteration
             if max_epochs_at_this_iteration <= 0:
                 break
+            fit_config = deepcopy(self.task.run_config)
+            fit_config['epochs'] = max_epochs_at_this_iteration
 
             if previous_network is not None:
                 self.grow_network(task, previous_network, network)
 
             network.compile_model(task.optimizer)
-
-            callbacks = self.make_callbacks(task, test_data)
-            if on_final_iteration:
-                self.add_early_stopping_callback(task, callbacks)
-            else:
-                callbacks.append(
-                    self.make_growth_trigger_callback(task.growth_trigger))
-
-            model_history = self.fit_model(fit_config, network, callbacks)
+            callbacks = self.make_callbacks(on_final_iteration)
+            model_history = self.fit_model(fit_config, dataset, network, callbacks)
 
             num_epochs = len(model_history['loss'])
             model_history['parameter_count'] = \
@@ -119,12 +106,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         if previous_network is None:
             raise RuntimeError(f'No result record generated for task {task}.')
 
-        self.result = self.make_result_record(
-            task,
-            worker,
-            previous_network,
-            history,
-        )
+        return self.make_result_record(previous_network, history)
 
     def grow_network(
         self,
@@ -144,11 +126,10 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             dest.layer_to_keras_map,
         )
 
-    def make_growth_trigger_callback(
-        self,
-        config: dict,
-    ) -> keras.callbacks.Callback:
-        return make_from_typed_config(
-            config, {
+    def make_callbacks(self, on_final_iteration:bool) -> List[keras.callbacks.Callback]:
+        if on_final_iteration:
+            return super().make_callbacks()
+        return [make_from_typed_config(
+            self.task.growth_trigger, {
                 'EarlyStopping': keras.callbacks.EarlyStopping,
-            }, 'growth_trigger')
+            }, 'growth_trigger')]
