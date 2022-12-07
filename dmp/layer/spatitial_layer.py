@@ -8,12 +8,9 @@ class ASpatitialLayer(Layer):
 
     def on_padding(
         self,
-        # on_same: Callable[[], T],
-        # on_valid: Callable[[], T],
-        on_same,
-        on_valid,
-        # ) -> T:
-    ):
+        on_same: Callable[[], T],
+        on_valid: Callable[[], T],
+    ) -> T:
         padding = self.config['padding']
         if padding == 'same':
             return on_same()
@@ -24,12 +21,9 @@ class ASpatitialLayer(Layer):
 
     def on_data_format(
         self,
-        # on_channels_last: Callable[[], T],
-        # on_channels_first: Callable[[], T],
-        # ) -> T:
-        on_channels_last,
-        on_channels_first,
-    ):
+        on_channels_last: Callable[[], T],
+        on_channels_first: Callable[[], T],
+    ) -> T:
         data_format = self.config['data_format']
         if data_format is None or data_format == 'channels_last':
             return on_channels_last()

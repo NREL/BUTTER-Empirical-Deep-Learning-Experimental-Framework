@@ -17,7 +17,11 @@ class Standardizer(Preprocessor):
         
         self.minimum = minimum
         self.maximum = maximum
-        self.range = maximum - minimum
+        if maximum is None or minimum is None:
+            self.range = None
+        else:
+            self.range = maximum - minimum
+        
     
     def forward(self, element):
         return (element - self.minimum) / self.range

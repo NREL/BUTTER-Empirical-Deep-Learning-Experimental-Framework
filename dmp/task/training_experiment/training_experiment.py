@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Dict
 from dmp.dataset.dataset_spec import DatasetSpec
-from dmp.task.model_spec.model_spec import ModelSpec
+from dmp.model.model_spec import ModelSpec
 from dmp.task.task import Parameter, ParameterDict, Task
 
 

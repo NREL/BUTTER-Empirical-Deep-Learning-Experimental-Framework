@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Type, TypeVar, Union, Callable
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, Callable
 
 network_module_types: List[Type] = []
 
@@ -24,6 +24,8 @@ class Layer():
 
         self.config: Dict[str, Any] = config
         self.inputs: List['Layer'] = input
+        self.shape: Tuple[int, ...] = tuple()  # must be computed in context
+        self.free_parameters: int = 0  # must be computed in context
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -55,6 +57,10 @@ class Layer():
     @property
     def use_bias(self) -> bool:
         return self.config.get('use_bias', True)
+
+    @property
+    def dimension(self) -> int:
+        return len(self.shape) - 1
 
 
 LayerFactory = Callable[

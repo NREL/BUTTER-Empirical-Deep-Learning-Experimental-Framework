@@ -9,7 +9,7 @@ from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.growth_experiment.growth_methods.overlay_growth_method import OverlayGrowthMethod
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
-from dmp.model.model_data import ModelData
+from dmp.model.model_info import ModelInfo
 
 
 class GrowthExperimentExecutor(TrainingExperimentExecutor):
@@ -28,14 +28,14 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         dataset = self._load_and_prepare_dataset()
 
         # TODO get initial_size
-        target_final_network = self._make_model()
+        # network: NetworkInfo = self.task.model.make_network()
         # target_final_network.si
 
         history: dict = {}
         growth_step: int = 0
         epoch_parameters: int = 0
         epochs: int = 0
-        previous_network: Optional[ModelData] = None
+        previous_network: Optional[ModelInfo] = None
         on_final_iteration: bool = False
         while not on_final_iteration:
 

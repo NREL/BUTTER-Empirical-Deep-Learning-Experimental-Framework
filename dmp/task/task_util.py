@@ -1,22 +1,16 @@
 import math
-from multiprocessing import pool
-import random
-import time
 from copy import deepcopy
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
-import numpy
-import tensorflow.keras as keras
-import tensorflow
-from sklearn.model_selection import train_test_split
-from tensorflow.keras import losses
 from dmp.layer.conv_cell import make_graph_cell, make_parallel_add_cell
-
-from dmp.layer.visitor.compute_free_parameters import compute_free_parameters
+from dmp.layer.visitor.compute_layer_shapes import compute_layer_shapes
+from dmp.layer.visitor.count_free_parameters import count_free_parameters
 from dmp.layer import *
+from dmp.model.network_info import NetworkInfo
 
 K = TypeVar('K')
 V = TypeVar('V')
+
 
 def dispatch(
     key: K,  # key to dispatch on
@@ -47,6 +41,7 @@ def get_params_and_type_from_config(config: dict) -> Tuple[str, dict]:
     params = config.copy()
     del params[type_key]
     return config[type_key], params
+
 
 def make_from_config_using_keras_get(
         config: dict,
@@ -89,6 +84,7 @@ def make_from_optional_typed_config(
     dispatch_factory: Callable,
 ) -> Any:
     return dispatch_factory(config.get(key, None))
+
 
 def make_cnn_network(
     input_shape: Sequence[int],
@@ -230,26 +226,29 @@ def binary_search_int(
 
 
 def find_best_layout_for_budget_and_depth(
-    target_num_free_parameters: int, make_network: Callable[[int], Layer]
-) -> Tuple[int, Layer, int, Dict[Layer, Tuple]]:
-    best = (math.inf, None, None)
+    target_num_free_parameters: int,
+    make_network: Callable[[int], NetworkInfo],
+) -> Tuple[int, NetworkInfo]:
+    best = (math.inf, None, None, {})
 
     def search_objective(search_parameter):
         nonlocal best
         network = make_network(search_parameter)
-        num_free_parameters, layer_shapes = compute_free_parameters(network)
-        delta = num_free_parameters - target_num_free_parameters
-
+        compute_layer_shapes(network.structure)
+        network.num_free_parameters = count_free_parameters(network.structure)
+        delta = network.num_free_parameters - target_num_free_parameters
         if abs(delta) < abs(best[0]):
-            best = (delta, network, num_free_parameters, layer_shapes)
-
+            best = (delta, network)
         return delta
 
     binary_search_int(search_objective, 1, int(2**31))
     return best  # type: ignore
 
-def remap_key_prefixes(target: Dict,
-                       prefix_mapping: Iterable[Tuple[str, str]]) -> dict:
+
+def remap_key_prefixes(
+    target: Dict,
+    prefix_mapping: Iterable[Tuple[str, str]],
+) -> dict:
     result = {}
     for k, v in target.items():
         if isinstance(k, str):

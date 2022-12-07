@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 import math
 from typing import Any, Tuple, Dict
-from dmp.task.dataset import Dataset
-
-from dmp.task.model_spec.model_spec import ModelSpec
+from dmp.model.model_spec import ModelSpec
+from dmp.model.network_info import NetworkInfo
 from dmp.task.task_util import find_best_layout_for_budget_and_depth, make_dispatcher
 from dmp.layer import *
 
@@ -32,7 +31,7 @@ class DenseBySize(ModelSpec):
     def num_outputs(self) -> int:
         return self.output['units']
 
-    def make_network(self) -> Tuple[Layer, int, Dict[Layer, Tuple]]:
+    def make_network(self) -> NetworkInfo:
         shape = self.shape
 
         #TODO: make it so we don't need this hack?
@@ -44,25 +43,27 @@ class DenseBySize(ModelSpec):
 
         widths_factory = _widths_factory(shape)
 
-        def make_network_with_scale(scale: float) -> Layer:
+        def make_network_with_scale(scale):
             widths = widths_factory(self, scale)
-            return self._make_network_from_widths(residual_mode, widths)
-
-        delta, network_structure, num_free_parameters, layer_shapes = \
-            find_best_layout_for_budget_and_depth(
-                self.size,
-                make_network_with_scale
+            return NetworkInfo(
+                self._make_network_from_widths(residual_mode, widths),
+                {'widths': widths},
             )
 
+        delta, network = find_best_layout_for_budget_and_depth(
+            self.size,
+            make_network_with_scale,
+        )
+
         # reject non-conformant network sizes
-        delta = num_free_parameters - self.size
+        delta = network.num_free_parameters - self.size
         relative_error = delta / self.size
         if abs(relative_error) > .2:
             raise ValueError(
-                f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {task.size}.'
+                f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.'
             )
 
-        return network_structure, num_free_parameters, layer_shapes
+        return network
 
     # TODO: wrap make_network_from_widths up with shape to width function and have it call find_best_layout_for_budget_and_depth above
 
@@ -117,6 +118,7 @@ def _get_exponential_widths(model: DenseBySize, scale: float) -> List[int]:
         max(model.num_outputs, round(scale * (beta**k)))
         for k in range(0, model.depth)
     ]
+
 
 def _make_wide_first(
     first_layer_width_multiplier: float,

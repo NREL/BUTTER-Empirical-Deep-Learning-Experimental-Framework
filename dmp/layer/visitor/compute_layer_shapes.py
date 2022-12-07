@@ -3,31 +3,31 @@ import math
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 
 from dmp.layer import *
+from dmp.layer.layer_info import LayerInfo
 
+
+_invalid_shape = tuple()
 
 class ComputeLayerShapesVisitor:
 
     def __init__(self, target: Layer) -> None:
-        self._layer_shapes: Dict[Layer, Optional[Tuple]] = {}
+        self._visited: Set[Layer] = set()
         self._compute_output_shape(target)
 
-    def __call__(self) -> Dict[Layer, Tuple]:
-        return self._layer_shapes  # type: ignore
-
     def _compute_output_shape(self, target: Layer) -> Optional[Tuple]:
-        if target in self._layer_shapes:
-            return self._layer_shapes[target]
+        if target in self._visited:
+            return
 
-        self._layer_shapes[target] = None  # placeholder
+        target.shape = _invalid_shape
+        self._visited.add(target)
         for i in target.inputs:
             self._compute_output_shape(i)
-        shape = self._visit(target, target.config)
-        self._layer_shapes[target] = shape
-        return shape
+        target.shape = self._visit(target, target.config)
 
     def _get_output_shape(self, target: Layer) -> Tuple:
-        shape = self._compute_output_shape(target)
-        if shape is None:
+        self._compute_output_shape(target)
+        shape = target.shape
+        if shape is _invalid_shape:
             raise ValueError(f'Can not determine shape of Layer {target}.')
         return shape
 
@@ -121,5 +121,5 @@ class ComputeLayerShapesVisitor:
         return (input_channels, )
 
 
-def compute_layer_shapes(target: Layer) -> Dict[Layer, Tuple]:
-    return ComputeLayerShapesVisitor(target)()
+def compute_layer_shapes(target: Layer) -> None:
+    ComputeLayerShapesVisitor(target)

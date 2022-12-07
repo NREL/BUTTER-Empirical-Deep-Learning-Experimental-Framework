@@ -1,3 +1,4 @@
+import random
 from typing import Any, Dict
 import os
 import platform
@@ -7,14 +8,14 @@ import tensorflow.keras as keras
 import numpy
 
 from dmp.jobqueue_interface import jobqueue_marshal
-from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer, make_keras_network_from_layer
-import dmp.task.aspect_test.keras_utils as keras_utils
+from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.dataset.dataset import Dataset
 from dmp.layer import *
 from dmp.task.training_experiment.additional_validation_sets import AdditionalValidationSets
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
-from dmp.model.model_data import ModelData
+from dmp.model.network_info import NetworkInfo
+from dmp.model.model_info import ModelInfo
 
 test_history_key: str = 'test'
 
@@ -47,48 +48,13 @@ class TrainingExperimentExecutor():
             self.task.fit_config['batch_size'],
         )
 
-    def _make_model(self) -> ModelData:
-        task: TrainingExperiment = self.task
-
-        (
-            structure,
-            num_free_parameters,
-            layer_shapes,
-        ) = task.model.make_network()
-
-        # make a keras model from the network structure
-        keras_model = None
+    def _make_model(self) -> ModelInfo:
+        network: NetworkInfo = self.task.model.make_network()
         with worker.strategy.scope() as s:  # type: ignore
             tensorflow.config.optimizer.set_jit(True)
-            (
-                keras_inputs,
-                keras_outputs,
-                layer_to_keras_map,
-            ) = make_keras_network_from_layer(structure, layer_shapes)
+            return make_keras_model_from_network(network)
 
-            keras_model = keras.Model(
-                inputs=keras_inputs,
-                outputs=keras_outputs,
-            )
-
-            if len(keras_model.inputs) != 1:  # type: ignore
-                raise ValueError('Wrong number of keras inputs generated')
-
-        if keras_utils.count_trainable_parameters_in_keras_model(keras_model)\
-            != num_free_parameters:
-            raise RuntimeError('Wrong number of trainable parameters')
-
-        return ModelData(
-            structure,
-            layer_shapes,
-            widths,
-            num_free_parameters,
-            # output_activation,
-            layer_to_keras_map,
-            keras_model,  # type: ignore
-        )
-
-    def _compile_model(self, model: ModelData) -> None:
+    def _compile_model(self, model: ModelInfo) -> None:
         model.keras_model.compile(
             loss=make_from_config_using_keras_get(
                 self.task.loss,
@@ -123,7 +89,7 @@ class TrainingExperimentExecutor():
         self,
         fit_config: Dict[str, Any],
         dataset: Dataset,
-        network: ModelData,
+        model: ModelInfo,
         callbacks: List[keras.callbacks.Callback],
     ) -> Dict:
         # setup training, validation, and test datasets
@@ -139,7 +105,7 @@ class TrainingExperimentExecutor():
             )
             callbacks.append(test_callback)
 
-        history = network.keras_model.fit(
+        history = model.keras_model.fit(
             callbacks=callbacks,
             **fit_config,
         ).history  # type: ignore
@@ -151,17 +117,17 @@ class TrainingExperimentExecutor():
 
     def _make_result_record(
         self,
-        model: ModelData,
+        model: ModelInfo,
         history: Dict[str, Any],
     ) -> Dict[str, Any]:
         parameters: Dict[str, Any] = self.task.parameters
         parameters.update(self.worker.worker_info)
+        parameters.update(model.network.description)
         parameters.update({
-            'widths': model.widths,
-            'num_free_parameters': model.num_free_parameters,
+            'num_free_parameters': model.network.num_free_parameters,
             # 'output_activation': network.output_activation,
             'structure': \
-                jobqueue_marshal.marshal(model.structure),
+                jobqueue_marshal.marshal(model.network.structure),
             'python_version': str(platform.python_version()),
             'platform': str(platform.platform()),
             'tensorflow_version': str(tensorflow.__version__),

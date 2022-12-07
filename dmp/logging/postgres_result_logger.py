@@ -104,9 +104,9 @@ class PostgresResultLogger(ResultLogger):
         ] if run_columns is None else run_columns
 
         experiment_columns_sql, cast_experiment_columns_sql = \
-            self.make_column_sql(self._experiment_columns)
+            self._make_column_sql(self._experiment_columns)
         run_columns_sql, cast_run_columns_sql = \
-            self.make_column_sql(self._run_columns)
+            self._make_column_sql(self._run_columns)
 
         self._log_query_prefix = sql.SQL("""
 WITH v as (
@@ -214,14 +214,14 @@ ON CONFLICT DO NOTHING
     ) -> None:
         with CursorManager(self._credentials) as cursor:
             log_entries = [
-                self.transform_row(cursor, *result)
+                self._transform_row(cursor, *result)
                 for result in results]
-            values = self.make_values_array(cursor, log_entries)
+            values = self._make_values_array(cursor, log_entries)
             # print(cursor.mogrify(self._log_query_prefix + values + self._log_query_suffix))
             cursor.execute(
                 self._log_query_prefix + values + self._log_query_suffix)
 
-    def transform_row(
+    def _transform_row(
         self,
         cursor,
         job_id: UUID,
@@ -257,7 +257,7 @@ ON CONFLICT DO NOTHING
             *run_column_values,
         )
 
-    def make_column_sql(
+    def _make_column_sql(
         self,
         columns: List[Tuple[str, str]],
     ) -> Tuple[sql.Composed, sql.Composed]:
@@ -270,7 +270,7 @@ ON CONFLICT DO NOTHING
         return columns_sql, cast_columns_sql
 
     @staticmethod
-    def make_values_array(cursor, values: Iterable[Tuple]) -> sql.SQL:
+    def _make_values_array(cursor, values: Iterable[Tuple]) -> sql.SQL:
         return sql.SQL(','.join((
             cursor.mogrify(
                 '(' + (','.join(['%s' for _ in e])) + ')', e).decode("utf-8")
