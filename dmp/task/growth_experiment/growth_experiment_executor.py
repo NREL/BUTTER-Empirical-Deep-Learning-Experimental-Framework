@@ -7,10 +7,9 @@ import numpy
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
 from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.growth_experiment.growth_methods.overlay_growth_method import OverlayGrowthMethod
-from dmp.task.task_util import remap_key_prefixes
-from dmp.task.training_experiment.training_experiment_utils import *
+from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
-from dmp.task.model_data import ModelData
+from dmp.model.model_data import ModelData
 
 
 class GrowthExperimentExecutor(TrainingExperimentExecutor):
@@ -29,7 +28,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         dataset = self._load_and_prepare_dataset()
 
         # TODO get initial_size
-        target_final_network = self._make_model(dataset, task.network)
+        target_final_network = self._make_model()
         # target_final_network.si
 
         history: dict = {}
@@ -55,7 +54,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 on_final_iteration = True
                 target_size = task.size
 
-            model = self._make_model(dataset, self.task.size)
+            model = self._make_model(dataset, target_size)
 
             max_epochs_at_this_iteration = min(
                 epochs - task.max_total_epochs,

@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import List
-from dmp.task.network_specification.network_specification import NetworkSpecification
+from dmp.task.model_spec.model_spec import ModelSpec
 
 @dataclass
-class CNNStackAndDownsample(NetworkSpecification):
+class CNNStackAndDownsample(ModelSpec):
     num_stacks: int
     cells_per_stack: int
     stem: dict

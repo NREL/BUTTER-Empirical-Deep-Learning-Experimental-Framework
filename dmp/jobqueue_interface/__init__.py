@@ -4,8 +4,8 @@ import dmp.layer.layer
 import dmp.task
 
 jobqueue_marshal: Marshal = Marshal(
-    MarshalConfig(type_key='',
-                  label_key='&',
+    MarshalConfig(type_key='class',
+                  label_key='label',
                   reference_prefix='*',
                   escape_prefix='\\',
                   flat_dict_key=':',

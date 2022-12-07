@@ -1,25 +1,19 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Dict
-from dmp.task.network_specification.network_specification import NetworkSpecification
-
+from dmp.dataset.dataset_spec import DatasetSpec
+from dmp.task.model_spec.model_spec import ModelSpec
 from dmp.task.task import Parameter, ParameterDict, Task
 
 
 @dataclass
 class TrainingExperiment(Task):
-    dataset: str
-    split_method: str
-    test_split: float
-    validation_split: float
-    label_noise: float
-
+    dataset: DatasetSpec  # migrate dataset stuff into here
+    model: ModelSpec  # defines network
     fit_config: dict  # contains batch size, epochs, shuffle (migrate from run_config)
     optimizer: dict  # contains learning rate (migrate converting to typed config from keras serialization)
-    loss : dict # migrate from runtime (converting from simple string to typed config)
-    early_stopping: Optional[dict]
-    save_every_epochs: int
-
-    network : NetworkSpecification # defines network
+    loss: dict  # migrate from runtime (converting from simple string to typed config)
+    early_stopping: Optional[dict]  # direct migration
+    save_every_epochs: int  # migrate with None mapping to -1
 
     def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
         from .training_experiment_executor import TrainingExperimentExecutor
@@ -42,7 +36,7 @@ class TrainingExperiment(Task):
         # rename_param('optimizer.class_name', 'optimizer') # migrate to optimizer.type
         # rename_param('run_config.batch_size', 'batch_size') # migrate to fit_config.batch_size
         # rename_param('run_config.epochs', 'epochs') # migrate to fit_config.epochs
-        
+
         # parameters.pop('run_config.validation_split', None) #??
         # parameters.pop('run_config.verbose', None) #??
 

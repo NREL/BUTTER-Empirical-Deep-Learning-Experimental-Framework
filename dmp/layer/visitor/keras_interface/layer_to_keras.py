@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optio
 import tensorflow.keras as keras
 import tensorflow
 from dmp.layer.visitor.keras_interface.convolutional_layer import ConvolutionalLayer
-from dmp.task.training_experiment.training_experiment_utils import get_params_and_type_from_config, make_from_config_using_keras_get, make_from_optional_typed_config, make_from_typed_config, make_typed_config_factory
+from dmp.task.task_util import get_params_and_type_from_config, make_from_config_using_keras_get, make_from_optional_typed_config, make_from_typed_config, make_typed_config_factory
 from dmp.layer import *
 
 KerasLayer = Union[keras.layers.Layer, tensorflow.Tensor]
