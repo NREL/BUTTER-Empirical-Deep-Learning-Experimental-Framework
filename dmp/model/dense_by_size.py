@@ -3,7 +3,7 @@ import math
 from typing import Any, Tuple, Dict
 from dmp.model.model_spec import ModelSpec
 from dmp.model.network_info import NetworkInfo
-from dmp.task.task_util import find_best_layout_for_budget_and_depth, make_dispatcher
+from dmp.task.task_util import find_closest_network_to_target_size_int, make_dispatcher
 from dmp.layer import *
 
 
@@ -50,7 +50,7 @@ class DenseBySize(ModelSpec):
                 {'widths': widths},
             )
 
-        delta, network = find_best_layout_for_budget_and_depth(
+        delta, network = find_closest_network_to_target_size_int(
             self.size,
             make_network_with_scale,
         )
@@ -102,7 +102,6 @@ class DenseBySize(ModelSpec):
             parent = current_layer
         return parent
 
-
 def _get_rectangular_widths(model: DenseBySize, scale: float) -> List[int]:
     return (([round(scale)] * (model.depth - 1)) + [model.num_outputs])
 
@@ -118,7 +117,6 @@ def _get_exponential_widths(model: DenseBySize, scale: float) -> List[int]:
         max(model.num_outputs, round(scale * (beta**k)))
         for k in range(0, model.depth)
     ]
-
 
 def _make_wide_first(
     first_layer_width_multiplier: float,

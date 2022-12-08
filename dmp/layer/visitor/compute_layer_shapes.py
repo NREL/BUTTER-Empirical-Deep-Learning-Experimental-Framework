@@ -3,7 +3,6 @@ import math
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 
 from dmp.layer import *
-from dmp.layer.layer_info import LayerInfo
 
 
 _invalid_shape = tuple()

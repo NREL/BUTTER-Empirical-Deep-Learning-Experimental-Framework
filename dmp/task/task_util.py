@@ -203,14 +203,6 @@ def binary_search_int(
     minimum: int,
     maximum: int,
 ) -> Tuple[int, bool]:
-    """
-    :param objective: function for which to find fixed point
-    :param minimum: min value of search
-    :param maximum: max value of search
-    :return: solution
-    """
-    if minimum > maximum:
-        raise ValueError("binary search minimum must be less than maximum")
     candidate = 0
     while minimum < maximum:
         candidate = (maximum + minimum) // 2
@@ -225,24 +217,77 @@ def binary_search_int(
     return candidate, False
 
 
-def find_best_layout_for_budget_and_depth(
+def binary_search_float(
+    objective: Callable[[float], Union[int, float]],
+    minimum: float,
+    maximum: float,
+    epsilon: float,
+) -> Tuple[float, bool]:
+    candidate = 0.0
+    while minimum < maximum:
+        candidate = (maximum + minimum) / 2
+        evaluation = objective(candidate)
+
+        if evaluation < 0:  # candidate < target
+            minimum = candidate + epsilon
+        elif evaluation > 0:  # candidate > target
+            maximum = candidate - epsilon
+        else:  # candidate == target
+            return candidate, True
+    return candidate, False
+
+
+T = TypeVar('T')
+
+
+def _find_closest_network_to_target_size(
     target_num_free_parameters: int,
-    make_network: Callable[[int], NetworkInfo],
-) -> Tuple[int, NetworkInfo]:
+    make_network: Callable[[T], NetworkInfo],
+    search_function: Callable,
+) -> Tuple[T, NetworkInfo]:
     best = (math.inf, None, None, {})
 
     def search_objective(search_parameter):
         nonlocal best
         network = make_network(search_parameter)
-        compute_layer_shapes(network.structure)
-        network.num_free_parameters = count_free_parameters(network.structure)
         delta = network.num_free_parameters - target_num_free_parameters
         if abs(delta) < abs(best[0]):
             best = (delta, network)
         return delta
 
-    binary_search_int(search_objective, 1, int(2**31))
+    search_function(search_objective)
     return best  # type: ignore
+
+
+def find_closest_network_to_target_size_float(
+    target_num_free_parameters: int,
+    make_network: Callable[[float], NetworkInfo],
+) -> Tuple[int, NetworkInfo]:
+    return _find_closest_network_to_target_size(
+        target_num_free_parameters,
+        make_network,
+        lambda search_objective: binary_search_float(
+            search_objective,
+            1.0,
+            float(2**31),
+            1e-6,
+        ),
+    )
+
+
+def find_closest_network_to_target_size_int(
+    target_num_free_parameters: int,
+    make_network: Callable[[float], NetworkInfo],
+) -> Tuple[int, NetworkInfo]:
+    return _find_closest_network_to_target_size(
+        target_num_free_parameters,
+        make_network,
+        lambda search_objective: binary_search_int(
+            search_objective,
+            1,
+            int(2**30),
+        ),
+    )
 
 
 def remap_key_prefixes(

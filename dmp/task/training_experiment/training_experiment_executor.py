@@ -11,6 +11,7 @@ from dmp.jobqueue_interface import jobqueue_marshal
 from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.dataset.dataset import Dataset
 from dmp.layer import *
+from dmp.model.model_spec import ModelSpec
 from dmp.task.training_experiment.additional_validation_sets import AdditionalValidationSets
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
@@ -48,8 +49,11 @@ class TrainingExperimentExecutor():
             self.task.fit_config['batch_size'],
         )
 
-    def _make_model(self) -> ModelInfo:
+    def _make_model(self, model_spec: ModelSpec) -> ModelInfo:
         network: NetworkInfo = self.task.model.make_network()
+        return self._make_model_from_network(network)
+
+    def _make_model_from_network(self, network: NetworkInfo):
         with worker.strategy.scope() as s:  # type: ignore
             tensorflow.config.optimizer.set_jit(True)
             return make_keras_model_from_network(network)

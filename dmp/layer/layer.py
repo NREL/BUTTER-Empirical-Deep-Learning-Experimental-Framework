@@ -33,6 +33,9 @@ class Layer():
     def __eq__(self, other) -> bool:
         return id(self) == id(other)
 
+    def __copy__(self) -> 'Layer':
+        return self.__class__(self.config, self.input)
+
     @property
     def input(self) -> 'Layer':
         return self.inputs[0]
