@@ -303,3 +303,14 @@ def remap_key_prefixes(
                     break
         result[k] = v
     return result
+
+
+def flatten(items):
+    '''
+    Generator that recursively flattens an Iterable
+    '''
+    for x in items:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            yield from flatten(x)
+        else:
+            yield x

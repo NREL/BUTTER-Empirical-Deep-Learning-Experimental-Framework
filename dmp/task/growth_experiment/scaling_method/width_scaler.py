@@ -12,8 +12,8 @@ class WidthScaler:
         self._layer_map: Dict[Layer, Layer] = {}
         self._output = self._scale_network(target)
 
-    def __call__(self) -> Layer:
-        return self._output
+    def __call__(self) -> Tuple[Layer, Dict[Layer, Layer]]:
+        return self._output, self._layer_map
 
     def _scale_network(self, target: Layer) -> Layer:
         layer_map = self._layer_map

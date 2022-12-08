@@ -3,14 +3,19 @@ import math
 from typing import Any, Dict, Optional
 
 import numpy
+from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
 from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.growth_experiment.growth_methods.overlay_growth_method import OverlayGrowthMethod
-from dmp.task.growth_experiment.growth_methods.width_scaler import WidthScaler
+from dmp.task.growth_experiment.growth_method.overlay_growth import OverlayGrowth
+from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
+from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
 from dmp.model.model_info import ModelInfo
+
+layer_map_key: str = 'layer_map'
+scale_key: str = 'scale'
 
 
 class GrowthExperimentExecutor(TrainingExperimentExecutor):
@@ -28,21 +33,12 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
 
-        # TODO
-        '''
-        + get final network
-        + use a function to decimate it down to a target size?
-            + WidthScaler? 
-        '''
-        destination_network: NetworkInfo = self.task.model.make_network()
-
-        # target_final_network.si
-
+        final_network: NetworkInfo = self.task.model.make_network()
         history: dict = {}
         growth_step: int = 0
         epoch_parameters: int = 0
         epochs: int = 0
-        previous_model: Optional[ModelInfo] = None
+        src_model: Optional[ModelInfo] = None
         on_final_iteration: bool = False
         while not on_final_iteration:
 
@@ -51,20 +47,25 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                            math.pow(task.growth_scale, growth_step)))
 
             # if we 'skipped' over a growth step, handle it
-            if previous_model is not None and \
-                target_size <= previous_model.network.num_free_parameters:
+            if src_model is not None and \
+                target_size <= src_model.network.num_free_parameters:
                 growth_step += 1
                 continue
 
             # if we topped out at the maximum size, this is the last iteration
-            if target_size >= task.size:
+            if target_size >= final_network.num_free_parameters:
                 on_final_iteration = True
-                target_size = task.size
+                target_size = final_network.num_free_parameters
 
             def make_network(scale: float) -> NetworkInfo:
+                scaled, layer_map = WidthScaler(final_network.structure,
+                                                scale)()
                 return NetworkInfo(
-                    WidthScaler(destination_network.structure, scale)(),
-                    {'scale': scale},
+                    scaled,
+                    {
+                        scale_key: scale,
+                        layer_map_key: layer_map
+                    },
                 )
 
             delta, network = find_closest_network_to_target_size_float(
@@ -75,21 +76,21 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             model = self._make_model_from_network(network)
 
             max_epochs_at_this_iteration = min(
-                epochs - task.max_total_epochs,
-                math.floor((task.max_equivalent_epoch_budget * task.size) /
-                           model.network.num_free_parameters))
+                    epochs - task.max_total_epochs,
+                    math.floor((task.max_equivalent_epoch_budget *
+                                final_network.num_free_parameters) /
+                               model.network.num_free_parameters))
             if max_epochs_at_this_iteration <= 0:
                 break
             fit_config = deepcopy(self.task.fit_config)
             fit_config['epochs'] = max_epochs_at_this_iteration
 
-            if previous_model is not None:
+            if src_model is not None:
                 self._grow_network(
                     task.growth_method,
-                    previous_model.network.structure,
-                    previous_model.layer_to_keras_map,
-                    model.structure,
-                    model.layer_to_keras_map,
+                    src_model,
+                    model,
+                    self._make_growth_map(src_model, model),
                 )
 
             self._compile_model(model)
@@ -119,21 +120,21 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                     if type(v) is list:
                         v.extend(model_history[k])
 
-            previous_model = model
+            src_model = model
             growth_step += 1
             epochs += num_epochs
             epoch_parameters += num_epochs * model.num_free_parameters
             continue  # just put this here for better readability
 
-        if previous_model is None:
+        if src_model is None:
             raise RuntimeError(f'No result record generated for task {task}.')
 
-        return self._make_result_record(previous_model, history)
+        return self._make_result_record(src_model, history)
 
     _grow_network = make_typed_config_factory(
         'growth_method',
         {
-            'NetworkOverlayer': OverlayGrowthMethod,
+            'NetworkOverlayer': OverlayGrowth,
         },
     )
 
@@ -152,3 +153,24 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             GrowthExperimentExecutor._make_growth_trigger_callback(
                 self.task.growth_trigger)
         ]
+
+    def _make_growth_map(self, src: ModelInfo, dest: ModelInfo):
+        src_layer_map, src_layer_to_keras_map = self._get_layer_maps(src)
+        dest_layer_map, dest_layer_to_keras_map = self._get_layer_maps(dest)
+        return {
+            src_layer: LayerGrowthInfo(
+                src_layer_to_keras_map[src_layer],
+                dest_layer_to_keras_map[dest_layer_map[ref_layer]],
+            )
+            for ref_layer, src_layer in src_layer_map.items()
+            if ref_layer in dest_layer_map
+        }
+
+    def _get_layer_maps(
+        self,
+        model: ModelInfo,
+    ) -> Tuple[Dict[Layer, Layer], Dict[Layer, KerasLayerInfo]]:
+        return (
+            model.network.description[layer_map_key],
+            model.keras_network.layer_to_keras_map,
+        )
