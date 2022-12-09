@@ -1,7 +1,7 @@
 import copy
 import math
 from typing import Any, Dict, Optional
-
+import tensorflow.keras as keras
 import numpy
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 
@@ -16,6 +16,7 @@ from dmp.model.model_info import ModelInfo
 
 layer_map_key: str = 'layer_map'
 scale_key: str = 'scale'
+growth_points_key: str = 'growth_points'
 
 
 class GrowthExperimentExecutor(TrainingExperimentExecutor):
@@ -53,33 +54,33 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 continue
 
             # if we topped out at the maximum size, this is the last iteration
+            network = None
             if target_size >= final_network.num_free_parameters:
                 on_final_iteration = True
                 target_size = final_network.num_free_parameters
+                network = final_network
+            else:
 
-            def make_network(scale: float) -> NetworkInfo:
-                scaled, layer_map = WidthScaler(final_network.structure,
-                                                scale)()
-                return NetworkInfo(
-                    scaled,
-                    {
-                        scale_key: scale,
-                        layer_map_key: layer_map
-                    },
+                def make_network(scale: float) -> NetworkInfo:
+                    scaled, layer_map = WidthScaler(final_network.structure,
+                                                    scale)()
+                    description = final_network.description.copy()
+                    description[scale_key] = scale
+                    description[layer_map_key] = layer_map
+                    return NetworkInfo(scaled, description)
+
+                delta, network = find_closest_network_to_target_size_float(
+                    target_size,
+                    make_network,
                 )
-
-            delta, network = find_closest_network_to_target_size_float(
-                target_size,
-                make_network,
-            )
 
             model = self._make_model_from_network(network)
 
             max_epochs_at_this_iteration = min(
-                    epochs - task.max_total_epochs,
-                    math.floor((task.max_equivalent_epoch_budget *
-                                final_network.num_free_parameters) /
-                               model.network.num_free_parameters))
+                epochs - task.max_total_epochs,
+                math.floor((task.max_equivalent_epoch_budget *
+                            final_network.num_free_parameters) /
+                           model.network.num_free_parameters))
             if max_epochs_at_this_iteration <= 0:
                 break
             fit_config = deepcopy(self.task.fit_config)
@@ -99,18 +100,20 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                                             callbacks)
 
             num_epochs = len(model_history['loss'])
-            model_history['parameter_count'] = \
-                [model.num_free_parameters] * num_epochs
-            model_history['growth_points'] = [0] * num_epochs
+            model_history[scale_key] = [network.description[scale_key]
+                                        ] * num_epochs
+            model_history['num_free_parameters_history'] = \
+                [network.num_free_parameters] * num_epochs
+            model_history[growth_points_key] = [0] * num_epochs
 
             # If the growth trigger is EarlyStopping and the
             # 'restore_best_weights' flag is set, indicate growth point at epoch
             # that achieves lowest val_loss else growth occured at final epoch
             if task.growth_trigger.get('restore_best_weights', False):
-                model_history['growth_points'][numpy.argmin(
+                model_history[growth_points_key][numpy.argmin(
                     model_history['val_loss'])] = 1
             else:
-                model_history['growth_points'][-1] = 1
+                model_history[growth_points_key][-1] = 1
 
             # Extend histories dictionary
             if len(history.keys()) == 0:
@@ -123,12 +126,13 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             src_model = model
             growth_step += 1
             epochs += num_epochs
-            epoch_parameters += num_epochs * model.num_free_parameters
+            epoch_parameters += num_epochs * model.network.num_free_parameters
             continue  # just put this here for better readability
 
         if src_model is None:
             raise RuntimeError(f'No result record generated for task {task}.')
 
+        src_model.network.description = final_network.description
         return self._make_result_record(src_model, history)
 
     _grow_network = make_typed_config_factory(

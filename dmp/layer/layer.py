@@ -1,11 +1,13 @@
+from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, Callable
+
+from dmp.layer.layer_factory import LayerFactory
 
 network_module_types: List[Type] = []
 
 T = TypeVar('T')
 
-
-class Layer():
+class Layer(LayerFactory, ABC):
 
     def __init__(
         self,
@@ -35,6 +37,9 @@ class Layer():
 
     def __copy__(self) -> 'Layer':
         return self.__class__(self.config, self.input)
+
+    def make_layer(self, inputs:List['Layer']) -> 'Layer':
+        return self.__class__(self.config, inputs)
 
     @property
     def input(self) -> 'Layer':
@@ -66,7 +71,7 @@ class Layer():
         return len(self.shape) - 1
 
 
-LayerFactory = Callable[
+LayerConstructor = Callable[
     [Dict[str, Any], Union[Layer, List[Layer]], Optional[Dict[str, Any]]], T]
 
 # '''

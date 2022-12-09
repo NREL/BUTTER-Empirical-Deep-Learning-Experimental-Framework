@@ -1,8 +1,8 @@
 + new task format
----
-
 + widths visitor
 + widths logging
+---
+
 + CNN builder (and consolidate CNN building functions)
 
 + task schema redesign?

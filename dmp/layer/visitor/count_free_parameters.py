@@ -32,7 +32,7 @@ class CountFreeParametersVisitor:
                  (1 if target.use_bias else 0))
 
     @_visit.register
-    def _(self, target: AConvolutionalLayer, config: Dict[str, Any]) -> int:
+    def _(self, target: ConvolutionalLayer, config: Dict[str, Any]) -> int:
         return self._get_count_for_conv_layer(
             target,
             config,

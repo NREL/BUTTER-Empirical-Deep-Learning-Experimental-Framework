@@ -1,6 +1,6 @@
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
 from dmp.layer.spatitial_layer import ASpatitialLayer
-from dmp.layer.layer import Layer, LayerFactory, network_module_types
+from dmp.layer.layer import Layer, LayerConstructor, network_module_types
 
 T = TypeVar('T')
 
@@ -17,7 +17,7 @@ class APoolingLayer(ASpatitialLayer):
 
     @staticmethod
     def make(
-        layer_factory: LayerFactory[T],
+        layer_factory: LayerConstructor[T],
         pool_size: Sequence[int],
         strides: Sequence[int],
         config: Dict[str, Any],

@@ -7,7 +7,7 @@ from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 from dmp.model.model_info import ModelInfo
 from dmp.model.network_info import NetworkInfo
 from dmp.model.keras_network_info import KerasNetworkInfo
-from dmp.task.task_util import get_params_and_type_from_config, make_from_config_using_keras_get, make_from_optional_typed_config, make_from_typed_config, make_typed_config_factory
+from dmp.task.task_util import get_params_and_type_from_config
 import dmp.task.aspect_test.keras_utils as keras_utils
 from dmp.layer import *
 
@@ -245,7 +245,7 @@ def _make_by_dimension(
 
 
 def _make_convolutional_layer(
-    target: AConvolutionalLayer,
+    target: ConvolutionalLayer,
     config: Dict[str, Any],
     inputs: List[KerasLayer],
     dimension_to_factory_map: Dict[int, Callable],
@@ -268,7 +268,7 @@ def _make_activation_from_config(config: Dict[str, Any]) -> Callable:
 
 def _make_keras_regularizer(
         config: Dict[str, Any]) -> keras.regularizers.Regularizer:
-    return make_from_config_using_keras_get(
+    return _make_from_config_using_keras_get(
         config,
         keras.regularizers.get,
         'regularizer',
@@ -309,3 +309,19 @@ def _make_keras_layer(
     keras_layer = target(**config)
     keras_output = keras_layer(*inputs)
     return KerasLayerInfo(layer, keras_layer, keras_output)  # type: ignore
+
+
+
+def _make_from_config_using_keras_get(
+        config: dict,
+        keras_get_function: Callable,
+        name: str,  # used for exception messages
+) -> Any:
+    if config is None:
+        return None
+
+    type, params = get_params_and_type_from_config(config)
+    result = keras_get_function({'class_name': type, 'config': params})
+    if result is None:
+        raise ValueError(f'Unknown {name}, {config}.')
+

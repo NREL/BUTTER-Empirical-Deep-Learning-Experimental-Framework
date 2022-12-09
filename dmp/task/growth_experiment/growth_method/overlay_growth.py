@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, Set, Tuple
 import numpy
 import tensorflow
 import tensorflow.keras as keras
-from dmp.layer.convolutional_layer import AConvolutionalLayer, DenseConv
+from dmp.layer.convolutional_layer import ConvolutionalLayer, DenseConv, SeparableConv
 from dmp.layer.layer import *
 from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer
 from dmp.model.model_info import ModelInfo
@@ -79,6 +79,14 @@ class OverlayGrowth:
     ) -> None:
         self.overlay_standard_layer(src_layer, growth_info)
 
+    @_do_visit.register
+    def _(
+        self,
+        src_layer: SeparableConv,
+        growth_info: LayerGrowthInfo,
+    ) -> None:
+        self.overlay_standard_layer(src_layer, growth_info)
+
     def overlay_standard_layer(
         self,
         src_layer: Layer,
@@ -93,31 +101,38 @@ class OverlayGrowth:
         ) = _get_layers(src_layer, growth_info)
 
         num_params = len(src_params)
-        if num_params < 1 or num_params > 2 or len(dest_params) != num_params:
-            raise ValueError(
-                f'num_params unsupported: {num_params}, {len(dest_params)}.')
+        if num_params != len(dest_params):
+            raise NotImplementedError(f'Layer parameter group numbers do not match {num_params}, {len(dest_params)}')
+        if num_params <= 0:
+            return
+        
+        num_weight_dims = len(src_params[0].shape)
+        for src_weights, dest_weights in zip(src_params, dest_params):
+            num_dims = len(src_weights.shape)
+            if num_dims != len(dest_weights.shape):
+                raise ValueError(f'Mismatched wieght shapes {src_weights.shape}, {dest_weights.shape}')
 
-        src_weights = src_params[0]
-        dest_weights = dest_params[0]
-        src_channels_out = src_weights.shape[-1]
-        src_channels_in = src_weights.shape[-2]
-        self._scale_weights(
-            src_weights,
-            dest_weights[..., :src_channels_in, :src_channels_out],
-            dest_weights[..., :src_channels_in, src_channels_out:],
-            dest_weights[..., src_channels_in:, :src_channels_out],
-            dest_weights[..., src_channels_in:, src_channels_out:],
-        )
-
-        if len(src_params) >= 1:
-            src_biases = src_params[1]
-            dest_biases = dest_params[1]
-            num_src_biases = src_biases.shape[-1]
-            self._scale_biases(
-                src_biases,
-                dest_biases[..., :num_src_biases],
-                dest_biases[..., num_src_biases:],
-            )
+            if num_dims == num_weight_dims:
+                src_channels_out = src_weights.shape[-1]
+                src_channels_in = src_weights.shape[-2]
+                self._scale_weights(
+                    src_weights,
+                    dest_weights[..., :src_channels_in, :src_channels_out],
+                    dest_weights[..., :src_channels_in, src_channels_out:],
+                    dest_weights[..., src_channels_in:, :src_channels_out],
+                    dest_weights[..., src_channels_in:, src_channels_out:],
+                )
+            elif num_dims == num_weight_dims - 1:
+                src_biases = src_params[1]
+                dest_biases = dest_params[1]
+                num_src_biases = src_biases.shape[-1]
+                self._scale_biases(
+                    src_biases,
+                    dest_biases[..., :num_src_biases],
+                    dest_biases[..., num_src_biases:],
+                )
+            else:
+                raise NotImplementedError(f'Weight group dimension not supported {num_weight_dims} {num_dims}')
 
         dest_keras_layer.set_weights(dest_params)
 

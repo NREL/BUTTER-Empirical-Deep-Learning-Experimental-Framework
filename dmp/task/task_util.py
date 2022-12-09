@@ -1,11 +1,6 @@
 import math
-from copy import deepcopy
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, TypeVar, Union
 
-from dmp.layer.conv_cell import make_graph_cell, make_parallel_add_cell
-from dmp.layer.visitor.compute_layer_shapes import compute_layer_shapes
-from dmp.layer.visitor.count_free_parameters import count_free_parameters
-from dmp.layer import *
 from dmp.model.network_info import NetworkInfo
 
 K = TypeVar('K')
@@ -43,19 +38,6 @@ def get_params_and_type_from_config(config: dict) -> Tuple[str, dict]:
     return config[type_key], params
 
 
-def make_from_config_using_keras_get(
-        config: dict,
-        keras_get_function: Callable,
-        name: str,  # used for exception messages
-) -> Any:
-    if config is None:
-        return None
-
-    type, params = get_params_and_type_from_config(config)
-    result = keras_get_function({'class_name': type, 'config': params})
-    if result is None:
-        raise ValueError(f'Unknown {name}, {config}.')
-
 
 def make_typed_config_factory(
         name: str,  # name of the thing we are making from the config
@@ -86,95 +68,6 @@ def make_from_optional_typed_config(
     return dispatch_factory(config.get(key, None))
 
 
-def make_cnn_network(
-    input_shape: Sequence[int],
-    num_stacks: int,
-    cells_per_stack: int,
-    stem_factory,
-    cell_factory,
-    downsample_factory,
-    pooling_factory,
-    output_factory,
-) -> Layer:
-    '''
-    + Structure:
-        + Stem: 3x3 Conv with input activation
-        + Repeat N times:
-            + Repeat M times:
-                + Cell
-            + Downsample and double channels, optionally with Residual Connection
-                + Residual: 2x2 average pooling layer with stride 2 and a 1x1
-        + Global Pooling Layer
-        + Dense Output Layer with output activation
-
-    + Total depth (layer-wise or stage-wise)
-    + Total number of cells
-    + Total number of downsample steps
-    + Number of Cells per downsample
-    + Width / num channels
-        + Width profile (non-rectangular widths)
-    + Cell choice
-    + Downsample choice (residual mode, pooling type)
-
-    + config code inputs:
-        + stem factory?
-        + cell factory
-        + downsample factory
-        + pooling factory
-        + output factory?
-    '''
-
-    layer: Layer = Input({'shape': input_shape}, [])
-    layer = stem_factory(layer)
-    for s in range(num_stacks):
-        for c in range(cells_per_stack):
-            layer = cell_factory(layer)
-        layer = downsample_factory(layer)
-    layer = pooling_factory(layer)
-    layer = output_factory(layer)
-    return layer
-
-
-def stem_generator(
-    filters: int,
-    conv_config: Dict[str, Any],
-) -> Callable[[Layer], Layer]:
-    return lambda input: DenseConv.make(filters, (3, 3),
-                                        (1, 1), conv_config, input)
-
-
-def cell_generator(
-        width: int,  # width of input and output
-        operations: List[List[str]],  # defines the cell structure
-        conv_config: Dict[str, Any],  # conv layer configuration
-        pooling_config: Dict[str, Any],  # pooling layer configuration
-) -> Callable[[Layer], Layer]:
-    return lambda input: make_graph_cell(width, operations, conv_config,
-                                         pooling_config, input)
-
-
-def residual_downsample_generator(
-    conv_config: Dict[str, Any],
-    pooling_config: Dict[str, Any],
-    width: int,
-    stride: Sequence[int],
-) -> Callable[[Layer], Layer]:
-
-    def factory(input: Layer) -> Layer:
-        long = DenseConv.make(width, (3, 3), stride, conv_config, input)
-        long = DenseConv.make(width, (3, 3), (1, 1), conv_config, long)
-        short = APoolingLayer.make(\
-            AvgPool, (2, 2), (2, 2), pooling_config, input)
-        return Add({}, [long, short])
-
-    return factory
-
-
-def output_factory_generator(
-    config: Dict[str, Any],
-    num_outputs: int,
-) -> Callable[[Layer], Layer]:
-    return lambda input: Dense(config, GlobalAveragePooling({}, input))
 
 
 def get_output_activation_and_loss_for_ml_task(

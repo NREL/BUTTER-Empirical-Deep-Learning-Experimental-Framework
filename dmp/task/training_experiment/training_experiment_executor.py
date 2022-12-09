@@ -30,7 +30,7 @@ class TrainingExperimentExecutor():
     def __call__(self) -> Dict[str, Any]:
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
-        model = self._make_model()
+        model = self._make_model(self.task.model)
         self._compile_model(model)
         callbacks = self._make_callbacks()
         fit_config = deepcopy(self.task.fit_config)
@@ -50,8 +50,7 @@ class TrainingExperimentExecutor():
         )
 
     def _make_model(self, model_spec: ModelSpec) -> ModelInfo:
-        network: NetworkInfo = self.task.model.make_network()
-        return self._make_model_from_network(network)
+        return self._make_model_from_network(model_spec.make_network())
 
     def _make_model_from_network(self, network: NetworkInfo):
         with worker.strategy.scope() as s:  # type: ignore
