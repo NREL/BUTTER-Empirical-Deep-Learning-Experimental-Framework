@@ -30,7 +30,7 @@ class Marshaler(CommonMarshaler):
         if self._config.label_referenced and not self._config.label_all:
             for element_id in self._referenced:
                 label, _, element = self._vertex_index[element_id]
-                if isinstance(element, dict):
+                if type(element) is dict:
                     element[self._config.label_key] = label
 
     def __call__(self) -> Any:
@@ -69,7 +69,7 @@ class Marshaler(CommonMarshaler):
         dest = object_marshaler(marshaler, source)
         vertex_index[source_id] = (label, source, dest)
 
-        if marshaler._config.label_all and isinstance(dest, dict):
+        if marshaler._config.label_all and type(dest) is dict:
             dest[marshaler._config.label_key] = label
         return dest
 
@@ -97,23 +97,24 @@ class Marshaler(CommonMarshaler):
     def marshal_dict(marshaler: 'Marshaler', source: Mapping) -> dict:
 
         def marshal_bare_dict(m: 'Marshaler', s: Mapping) -> dict:
-            mod_items = []
-            for k, v in s.items():
-                if not isinstance(k, str):
-                    return {
-                        m._config.flat_dict_key:
-                        m.marshal([[k, v] for k, v in s.items()])
-                    }
-                mod_items.append((m.marshal_key(k), v))
-            return {k: m.marshal(v) for k, v in sorted(mod_items)}
+            if all((type(k) is str for k in s.keys())):
+                return {
+                    k: m.marshal(v)
+                    for k, v in sorted(((m.marshal_key(k), v)
+                                        for k, v in s.items()))
+                }
+            return {
+                m._config.flat_dict_key:
+                m.marshal([[k, v] for k, v in s.items()])
+            }
 
         return Marshaler.marshal_untyped(marshaler, source, marshal_bare_dict)
 
     def marshal_key(self, source: str) -> str:
-        if source in self._config.control_key_set or source.startswith(
-                self._config.escape_prefix):
-            source = self._escape_string(
-                source)  # TODO: optionally allow referenced strings as keys?
+        if source in self._config.control_key_set or \
+            source.startswith(self._config.escape_prefix):
+            # TODO: optionally allow referenced strings as keys?
+            source = self._escape_string(source)
         return source
 
     @staticmethod
@@ -126,7 +127,7 @@ class Marshaler(CommonMarshaler):
 
         def type_checked_object_marshaler(m: Marshaler, s: Any) -> dict:
             result = object_marshaler(m, s)
-            if not isinstance(result, dict):
+            if type(result) is not dict:
                 raise TypeError(
                     f'ObjectMarshaler for type {type(source)} returned a {type(result)} instead of a dict.'
                 )

@@ -1,8 +1,8 @@
-import ctypes
-import dataclasses
 from typing import Any, Dict, Iterable, Optional, Type
 
-from .api_functions import APIFunctions
+from lmarshal.src.custom_marshalable import CustomMarshalable
+
+from .tuple_marshaling import demarshal_tuple, initialize_tuple, marshal_tuple
 from .demarshaler import Demarshaler
 from .marshal_config import MarshalConfig
 from .marshaler import Marshaler
@@ -27,15 +27,16 @@ class Marshal:
         Marshaler.initialize_type_map(self._marshaler_type_map, config)
         Demarshaler.initialize_type_map(self._demarshaler_type_map, config)
 
+        # register tuple
         self.register_type(
             tuple,
             self._config.tuple_type_code,
-            lambda m, s:
-            {config.flat_dict_key: Marshaler.marshal_list(m, (e for e in s))},
-            lambda d, s: (None, ) * len(s[config.flat_dict_key]),
-            Marshal.initialize_tuple,
+            marshal_tuple,
+            demarshal_tuple,
+            initialize_tuple,
         )
 
+        # register set
         self.register_type(
             set,
             self._config.set_type_code,
@@ -62,20 +63,23 @@ class Marshal:
     ) -> None:
         type_code = target_type.__name__ if type_code is None else type_code
         if object_marshaler is None:
-            object_marshaler = Marshaler.default_object_marshaler
+            if issubclass(target_type, CustomMarshalable):
+                object_marshaler = lambda m, s: s.marshal(m)
+            else:
+                object_marshaler = Marshaler.default_object_marshaler
 
         if demarshaling_factory is None:
-
-            def _demarshaling_factory(d, s):
-                return Demarshaler.default_object_factory(d, s, target_type)
-
-            demarshaling_factory = _demarshaling_factory
+            demarshaling_factory = \
+                lambda demarshaler, source: Demarshaler.default_object_factory(
+                demarshaler, source, target_type)
 
         if demarshaling_initializer is None:
+            if issubclass(target_type, CustomMarshalable):
+                demarshaling_initializer = lambda d, s, r: r.demarshal(d, s)
             # if dataclasses.is_dataclass(target_type):
             #     demarshaling_initializer = Demarshaler.default_dataclass_initializer
-            # else:
-            demarshaling_initializer = Demarshaler.default_object_initializer
+            else:
+                demarshaling_initializer = Demarshaler.default_object_initializer
 
         if type_code is None:
             raise NotImplementedError()  # should never happen
@@ -93,41 +97,3 @@ class Marshal:
 
     def demarshal(self, source: Any) -> Any:
         return Demarshaler(self._config, self._demarshaler_type_map, source)()
-
-    @staticmethod
-    def initialize_tuple(
-        demarshaler: Demarshaler,
-        source: dict,
-        result: tuple,
-    ) -> None:
-        values = \
-            demarshaler.demarshal(source[demarshaler._config.flat_dict_key])
-        if not isinstance(values, list):
-            raise TypeError(
-                f'Found a {type(values)} when expecting list of values while demarshaling a tuple.'
-            )
-
-        ref_count_ptr = ctypes.POINTER(ctypes.c_ssize_t)
-        APIFunctions.PyGILState_Ensure()
-        try:
-            py_object_target = ctypes.py_object(result)
-            ref_count = \
-                ctypes.cast(id(result), ref_count_ptr).contents.value - 1
-            for _ in range(ref_count):
-                APIFunctions.Py_DecRef(py_object_target)
-
-            try:
-                for i, v in enumerate(values):
-                    value_py_object = ctypes.py_object(v)
-                    APIFunctions.Py_IncRef(value_py_object)
-                    if APIFunctions.PyTuple_SetItem(
-                            py_object_target,
-                            ctypes.c_ssize_t(i),
-                            value_py_object,
-                    ):
-                        raise SystemError('Tuple mutation failed.')
-            finally:
-                for _ in range(ref_count):
-                    APIFunctions.Py_IncRef(py_object_target)
-        finally:
-            APIFunctions.PyGILState_Release()

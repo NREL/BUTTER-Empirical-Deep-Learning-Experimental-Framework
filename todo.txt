@@ -8,6 +8,7 @@
 + task schema redesign?
 + task migration script
 
++ migrate task parameter connector from '.' to '_'
 ---
 + new run schema design
     + experiment with parquet compression

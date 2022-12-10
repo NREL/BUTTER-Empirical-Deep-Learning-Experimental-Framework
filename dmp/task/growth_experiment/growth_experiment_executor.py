@@ -3,6 +3,7 @@ import math
 from typing import Any, Dict, Optional
 import tensorflow.keras as keras
 import numpy
+from dmp.layer.layer import Layer
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
@@ -34,7 +35,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
 
-        final_network: NetworkInfo = self.task.model.make_network()
+        final_network: NetworkInfo = self._make_network(self.task.model)
         history: dict = {}
         growth_step: int = 0
         epoch_parameters: int = 0
@@ -83,7 +84,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                            model.network.num_free_parameters))
             if max_epochs_at_this_iteration <= 0:
                 break
-            fit_config = deepcopy(self.task.fit_config)
+            fit_config = copy.deepcopy(self.task.fit_config)
             fit_config['epochs'] = max_epochs_at_this_iteration
 
             if src_model is not None:
@@ -94,10 +95,14 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                     self._make_growth_map(src_model, model),
                 )
 
-            self._compile_model(model)
+            self._compile_model(dataset, model)
             callbacks = self._make_callbacks(on_final_iteration)
-            model_history = self._fit_model(fit_config, dataset, model,
-                                            callbacks)
+            model_history = self._fit_model(
+                fit_config,
+                dataset,
+                model,
+                callbacks,
+            )
 
             num_epochs = len(model_history['loss'])
             model_history[scale_key] = [network.description[scale_key]
@@ -133,7 +138,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             raise RuntimeError(f'No result record generated for task {task}.')
 
         src_model.network.description = final_network.description
-        return self._make_result_record(src_model, history)
+        return self._make_result_record(dataset, src_model, history)
 
     _grow_network = make_typed_config_factory(
         'growth_method',

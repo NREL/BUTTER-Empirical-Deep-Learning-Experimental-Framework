@@ -8,8 +8,8 @@ class SeparableConv(ConvolutionalLayer):
     @staticmethod
     def make(
         filters: int,
-        kernel_size: Sequence[int],
-        strides: Sequence[int],
+        kernel_size: List[int],
+        strides: List[int],
         config: Dict[str, Any],
         input: Union['Layer', List['Layer']],
     ) -> 'SeparableConv':

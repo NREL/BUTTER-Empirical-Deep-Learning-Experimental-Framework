@@ -4,6 +4,9 @@ import collections.abc
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
 
+from dmp import jobqueue_interface
+from dmp.task.task_util import flatten
+
 ParameterValue = Union[None, bool, int, float, str]
 ParameterDict = Dict[str, "Parameter"]
 Parameter = Union[ParameterValue, ParameterDict]
@@ -34,38 +37,48 @@ class Task(ABC):
     def extract_parameters(
         self,
         exclude={},
-        connector='.',
+        connector='_',
     ) -> FlatParameterDict:
-        extracted = {}
-        path = []
+        result = jobqueue_interface.jobqueue_marshal.marshal(self)
+        flatten(result)
+        return result
+    # def extract_parameters(
+    #     self,
+    #     exclude={},
+    #     connector='_',
+    # ) -> FlatParameterDict:
+        
 
-        def extract(target, exclude):
-            nonlocal path, extracted
+    #     extracted = {}
+    #     path = []
 
-            if target is None or \
-                    isinstance(target, str) or \
-                    isinstance(target, int) or \
-                    isinstance(target, float) or \
-                    isinstance(target, bool):
-                p = connector.join(path)
-                extracted[p] = target
-                return
+    #     def extract(target, exclude):
+    #         nonlocal path, extracted
 
-            if isinstance(target, collections.abc.Mapping):
-                target = target.items()
-            elif isinstance(target, collections.abc.Iterable):
-                raise NotImplementedError()
-            else:
-                target = vars(target).items()
+    #         if target is None or \
+    #                 isinstance(target, str) or \
+    #                 isinstance(target, int) or \
+    #                 isinstance(target, float) or \
+    #                 isinstance(target, bool):
+    #             p = connector.join(path)
+    #             extracted[p] = target
+    #             return
 
-            for k, v in target:
-                key_exclude = exclude.get(k, {})
-                if key_exclude is None:
-                    continue
+    #         if isinstance(target, collections.abc.Mapping):
+    #             target = target.items()
+    #         elif isinstance(target, collections.abc.Iterable):
+    #             raise NotImplementedError()
+    #         else:
+    #             target = vars(target).items()
 
-                path.append(k)
-                extract(v, key_exclude)
-                path.pop()
+    #         for k, v in target:
+    #             key_exclude = exclude.get(k, {})
+    #             if key_exclude is None:
+    #                 continue
 
-        extract(self, exclude)
-        return extracted
+    #             path.append(k)
+    #             extract(v, key_exclude)
+    #             path.pop()
+
+    #     extract(self, exclude)
+    #     return extracted

@@ -14,7 +14,7 @@ class DenseBySize(ModelSpec):
     depth: int  # (migrate)
     # input_layer : dict
     #input_layer.activation (migrate from input_activation)
-    layer: dict  # config of all but output layer (no units here)
+    inner_layer: Dense  # config of all but output layer (no units here)
     '''
         + activation (migrate)
         + kernel_regularizer (migrate)
@@ -22,14 +22,15 @@ class DenseBySize(ModelSpec):
         + activity_regularizer (migrate)
         + batch_norm (new?)
     '''
-    output: dict  # output layer config (include units here)
+
+    # output: dict  # output layer config (include units here)
     # residual: str  # (migrate from shape)
 
     # activation (migrate from runtime compute of output_activation)
 
-    @property
-    def num_outputs(self) -> int:
-        return self.output['units']
+    # @property
+    # def num_outputs(self) -> int:
+    #     return self.output['units']
 
     def make_network(self) -> NetworkInfo:
         shape = self.shape
@@ -41,12 +42,20 @@ class DenseBySize(ModelSpec):
             residual_mode = 'full'
             shape = shape[0:-len(residual_suffix)]
 
-        widths_factory = _widths_factory(shape)
+        widths_factory = _get_widths_factory(shape)
+
+        if type(self.outputs[0]) is not Dense:
+            raise NotImplementedError('Invalid output type for model.')
+
+        input = self.input
+        output = self.output
+        num_outputs = output['units']
 
         def make_network_with_scale(scale):
-            widths = widths_factory(self, scale)
+            widths = widths_factory(self, num_outputs, scale)
             return NetworkInfo(
-                self._make_network_from_widths(residual_mode, widths),
+                self._make_network_from_widths(input, output, residual_mode,
+                                               widths),
                 {'widths': widths},
             )
 
@@ -69,21 +78,20 @@ class DenseBySize(ModelSpec):
 
     def _make_network_from_widths(
         self,
+        input: Layer,
+        output: Layer,
         residual_mode: str,
         widths: List[int],
     ) -> Layer:
-        parent = Input({'shape': self.input_shape}, [])
+        parent = input
         # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
         for depth, width in enumerate(widths):
+            layer = None
             if depth == len(widths) - 1:
-                layer_config = self.output
+                layer = output.make_layer([parent])
             else:
-                layer_config = self.layer
-            layer_config = layer_config.copy()
-
-            # Fully connected layer
-            layer_config['units'] = width
-            current_layer = Dense(layer_config, parent)
+                layer = self.inner_layer.make_layer([parent])
+                layer['units'] = width
 
             # Skip connections for residual modes
             if residual_mode == 'none':
@@ -94,35 +102,40 @@ class DenseBySize(ModelSpec):
                 # NB: Only works for rectangle
                 if depth > 0 and depth < len(widths) - 1 and \
                     width == widths[depth - 1]:
-                    current_layer = Add({}, [current_layer, parent])
+                    layer = Add({}, [layer, parent])
             else:
                 raise NotImplementedError(
                     f'Unknown residual mode "{residual_mode}".')
 
-            parent = current_layer
+            parent = layer
         return parent
 
-def _get_rectangular_widths(model: DenseBySize, scale: float) -> List[int]:
-    return (([round(scale)] * (model.depth - 1)) + [model.num_outputs])
+
+def _get_rectangular_widths(model: DenseBySize, num_outputs: int,
+                            scale: float) -> List[int]:
+    return (([round(scale)] * (model.depth - 1)) + [num_outputs])
 
 
-def _get_trapezoidal_widths(model: DenseBySize, scale: float) -> List[int]:
-    beta = (scale - model.num_outputs) / (model.depth - 1)
+def _get_trapezoidal_widths(model: DenseBySize, num_outputs: int,
+                            scale: float) -> List[int]:
+    beta = (scale - num_outputs) / (model.depth - 1)
     return [round(scale - beta * k) for k in range(0, model.depth)]
 
 
-def _get_exponential_widths(model: DenseBySize, scale: float) -> List[int]:
-    beta = math.exp(math.log(model.num_outputs / scale) / (model.depth - 1))
+def _get_exponential_widths(model: DenseBySize, num_outputs: int,
+                            scale: float) -> List[int]:
+    beta = math.exp(math.log(num_outputs / scale) / (model.depth - 1))
     return [
         max(model.num_outputs, round(scale * (beta**k)))
         for k in range(0, model.depth)
     ]
 
+
 def _make_wide_first(
     first_layer_width_multiplier: float,
-) -> Callable[[DenseBySize, float], List[int]]:
+) -> Callable[[DenseBySize, int, float], List[int]]:
 
-    def make_layout(model: DenseBySize, scale: float):
+    def make_layout(model: DenseBySize, num_outputs: int, scale: float):
         depth = model.depth
         layout = []
         if depth > 1:
@@ -131,13 +144,13 @@ def _make_wide_first(
             inner_width = max(1,
                               int(round(scale / first_layer_width_multiplier)))
             layout.extend((inner_width for k in range(0, depth - 2)))
-        layout.append(model.num_outputs)
+        layout.append(num_outputs)
         return layout
 
     return make_layout
 
 
-_widths_factory = make_dispatcher(
+_get_widths_factory = make_dispatcher(
     'shape', {
         'rectangle': _get_rectangular_widths,
         'trapezoid': _get_trapezoidal_widths,

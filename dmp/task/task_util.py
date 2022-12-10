@@ -1,10 +1,36 @@
 import math
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from dmp.dataset.dataset import Dataset
 
 from dmp.model.network_info import NetworkInfo
 
 K = TypeVar('K')
 V = TypeVar('V')
+
+
+def make_config(type_name: str, params: Optional[dict] = None) -> dict:
+    if params is None:
+        return {type_key: type_name}
+
+    if type_key in params:
+        raise KeyError(f'Type key {type_key} shadows a key in params.')
+    config = params.copy()
+    config[type_key] = type_name
+    return config
+
+
+def make_from_config_using_keras_get(
+        config: dict,
+        keras_get_function: Callable,
+        name: str,  # used for exception messages
+) -> Any:
+    if config is None:
+        return None
+
+    type, params = get_params_and_type_from_config(config)
+    result = keras_get_function({'class_name': type, 'config': params})
+    if result is None:
+        raise ValueError(f'Unknown {name}, {config}.')
 
 
 def dispatch(
@@ -34,9 +60,7 @@ type_key: str = 'type'
 
 def get_params_and_type_from_config(config: dict) -> Tuple[str, dict]:
     params = config.copy()
-    del params[type_key]
-    return config[type_key], params
-
+    return params.pop(type_key), params
 
 
 def make_typed_config_factory(
@@ -68,27 +92,26 @@ def make_from_optional_typed_config(
     return dispatch_factory(config.get(key, None))
 
 
-
-
 def get_output_activation_and_loss_for_ml_task(
-    num_outputs: int,
-    ml_task: str,
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        dataset: Dataset) -> Tuple[dict, dict]:
+    num_outputs: int = dataset.output_shape[0]
+    ml_task: str = dataset.ml_task
+
     output_activation = 'relu'
     if ml_task == 'regression':
-        run_loss = 'MeanSquaredError'
+        loss = 'MeanSquaredError'
         output_activation = 'sigmoid'
     elif ml_task == 'classification':
         if num_outputs == 1:
             output_activation = 'sigmoid'
-            run_loss = 'BinaryCrossentropy'
+            loss = 'BinaryCrossentropy'
         else:
             output_activation = 'softmax'
-            run_loss = 'CategoricalCrossentropy'
+            loss = 'CategoricalCrossentropy'
     else:
         raise Exception('Unknown task "{}"'.format(ml_task))
 
-    return {type_key: output_activation}, {type_key: run_loss}
+    return make_config(output_activation), make_config(loss)
 
 
 def binary_search_int(
@@ -200,10 +223,25 @@ def remap_key_prefixes(
 
 def flatten(items):
     '''
-    Generator that recursively flattens an Iterable
+    Generator that recursively flattens nested Iterables
     '''
     for x in items:
         if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
             yield from flatten(x)
         else:
             yield x
+
+
+def flatten_dict(items: Mapping, connector: str):
+    '''
+    Generator that recursively flattens dicts
+    '''
+
+    def do_flatten(prefix, target):
+        if isinstance(target, Mapping):
+            for k, v in target.items():
+                yield from do_flatten(prefix + connector + k, v)
+        else:
+            yield (prefix, target)
+
+    yield from do_flatten('', items)

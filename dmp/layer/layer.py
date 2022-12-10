@@ -1,13 +1,20 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, Callable
-
+from lmarshal import Marshaler, Demarshaler
 from dmp.layer.layer_factory import LayerFactory
+from lmarshal.src.custom_marshalable import CustomMarshalable
 
 network_module_types: List[Type] = []
 
 T = TypeVar('T')
 
-class Layer(LayerFactory, ABC):
+uninitialized_shape: Tuple[int, ...] = tuple()
+marshaled_shape_key: str = 'shape'
+marshaled_inputs_key: str = 'inputs'
+marshaled_free_parameters_key: str = 'free_parameters'
+
+
+class Layer(LayerFactory, CustomMarshalable, ABC):
 
     def __init__(
         self,
@@ -26,8 +33,9 @@ class Layer(LayerFactory, ABC):
 
         self.config: Dict[str, Any] = config
         self.inputs: List['Layer'] = input
-        self.shape: Tuple[int, ...] = tuple()  # must be computed in context
-        self.free_parameters: int = 0  # must be computed in context
+        self.shape: Tuple[
+            int, ...] = uninitialized_shape  # must be computed in context
+        self.free_parameters: int = -1  # must be computed in context
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -38,8 +46,20 @@ class Layer(LayerFactory, ABC):
     def __copy__(self) -> 'Layer':
         return self.__class__(self.config, self.input)
 
-    def make_layer(self, inputs:List['Layer']) -> 'Layer':
-        return self.__class__(self.config, inputs)
+    def __setitem__(self, key, value):
+        self.config[key] = value
+
+    def __getitem__(self, key):
+        return self.config[key]
+
+    def __contains__(self, key) -> bool:
+        return self.config.__contains__(key)
+
+    def make_layer(self, inputs: List['Layer']) -> 'Layer':
+        result_inputs = inputs
+        if len(self.inputs) > 0:
+            result_inputs = [input.make_layer(inputs) for input in self.inputs]
+        return self.__class__(self.config, result_inputs)
 
     @property
     def input(self) -> 'Layer':
@@ -69,6 +89,30 @@ class Layer(LayerFactory, ABC):
     @property
     def dimension(self) -> int:
         return len(self.shape) - 1
+
+    def marshal(self, marshaler: Marshaler) -> dict:
+        flat = self.config.copy()
+
+        def safe_set(key, value):
+            if key in flat:
+                raise KeyError(f'Key {key} already in config.')
+            flat[key] = value
+
+        if len(self.inputs) > 0:
+            safe_set(marshaled_inputs_key, self.inputs)
+        if self.shape is not uninitialized_shape:
+            safe_set(marshaled_shape_key, list(self.shape))
+        if self.free_parameters >= 0:
+            safe_set(marshaled_free_parameters_key, self.free_parameters)
+
+        return Marshaler.marshal_dict(marshaler, flat)
+
+    def demarshal(self, demarshaler: Demarshaler, source: dict) -> None:
+        flat = Demarshaler.demarshal_dict(demarshaler, source)
+        self.config = flat
+        self.inputs = flat.pop(marshaled_inputs_key, [])
+        self.shape = flat.pop(marshaled_shape_key, uninitialized_shape)
+        self.free_parameters = flat.pop(marshaled_free_parameters_key, -1)
 
 
 LayerConstructor = Callable[
@@ -121,6 +165,9 @@ network_module_types.append(Input)
 
 class Add(AElementWiseOperatorLayer):
     pass
+
+
+network_module_types.append(Add)
 
 
 class Concatenate(Layer):

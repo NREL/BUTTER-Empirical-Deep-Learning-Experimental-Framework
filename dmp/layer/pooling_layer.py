@@ -30,14 +30,42 @@ class APoolingLayer(ASpatitialLayer):
 
 
 class MaxPool(APoolingLayer):
-    pass
+
+    @staticmethod
+    def make(
+        pool_size: Sequence[int],
+        strides: Sequence[int],
+        config: Dict[str, Any],
+        input: Union['Layer', List['Layer']],
+    ) -> 'MaxPool':
+        return APoolingLayer.make(
+            MaxPool,
+            pool_size,
+            strides,
+            config,
+            input,
+        )
 
 
 network_module_types.append(MaxPool)
 
 
 class AvgPool(APoolingLayer):
-    pass
+
+    @staticmethod
+    def make(
+        pool_size: Sequence[int],
+        strides: Sequence[int],
+        config: Dict[str, Any],
+        input: Union['Layer', List['Layer']],
+    ) -> 'AvgPool':
+        return APoolingLayer.make(
+            AvgPool,
+            pool_size,
+            strides,
+            config,
+            input,
+        )
 
 
 network_module_types.append(AvgPool)

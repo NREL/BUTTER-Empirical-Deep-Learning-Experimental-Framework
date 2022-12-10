@@ -11,8 +11,8 @@ class ConvolutionalLayer(ASpatitialLayer, ABC):
     def make(
         layer_factory: LayerConstructor[T],
         filters: int,
-        kernel_size: Sequence[int],
-        strides: Sequence[int],
+        kernel_size: List[int],
+        strides: List[int],
         config: Dict[str, Any],
         inputs: Union['Layer', List['Layer']],
     ) -> T:

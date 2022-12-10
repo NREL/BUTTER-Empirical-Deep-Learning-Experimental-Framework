@@ -11,7 +11,7 @@ class TrainingExperiment(Task):
     model: ModelSpec  # defines network
     fit_config: dict  # contains batch size, epochs, shuffle (migrate from run_config)
     optimizer: dict  # contains learning rate (migrate converting to typed config from keras serialization)
-    loss: dict  # migrate from runtime (converting from simple string to typed config)
+    loss: Optional[dict]  # migrate from runtime (converting from simple string to typed config)
     early_stopping: Optional[dict]  # direct migration
     save_every_epochs: int  # migrate with None mapping to -1
 
@@ -60,9 +60,9 @@ class TrainingExperiment(Task):
     + network : NetworkSpecification -> defines and creates network
         + input_shape : Sequence[int] (migrate from runtime)
         + output_activation ??
-        + loss (migrate from runtime calculation)
-            output_activation, loss = get_output_activation_and_loss_for_ml_task(
-            dataset.output_shape[1], dataset.ml_task)
+        + XXX loss (migrate from runtime calculation)
+            XXX output_activation, loss = get_output_activation_and_loss_for_ml_task(
+            XXX dataset.output_shape[1], dataset.ml_task)
         + DenseBySizeAndShape
             + shape (migrate)
             + size (migrate)
