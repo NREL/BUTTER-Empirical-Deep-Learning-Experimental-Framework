@@ -142,15 +142,23 @@ class CNNStack(ModelSpec):
 layer_factory_map = {
     'graph1':
     ParallelCell(
-        [[conv1x1()], [conv3x3(), max_pool([3, 3], [1, 1], {}, [])]],
+        [[conv1x1()], [conv3x3(),
+                       MaxPool.make([3, 3], [1, 1])]],
         Add({}, []),
     ),
-    'downsample_residual_1':
-    Add({}, [
-        APoolingLayer.make(AvgPool, (2, 2), (2, 2), pooling_config, input),
-        DenseConv.make(
-            width, (3, 3), (1, 1), conv_config,
-            DenseConv.make(width, (3, 3), stride, conv_config, input))
+    'downsample_maxpool2x2':
+    MaxPool.make([2, 2], [2, 2]),
+    'downsample_avgpool2x2':
+    AvgPool.make([2, 2], [2, 2]),
+    'downsample_avgpool2x2_residual_2xconv3x3':
+    Add.make([
+        AvgPool.make([2, 2], [2, 2]),
+        conv3x3(DenseConv.make(-1, [3, 3], [2, 2]), ),
+    ]),
+    'downsample_avgpool2x2_residual_conv3x3':
+    Add.make([
+        AvgPool.make([2, 2], [2, 2]),
+        DenseConv.make(-1, [3, 3], [2, 2]),
     ]),
     'dense':
     Dense.make(-1, {
@@ -168,16 +176,16 @@ def add_size_and_stride(name: str, factory, min_size: int, max_size: int,
 
 
 add_size_and_stride('conv',
-                    lambda i, s: DenseConv.make(-1, [i, i], [s, s], {}, []), 1,
+                    lambda i, s: DenseConv.make(-1, [i, i], [s, s]), 1,
                     16, 1, 16)
 add_size_and_stride(
-    'sepconv', lambda i, s: SeparableConv.make(-1, [i, i], [s, s], {}, []), 1,
+    'sepconv', lambda i, s: SeparableConv.make(-1, [i, i], [s, s]), 1,
     16, 1, 16)
 add_size_and_stride('max_pool',
-                    lambda i, s: MaxPool.make([i, i], [s, s], {}, []), 1, 16,
+                    lambda i, s: MaxPool.make([i, i], [s, s]), 1, 16,
                     1, 16)
 add_size_and_stride('avg_pool',
-                    lambda i, s: AvgPool.make([i, i], [s, s], {}, []), 1, 16,
+                    lambda i, s: AvgPool.make([i, i], [s, s]), 1, 16,
                     1, 16)
 
 # Add({}, [

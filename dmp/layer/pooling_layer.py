@@ -1,6 +1,6 @@
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
 from dmp.layer.spatitial_layer import ASpatitialLayer
-from dmp.layer.layer import Layer, LayerConstructor, network_module_types
+from dmp.layer.layer import Layer, LayerConstructor, network_module_types, empty_config, empty_inputs
 
 T = TypeVar('T')
 
@@ -20,8 +20,8 @@ class APoolingLayer(ASpatitialLayer):
         layer_factory: LayerConstructor[T],
         pool_size: Sequence[int],
         strides: Sequence[int],
-        config: Dict[str, Any],
-        input: Union['Layer', List['Layer']],
+        config: Dict[str, Any] = empty_config,
+        input: Union['Layer', List['Layer']] = empty_inputs,
     ) -> T:
         return layer_factory(config, input, {
             'pool_size': pool_size,
@@ -35,15 +35,15 @@ class MaxPool(APoolingLayer):
     def make(
         pool_size: Sequence[int],
         strides: Sequence[int],
-        config: Dict[str, Any],
-        input: Union['Layer', List['Layer']],
+        *args,
+        **kwargs,
     ) -> 'MaxPool':
         return APoolingLayer.make(
             MaxPool,
             pool_size,
             strides,
-            config,
-            input,
+            *args,
+            **kwargs,
         )
 
 
@@ -56,15 +56,15 @@ class AvgPool(APoolingLayer):
     def make(
         pool_size: Sequence[int],
         strides: Sequence[int],
-        config: Dict[str, Any],
-        input: Union['Layer', List['Layer']],
+        *args,
+        **kwargs,
     ) -> 'AvgPool':
         return APoolingLayer.make(
             AvgPool,
             pool_size,
             strides,
-            config,
-            input,
+            *args,
+            **kwargs,
         )
 
 

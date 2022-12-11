@@ -12,15 +12,17 @@ uninitialized_shape: Tuple[int, ...] = tuple()
 marshaled_shape_key: str = 'shape'
 marshaled_inputs_key: str = 'inputs'
 marshaled_free_parameters_key: str = 'free_parameters'
+empty_config: Dict[str, Any] = {}
+empty_inputs: List['Layer'] = []
 
 
 class Layer(LayerFactory, CustomMarshalable, ABC):
 
     def __init__(
         self,
-        config: Dict[str, Any],
-        input: Union['Layer', List['Layer']],
-        overrides: Optional[Dict[str, Any]] = None,
+        config: Dict[str, Any] = empty_config,
+        input: Union['Layer', List['Layer']] = empty_inputs,
+        overrides: Dict[str, Any] = empty_config,
     ) -> None:
         if not isinstance(input, List):
             input = [input]
@@ -28,8 +30,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
             input = input.copy()  # defensive copy
 
         config = config.copy()  # defensive copy
-        if overrides is not None:
-            config.update(overrides)
+        config.update(overrides)
 
         self.config: Dict[str, Any] = config
         self.inputs: List['Layer'] = input
@@ -116,7 +117,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
 
 LayerConstructor = Callable[
-    [Dict[str, Any], Union[Layer, List[Layer]], Optional[Dict[str, Any]]], T]
+    [Dict[str, Any], Union[Layer, List[Layer]], Dict[str, Any]], T]
 
 # '''
 # + single class:
@@ -159,8 +160,8 @@ class Dense(Layer):
     @staticmethod
     def make(
         units: int,
-        config: Dict[str, Any],
-        input: Union['Layer', List['Layer']],
+        config: Dict[str, Any] = empty_config,
+        input: Union['Layer', List['Layer']] = empty_inputs,
     ) -> 'Dense':
         config['units'] = units
         return Dense(Dense._default_config, input, config)
@@ -177,7 +178,10 @@ network_module_types.append(Input)
 
 
 class Add(AElementWiseOperatorLayer):
-    pass
+
+    @staticmethod
+    def make(input: Union['Layer', List['Layer']]) -> 'Add':
+        return Add({}, input)
 
 
 network_module_types.append(Add)

@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Any, Dict, Optional, Sequence, Tuple, Callable, TypeVar, List, Union
-from dmp.layer.layer import Layer, LayerConstructor, network_module_types
+from dmp.layer.layer import Layer, LayerConstructor, network_module_types, empty_config, empty_inputs
 from dmp.layer.spatitial_layer import ASpatitialLayer
 
 T = TypeVar('T')
@@ -31,16 +31,17 @@ class AConvolutionalLayer(ASpatitialLayer, ABC):
         filters: int,
         kernel_size: List[int],
         strides: List[int],
-        config: Dict[str, Any],
-        inputs: Union['Layer', List['Layer']],
+        config: Dict[str, Any] = empty_config,
+        inputs: Union['Layer', List['Layer']] = empty_inputs,
     ) -> T:
-        config.update({
+        c = {
             'filters': filters,
             'kernel_size': kernel_size,
             'strides': strides,
-        })
+        }
+        c.update(config)
         return layer_factory(
             AConvolutionalLayer._default_config,
             inputs,
-            config,
+            c,
         )
