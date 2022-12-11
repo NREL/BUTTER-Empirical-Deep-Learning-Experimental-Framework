@@ -34,14 +34,14 @@ class AConvolutionalLayer(ASpatitialLayer, ABC):
         config: Dict[str, Any] = empty_config,
         inputs: Union['Layer', List['Layer']] = empty_inputs,
     ) -> T:
-        c = {
+        config = config.copy()
+        config.update({
             'filters': filters,
             'kernel_size': kernel_size,
             'strides': strides,
-        }
-        c.update(config)
+        })
         return layer_factory(
             AConvolutionalLayer._default_config,
             inputs,
-            c,
+            config,
         )

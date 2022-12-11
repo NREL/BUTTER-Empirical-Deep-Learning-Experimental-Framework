@@ -35,8 +35,9 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         task = self.task
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
+        metrics = self._autoconfigure_for_dataset(dataset)
 
-        final_network: NetworkInfo = self._make_network(self.task.model)
+        goal_network: NetworkInfo = self._make_network(self.task.model)
         history: dict = {}
         growth_step: int = 0
         epoch_parameters: int = 0
@@ -57,16 +58,16 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
 
             # if we topped out at the maximum size, this is the last iteration
             network = None
-            if target_size >= final_network.num_free_parameters:
+            if target_size >= goal_network.num_free_parameters:
                 on_final_iteration = True
-                target_size = final_network.num_free_parameters
-                network = final_network
+                target_size = goal_network.num_free_parameters
+                network = goal_network
             else:
 
                 def make_network(scale: float) -> NetworkInfo:
-                    scaled, layer_map = WidthScaler(final_network.structure,
+                    scaled, layer_map = WidthScaler(goal_network.structure,
                                                     scale)()
-                    description = final_network.description.copy()
+                    description = goal_network.description.copy()
                     description[scale_key] = scale
                     description[layer_map_key] = layer_map
                     return NetworkInfo(scaled, description)
@@ -81,11 +82,11 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             max_epochs_at_this_iteration = min(
                 epochs - task.max_total_epochs,
                 math.floor((task.max_equivalent_epoch_budget *
-                            final_network.num_free_parameters) /
+                            goal_network.num_free_parameters) /
                            model.network.num_free_parameters))
             if max_epochs_at_this_iteration <= 0:
                 break
-            fit_config = copy.deepcopy(self.task.fit_config)
+            fit_config = self.task.fit_config.copy()
             fit_config['epochs'] = max_epochs_at_this_iteration
 
             if src_model is not None:
@@ -96,13 +97,12 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                     self._make_growth_map(src_model, model),
                 )
 
-            self._compile_model(dataset, model)
-            callbacks = self._make_callbacks(on_final_iteration)
+            self._compile_model(dataset, model, metrics)
             model_history = self._fit_model(
                 fit_config,
                 dataset,
                 model,
-                callbacks,
+                self._make_callbacks(on_final_iteration),
             )
 
             num_epochs = len(model_history['loss'])
@@ -138,7 +138,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         if src_model is None:
             raise RuntimeError(f'No result record generated for task {task}.')
 
-        src_model.network.description = final_network.description
+        src_model.network.description = goal_network.description
         return self._make_result_record(dataset, src_model, history)
 
     _grow_network = make_typed_keras_config_factory(
@@ -156,7 +156,9 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
     )
 
     def _make_callbacks(
-            self, on_final_iteration: bool) -> List[keras.callbacks.Callback]:
+        self,
+        on_final_iteration: bool = True,
+    ) -> List[keras.callbacks.Callback]:
         if on_final_iteration:
             return super()._make_callbacks()
         return [

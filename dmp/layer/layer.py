@@ -91,6 +91,9 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
     def dimension(self) -> int:
         return len(self.shape) - 1
 
+    def get(self, key, default):
+        return self.config.get(key, default)
+
     def marshal(self, marshaler: Marshaler) -> dict:
         flat = self.config.copy()
 

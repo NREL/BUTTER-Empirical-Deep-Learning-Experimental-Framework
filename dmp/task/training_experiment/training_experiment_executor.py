@@ -4,6 +4,7 @@ from typing import Any, Dict
 import os
 import platform
 import subprocess
+from prometheus_client import Metric
 import tensorflow
 import tensorflow.keras as keras
 import numpy
@@ -32,11 +33,15 @@ class TrainingExperimentExecutor():
     def __call__(self) -> Dict[str, Any]:
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
+        metrics = self._autoconfigure_for_dataset(dataset)
         model = self._make_model(self.task.model)
-        self._compile_model(dataset, model)
-        callbacks = self._make_callbacks()
-        fit_config = deepcopy(self.task.fit_config)
-        history = self._fit_model(fit_config, dataset, model, callbacks)
+        self._compile_model(dataset, model, metrics)
+        history = self._fit_model(
+            self.task.fit_config,
+            dataset,
+            model,
+            self._make_callbacks(),
+        )
         return self._make_result_record(dataset, model, history)
 
     def _set_random_seeds(self) -> None:
@@ -46,59 +51,88 @@ class TrainingExperimentExecutor():
         random.seed(seed)
 
     def _load_and_prepare_dataset(self) -> Dataset:
-        dataset = Dataset.make(
+        return Dataset.make(
             self.task.dataset,
             self.task.fit_config['batch_size'],
         )
 
-        # auto-populate model inputs and outputs if not already set
-        output_activation, output_kernel_initializer, loss = \
-            self.get_default_settings_for_dataset(dataset)
-
-        if self.task.model.input is None:
-            self.task.model.input = Input({'shape': dataset.input_shape}, [])
-
-        if self.task.model.output is None:
-            self.task.model.output = Dense.make(
-                dataset.output_shape[0],
-                {
-                    'activation': output_activation,
-                    'kernel_initializer': output_kernel_initializer,
-                },
-                [],
-            )
-
-        if self.task.loss is None:
-            self.task.loss = loss
-        return dataset
-
-    def get_default_settings_for_dataset(
+    def _autoconfigure_for_dataset(
         self,
         dataset: Dataset,
-    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    ) -> List[Union[str, keras.metrics.Metric]]:
+        # auto-populate model inputs and outputs if not already set
         num_outputs: int = dataset.output_shape[0]
         ml_task: str = dataset.ml_task
 
+        metrics = [
+            'accuracy',
+            keras.metrics.CosineSimilarity(),
+            keras.metrics.KLDivergence(),
+        ]
         output_kernel_initializer = 'HeUniform'
         output_activation = 'relu'
         if ml_task == 'regression':
             output_activation = 'sigmoid'
             output_kernel_initializer = 'GlorotUniform'
             loss = 'MeanSquaredError'
+            metrics.extend([
+                keras.metrics.MeanSquaredError(),
+                keras.metrics.RootMeanSquaredError(),
+                keras.metrics.MeanAbsoluteError(),
+                keras.metrics.MeanSquaredLogarithmicError(),
+            ])
         elif ml_task == 'classification':
             if num_outputs == 1:
                 output_activation = 'sigmoid'
                 output_kernel_initializer = 'GlorotUniform'
                 loss = 'BinaryCrossentropy'
+                metrics.extend([
+                    keras.metrics.BinaryCrossentropy(),
+                    'accuracy',
+                    keras.metrics.Hinge(),
+                    keras.metrics.SquaredHinge(),
+                ])
             else:
                 output_activation = 'softmax'
                 output_kernel_initializer = 'GlorotUniform'
                 loss = 'CategoricalCrossentropy'
+                metrics.extend([
+                    keras.metrics.CategoricalCrossentropy(),
+                    'accuracy',
+                    keras.metrics.CategoricalHinge(),
+                ])
         else:
             raise Exception('Unknown task "{}"'.format(ml_task))
 
-        return make_keras_config(output_activation), make_keras_config(
-            output_kernel_initializer), make_keras_config(loss)
+        model = self.task.model
+        if model.input is None:
+            model.input = Input()
+        if model.input.get('shape', None) is None:
+            model.input['shape'] = dataset.input_shape
+
+        if model.output is None:
+            model.output = Dense.make(
+                dataset.output_shape[0],
+                {
+                    'activation': None,
+                    'kernel_initializer': None,
+                },
+            )
+
+        output = model.output
+        if isinstance(output, Dense):
+            if output.get('units', None) is None:
+                output['units'] = dataset.output_shape[0]
+            if output.get('activation', None) is None:
+                output['activation'] = make_keras_config(output_activation)
+            if output.get('kernel_initializer', None) is None:
+                output['kernel_initializer'] = make_keras_config(
+                    output_kernel_initializer)
+
+        if self.task.loss is None:
+            self.task.loss = make_keras_config(loss)
+
+        return metrics
 
     def _make_model(self, model_spec: ModelSpec) -> ModelInfo:
         return self._make_model_from_network(self._make_network(model_spec))
@@ -111,21 +145,16 @@ class TrainingExperimentExecutor():
             tensorflow.config.optimizer.set_jit(True)
             return make_keras_model_from_network(network)
 
-    def _compile_model(self, dataset: Dataset, model: ModelInfo) -> None:
+    def _compile_model(
+        self,
+        dataset: Dataset,
+        model: ModelInfo,
+        metrics: List[Union[str, keras.metrics.Metric]],
+    ) -> None:
         model.keras_model.compile(
             loss=keras_from_config(self.task.loss),  # type: ignore
             optimizer=keras_from_config(self.task.optimizer),
-            metrics=[
-                'accuracy',
-                keras.metrics.CosineSimilarity(),
-                keras.metrics.Hinge(),
-                keras.metrics.KLDivergence(),
-                keras.metrics.MeanAbsoluteError(),
-                keras.metrics.MeanSquaredError(),
-                keras.metrics.MeanSquaredLogarithmicError(),
-                keras.metrics.RootMeanSquaredError(),
-                keras.metrics.SquaredHinge(),
-            ],
+            metrics=metrics,
             run_eagerly=False,
         )
 
@@ -142,6 +171,7 @@ class TrainingExperimentExecutor():
         callbacks: List[keras.callbacks.Callback],
     ) -> Dict:
         # setup training, validation, and test datasets
+        fit_config = fit_config.copy()
         fit_config['x'] = dataset.train_data
         test_callback = None
         if dataset.validation_data is None:
