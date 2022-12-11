@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Dict
-from dmp.jobqueue_interface import keras_type_key, marshal_type_key, jobqueue_marshal
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
 from dmp.task.task import Parameter, ParameterDict, Task
@@ -24,29 +23,7 @@ class TrainingExperiment(Task):
     def version(self) -> int:
         return 0
 
-    def get_parameters(self) -> ParameterDict:
-        separator = '_'
-        marshaled = jobqueue_marshal.marshal(self)
-        parameters = {}
-
-        def get_parameters(prefix, target):
-            target_type = type(target)
-            if target_type is dict:
-                skip_key = marshal_type_key
-                if marshal_type_key in target:
-                    parameters[prefix] = target[marshal_type_key]
-                elif keras_type_key in target:
-                    parameters[prefix] = target[keras_type_key]
-                    skip_key = marshal_type_key
-
-                for k, v in target.items():
-                    if k != skip_key:
-                        get_parameters(prefix + separator + k, v)
-            else:
-                parameters[prefix] = target
-
-        get_parameters('', marshaled)
-        return parameters
+    
 
 
 '''

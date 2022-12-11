@@ -1,25 +1,24 @@
 + new task format
 + widths visitor
 + widths logging
----
-
 + CNN builder (and consolidate CNN building functions)
-
-+ task schema redesign?
-+ task migration script
-
-+ migrate task parameter connector from '.' to '_'
++ update growth visitor (add CNNs)
 ---
+
++ CNN dataset refactor
+
++ task schema redesign
+    + task migration script
+
 + new run schema design
+    + migrate task parameter connector from '.' to '_'
     + experiment with parquet compression
         + run converter
     + update postgres result logger
-
+---
 + new summary schema
     + new materialization script
     + new query script
-
-+ update growth visitor (add CNNs)
 
 + subprocess runner method
 

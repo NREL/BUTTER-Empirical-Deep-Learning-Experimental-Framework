@@ -206,7 +206,7 @@ class TrainingExperimentExecutor():
         parameters.update({
             'num_free_parameters': model.network.num_free_parameters,
             # 'output_activation': network.output_activation,
-            'structure': \
+            'network_structure': \
                 jobqueue_marshal.marshal(model.network.structure),
             'python_version': str(platform.python_version()),
             'platform': str(platform.platform()),
