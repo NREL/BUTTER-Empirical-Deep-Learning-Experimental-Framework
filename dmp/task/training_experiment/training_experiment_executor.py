@@ -9,6 +9,7 @@ import tensorflow.keras as keras
 import numpy
 
 from dmp.jobqueue_interface import jobqueue_marshal
+from dmp.layer.visitor.keras_interface.keras_utils import keras_from_config, make_keras_config
 from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.dataset.dataset import Dataset
 from dmp.layer import *
@@ -51,23 +52,53 @@ class TrainingExperimentExecutor():
         )
 
         # auto-populate model inputs and outputs if not already set
-        output_activation, loss = \
-            get_output_activation_and_loss_for_ml_task(dataset)
+        output_activation, output_kernel_initializer, loss = \
+            self.get_default_settings_for_dataset(dataset)
 
-        if len(self.task.model.inputs) == 0:
-            self.task.model.inputs = \
-                [Input({'shape': dataset.input_shape}, [])]
+        if self.task.model.input is None:
+            self.task.model.input = Input({'shape': dataset.input_shape}, [])
 
-        if len(self.task.model.outputs) == 0:
-            self.task.model.outputs = [
-                Dense(
-                    {
-                        'units': dataset.output_shape[0],
-                        'activation': output_activation,
-                    }, [])
-            ]
+        if self.task.model.output is None:
+            self.task.model.output = Dense.make(
+                dataset.output_shape[0],
+                {
+                    'activation': output_activation,
+                    'kernel_initializer': output_kernel_initializer,
+                },
+                [],
+            )
 
+        if self.task.loss is None:
+            self.task.loss = loss
         return dataset
+
+    def get_default_settings_for_dataset(
+        self,
+        dataset: Dataset,
+    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+        num_outputs: int = dataset.output_shape[0]
+        ml_task: str = dataset.ml_task
+
+        output_kernel_initializer = 'HeUniform'
+        output_activation = 'relu'
+        if ml_task == 'regression':
+            output_activation = 'sigmoid'
+            output_kernel_initializer = 'GlorotUniform'
+            loss = 'MeanSquaredError'
+        elif ml_task == 'classification':
+            if num_outputs == 1:
+                output_activation = 'sigmoid'
+                output_kernel_initializer = 'GlorotUniform'
+                loss = 'BinaryCrossentropy'
+            else:
+                output_activation = 'softmax'
+                output_kernel_initializer = 'GlorotUniform'
+                loss = 'CategoricalCrossentropy'
+        else:
+            raise Exception('Unknown task "{}"'.format(ml_task))
+
+        return make_keras_config(output_activation), make_keras_config(
+            output_kernel_initializer), make_keras_config(loss)
 
     def _make_model(self, model_spec: ModelSpec) -> ModelInfo:
         return self._make_model_from_network(self._make_network(model_spec))
@@ -81,21 +112,9 @@ class TrainingExperimentExecutor():
             return make_keras_model_from_network(network)
 
     def _compile_model(self, dataset: Dataset, model: ModelInfo) -> None:
-        if self.task.loss is None:
-            _, self.task.loss = get_output_activation_and_loss_for_ml_task(
-                dataset)
-
         model.keras_model.compile(
-            loss=make_from_config_using_keras_get(
-                self.task.loss,
-                keras.losses.get,
-                'loss',
-            ),
-            optimizer=make_from_config_using_keras_get(
-                self.task.optimizer,
-                keras.optimizers.get,
-                'optimizer',
-            ),  # type: ignore
+            loss=keras_from_config(self.task.loss),  # type: ignore
+            optimizer=keras_from_config(self.task.optimizer),
             metrics=[
                 'accuracy',
                 keras.metrics.CosineSimilarity(),
@@ -151,7 +170,7 @@ class TrainingExperimentExecutor():
         model: ModelInfo,
         history: Dict[str, Any],
     ) -> Dict[str, Any]:
-        parameters: Dict[str, Any] = self.task.parameters
+        parameters: Dict[str, Any] = self.task.get_parameters()
         parameters.update(self.worker.worker_info)
         parameters.update(model.network.description)
         parameters.update({
@@ -199,9 +218,3 @@ class TrainingExperimentExecutor():
             ])  # type: ignore
         parameters.update(history)
         return parameters
-
-    def _make_keras_loss(self) -> keras.losses.Loss:
-        return make_from_config_using_keras_get(
-            self.task.loss,
-            keras.losses.get,
-        )  # type: ignore

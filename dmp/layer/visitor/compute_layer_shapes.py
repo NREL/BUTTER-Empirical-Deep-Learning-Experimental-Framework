@@ -57,7 +57,7 @@ class ComputeLayerShapesVisitor:
         return input_shape[:axis] + (total, ) + input_shape[axis + 1:]
 
     @_visit.register
-    def _(self, target: ConvolutionalLayer, config: Dict) -> Tuple:
+    def _(self, target: AConvolutionalLayer, config: Dict) -> Tuple:
         input_conv_shape, input_channels = \
             target.to_conv_shape_and_channels(
                 self._get_input_shape(target))

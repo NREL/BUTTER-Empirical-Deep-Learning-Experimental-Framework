@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, Set, Tuple
 import numpy
 import tensorflow
 import tensorflow.keras as keras
-from dmp.layer.convolutional_layer import ConvolutionalLayer, DenseConv, SeparableConv
+from dmp.layer.convolutional_layer import AConvolutionalLayer, DenseConv, SeparableConv
 from dmp.layer.layer import *
 from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer
 from dmp.model.model_info import ModelInfo

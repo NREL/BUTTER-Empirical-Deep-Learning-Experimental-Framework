@@ -144,13 +144,26 @@ class AElementWiseOperatorLayer(Layer):
 
 class Dense(Layer):
 
+    _default_config: Dict[str, Any] = {
+        'activation': 'ReLu',
+        'use_bias': True,
+        'kernel_initializer': 'HeUniform',
+        'bias_initializer': 'Zeros',
+        'kernel_regularizer': None,
+        'bias_regularizer': None,
+        'activity_regularizer': None,
+        'kernel_constraint': None,
+        'bias_constraint': None,
+    }
+
     @staticmethod
     def make(
         units: int,
         config: Dict[str, Any],
         input: Union['Layer', List['Layer']],
     ) -> 'Dense':
-        return Dense(config, input, {'units': units})
+        config['units'] = units
+        return Dense(Dense._default_config, input, config)
 
 
 network_module_types.append(Dense)

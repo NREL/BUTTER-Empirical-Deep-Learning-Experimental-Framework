@@ -2,13 +2,13 @@ from functools import singledispatchmethod
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 import tensorflow.keras as keras
 import tensorflow
-from dmp.layer.visitor.keras_interface.convolutional_layer import ConvolutionalLayer
+from dmp.layer.visitor.keras_interface.convolutional_keras_layer import ConvolutionalKerasLayer
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 from dmp.model.model_info import ModelInfo
 from dmp.model.network_info import NetworkInfo
 from dmp.model.keras_network_info import KerasNetworkInfo
-from dmp.task.task_util import get_params_and_type_from_config, make_from_config_using_keras_get
-import dmp.task.aspect_test.keras_utils as keras_utils
+from dmp.layer.visitor.keras_interface.keras_utils import keras_from_config, get_params_and_type_from_keras_config
+import dmp.layer.visitor.keras_interface.keras_utils as keras_utils
 from dmp.layer import *
 
 
@@ -29,7 +29,7 @@ class LayerToKerasVisitor:
 
         result = self._visit(
             target,
-            target.config.copy(),
+            target.config,
             [(self._make_keras_network(i).output_tensor
               for i in target.inputs)],
         )
@@ -64,8 +64,6 @@ class LayerToKerasVisitor:
         config: Dict[str, Any],
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
-        _make_keras_regularizers(config)
-        _make_keras_activation(config)
         return _make_keras_layer(target, keras.layers.Dense, config, inputs)
 
     @_visit.register
@@ -130,8 +128,8 @@ class LayerToKerasVisitor:
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         config['padding'] = 'same'
-        config['activation'] = keras.activations.linear
-        config['kernel_size'] = (1, ) * target.dimension
+        config['activation'] = 'linear'
+        config['kernel_size'] = [1] * target.dimension
         return self.visit_DenseConvolutionalLayer(
             target,
             config,
@@ -227,8 +225,8 @@ def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
     if len(keras_model.inputs) != 1:  # type: ignore
         raise ValueError('Wrong number of keras inputs generated')
 
-    if keras_utils.count_trainable_parameters_in_keras_model(keras_model)\
-        != network.num_free_parameters:
+    if tensorflow.python.keras.utils.layer_utils.count_params(
+            keras_model.trainable_weights) != network.num_free_parameters:
         raise RuntimeError('Wrong number of trainable parameters')
 
     return ModelInfo(network, keras_network, keras_model)
@@ -245,45 +243,38 @@ def _make_by_dimension(
 
 
 def _make_convolutional_layer(
-    target: ConvolutionalLayer,
+    target: AConvolutionalLayer,
     config: Dict[str, Any],
     inputs: List[KerasLayer],
     dimension_to_factory_map: Dict[int, Callable],
 ) -> KerasLayerInfo:
+    config = config.copy()  # before putting keras objects in the config
     _make_keras_regularizers(config)
     _make_keras_activation(config)
     _make_keras_batch_normalization(config)
     config['conv_layer_factory'] = \
         dimension_to_factory_map[target.dimension]
-    return _make_keras_layer(target, ConvolutionalLayer, config, inputs)
+    return _make_keras_layer(target, ConvolutionalKerasLayer, config, inputs)
 
 
 def _make_activation_from_config(config: Dict[str, Any]) -> Callable:
-    type, params = get_params_and_type_from_config(config)
+    type, params = get_params_and_type_from_keras_config(config)
     activation_function = keras.activations.get(type)
     if activation_function is None:
         raise ValueError(f'Unknown activation {config}.')
     return lambda x: activation_function(x, **params)
 
-
-def _make_keras_regularizer(
-        config: Dict[str, Any]) -> keras.regularizers.Regularizer:
-    return make_from_config_using_keras_get(
-        config,
-        keras.regularizers.get,
-        'regularizer',
-    )
-
-
 def make_in_config(config: Dict[str, Any], key: str,
                    factory: Callable) -> None:
-    config[key] = factory(config.get(key, None))
+    key_config = config.get(key, None)
+    if key_config is not None:
+        config[key] = factory(key_config)
 
 
 def _make_keras_regularizers(config: Dict[str, Any]) -> None:
-    make_in_config(config, 'kernel_regularizer', _make_keras_regularizer)
-    make_in_config(config, 'bias_regularizer', _make_keras_regularizer)
-    make_in_config(config, 'activity_regularizer', _make_keras_regularizer)
+    make_in_config(config, 'kernel_regularizer', keras_from_config)
+    make_in_config(config, 'bias_regularizer', keras_from_config)
+    make_in_config(config, 'activity_regularizer', keras_from_config)
 
 
 def _make_keras_activation(config: Dict[str, Any]) -> None:
@@ -306,7 +297,10 @@ def _make_keras_layer(
     config: Dict[str, Any],
     inputs: List[KerasLayer],
 ) -> KerasLayerInfo:
+    config = config.copy()
+    _make_keras_regularizers(config)
+    _make_keras_activation(config)
+    _make_keras_batch_normalization(config)
     keras_layer = target(**config)
     keras_output = keras_layer(*inputs)
     return KerasLayerInfo(layer, keras_layer, keras_output)  # type: ignore
-

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Dict
+from dmp.jobqueue_interface import keras_type_key, marshal_type_key, jobqueue_marshal
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
 from dmp.task.task import Parameter, ParameterDict, Task
@@ -11,7 +12,7 @@ class TrainingExperiment(Task):
     model: ModelSpec  # defines network
     fit_config: dict  # contains batch size, epochs, shuffle (migrate from run_config)
     optimizer: dict  # contains learning rate (migrate converting to typed config from keras serialization)
-    loss: Optional[dict]  # migrate from runtime (converting from simple string to typed config)
+    loss: Optional[dict]  # set to None for runtime determination
     early_stopping: Optional[dict]  # direct migration
     save_every_epochs: int  # migrate with None mapping to -1
 
@@ -23,23 +24,28 @@ class TrainingExperiment(Task):
     def version(self) -> int:
         return 0
 
-    @property
-    def parameters(self) -> ParameterDict:
-        parameters = super().parameters
+    def get_parameters(self) -> ParameterDict:
+        separator = '_'
+        marshaled = jobqueue_marshal.marshal(self)
+        parameters = {}
 
-        def rename_param(src, dest):
-            if src in parameters:
-                parameters[dest] = parameters[src]
-                del parameters[src]
+        def get_parameters(prefix, target):
+            target_type = type(target)
+            if target_type is dict:
+                skip_key = marshal_type_key
+                if marshal_type_key in target:
+                    parameters[prefix] = target[marshal_type_key]
+                elif keras_type_key in target:
+                    parameters[prefix] = target[keras_type_key]
+                    skip_key = marshal_type_key
 
-        # rename_param('optimizer.config.learning_rate', 'learning_rate') # migrate to optimizer.learning_rate
-        # rename_param('optimizer.class_name', 'optimizer') # migrate to optimizer.type
-        # rename_param('run_config.batch_size', 'batch_size') # migrate to fit_config.batch_size
-        # rename_param('run_config.epochs', 'epochs') # migrate to fit_config.epochs
+                for k, v in target.items():
+                    if k != skip_key:
+                        get_parameters(prefix + separator + k, v)
+            else:
+                parameters[prefix] = target
 
-        # parameters.pop('run_config.validation_split', None) #??
-        # parameters.pop('run_config.verbose', None) #??
-
+        get_parameters('', marshaled)
         return parameters
 
 

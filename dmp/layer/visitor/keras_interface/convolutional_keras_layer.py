@@ -3,7 +3,7 @@ import tensorflow.keras as keras
 import tensorflow.keras.layers as layers
 
 
-class ConvolutionalLayer(layers.Layer):
+class ConvolutionalKerasLayer(layers.Layer):
 
     def __init__(
         self,

@@ -38,6 +38,6 @@ class WidthScaler:
                                        self._scale_factor)
 
     @_scale_layer.register
-    def _(self, target: ConvolutionalLayer) -> None:
+    def _(self, target: AConvolutionalLayer) -> None:
         target.config['filters'] = round(target.config['filters'] *
                                          self._scale_factor)

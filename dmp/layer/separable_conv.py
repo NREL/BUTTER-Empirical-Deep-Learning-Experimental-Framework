@@ -1,9 +1,9 @@
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
-from dmp.layer.convolutional_layer import ConvolutionalLayer
+from dmp.layer.convolutional_layer import AConvolutionalLayer
 from dmp.layer.layer import network_module_types, Layer
 
 
-class SeparableConv(ConvolutionalLayer):
+class SeparableConv(AConvolutionalLayer):
 
     @staticmethod
     def make(
@@ -13,7 +13,7 @@ class SeparableConv(ConvolutionalLayer):
         config: Dict[str, Any],
         input: Union['Layer', List['Layer']],
     ) -> 'SeparableConv':
-        return ConvolutionalLayer.make(SeparableConv, filters, kernel_size,
+        return AConvolutionalLayer.make(SeparableConv, filters, kernel_size,
                                         strides, config, input)
 
 

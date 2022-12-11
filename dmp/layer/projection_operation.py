@@ -1,8 +1,8 @@
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
-from dmp.layer.convolutional_layer import ConvolutionalLayer
+from dmp.layer.convolutional_layer import AConvolutionalLayer
 from dmp.layer.layer import network_module_types
 
-class ProjectionOperation(ConvolutionalLayer):
+class ProjectionOperation(AConvolutionalLayer):
     pass
 
 

@@ -36,21 +36,21 @@ class AspectTestTask(Task):
     def version(self) -> int:
         return 4
 
-    @property
-    def parameters(self) -> ParameterDict:
-        parameters = super().parameters
+    # @property
+    # def parameters(self) -> ParameterDict:
+    #     parameters = super().parameters
 
-        def rename_param(src, dest):
-            if src in parameters:
-                parameters[dest] = parameters[src]
-                del parameters[src]
+    #     def rename_param(src, dest):
+    #         if src in parameters:
+    #             parameters[dest] = parameters[src]
+    #             del parameters[src]
 
-        rename_param('optimizer.config.learning_rate', 'learning_rate')
-        rename_param('optimizer.class_name', 'optimizer')
-        rename_param('run_config.batch_size', 'batch_size')
-        rename_param('run_config.epochs', 'epochs')
+    #     rename_param('optimizer.config.learning_rate', 'learning_rate')
+    #     rename_param('optimizer.class_name', 'optimizer')
+    #     rename_param('run_config.batch_size', 'batch_size')
+    #     rename_param('run_config.epochs', 'epochs')
 
-        parameters.pop('run_config.validation_split', None)
-        parameters.pop('run_config.verbose', None)
+    #     parameters.pop('run_config.validation_split', None)
+    #     parameters.pop('run_config.verbose', None)
 
-        return parameters
+    #     return parameters

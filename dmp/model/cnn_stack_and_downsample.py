@@ -49,13 +49,13 @@ class CNNStacker(ModelSpec):
         '''
 
         # layer: Layer = Input({'shape': self.input_shape}, [])
-        layer = self.stem.make_layer([self.input])
+        layer = self.stem.make_layer([self.input])  # type: ignore
         for s in range(self.num_stacks):
             for c in range(self.cells_per_stack):
                 layer = self.cell.make_layer([layer])
             layer = self.downsample.make_layer([layer])
         layer = self.pooling.make_layer([layer])
-        layer = self.output.make_layer([layer])
+        layer = self.output.make_layer([layer])  # type: ignore
         return NetworkInfo(layer, {})
 
 
@@ -127,8 +127,8 @@ class CNNStack(ModelSpec):
 
     def make_network(self) -> NetworkInfo:
         return CNNStacker(
-            self.inputs,
-            self.outputs,
+            self.input,
+            self.output,
             self.num_stacks,
             self.cells_per_stack,
             # self.downsample_ratio,
@@ -145,8 +145,18 @@ layer_factory_map = {
         [[conv1x1()], [conv3x3(), max_pool([3, 3], [1, 1], {}, [])]],
         Add({}, []),
     ),
+    'downsample_residual_1':
+    Add({}, [
+        APoolingLayer.make(AvgPool, (2, 2), (2, 2), pooling_config, input),
+        DenseConv.make(
+            width, (3, 3), (1, 1), conv_config,
+            DenseConv.make(width, (3, 3), stride, conv_config, input))
+    ]),
     'dense':
-    Dense.make(-1, {'activation': 'relu', 'initialization':''}, [])
+    Dense.make(-1, {
+        'activation': 'relu',
+        'initialization': 'HeUniform'
+    }, []),
 }
 
 

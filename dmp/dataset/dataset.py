@@ -10,8 +10,8 @@ from .dataset_spec import DatasetSpec
 @dataclass
 class Dataset():
     ml_task: str
-    input_shape: Sequence[int]
-    output_shape: Sequence[int]
+    input_shape: List[int]
+    output_shape: List[int]
     train_data: Any
     validation_data: Any
     test_data: Any
@@ -28,8 +28,8 @@ class Dataset():
         )
 
         ml_task = str(dataset_series['Task'])
-        input_shape = inputs.shape
-        output_shape = outputs.shape
+        input_shape = list(inputs.shape)
+        output_shape = list(outputs.shape)
 
         (
             train_data,

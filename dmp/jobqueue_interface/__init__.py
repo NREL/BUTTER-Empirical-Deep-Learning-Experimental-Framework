@@ -3,8 +3,12 @@ from lmarshal import MarshalConfig, Marshal
 import dmp.layer.layer
 import dmp.task
 
+keras_type_key: str = 'type'
+marshal_type_key:str = 'class'
+
+
 jobqueue_marshal: Marshal = Marshal(
-    MarshalConfig(type_key='class',
+    MarshalConfig(type_key=marshal_type_key,
                   label_key='label',
                   reference_prefix='*',
                   escape_prefix='\\',

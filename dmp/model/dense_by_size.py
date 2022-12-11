@@ -14,7 +14,7 @@ class DenseBySize(ModelSpec):
     depth: int  # (migrate)
     # input_layer : dict
     #input_layer.activation (migrate from input_activation)
-    inner_layer: Dense  # config of all but output layer (no units here)
+    inner_layers: Dense  # config of all but output layer (no units here)
     '''
         + activation (migrate)
         + kernel_regularizer (migrate)
@@ -44,18 +44,20 @@ class DenseBySize(ModelSpec):
 
         widths_factory = _get_widths_factory(shape)
 
-        if type(self.outputs[0]) is not Dense:
+        if type(self.output) is not Dense:
             raise NotImplementedError('Invalid output type for model.')
 
-        input = self.input
-        output = self.output
-        num_outputs = output['units']
+        num_outputs = self.output['units']
 
         def make_network_with_scale(scale):
             widths = widths_factory(self, num_outputs, scale)
             return NetworkInfo(
-                self._make_network_from_widths(input, output, residual_mode,
-                                               widths),
+                self._make_network_from_widths(
+                    self.input,  # type: ignore
+                    self.output,  # type: ignore
+                    residual_mode,
+                    widths,
+                ),
                 {'widths': widths},
             )
 
@@ -90,7 +92,7 @@ class DenseBySize(ModelSpec):
             if depth == len(widths) - 1:
                 layer = output.make_layer([parent])
             else:
-                layer = self.inner_layer.make_layer([parent])
+                layer = self.inner_layers.make_layer([parent])
                 layer['units'] = width
 
             # Skip connections for residual modes
@@ -126,7 +128,7 @@ def _get_exponential_widths(model: DenseBySize, num_outputs: int,
                             scale: float) -> List[int]:
     beta = math.exp(math.log(num_outputs / scale) / (model.depth - 1))
     return [
-        max(model.num_outputs, round(scale * (beta**k)))
+        max(num_outputs, round(scale * (beta**k)))
         for k in range(0, model.depth)
     ]
 

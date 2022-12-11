@@ -11,6 +11,7 @@ from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.growth_experiment.growth_method.overlay_growth import OverlayGrowth
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
 from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
+from dmp.layer.visitor.keras_interface.keras_utils import make_typed_keras_config_factory
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
 from dmp.model.model_info import ModelInfo
@@ -140,14 +141,14 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         src_model.network.description = final_network.description
         return self._make_result_record(dataset, src_model, history)
 
-    _grow_network = make_typed_config_factory(
+    _grow_network = make_typed_keras_config_factory(
         'growth_method',
         {
             'NetworkOverlayer': OverlayGrowth,
         },
     )
 
-    _make_growth_trigger_callback = make_typed_config_factory(
+    _make_growth_trigger_callback = make_typed_keras_config_factory(
         'growth_trigger',
         {
             'EarlyStopping': keras.callbacks.EarlyStopping,
