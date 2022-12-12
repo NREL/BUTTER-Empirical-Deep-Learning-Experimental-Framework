@@ -17,6 +17,8 @@ from sklearn.preprocessing import (
     OneHotEncoder,
 )
 
+import pickle
+
 '''
 CNN Datasets and Where to Find Them
 MNIST: load from keras
@@ -150,6 +152,41 @@ def _fetch_tf_data(dataset_name: str) -> Tuple[ndarray, ndarray]:
     raw_outputs = np.array(raw_outputs)
     return raw_inputs, raw_outputs
 
+def _fetch_imagenet_data(size: int = 16, crop_120: bool=False) -> Tuple[ndarray, ndarray]:
+    datafolder = '/Users/ebensen/image_net/' # change this to your data folder
+    if size == 16:
+        train_path = datafolder + 'Imagenet32_train_npz/train_data_batch_'
+        test_path = datafolder + 'Imagenet32_val_npz/val_data.npz'
+        s = 16
+    elif size == 32:
+        train_path = datafolder + 'Imagenet32_train_npz/train_data_batch_'
+        test_path = datafolder + 'Imagenet32_val_npz/val_data.npz'
+        s = 32
+    else:
+        raise Exception('No matching dataset "imagenet_{}".'.format(size))
+
+    batches = 10
+    d = np.load(test_path)
+    # print('loaded test data')
+    raw_inputs = d['data']
+    raw_outputs = d['labels']
+    for i in range(1,batches+1):
+        path = train_path + str(i) + '.npz'
+        d = np.load(path)
+        raw_inputs = np.concatenate((raw_inputs, d['data']), axis=0)
+        raw_outputs = np.concatenate((raw_outputs, d['labels']), axis=0)
+    raw_outputs -= 1 # subtract 1 to make labels start at 0
+    if crop_120:
+        inds = raw_outputs < 120 
+        raw_inputs = raw_inputs[inds]
+        raw_outputs = raw_outputs[inds]
+    raw_outputs = raw_outputs.astype(int)
+    n = raw_outputs.shape[0]
+    raw_inputs = raw_inputs.reshape(n, 3, s, s)
+    raw_inputs = np.transpose(raw_inputs, (0, 2, 3, 1))
+
+    return raw_inputs, raw_outputs
+
 def _fetch_data(dataset_name: str) -> Tuple[ndarray, ndarray]:
     keras_datasets = ['mnist', 'fashion_mnist', 'cifar10', 'cifar100']
     tf_datasets = ['colorectal_histology', 'eurosat_all', 'eurosat_rgb', 
@@ -158,6 +195,14 @@ def _fetch_data(dataset_name: str) -> Tuple[ndarray, ndarray]:
         raw_inputs, raw_outputs = _fetch_keras_data(dataset_name)
     elif dataset_name in tf_datasets:
         raw_inputs, raw_outputs = _fetch_tf_data(dataset_name)
+    elif dataset_name == 'imagenet_16':
+        raw_inputs, raw_outputs = _fetch_imagenet_data(size=16, crop_120=False)
+    elif dataset_name == 'imagenet_16_120':
+        raw_inputs, raw_outputs = _fetch_imagenet_data(size=16, crop_120=True)
+    elif dataset_name == 'imagenet_32':
+        raw_inputs, raw_outputs = _fetch_imagenet_data(size=32, crop_120=False)
+    elif dataset_name == 'imagenet_32_120':
+        raw_inputs, raw_outputs = _fetch_imagenet_data(size=32, crop_120=True)
     else:
         raise Exception('No matching dataset "{}".'.format(dataset_name))
     return raw_inputs, raw_outputs
@@ -202,6 +247,10 @@ _custom_loaders: Dict[str, Callable[[ndarray, ndarray], Tuple[ndarray, ndarray]]
     'places365_small': _load_image,
     'horses_or_humans': _load_image_binary,
     'patch_camelyon': _load_image_binary,
+    'imagenet_16_120': _load_image,
+    'imagenet_16': _load_image,
+    'imagenet_32_120': _load_image,
+    'imagenet_32': _load_image,
 }
 
 
