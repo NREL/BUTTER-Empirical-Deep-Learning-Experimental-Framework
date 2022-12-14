@@ -108,7 +108,15 @@ class TrainingExperimentExecutor():
         if model.input is None:
             model.input = Input()
         if model.input.get('shape', None) is None:
-            model.input['shape'] = dataset.input_shape
+            input_dim = len(dataset.input_shape)
+            if input_dim <= 2:
+                model.input['shape'] = dataset.input_shape
+            elif input_dim == 3:
+                model.input['shape'] = dataset.input_shape[0:2]
+                model.input['channels'] = dataset.input_shape[2]
+            else:
+                raise NotImplementedError(f'Unsupported input shape {dataset.input_shape}.')
+            
 
         if model.output is None:
             model.output = Dense.make(

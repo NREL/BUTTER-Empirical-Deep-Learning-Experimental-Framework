@@ -4,6 +4,7 @@ from dataclasses import dataclass
 @dataclass
 class DatasetSpec():
     name: str  # migrate from dataset
+    source:str # migrate = pmldb
     method: str  # migrate from test_split_method
     test_split: float  # direct migrate
     validation_split: float  # 0.0 when migrating from AspectTestTask

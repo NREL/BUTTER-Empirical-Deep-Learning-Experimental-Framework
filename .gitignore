@@ -3,6 +3,7 @@
 /download/
 __pycache__
 **/.pmlb_cache
+**/.dataset_cache
 /.idea/
 .idea
 .idea/*
