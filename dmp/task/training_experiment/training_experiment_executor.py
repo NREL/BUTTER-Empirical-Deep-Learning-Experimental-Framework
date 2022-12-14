@@ -8,11 +8,11 @@ from prometheus_client import Metric
 import tensorflow
 import tensorflow.keras as keras
 import numpy
+from dmp.dataset.prepared_dataset import PreparedDataset
 
 from dmp.jobqueue_interface import jobqueue_marshal
 from dmp.layer.visitor.keras_interface.keras_utils import keras_from_config, make_keras_config
 from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_from_network
-from dmp.dataset.dataset import Dataset
 from dmp.layer import *
 from dmp.model.model_spec import ModelSpec
 from dmp.task.training_experiment.additional_validation_sets import AdditionalValidationSets
@@ -50,15 +50,15 @@ class TrainingExperimentExecutor():
         tensorflow.random.set_seed(seed)
         random.seed(seed)
 
-    def _load_and_prepare_dataset(self) -> Dataset:
-        return Dataset.make(
+    def _load_and_prepare_dataset(self) -> PreparedDataset:
+        return PreparedDataset(
             self.task.dataset,
             self.task.fit_config['batch_size'],
         )
 
     def _autoconfigure_for_dataset(
         self,
-        dataset: Dataset,
+        dataset: PreparedDataset,
     ) -> List[Union[str, keras.metrics.Metric]]:
         # auto-populate model inputs and outputs if not already set
         num_outputs: int = dataset.output_shape[0]
@@ -155,7 +155,7 @@ class TrainingExperimentExecutor():
 
     def _compile_model(
         self,
-        dataset: Dataset,
+        dataset: PreparedDataset,
         model: ModelInfo,
         metrics: List[Union[str, keras.metrics.Metric]],
     ) -> None:
@@ -174,20 +174,20 @@ class TrainingExperimentExecutor():
     def _fit_model(
         self,
         fit_config: Dict[str, Any],
-        dataset: Dataset,
+        dataset: PreparedDataset,
         model: ModelInfo,
         callbacks: List[keras.callbacks.Callback],
     ) -> Dict:
         # setup training, validation, and test datasets
         fit_config = fit_config.copy()
-        fit_config['x'] = dataset.train_data
+        fit_config['x'] = dataset.train
         test_callback = None
-        if dataset.validation_data is None:
-            fit_config['validation_data'] = dataset.test_data
+        if dataset.validation is None:
+            fit_config['validation_data'] = dataset.test
         else:
-            fit_config['validation_data'] = dataset.validation_data
+            fit_config['validation_data'] = dataset.validation
             test_callback = AdditionalValidationSets(
-                [(test_history_key, dataset.test_data)],
+                [(test_history_key, dataset.test)],
                 batch_size=self.task.fit_config['batch_size'],
             )
             callbacks.append(test_callback)
@@ -204,7 +204,7 @@ class TrainingExperimentExecutor():
 
     def _make_result_record(
         self,
-        dataset: Dataset,
+        dataset: PreparedDataset,
         model: ModelInfo,
         history: Dict[str, Any],
     ) -> Dict[str, Any]:

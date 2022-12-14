@@ -7,10 +7,10 @@ from typing import (
     Any,
 )
 
-from dmp.dataset.keras_dataset_loader import KerasDatasetLoader
+from dmp.dataset.keras_image_dataset_loader import KerasImageDatasetLoader
 
 
-class KerasMNISTDatasetLoader(KerasDatasetLoader):
+class KerasMNISTDatasetLoader(KerasImageDatasetLoader):
 
     def __init__(
         self,
@@ -19,7 +19,5 @@ class KerasMNISTDatasetLoader(KerasDatasetLoader):
     ) -> None:
         super().__init__(dataset_name, keras_load_data_function)
 
-    def _prepare(self, data):
-        raw_inputs, raw_outputs = data
-        raw_inputs = raw_inputs.reshape(raw_inputs.shape[0], 28, 28, 1)
-        return super()._prepare((raw_inputs, raw_outputs))
+    def _prepare_inputs(self, data):
+        return super()._prepare_inputs(data.reshape(data.shape[0], 28, 28, 1))

@@ -1,4 +1,3 @@
-from re import I
 from typing import (
     Callable,
     Dict,
@@ -9,11 +8,13 @@ from typing import (
 )
 
 import numpy
+from dmp.dataset.dataset import Dataset
+from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset_loader import DatasetLoader
 from dmp.dataset.ml_task import MLTask
 
 
-class KerasDatasetLoader(DatasetLoader):
+class KerasImageDatasetLoader(DatasetLoader):
 
     def __init__(
         self,
@@ -24,10 +25,12 @@ class KerasDatasetLoader(DatasetLoader):
         self._keras_load_data_function: Callable = keras_load_data_function
 
     def _fetch_from_source(self):
-        (xtrain, ytrain), (xtest, ytest) = self._keras_load_data_function()
-        raw_inputs = numpy.concatenate((xtrain, xtest), axis=0)
-        raw_outputs = numpy.concatenate((ytrain, ytest), axis=0)
-        return raw_inputs, raw_outputs
+        train, test = self._keras_load_data_function()
+        return Dataset(
+            self.ml_task,
+            DatasetGroup(*train),
+            DatasetGroup(*test),
+        )
 
-    def _prepare(self, data):
+    def _prepare_inputs(self, data):
         return self._prepare_image(data)

@@ -7,6 +7,9 @@
 
 + CNN dataset refactor
 
++ CNN loader
++ dataset-based fixed train-test split method
+
 + task schema redesign
     + task migration script
 

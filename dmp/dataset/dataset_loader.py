@@ -18,9 +18,12 @@ from sklearn.preprocessing import (
     MinMaxScaler,
     OneHotEncoder,
 )
+from dmp.dataset.dataset_group import DatasetGroup
+from dmp.dataset.dataset import Dataset
 from dmp.dataset.ml_task import MLTask
 
 dataset_cache_directory = os.path.join(os.getcwd(), '.dataset_cache')
+
 
 @dataclass
 class DatasetLoader(ABC):
@@ -28,45 +31,74 @@ class DatasetLoader(ABC):
     dataset_name: str
     ml_task: MLTask
 
-    def __call__(self):
+    def __call__(self) -> Dataset:
         # check cache first for raw inputs and outputs in the working directory
         # cache_directory = os.path.join(os.getcwd(), '.dataset_cache', self.dataset_name)
         os.makedirs(dataset_cache_directory, exist_ok=True)
         # raw_inputs, raw_outputs = self.read_from_source(cache_directory, self.dataset_name)
         """ See if the file has been cached and try to read that, download otherwise"""
-        filename = self.dataset_name + '.npy'
-        file_path = os.path.join(dataset_cache_directory, filename)
         data = self._try_read_from_cache()
         if data is None:
-            data = self._prepare(self._fetch_from_source())
+            data = self._prepare_dataset_data(self._fetch_from_source())
             self._write_to_cache(data)
+            self.ml_task = data.ml_task
         return data
 
     def _get_cache_path(self):
-        return os.path.join(dataset_cache_directory, self.dataset_name + '.npy')
+        return os.path.join(dataset_cache_directory, self.dataset_name)
 
-    def _try_read_from_cache(self):
+    def _try_read_from_cache(self) -> Optional[Dataset]:
         os.makedirs(dataset_cache_directory, exist_ok=True)
-        raw_inputs, raw_outputs = None, None
         try:
             with open(self._get_cache_path(), 'rb') as f:
-                raw_inputs = numpy.load(f, allow_pickle=True)
-                raw_outputs = numpy.load(f, allow_pickle=True)
+                splits = numpy.load(f, allow_pickle=True)
+
+                return Dataset(
+                    self.ml_task, **{
+                        split: DatasetGroup(
+                            numpy.load(f, allow_pickle=True),
+                            numpy.load(f, allow_pickle=True),
+                        )
+                        for split in splits
+                    })
         except FileNotFoundError:
             return None
-        return (raw_inputs, raw_outputs)
 
     @abstractmethod
-    def _fetch_from_source(self):
+    def _fetch_from_source(self) -> Dataset:
         pass
 
-    def _write_to_cache(self, data):
+    def _write_to_cache(self, data: Dataset) -> None:
         with open(self._get_cache_path(), 'wb') as f:
-            for d in data:
-                numpy.save(f, d)
+            splits = data.splits
+            split_names = [split[0] for split in splits]
+            numpy.save(f, np.array(split_names, dtype='string'))
+            for split in splits:
+                group = split[1]
+                numpy.save(f, group.inputs)
+                numpy.save(f, group.outputs)
 
-    def _prepare(self, data) -> Tuple[ndarray, ndarray]:
-        return tuple((self.prepare_data(d) for d in data))
+    def _prepare_dataset_data(self, data: Dataset) -> Dataset:
+        data.train = self._prepare_data_group(data.train)
+        data.test = self._prepare_data_group(data.test)
+        data.validation = self._prepare_data_group(data.validation)
+        return data
+
+    def _prepare_data_group(
+        self,
+        group: Optional[DatasetGroup],
+    ) -> Optional[DatasetGroup]:
+        if group is None:
+            return None
+        group.inputs = self._prepare_inputs(group.inputs)
+        group.outputs = self._prepare_outputs(group.outputs)
+        return group
+
+    def _prepare_inputs(self, data) -> ndarray:
+        return self.prepare_data(data)
+
+    def _prepare_outputs(self, data) -> ndarray:
+        return self.prepare_data(data)
 
     def prepare_data(self, value) -> ndarray:
         shape = value.shape
@@ -139,8 +171,8 @@ class DatasetLoader(ABC):
         # if there are only two values, set them as 0 and 1
         return (value == value[0]).astype(np.int)  # type: ignore
 
-    def _prepare_image(self, data) -> Tuple[ndarray, ndarray]:
-        return data[0] / 255.0, self.prepare_value(data[1])
+    def _prepare_image(self, data: ndarray) -> ndarray:
+        return (data / 255.0).astype(numpy.float16)
 
 
 def load_dataset_index(path: str) -> pandas.DataFrame:

@@ -7,18 +7,17 @@ from typing import (
     Tuple,
     Any,
 )
-
 import tensorflow.keras as keras
-from numpy import ndarray
 import pandas
+from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_loader import DatasetLoader
 from dmp.dataset.functional_pmlb_dataset_loader import FunctionalPMLBDatasetLoader
-from dmp.dataset.keras_dataset_loader import KerasDatasetLoader
+from dmp.dataset.keras_image_dataset_loader import KerasImageDatasetLoader
 from dmp.dataset.keras_mnist_dataset_loader import KerasMNISTDatasetLoader
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.pmlb_dataset_loader import PMLBDatasetLoader
 from dmp.dataset.tf_image_classification_dataset_loader import TFImageClassificationDatasetLoader
-
+from dmp.dataset.imagenet_dataset_loader import ImageNetDatasetLoader
 from dmp.task.task_util import make_dispatcher
 
 
@@ -27,7 +26,7 @@ def _make_loader_map(
     return {loader.dataset_name: loader for loader in loaders}
 
 
-_load_keras_dataset = make_dispatcher(
+__load_keras_dataset = make_dispatcher(
     'keras dataset',
     _make_loader_map([
         KerasMNISTDatasetLoader(
@@ -38,18 +37,18 @@ _load_keras_dataset = make_dispatcher(
             'fashion_mnist',
             keras.datasets.fashion_mnist.load_data,
         ),
-        KerasDatasetLoader(
+        KerasImageDatasetLoader(
             'cifar10',
             keras.datasets.cifar10.load_data,
         ),
-        KerasDatasetLoader(
+        KerasImageDatasetLoader(
             'cifar100',
             lambda: keras.datasets.cifar100.load_data(label_mode='fine'),
         ),
     ]))
 
 
-def make_load_pmlb_dataset():
+def __make_load_pmlb_dataset():
     pmlb_index_path = os.path.join(
         os.path.realpath(os.path.join(
             os.getcwd(),
@@ -77,16 +76,60 @@ def make_load_pmlb_dataset():
     return make_dispatcher('pmlb dataset', loaders)
 
 
-_load_pmlb_dataset = make_load_pmlb_dataset()
+__load_pmlb_dataset = __make_load_pmlb_dataset()
 
-_source_loaders = make_dispatcher(
+__load_imagenet_dataset = make_dispatcher(
+    'ImageNet dataset',
+    _make_loader_map([
+        ImageNetDatasetLoader(
+            'imagenet_16',
+            MLTask.classification,
+            16,
+            None,
+        ),
+        ImageNetDatasetLoader(
+            'imagenet_16_120',
+            MLTask.classification,
+            16,
+            120,
+        ),
+        ImageNetDatasetLoader(
+            'imagenet_32',
+            MLTask.classification,
+            32,
+            None,
+        ),
+        ImageNetDatasetLoader(
+            'imagenet_32_120',
+            MLTask.classification,
+            32,
+            120,
+        ),
+    ]))
+
+__source_loaders = make_dispatcher(
     'dataset source', {
-        'keras': _load_keras_dataset,
+        'keras': __load_keras_dataset,
         'tensorflow': TFImageClassificationDatasetLoader,
-        'pmlb': _load_pmlb_dataset
+        'pmlb': __load_pmlb_dataset,
+        'imagenet': __load_imagenet_dataset,
     })
 
 
-def load_dataset(source: str,
-                 name: str) -> Tuple[pandas.Series, ndarray, ndarray]:
-    return _source_loaders(source)(name)() # type: ignore
+'''
+    keras_datasets = ['mnist', 'fashion_mnist', 'cifar10', 'cifar100']
+    tensorflow_datasets = [
+        'colorectal_histology', 'eurosat_all', 'eurosat_rgb',
+        'horses_or_humans', 'patch_camelyon', 'places365_small'
+    ]
+
+    imagenet:
+        imagenet_16
+        imagenet_16_120
+        imagenet_32
+        imagenet_32_120
+'''
+
+
+def load_dataset(source: str, name: str) -> Dataset:
+    return __source_loaders(source)(name)()  # type: ignore

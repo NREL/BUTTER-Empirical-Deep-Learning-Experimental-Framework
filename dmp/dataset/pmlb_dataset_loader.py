@@ -7,7 +7,8 @@ from typing import (
     Any,
 )
 from dataclasses import dataclass
-import pmlb
+from dmp.dataset.dataset import Dataset
+from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset_loader import DatasetLoader
 
 
@@ -15,6 +16,9 @@ from dmp.dataset.dataset_loader import DatasetLoader
 class PMLBDatasetLoader(DatasetLoader):
 
     def _fetch_from_source(self):
-        return pmlb.fetch_data(self.dataset_name, return_X_y=True)
-
-
+        import pmlb
+        return Dataset(self.ml_task,
+                       DatasetGroup(*pmlb.fetch_data(
+                           self.dataset_name,
+                           return_X_y=True,
+                       )))  # type: ignore
