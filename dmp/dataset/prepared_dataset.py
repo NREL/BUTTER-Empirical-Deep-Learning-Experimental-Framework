@@ -20,6 +20,16 @@ class PreparedDataset():
         self.ml_task: MLTask = dataset.ml_task
         self.input_shape: List[int] = dataset.input_shape
         self.output_shape: List[int] = dataset.output_shape
+
+        def get_group_size(group) -> int:
+            if group is None or group.inputs is None:
+                return 0
+            return group.inputs.shape[0]  # type: ignore
+
+        self.train_size: int = get_group_size(dataset.train)
+        self.test_size: int = get_group_size(dataset.test)
+        self.validation_size: int = get_group_size(dataset.validation)
+
         self.train = make_tensorflow_dataset(
             dataset.train,
             batch_size,
@@ -35,6 +45,7 @@ class PreparedDataset():
             batch_size,
         )
         dataset.validation = None
+        del dataset
 
 
 def split_dataset(spec: DatasetSpec, dataset: Dataset) -> None:

@@ -12,6 +12,7 @@ from dmp.task.growth_experiment.growth_method.overlay_growth import OverlayGrowt
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
 from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.layer.visitor.keras_interface.keras_utils import make_typed_keras_config_factory
+from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
 from dmp.model.model_info import ModelInfo
@@ -31,7 +32,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         self.task: GrowthExperiment = task
         self.worker = worker
 
-    def __call__(self) -> Dict[str, Any]:
+    def __call__(self) -> TaskResultRecord:
         task = self.task
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()

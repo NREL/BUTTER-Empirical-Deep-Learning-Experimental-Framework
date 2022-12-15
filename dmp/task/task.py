@@ -4,7 +4,7 @@ import collections.abc
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
 from dmp.jobqueue_interface import keras_type_key, marshal_type_key, jobqueue_marshal
-from dmp import jobqueue_interface
+from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.task_util import flatten
 
 ParameterValue = Union[None, bool, int, float, str]
@@ -20,7 +20,7 @@ class Task(ABC):
     batch: str
 
     @abstractmethod
-    def __call__(self, worker) -> Dict[str, Any]:
+    def __call__(self, worker) -> TaskResultRecord:
         pass
 
     @property

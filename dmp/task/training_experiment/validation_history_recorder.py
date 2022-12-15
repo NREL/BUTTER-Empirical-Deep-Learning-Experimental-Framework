@@ -1,7 +1,7 @@
 import tensorflow.keras as keras
 
 
-class AdditionalValidationSets(keras.callbacks.Callback):
+class ValidationHistoryRecorder(keras.callbacks.Callback):
 
     def __init__(self, validation_sets, verbose=0, batch_size=None):
         """
@@ -17,7 +17,7 @@ class AdditionalValidationSets(keras.callbacks.Callback):
 
         Source : https://stackoverflow.com/questions/47731935/using-multiple-validation-sets-with-keras
         """
-        super(AdditionalValidationSets, self).__init__()
+        super(ValidationHistoryRecorder, self).__init__()
         self.validation_sets = validation_sets
         for validation_set in self.validation_sets:
             if len(validation_set) not in [2, 3, 4]:

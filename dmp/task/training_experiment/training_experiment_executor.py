@@ -15,7 +15,8 @@ from dmp.layer.visitor.keras_interface.keras_utils import keras_from_config, mak
 from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
 from dmp.model.model_spec import ModelSpec
-from dmp.task.training_experiment.additional_validation_sets import AdditionalValidationSets
+from dmp.task.task_result_record import TaskResultRecord
+from dmp.task.training_experiment.validation_history_recorder import ValidationHistoryRecorder
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
 from dmp.model.network_info import NetworkInfo
@@ -30,7 +31,7 @@ class TrainingExperimentExecutor():
         self.task: TrainingExperiment = task
         self.worker = worker
 
-    def __call__(self) -> Dict[str, Any]:
+    def __call__(self) -> TaskResultRecord:
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
         metrics = self._autoconfigure_for_dataset(dataset)
@@ -115,8 +116,8 @@ class TrainingExperimentExecutor():
                 model.input['shape'] = dataset.input_shape[0:2]
                 model.input['channels'] = dataset.input_shape[2]
             else:
-                raise NotImplementedError(f'Unsupported input shape {dataset.input_shape}.')
-            
+                raise NotImplementedError(
+                    f'Unsupported input shape {dataset.input_shape}.')
 
         if model.output is None:
             model.output = Dense.make(
@@ -186,7 +187,7 @@ class TrainingExperimentExecutor():
             fit_config['validation_data'] = dataset.test
         else:
             fit_config['validation_data'] = dataset.validation
-            test_callback = AdditionalValidationSets(
+            test_callback = ValidationHistoryRecorder(
                 [(test_history_key, dataset.test)],
                 batch_size=self.task.fit_config['batch_size'],
             )
@@ -207,39 +208,41 @@ class TrainingExperimentExecutor():
         dataset: PreparedDataset,
         model: ModelInfo,
         history: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        parameters: Dict[str, Any] = self.task.get_parameters()
-        parameters.update(self.worker.worker_info)
-        parameters.update(model.network.description)
-        parameters.update({
-            'num_free_parameters': model.network.num_free_parameters,
-            # 'output_activation': network.output_activation,
-            'network_structure': \
-                jobqueue_marshal.marshal(model.network.structure),
+    ) -> TaskResultRecord:
+
+        experiment_parameters = self.task.get_parameters()
+        experiment_parameters.update({
+            'ml_task': dataset.ml_task,
+        })
+
+        experiment_data = {
+            'num_free_parameters':
+            model.network.num_free_parameters,
+            'network_structure':
+            jobqueue_marshal.marshal(model.network.structure),
+            'input_shape':
+            dataset.input_shape,
+            'output_shape':
+            dataset.output_shape,
+            'training_set_size':
+            dataset.train_size,
+            'test_set_size':
+            dataset.test_size,
+            'validation_set_size':
+            dataset.validation_size,
+            'total_dataset_size':
+            dataset.train_size + dataset.test_size + dataset.validation_size
+        }
+
+        run_data = self.worker.worker_info.copy()
+        run_data.update({
+            'task_version': experiment_parameters.pop('task_version', None),
             'python_version': str(platform.python_version()),
             'platform': str(platform.platform()),
             'tensorflow_version': str(tensorflow.__version__),
             'hostname': str(platform.node()),
             'slurm_job_id': os.getenv("SLURM_JOB_ID"),
-        })
-
-        git_hash = None
-        try:
-            git_hash = subprocess.check_output(
-                ["git", "describe", "--always"],
-                cwd=os.path.dirname(__file__)).strip().decode()
-        except:
-            pass
-        parameters['git_hash'] = git_hash
-
-        # TODO: migrate / add these to existing:
-        parameters.update({
-            'input_shape': dataset.input_shape,
-            'output_shape': dataset.output_shape,
-            'ml_task': dataset.ml_task,
-            # 'training_set_size' : dataset.train_data.shape[0],
-            # 'test_set_size' : dataset.train_data.shape[0],
-            # 'validation_set_size' : dataset.train_data.shape[0],
+            'git_hash': self._get_git_hash(),
         })
 
         # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
@@ -254,5 +257,17 @@ class TrainingExperimentExecutor():
                 ('val_', 'test_'),
                 ('', 'train_'),
             ])  # type: ignore
-        parameters.update(history)
-        return parameters
+        return TaskResultRecord(
+            experiment_parameters,
+            experiment_data,
+            run_data,
+            history,
+        )
+
+    def _get_git_hash(self):
+        try:
+            return subprocess.check_output(
+                ["git", "describe", "--always"],
+                cwd=os.path.dirname(__file__)).strip().decode()
+        except:
+            return None

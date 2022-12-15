@@ -3,6 +3,7 @@ from typing import Any, Optional, Dict
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
 from dmp.task.task import Parameter, ParameterDict, Task
+from dmp.task.task_result_record import TaskResultRecord
 
 
 @dataclass
@@ -15,7 +16,7 @@ class TrainingExperiment(Task):
     early_stopping: Optional[dict]  # direct migration
     save_every_epochs: int  # migrate with None mapping to -1
 
-    def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
+    def __call__(self, worker, *args, **kwargs) -> TaskResultRecord:
         from .training_experiment_executor import TrainingExperimentExecutor
         return TrainingExperimentExecutor(self, worker, *args, **kwargs)()
 
