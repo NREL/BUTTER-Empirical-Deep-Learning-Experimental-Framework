@@ -35,9 +35,9 @@ def make_layer_from_operation(
         return APoolingLayer.make(\
             MaxPool, (3, 3), (1, 1), pooling_config, input)
     elif op == 'identity':
-        return IdentityOperation({}, input)
+        return Identity({}, input)
     elif op == 'zeroize':
-        return ZeroizeOperation({}, input)
+        return Zeroize({}, input)
 
     raise ValueError(f'Unknown operation {op}')
 

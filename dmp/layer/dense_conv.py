@@ -1,7 +1,6 @@
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
 from dmp.layer.convolutional_layer import AConvolutionalLayer
-from dmp.layer.layer import Layer, network_module_types, empty_config, empty_inputs
-
+from dmp.layer.layer import Layer, network_module_types, empty_config, empty_inputs, LayerConfig
 
 class DenseConv(AConvolutionalLayer):
 
@@ -10,25 +9,25 @@ class DenseConv(AConvolutionalLayer):
         filters: int,
         kernel_size: List[int],
         strides: List[int],
-        config: Dict[str, Any] = empty_config,
-        input: Union['Layer', List['Layer']] = empty_inputs,
+        config: LayerConfig = empty_config,
+        inputs: List[Layer] = empty_inputs,
     ) -> 'DenseConv':
         return AConvolutionalLayer.make(DenseConv, filters, kernel_size,
-                                       strides, config, input)
+                                       strides, config, inputs)
 
     @staticmethod
-    def makeNxN(n: int,
-                input: Union['Layer', List['Layer']] = []) -> 'DenseConv':
-        return DenseConv.make(-1, [n, n], [1, 1], {}, input)
+    def make_NxN(n: int,
+                inputs: List[Layer] = empty_inputs) -> 'DenseConv':
+        return DenseConv.make(-1, [n, n], [1, 1], {}, inputs)
 
-def conv1x1(input: Union['Layer', List['Layer']] = []) -> DenseConv:
-    return DenseConv.makeNxN(1, input)
+def conv_1x1(inputs: List[Layer] = empty_inputs) -> DenseConv:
+    return DenseConv.make_NxN(1, inputs)
 
-def conv3x3(input: Union['Layer', List['Layer']] = []) -> DenseConv:
-    return DenseConv.makeNxN(3, input)
+def conv_3x3(inputs: List[Layer] = empty_inputs) -> DenseConv:
+    return DenseConv.make_NxN(3, inputs)
 
-def conv5x5(input: Union['Layer', List['Layer']] = []) -> DenseConv:
-    return DenseConv.makeNxN(5, input)
+def conv_5x5(inputs: List[Layer] = empty_inputs) -> DenseConv:
+    return DenseConv.make_NxN(5, inputs)
 
 
 network_module_types.append(DenseConv)

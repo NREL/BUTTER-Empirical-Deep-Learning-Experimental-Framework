@@ -4,25 +4,27 @@ from lmarshal import Marshaler, Demarshaler
 from dmp.layer.layer_factory import LayerFactory
 from lmarshal.src.custom_marshalable import CustomMarshalable
 
-network_module_types: List[Type] = []
-
-T = TypeVar('T')
+LayerConfig = Dict[str,Any]
 
 uninitialized_shape: Tuple[int, ...] = tuple()
 marshaled_shape_key: str = 'shape'
 marshaled_inputs_key: str = 'inputs'
 marshaled_free_parameters_key: str = 'free_parameters'
 empty_config: Dict[str, Any] = {}
-empty_inputs: List['Layer'] = []
+empty_inputs: List = []
+
+T = TypeVar('T')
+
+network_module_types: List[Type] = []
 
 
 class Layer(LayerFactory, CustomMarshalable, ABC):
 
     def __init__(
         self,
-        config: Dict[str, Any] = empty_config,
+        config: LayerConfig = empty_config,
         input: Union['Layer', List['Layer']] = empty_inputs,
-        overrides: Dict[str, Any] = empty_config,
+        overrides: LayerConfig = empty_config,
     ) -> None:
         if not isinstance(input, List):
             input = [input]
@@ -32,7 +34,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         config = config.copy()  # defensive copy
         config.update(overrides)
 
-        self.config: Dict[str, Any] = config
+        self.config: LayerConfig = config
         self.inputs: List['Layer'] = input
         self.shape: Tuple[
             int, ...] = uninitialized_shape  # must be computed in context
@@ -56,11 +58,24 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
     def __contains__(self, key) -> bool:
         return self.config.__contains__(key)
 
-    def make_layer(self, inputs: List['Layer']) -> 'Layer':
-        result_inputs = inputs
-        if len(self.inputs) > 0:
-            result_inputs = [input.make_layer(inputs) for input in self.inputs]
-        return self.__class__(self.config, result_inputs)
+    def update_if_exists(self, overrides: LayerConfig) -> None:
+        for k, v in overrides.items():
+            if k in self.config:
+                self.config[k] = v
+
+    def update(self, overrides: LayerConfig) -> None:
+        self.config.update(overrides)
+
+    def make_layer(
+        self,
+        inputs: List['Layer'],
+        override_if_exists: LayerConfig,
+    ) -> 'Layer':
+        if len(inputs) <= 0:
+            inputs = [input.make_layer([], {}) for input in self.inputs]
+        result = self.__class__(self.config, inputs)
+        result.update_if_exists(override_if_exists)
+        return result
 
     @property
     def input(self) -> 'Layer':
@@ -120,7 +135,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
 
 LayerConstructor = Callable[
-    [Dict[str, Any], Union[Layer, List[Layer]], Dict[str, Any]], T]
+    [LayerConfig, Union[Layer, List[Layer]], LayerConfig], T]
 
 # '''
 # + single class:
@@ -142,70 +157,21 @@ LayerConstructor = Callable[
 # '''
 
 
-class AElementWiseOperatorLayer(Layer):
-    pass
 
 
-class Dense(Layer):
-
-    _default_config: Dict[str, Any] = {
-        'activation': 'ReLu',
-        'use_bias': True,
-        'kernel_initializer': 'HeUniform',
-        'bias_initializer': 'Zeros',
-        'kernel_regularizer': None,
-        'bias_regularizer': None,
-        'activity_regularizer': None,
-        'kernel_constraint': None,
-        'bias_constraint': None,
-    }
-
-    @staticmethod
-    def make(
-        units: int,
-        config: Dict[str, Any] = empty_config,
-        input: Union['Layer', List['Layer']] = empty_inputs,
-    ) -> 'Dense':
-        config['units'] = units
-        return Dense(Dense._default_config, input, config)
 
 
-network_module_types.append(Dense)
 
 
-class Input(Layer):
-    pass
 
 
-network_module_types.append(Input)
 
 
-class Add(AElementWiseOperatorLayer):
-
-    @staticmethod
-    def make(input: Union['Layer', List['Layer']]) -> 'Add':
-        return Add({}, input)
 
 
-network_module_types.append(Add)
 
 
-class Concatenate(Layer):
-    pass
 
 
-network_module_types.append(Concatenate)
 
 
-class IdentityOperation(AElementWiseOperatorLayer):
-    pass
-
-
-network_module_types.append(IdentityOperation)
-
-
-class ZeroizeOperation(AElementWiseOperatorLayer):
-    pass
-
-
-network_module_types.append(ZeroizeOperation)

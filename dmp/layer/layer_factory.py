@@ -5,8 +5,12 @@ from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Ty
 class LayerFactory(ABC):
 
     @abstractmethod
-    def make_layer(self, inputs: List['Layer']) -> 'Layer':
+    def make_layer(
+        self,
+        inputs: List['Layer'],
+        config: 'LayerConfig',
+    ) -> 'Layer':
         pass
 
 
-from .layer import Layer
+from .layer import Layer, LayerConfig

@@ -195,7 +195,7 @@ class LayerToKerasVisitor:
     @_visit.register
     def _(
         self,
-        target: IdentityOperation,
+        target: Identity,
         config: Dict[str, Any],
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
@@ -204,7 +204,7 @@ class LayerToKerasVisitor:
     @_visit.register
     def _(
         self,
-        target: ZeroizeOperation,
+        target: Zeroize,
         config: Dict[str, Any],
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
