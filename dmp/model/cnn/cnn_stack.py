@@ -20,20 +20,24 @@ class CNNStack(ModelSpec):
     pooling: str
 
     stem_width: int
-    width_multiplier_per_stack: float
-
-    # output: str
+    stack_width_coefficient: float
+    cell_width_coefficient: float
 
     def make_network(self) -> NetworkInfo:
-        stem = get_layer_factory(self.stem).make_layer([])
-        # stem
+        width = self.stem_width
+        stage_widths = []
+        for s in range(self.num_stacks):
+            cell_widths = []
+            stage_widths.append(cell_widths)
+            for c in range(self.cells_per_stack + 1):
+                cell_widths.append(int(round(width)))
+                width *= self.cell_width_coefficient
+            width *= self.stack_width_coefficient
 
         return CNNStacker(
             self.input,
             self.output,
-            self.num_stacks,
-            self.cells_per_stack,
-            # self.downsample_ratio,
+            stage_widths,
             get_layer_factory(self.stem),
             get_layer_factory(self.downsample),
             get_layer_factory(self.cell),
@@ -55,7 +59,7 @@ _layer_factory_map = {
     Add.make([
         AvgPool.make([2, 2], [2, 2]),
         conv_3x3([DenseConv.make(-1, [3, 3], [2, 2])]),
-    ]), # type: ignore
+    ]),  # type: ignore
     'downsample_avgpool_2x2_residual_conv_3x3':
     Add.make([
         AvgPool.make([2, 2], [2, 2]),

@@ -7,7 +7,6 @@ from dmp.layer import *
 
 @dataclass
 class GraphCell(LayerFactory):
-    # width: int  # width of input and output
     operations: List[List[Layer]]  # defines the cell structure
     output: Layer  # combines parallel layers to form single output (Add, concat, etc)
 
@@ -24,7 +23,6 @@ class GraphCell(LayerFactory):
                 if isinstance(operation, Zeroize):
                     continue  # skip 'zeroize' operations
                 layer = operation.make_layer([input_layer], config)
-                layer.update_if_exists(config)
                 parallel_operation_layers.append(layer)
             serial_layers.append(
                 self.output.make_layer(parallel_operation_layers, config))

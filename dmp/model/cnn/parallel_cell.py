@@ -17,6 +17,5 @@ class ParallelCell(LayerFactory):
             serial_layer = inputs[0]
             for operation in serial_operations:
                 serial_layer = operation.make_layer([serial_layer], config)
-                serial_layer.update_if_exists(config)
             parallel_outputs.append(serial_layer)
         return self.output.make_layer(parallel_outputs, config)

@@ -71,9 +71,14 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         inputs: List['Layer'],
         override_if_exists: LayerConfig,
     ) -> 'Layer':
-        if len(inputs) <= 0:
-            inputs = [input.make_layer([], {}) for input in self.inputs]
-        result = self.__class__(self.config, inputs)
+        layer_inputs = inputs
+        if len(self.inputs) > 0: 
+            layer_inputs = [
+                input.make_layer(inputs, override_if_exists)
+                for input in self.inputs
+            ]
+
+        result = self.__class__(self.config, layer_inputs)
         result.update_if_exists(override_if_exists)
         return result
 
