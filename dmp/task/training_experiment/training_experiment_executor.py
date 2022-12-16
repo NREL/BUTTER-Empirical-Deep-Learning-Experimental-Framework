@@ -4,6 +4,7 @@ from typing import Any, Dict
 import os
 import platform
 import subprocess
+import uuid
 from prometheus_client import Metric
 import tensorflow
 import tensorflow.keras as keras
@@ -216,9 +217,9 @@ class TrainingExperimentExecutor():
         })
 
         experiment_data = {
-            'num_free_parameters':
+            'model_computed_num_free_parameters':
             model.network.num_free_parameters,
-            'network_structure':
+            'model_computed_network_structure':
             jobqueue_marshal.marshal(model.network.structure),
             'input_shape':
             dataset.input_shape,
@@ -234,15 +235,33 @@ class TrainingExperimentExecutor():
             dataset.train_size + dataset.test_size + dataset.validation_size
         }
 
+        experiment_data.update({
+            f'model_computed_{k}': v
+            for k, v in model.network.description.items()
+        })
+
         run_data = self.worker.worker_info.copy()
         run_data.update({
-            'task_version': experiment_parameters.pop('task_version', None),
-            'python_version': str(platform.python_version()),
-            'platform': str(platform.platform()),
-            'tensorflow_version': str(tensorflow.__version__),
-            'hostname': str(platform.node()),
-            'slurm_job_id': os.getenv("SLURM_JOB_ID"),
-            'git_hash': self._get_git_hash(),
+            'run_id':
+            uuid.uuid4(),
+            'seed':
+            experiment_parameters.pop('seed', None),
+            'batch':
+            experiment_parameters.pop('batch', None),
+            'task_version':
+            experiment_parameters.pop('task_version', None),
+            'python_version':
+            str(platform.python_version()),
+            'platform':
+            str(platform.platform()),
+            'tensorflow_version':
+            str(tensorflow.__version__),
+            'host_name':
+            str(platform.node()),
+            'slurm_job_id':
+            self._get_slurm_id(),
+            'git_hash':
+            self._get_git_hash(),
         })
 
         # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
@@ -264,7 +283,13 @@ class TrainingExperimentExecutor():
             history,
         )
 
-    def _get_git_hash(self):
+    def _get_slurm_id(self) -> Optional[int]:
+        try:
+            return int(os.getenv("SLURM_JOB_ID"))  # type: ignore
+        except:
+            return None
+
+    def _get_git_hash(self) -> Optional[str]:
         try:
             return subprocess.check_output(
                 ["git", "describe", "--always"],

@@ -1,13 +1,17 @@
+Done:
 + new task format
 + widths visitor
 + widths logging
 + CNN builder (and consolidate CNN building functions)
 + update growth visitor (add CNNs)
----
-
++ add run_id generation somewhere
 + CNN dataset refactor
-
 + CNN loader
+---
+Current:
+
+
+
 + dataset-based fixed train-test split method
 
 + task schema redesign
@@ -18,12 +22,21 @@
     + experiment with parquet compression
         + run converter
     + update postgres result logger
----
 + new summary schema
     + new materialization script
     + new query script
 
 + subprocess runner method
++ add system_name, queue_id, job_name to worker info
+
++ save time at end of epoch 
+---
+Later:
+
++ better per-epoch histories:
+    + get zero-epoch values
+    + record post-epoch training loss
+    + might need to adjust existing results to include this
 
 
 

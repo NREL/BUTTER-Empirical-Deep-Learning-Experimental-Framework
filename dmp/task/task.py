@@ -3,7 +3,7 @@ import collections as collections
 import collections.abc
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
-from dmp.jobqueue_interface import keras_type_key, marshal_type_key, jobqueue_marshal
+from dmp.jobqueue_interface import keras_type_key, marshal_type_key, jobqueue_marshal, tensorflow_type_key, tensorflow_config_key
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.task_util import flatten
 
@@ -41,12 +41,17 @@ class Task(ABC):
         def get_parameters(prefix, target):
             target_type = type(target)
             if target_type is dict:
-                skip_key = marshal_type_key
+                
+                skip_key = None
                 if marshal_type_key in target:
                     parameters[prefix] = target[marshal_type_key]
+                    skip_key = marshal_type_key
                 elif keras_type_key in target:
                     parameters[prefix] = target[keras_type_key]
-                    skip_key = marshal_type_key
+                    skip_key = keras_type_key
+                elif tensorflow_type_key in target:
+                    parameters[prefix] = target[tensorflow_type_key]
+                    target = target.get(tensorflow_config_key, {})
 
                 for k, v in target.items():
                     if k != skip_key:

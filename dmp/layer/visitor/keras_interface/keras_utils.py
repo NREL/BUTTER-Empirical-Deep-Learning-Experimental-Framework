@@ -1,13 +1,14 @@
 from typing import Any, Dict, Union, Optional, Tuple, Callable
 import tensorflow.keras as keras
-from dmp.jobqueue_interface import keras_type_key
+from dmp.jobqueue_interface import keras_type_key, tensorflow_type_key, tensorflow_config_key
 from dmp.task.task_util import make_dispatcher
 
 
 def keras_to_config(target: Any) -> Dict[str, Any]:
     s = keras.utils.serialize_keras_object(target)
     if isinstance(s, dict):
-        return make_keras_config(s['class_name'], s['config'])
+        return make_keras_config(s[tensorflow_type_key],
+                                 s[tensorflow_config_key])
     if isinstance(s, str):
         return make_keras_config(s)
     raise NotImplementedError('Unknown keras serialization format {s}.')
@@ -16,8 +17,8 @@ def keras_to_config(target: Any) -> Dict[str, Any]:
 def keras_from_config(target: Union[str, Dict[str, Any]]) -> Any:
     type, params = get_params_and_type_from_keras_config(target)
     return keras.utils.deserialize_keras_object({
-        'class_name': type,
-        'config': params
+        tensorflow_type_key: type,
+        tensorflow_config_key: params
     })
 
 
@@ -49,7 +50,10 @@ def make_from_config_using_keras_get(
         return None
 
     type, params = get_params_and_type_from_keras_config(config)
-    result = keras_get_function({'class_name': type, 'config': params})
+    result = keras_get_function({
+        tensorflow_type_key: type,
+        tensorflow_config_key: params
+    })
     if result is None:
         raise ValueError(f'Unknown {name}, {config}.')
 

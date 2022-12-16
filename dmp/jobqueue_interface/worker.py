@@ -64,7 +64,7 @@ if __name__ == "__main__":
     gpu_memory = int(a[7])
 
     database = a[8]
-    queue = int(a[9])
+    queue_id = int(a[9])
 
     nodes = [int(e) for e in a[10].split(',')]
     cpus = [int(e) for e in a[11].split(',')]
@@ -82,13 +82,13 @@ if __name__ == "__main__":
     print(f'Worker id {worker_id} starting...')
     print('\n', flush=True)
 
-    if not isinstance(queue, int):
-        queue = 1
+    if not isinstance(queue_id, int):
+        queue_id = 1
 
     print(f'Worker id {worker_id} load credentials...\n', flush=True)
     credentials = connect.load_credentials(database)
     print(f'Worker id {worker_id} create job queue...\n', flush=True)
-    job_queue = JobQueue(credentials, int(queue), check_table=False)
+    job_queue = JobQueue(credentials, int(queue_id), check_table=False)
     print(f'Worker id {worker_id} create result logger..\n', flush=True)
     result_logger = PostgresResultLogger(credentials)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
@@ -104,7 +104,8 @@ if __name__ == "__main__":
             'num_cpus': len(cpus),
             'num_nodes': len(nodes),
             'gpu_memory': gpu_memory,
-            'strategy': str(type(strategy)),
+            'tensorflow_strategy': str(type(strategy)),
+            'queue_id': queue_id,
         },
     )
     print(f'Worker id {worker_id} start Worker object...\n', flush=True)
