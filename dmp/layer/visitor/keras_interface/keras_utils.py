@@ -1,6 +1,6 @@
 from typing import Any, Dict, Union, Optional, Tuple, Callable
 import tensorflow.keras as keras
-from dmp.jobqueue_interface import keras_type_key, tensorflow_type_key, tensorflow_config_key
+from dmp.common import keras_type_key, tensorflow_type_key, tensorflow_config_key
 from dmp.task.task_util import make_dispatcher
 
 

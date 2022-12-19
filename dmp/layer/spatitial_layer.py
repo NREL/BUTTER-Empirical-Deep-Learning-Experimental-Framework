@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
-from dmp.layer.layer import Layer, LayerConstructor, network_module_types
+from dmp.layer.layer import Layer
 
 T = TypeVar('T')
 

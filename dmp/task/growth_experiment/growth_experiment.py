@@ -2,14 +2,14 @@ import dataclasses
 from dataclasses import dataclass, field
 from typing import Optional, Any, Dict
 
+from dmp.task.task import task_types
+from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
 
 
 @dataclass
 class GrowthExperiment(TrainingExperiment):
 
-    # val_split: float = .1 # moved to TrainingExperiment
-    # growth_trigger: str = 'EarlyStopping'
     growth_trigger: dict = \
         field(default_factory=lambda: {
             'type': 'EarlyStopping',
@@ -25,6 +25,9 @@ class GrowthExperiment(TrainingExperiment):
     max_total_epochs: int = 3000
     max_equivalent_epoch_budget: int = 3000
 
-    def __call__(self, worker, *args, **kwargs) -> Dict[str, Any]:
+    def __call__(self, worker, *args, **kwargs) -> TaskResultRecord:
         from .growth_experiment_executor import GrowthExperimentExecutor
         return GrowthExperimentExecutor(self, worker, *args, **kwargs)()
+
+
+task_types.append(GrowthExperiment)

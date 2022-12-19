@@ -1,7 +1,7 @@
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
+from dmp.layer.layer import network_module_types
 from dmp.layer.pooling_layer import APoolingLayer
 from dmp.layer.spatitial_layer import ASpatitialLayer
-from dmp.layer.layer import Layer, LayerConstructor, network_module_types, LayerConfig, empty_config, empty_inputs
 
 
 

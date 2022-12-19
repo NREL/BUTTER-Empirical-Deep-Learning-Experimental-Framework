@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from typing import Optional, Sequence, Any, Tuple, Dict
 
 from dmp.layer.layer import Layer

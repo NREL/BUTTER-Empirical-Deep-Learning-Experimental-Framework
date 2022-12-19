@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from io import BytesIO
+import json
 import os
+import traceback
 from typing import (
     Callable,
     Dict,
@@ -9,7 +12,8 @@ from typing import (
     Tuple,
     Any,
 )
-
+import pyarrow
+import pyarrow.compute as pc
 import numpy
 import numpy as np
 from numpy import ndarray
@@ -21,6 +25,7 @@ from sklearn.preprocessing import (
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset import Dataset
 from dmp.dataset.ml_task import MLTask
+from dmp.parquet_util import make_pyarrow_schema
 
 dataset_cache_directory = os.path.join(os.getcwd(), '.dataset_cache')
 
@@ -44,39 +49,55 @@ class DatasetLoader(ABC):
             self.ml_task = data.ml_task
         return data
 
-    def _get_cache_path(self):
-        return os.path.join(dataset_cache_directory, self.dataset_name)
+    def _get_cache_path(self, name):
+        filename = self.dataset_name + f'_{name}'
+        return os.path.join(dataset_cache_directory, filename)
 
     def _try_read_from_cache(self) -> Optional[Dataset]:
-        os.makedirs(dataset_cache_directory, exist_ok=True)
+        lockfile_name = self._get_cache_path('lock')
         try:
-            with open(self._get_cache_path(), 'rb') as f:
-                splits = numpy.load(f, allow_pickle=True)
+            os.makedirs(dataset_cache_directory, exist_ok=True)
+            array_dict = numpy.load(self._get_cache_path('.npz'))
 
-                return Dataset(
-                    self.ml_task, **{
-                        split: DatasetGroup(
-                            numpy.load(f, allow_pickle=True),
-                            numpy.load(f, allow_pickle=True),
-                        )
-                        for split in splits
-                    })
+            def get_group(name):
+                input_name = f'{name}_inputs'
+                output_name = f'{name}_outputs'
+                if input_name in array_dict:
+                    return DatasetGroup(
+                        array_dict[input_name],
+                        array_dict[output_name],
+                    )
+                return None
+
+            return Dataset(
+                self.ml_task,
+                get_group('train'),
+                get_group('test'),
+                get_group('validation'),
+            )
         except FileNotFoundError:
             return None
+        except:
+            print(f'Error reading from dataset cache for {self}:')
+            traceback.print_exc()
+            try:
+                os.remove(lockfile_name)
+            except:
+                print(f'Error removing bad cache file for {self}:')
+                traceback.print_exc()
+        return None
 
     @abstractmethod
     def _fetch_from_source(self) -> Dataset:
         pass
 
     def _write_to_cache(self, data: Dataset) -> None:
-        with open(self._get_cache_path(), 'wb') as f:
-            splits = data.splits
-            split_names = [split[0] for split in splits]
-            numpy.save(f, np.array(split_names, dtype='string'))
-            for split in splits:
-                group = split[1]
-                numpy.save(f, group.inputs)
-                numpy.save(f, group.outputs)
+        array_dict = {}
+        for name, split in data.splits:
+            array_dict[f'{name}_inputs'] = split.inputs
+            array_dict[f'{name}_outputs'] = split.outputs
+
+        np.savez(self._get_cache_path('.npz'), **array_dict)
 
     def _prepare_dataset_data(self, data: Dataset) -> Dataset:
         data.train = self._prepare_data_group(data.train)

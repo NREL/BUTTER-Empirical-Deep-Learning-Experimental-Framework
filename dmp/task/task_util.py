@@ -1,6 +1,5 @@
 import math
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
-from dmp.dataset.dataset import Dataset
 from dmp.model.network_info import NetworkInfo
 
 K = TypeVar('K')

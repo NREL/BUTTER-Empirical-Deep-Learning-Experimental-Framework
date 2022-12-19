@@ -61,7 +61,7 @@ def __make_load_pmlb_dataset():
 
     loader_list: List[DatasetLoader] = []
     for _, row in dataset_index.iterrows():
-        loader_list.append(PMLBDatasetLoader(row['name'], MLTask(row['task'])))
+        loader_list.append(PMLBDatasetLoader(row['Dataset'], MLTask(row['Task'])))
 
     loaders: Dict[str, DatasetLoader] = _make_loader_map(loader_list)
     loaders.update(

@@ -3,7 +3,8 @@ import collections as collections
 import collections.abc
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
-from dmp.jobqueue_interface import keras_type_key, marshal_type_key, jobqueue_marshal, tensorflow_type_key, tensorflow_config_key
+from dmp.jobqueue_interface import jobqueue_marshal
+from dmp.common import keras_type_key, marshal_type_key, tensorflow_type_key, tensorflow_config_key
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.task_util import flatten
 
@@ -12,6 +13,8 @@ ParameterDict = Dict[str, 'Parameter']
 Parameter = Union[ParameterValue, ParameterDict]
 FlatParameterDict = Dict[str, ParameterValue]
 
+# register task types here
+task_types: ['Task'] = []
 
 @dataclass
 class Task(ABC):

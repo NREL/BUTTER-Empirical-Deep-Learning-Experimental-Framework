@@ -17,7 +17,7 @@ class Dataset():
         splits = []
 
         def try_add(key, value):
-            if key is not None:
+            if value is not None:
                 splits.append((key, value))
 
         try_add('train', self.train)

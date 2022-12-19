@@ -1,9 +1,11 @@
 from dmp.layer.layer_factory import *
 from dmp.layer.layer import *
 
+from dmp.layer.spatitial_layer import ASpatitialLayer
+from dmp.layer.pooling_layer import APoolingLayer
 from dmp.layer.max_pool import MaxPool
 from dmp.layer.avg_pool import AvgPool
-from dmp.layer.a_global_pooling_layer import AGlobalPoolingLayer
+from dmp.layer.global_pooling_layer import AGlobalPoolingLayer
 from dmp.layer.global_average_pooling import GlobalAveragePooling
 from dmp.layer.global_max_pooling import GlobalMaxPooling
 from dmp.layer.dense import Dense

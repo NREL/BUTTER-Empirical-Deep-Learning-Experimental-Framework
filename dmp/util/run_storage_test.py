@@ -3,6 +3,7 @@ from itertools import product
 import json
 from multiprocessing import Pool
 import os
+from pprint import pprint
 import uuid
 from psycopg2 import sql
 
@@ -12,9 +13,12 @@ from jobqueue import *
 from jobqueue.cursor_manager import CursorManager
 import numpy
 from sqlalchemy import column
+from dmp.dataset.dataset_util import load_dataset
 
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
 import sys
+
+from dmp.parquet_util import make_pyarrow_schema
 
 
 def main():
@@ -38,10 +42,11 @@ def main():
     # ]
 
     # use_dictionary = [c.name for c in parameter_columns]
-    
+
     info_columns = [
         'experiment_id',
         'run_id',
+        'run_parameters',
     ]
 
     history_columns = [
@@ -72,9 +77,10 @@ def main():
     ]
 
     columns = info_columns + history_columns
-    col_map = {name : i for i, name in enumerate(columns)}
+    col_map = {name: i for i, name in enumerate(columns)}
 
-    with CursorManager(credentials, name=str(uuid.uuid1()), autocommit=False) as cursor:
+    with CursorManager(credentials, name=str(uuid.uuid1()),
+                       autocommit=False) as cursor:
         cursor.itersize = 8
 
         q = sql.SQL('SELECT ')
@@ -84,7 +90,7 @@ def main():
         ])
 
         q += sql.SQL(' FROM run_ r ')
-        q += sql.SQL(' ORDER BY record_timestamp DESC LIMIT 1000')
+        q += sql.SQL(' ORDER BY record_timestamp DESC LIMIT 10')
         q += sql.SQL(' ;')
 
         x = cursor.mogrify(q)
@@ -93,105 +99,74 @@ def main():
         shrinkage = []
         for row in cursor:
 
+            src_parameters = {
+                kind: value
+                for kind, value in parameter_map.parameter_from_id(row[
+                    col_map['run_parameters']])
+            }
+
+            pprint(src_parameters)
+
+            dataset_src = 'pmlb'
+            dataset :Dataset = load_dataset(dataset_src, src_parameters['dataset']) # type: ignore
+            print(f'ml_task {dataset.ml_task}')
+            
             result_block = {}
             for name in history_columns:
                 v = row[col_map[name]]
                 if v is not None and len(v) > 0:
                     result_block[name] = v
-            
+
             if len(result_block) > 0:
-                num_epochs = max((len(h) 
-                    for h in result_block.values()
-                    if h is not None
-                    ))
+                num_epochs = max(
+                    (len(h) for h in result_block.values() if h is not None))
                 for h in result_block.values():
                     h.extend([float('NaN')] * (num_epochs - len(h)))
+
+                result_block['epoch'] = list(range(1, 1 + num_epochs))
+
+                schema, use_byte_stream_split = make_pyarrow_schema(result_block.items())
                 
-                result_block['epoch'] = list(range(1,1+num_epochs))
-
-                uncompressed : int = 0
-                use_byte_stream_split = []
-                fields = []
-                max_relative_error = 0.0
-                for name, h in list(result_block.items()):
-                    e = h[0]
-                    ha = numpy.array(h, dtype=type(e))
-
-                    ptype = None
-                    ntype = None
-                    hi = numpy.max(h)
-                    lo = numpy.min(h)
-
-                    if isinstance(e, int):
-                        if hi <= (2**15-1) and lo >= (-2**15):
-                            ptype = pyarrow.int16()
-                            ntype = numpy.int16                            
-                        elif hi <= (2**31-1) and lo >= (-2**31):
-                            ptype = pyarrow.int32()
-                            ntype = numpy.int32
-                        ptype = pyarrow.int64()
-                        ntype = numpy.int64
-                    elif isinstance(e, float):
-                        ptype = pyarrow.float32()
-                        ntype = numpy.float32
-                        # ha = numpy.array(ha, dtype=numpy.float16)
-                        significand, exponent = numpy.frexp(ha)
-                        significand = numpy.array(significand, dtype=numpy.float16)
-                        significand = numpy.array(significand, dtype=numpy.float32)
-                        ha = numpy.ldexp(significand, exponent)
-                        uncompressed += 4
-                        use_byte_stream_split.append(name)
-
-                        h_orig = numpy.array(h)
-                        error = numpy.abs(ha - h_orig)
-                        error *= 1-numpy.isnan(h)
-                        relative = error / (1e-32 * (h_orig == 0.0) + numpy.abs(h_orig))
-                        # relative = relative * (numpy.abs(h_orig) >= 1e-6)
-                        max_relative_error = max(max_relative_error, numpy.max(relative))
-                        # print(f'{name} error: {round(numpy.max(error)*100, 6)}, {round(numpy.max(relative)*100, 6)}%')
-
-                    else:
-                        raise NotImplementedError(f'Unhandled type {type(e)} for {name}.')
-                    fields.append(pyarrow.field(name, ptype))
-                    array_version = numpy.array(ha, dtype=ntype)
-                    result_block[name] = array_version
-
-                   
-                uncompressed *= num_epochs
-
-                schema = pyarrow.schema(fields)
                 table = pyarrow.Table.from_pydict(result_block, schema=schema)
-                
+
                 buffer = io.BytesIO()
                 pyarrow_file = pyarrow.PythonFile(buffer)
 
                 parquet.write_table(
-                        table,
-                        pyarrow_file,
-                        # root_path=dataset_path,
-                        # schema=schema,
-                        # partition_cols=partition_cols,
-                        # data_page_size=128 * 1024,
-                        compression='ZSTD',
-                        # compression='BROTLI',
-                        compression_level=19,
-                        use_dictionary=False,
-                        use_byte_stream_split=use_byte_stream_split,
-                        version='2.6',
-                        data_page_version='2.0',
-                        # existing_data_behavior='overwrite_or_ignore',
-                        # use_legacy_dataset=False,
-                        write_statistics=False,
-                        # write_batch_size=64,
-                        # dictionary_pagesize_limit=64*1024,
-                    )
+                    table,
+                    pyarrow_file,
+                    # root_path=dataset_path,
+                    # schema=schema,
+                    # partition_cols=partition_cols,
+                    data_page_size=8 * 1024,
+                    # compression='BROTLI',
+                    # compression_level=8,
+                    compression='ZSTD',
+                    compression_level=12,
+                    use_dictionary=False,
+                    use_byte_stream_split=use_byte_stream_split,
+                    version='2.6',
+                    data_page_version='2.0',
+                    # existing_data_behavior='overwrite_or_ignore',
+                    # use_legacy_dataset=False,
+                    write_statistics=False,
+                    # write_batch_size=64,
+                    # dictionary_pagesize_limit=64*1024,
+                )
                 bytes_written = buffer.getbuffer().nbytes
-                print(f'Written {bytes_written} bytes, {uncompressed} uncompressed, ratio {uncompressed/bytes_written}, shrinkage {bytes_written/uncompressed}, max relative error {round(numpy.max(max_relative_error)*100, 6)}%.')
-                shrinkage.append(bytes_written/uncompressed)
+                # print(
+                #     f'Written {bytes_written} bytes, {uncompressed} uncompressed, ratio {uncompressed/bytes_written}, shrinkage {bytes_written/uncompressed}, max relative error {round(numpy.max(max_relative_error)*100, 6)}%.'
+                # )
+                print(
+                    f'Written {bytes_written} bytes.'
+                )
+                # shrinkage.append(bytes_written / uncompressed)
 
         shrinkage = numpy.array(shrinkage)
-        print(f'average shrinkage: {numpy.average(shrinkage)} average ratio: {numpy.average(1.0/shrinkage)}')
-    
+        print(
+            f'average shrinkage: {numpy.average(shrinkage)} average ratio: {numpy.average(1.0/shrinkage)}'
+        )
+
 
 # import pathos.multiprocessing as multiprocessing
 
@@ -210,7 +185,6 @@ def main():
 # pool.join()
 
 # print('Done.')
-
 
 if __name__ == "__main__":
     main()

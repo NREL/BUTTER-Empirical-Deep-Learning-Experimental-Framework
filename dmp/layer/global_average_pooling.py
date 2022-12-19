@@ -1,6 +1,5 @@
+from dmp.layer.global_pooling_layer import AGlobalPoolingLayer
 from dmp.layer.layer import network_module_types
-from dmp.layer.global_average_pooling import AGlobalPoolingLayer
-
 
 class GlobalAveragePooling(AGlobalPoolingLayer):
     pass

@@ -12,7 +12,7 @@ from dmp.dataset.pmlb_dataset_loader import PMLBDatasetLoader
 
 @dataclass
 class FunctionalPMLBDatasetLoader(PMLBDatasetLoader):
-    _prepare_function: Callable[['FunctionalPMLBDatasetLoader', Any], Any]
+    _prepare_inputs_function: Callable[['FunctionalPMLBDatasetLoader', Any], Any]
 
-    def _prepare_dataset_data(self, data):
-        return self._prepare_function(self, data)
+    def _prepare_inputs(self, data):
+        return self._prepare_inputs_function(self, data)

@@ -1,13 +1,5 @@
-from typing import Tuple, Type
 from lmarshal import MarshalConfig, Marshal
-import dmp.layer.layer
-import dmp.task
-
-tensorflow_type_key :str = 'class_name'
-tensorflow_config_key:str = 'config'
-keras_type_key: str = 'type'
-marshal_type_key:str = 'class'
-
+from dmp.common import marshal_type_key
 
 jobqueue_marshal: Marshal = Marshal(
     MarshalConfig(type_key=marshal_type_key,
@@ -20,6 +12,8 @@ jobqueue_marshal: Marshal = Marshal(
                   circular_references_only=False,
                   reference_strings=False))
 
-jobqueue_marshal.register_types(dmp.task.task_types)
+from dmp.task.task import task_types
+jobqueue_marshal.register_types(task_types)
 
-jobqueue_marshal.register_types(dmp.layer.layer.network_module_types)
+from dmp.layer.layer import network_module_types
+jobqueue_marshal.register_types(network_module_types)
