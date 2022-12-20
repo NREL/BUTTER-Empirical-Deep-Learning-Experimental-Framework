@@ -1,6 +1,6 @@
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
 from dmp.layer.pooling_layer import APoolingLayer
-from dmp.layer.layer import network_module_types
+from dmp.layer.layer import register_layer_type
 
 class MaxPool(APoolingLayer):
 
@@ -20,4 +20,4 @@ class MaxPool(APoolingLayer):
         )
 
 
-network_module_types.append(MaxPool)
+register_layer_type(MaxPool)

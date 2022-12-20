@@ -1,9 +1,9 @@
 import sys
+sys.path.insert(0, './')
+
 
 import tensorflow
-
 from dmp.worker import Worker
-sys.path.insert(0, './')
 import pytest
 
 from dmp.dataset.dataset_spec import DatasetSpec
@@ -39,7 +39,7 @@ def test_simple():
             'batch_size':16,
             'epochs': 10,
         },
-        optimizer={'type': 'adam', 'config': {'learning_rate': 0.0001},},
+        optimizer={'type': 'Adam', 'learning_rate': 0.0001},
         loss=None,
         early_stopping=None,
         save_every_epochs=-1
@@ -55,4 +55,6 @@ def test_simple():
     
     results = experiment(worker)
     print(results)
-    
+
+
+test_simple()

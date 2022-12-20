@@ -1,6 +1,6 @@
 
 from typing import List, Union
-from dmp.layer.layer import Layer, LayerConfig, empty_config, empty_inputs, network_module_types
+from dmp.layer.layer import Layer, LayerConfig, empty_config, empty_inputs, register_layer_type
 
 
 class Dense(Layer):
@@ -27,4 +27,4 @@ class Dense(Layer):
         return Dense(Dense._default_config, input, config)
 
 
-network_module_types.append(Dense)
+register_layer_type(Dense)

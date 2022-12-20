@@ -15,5 +15,5 @@ jobqueue_marshal: Marshal = Marshal(
 from dmp.task.task import task_types
 jobqueue_marshal.register_types(task_types)
 
-from dmp.layer.layer import network_module_types
-jobqueue_marshal.register_types(network_module_types)
+from dmp.layer.layer import layer_types
+jobqueue_marshal.register_types(layer_types)

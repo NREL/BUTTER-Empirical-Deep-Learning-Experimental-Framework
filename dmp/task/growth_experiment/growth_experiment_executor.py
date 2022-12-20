@@ -11,7 +11,7 @@ from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.growth_experiment.growth_method.overlay_growth import OverlayGrowth
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
 from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
-from dmp.layer.visitor.keras_interface.keras_utils import make_typed_keras_config_factory
+from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance, register_custom_keras_types
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
@@ -20,6 +20,10 @@ from dmp.model.model_info import ModelInfo
 layer_map_key: str = 'layer_map'
 scale_key: str = 'scale'
 growth_points_key: str = 'growth_points'
+
+register_custom_keras_types({
+    'NetworkOverlayer': OverlayGrowth,
+})
 
 
 class GrowthExperimentExecutor(TrainingExperimentExecutor):
@@ -91,7 +95,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             fit_config['epochs'] = max_epochs_at_this_iteration
 
             if src_model is not None:
-                self._grow_network(
+                make_keras_instance(
                     task.growth_method,
                     src_model,
                     model,
@@ -142,30 +146,13 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         src_model.network.description = goal_network.description
         return self._make_result_record(dataset, src_model, history)
 
-    _grow_network = make_typed_keras_config_factory(
-        'growth_method',
-        {
-            'NetworkOverlayer': OverlayGrowth,
-        },
-    )
-
-    _make_growth_trigger_callback = make_typed_keras_config_factory(
-        'growth_trigger',
-        {
-            'EarlyStopping': keras.callbacks.EarlyStopping,
-        },
-    )
-
     def _make_callbacks(
         self,
         on_final_iteration: bool = True,
     ) -> List[keras.callbacks.Callback]:
         if on_final_iteration:
             return super()._make_callbacks()
-        return [
-            GrowthExperimentExecutor._make_growth_trigger_callback(
-                self.task.growth_trigger)
-        ]
+        return [make_keras_instance(self.task.growth_trigger)]
 
     def _make_growth_map(self, src: ModelInfo, dest: ModelInfo):
         src_layer_map, src_layer_to_keras_map = self._get_layer_maps(src)

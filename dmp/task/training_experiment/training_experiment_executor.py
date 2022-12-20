@@ -12,7 +12,7 @@ import numpy
 from dmp.dataset.prepared_dataset import PreparedDataset
 
 from dmp.jobqueue_interface import jobqueue_marshal
-from dmp.layer.visitor.keras_interface.keras_utils import keras_from_config, make_keras_config
+from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance, make_keras_config
 from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
 from dmp.model.model_spec import ModelSpec
@@ -162,8 +162,8 @@ class TrainingExperimentExecutor():
         metrics: List[Union[str, keras.metrics.Metric]],
     ) -> None:
         model.keras_model.compile(
-            loss=keras_from_config(self.task.loss, keras.losses.deserialize ),  # type: ignore
-            optimizer=keras_from_config(self.task.optimizer, keras.optimizers.deserialize),
+            loss=make_keras_instance(self.task.loss),  # type: ignore
+            optimizer=make_keras_instance(self.task.optimizer),
             metrics=metrics,
             run_eagerly=False,
         )

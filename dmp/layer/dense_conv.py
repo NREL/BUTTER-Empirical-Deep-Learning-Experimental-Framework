@@ -1,6 +1,6 @@
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
 from dmp.layer.convolutional_layer import AConvolutionalLayer
-from dmp.layer.layer import Layer, network_module_types, empty_config, empty_inputs, LayerConfig
+from dmp.layer.layer import Layer, register_layer_type, empty_config, empty_inputs, LayerConfig
 
 class DenseConv(AConvolutionalLayer):
 
@@ -30,4 +30,4 @@ def conv_5x5(inputs: List[Layer] = empty_inputs) -> DenseConv:
     return DenseConv.make_NxN(5, inputs)
 
 
-network_module_types.append(DenseConv)
+register_layer_type(DenseConv)

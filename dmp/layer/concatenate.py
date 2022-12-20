@@ -1,7 +1,7 @@
-from dmp.layer.layer import Layer, network_module_types
+from dmp.layer.layer import Layer, register_layer_type
 
 class Concatenate(Layer):
     pass
 
 
-network_module_types.append(Concatenate)
+register_layer_type(Concatenate)

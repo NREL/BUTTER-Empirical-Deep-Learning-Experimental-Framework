@@ -18,7 +18,7 @@ from dmp.dataset.ml_task import MLTask
 from dmp.dataset.pmlb_dataset_loader import PMLBDatasetLoader
 from dmp.dataset.tf_image_classification_dataset_loader import TFImageClassificationDatasetLoader
 from dmp.dataset.imagenet_dataset_loader import ImageNetDatasetLoader
-from dmp.task.task_util import make_dispatcher
+from dmp.common import make_dispatcher
 
 
 def _make_loader_map(

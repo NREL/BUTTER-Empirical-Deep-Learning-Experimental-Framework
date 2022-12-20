@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from dmp.task.task import ParameterDict, Task, task_types
+from dmp.task.task import ParameterDict, Task, register_task_type
 
 @dataclass
 class AspectTestTask(Task):
@@ -54,4 +54,4 @@ class AspectTestTask(Task):
 
     #     return parameters
 
-task_types.append(AspectTestTask)
+register_task_type(AspectTestTask)

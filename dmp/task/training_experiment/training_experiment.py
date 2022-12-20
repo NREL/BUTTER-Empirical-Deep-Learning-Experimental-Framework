@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, Dict
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
-from dmp.task.task import Task, task_types
+from dmp.task.task import Task, register_task_type
 from dmp.task.task_result_record import TaskResultRecord
 
 
@@ -26,7 +26,7 @@ class TrainingExperiment(Task):
 
     
 
-task_types.append(TrainingExperiment)
+register_task_type(TrainingExperiment)
 
 '''
     + what if attributes are more free-form?

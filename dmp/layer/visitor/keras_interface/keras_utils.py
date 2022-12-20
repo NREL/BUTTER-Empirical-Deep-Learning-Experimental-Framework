@@ -1,7 +1,6 @@
 from typing import Any, Dict, Union, Optional, Tuple, Callable
 import tensorflow.keras as keras
-from dmp.common import keras_type_key, tensorflow_type_key, tensorflow_config_key
-from dmp.task.task_util import make_dispatcher
+from dmp.common import dispatch, keras_type_key, tensorflow_type_key, tensorflow_config_key
 
 
 def keras_to_config(target: Any) -> Dict[str, Any]:
@@ -14,17 +13,25 @@ def keras_to_config(target: Any) -> Dict[str, Any]:
     raise NotImplementedError('Unknown keras serialization format {s}.')
 
 
-def keras_from_config(
-    target: Union[str, Dict[str, Any]],
-    deserializer: Callable,
-) -> Any:
-    type, params = get_params_and_type_from_keras_config(target)
-    keras_config = {tensorflow_type_key: type, tensorflow_config_key: params}
-    return deserializer(keras_config)
-    # return keras.utils.deserialize_keras_object({
-    #     tensorflow_type_key: type,
-    #     tensorflow_config_key: params
-    # })
+def register_custom_keras_type(type_name: str, factory: Callable) -> None:
+    __keras_dispatch_table[type_name] = factory
+
+
+def register_custom_keras_types(type_map: Dict[str, Callable]) -> None:
+    for k, v in type_map.items():
+        register_custom_keras_type(k, v)
+
+
+# __get_keras_factory = make_dispatcher('keras type', __keras_dispatch_table)
+
+
+def make_keras_instance(config: Dict[str, Any], *params,
+                        **override_kwargs) -> Any:
+    type_name, kwargs = __get_params_and_type_from_keras_config(config)
+    print(f'make: {type_name} : {params} | {kwargs} | {override_kwargs}')
+    factory = dispatch('keras type', __keras_dispatch_table, type_name)
+    kwargs.update(override_kwargs)
+    return factory(*params, **kwargs)
 
 
 def make_keras_config(type_name: str, params: Optional[dict] = None) -> dict:
@@ -38,67 +45,37 @@ def make_keras_config(type_name: str, params: Optional[dict] = None) -> dict:
     return config
 
 
-def get_params_and_type_from_keras_config(
+def __make_keras_dispatch_table() -> Dict[str, Callable]:
+    source_modules = (
+        keras.layers,
+        keras.regularizers,
+        keras.callbacks,
+        keras.constraints,
+        keras.metrics,
+        keras.initializers,
+        keras.optimizers,
+        keras.losses,
+    )  # later modules override/shadow earlier modules
+
+    dispatch_table: Dict[str, Callable] = {}
+    for module in source_modules:
+        for name, cls in module.__dict__.items():
+            dispatch_table[name] = cls
+
+    # special provision for activation functions...
+    for name, cls in keras.activations.__dict__.items():
+        dispatch_table[name] = lambda *params, **kwargs: (lambda x: cls(
+            x, *params, **kwargs))
+
+    return dispatch_table
+
+
+__keras_dispatch_table: Dict[str, Callable] = __make_keras_dispatch_table()
+
+
+def __get_params_and_type_from_keras_config(
     config: Union[str, Dict[str, Any]], ) -> Tuple[str, Dict[str, Any]]:
     if isinstance(config, str):
         return config, {}
     params = config.copy()
     return params.pop(keras_type_key), params
-
-
-def make_from_config_using_keras_get(
-        config: dict,
-        keras_get_function: Callable,
-        name: str,  # used for exception messages
-) -> Any:
-    if config is None:
-        return None
-
-    type, params = get_params_and_type_from_keras_config(config)
-    result = keras_get_function({
-        tensorflow_type_key: type,
-        tensorflow_config_key: params
-    })
-    if result is None:
-        raise ValueError(f'Unknown {name}, {config}.')
-
-
-def make_typed_keras_config_factory(
-        name: str,  # name of the thing we are making from the config
-        type_dispatch_table: Dict[str, Callable],  # factory dispatch table 
-) -> Callable:
-
-    dispatch_function = make_dispatcher(name, type_dispatch_table)
-
-    def factory(
-        config: Optional[Dict],  # config to use with type key
-        *args,  # forwarded args
-        **kwargs,
-    ):
-        if config is None:
-            return None
-
-        type, params = get_params_and_type_from_keras_config(config)
-        return dispatch_function(type)(*args, **kwargs, **params)
-
-    return factory
-
-
-# def count_vars_in_keras_model(model: keras.Model, var_getter) -> int:
-#     count = 0
-#     for var in var_getter(model):
-#         acc = 1
-#         for dim in var.get_shape():
-#             acc *= int(dim)
-#         count += acc
-#     return count
-
-# def count_trainable_parameters_in_keras_model(model: keras.Model) -> int:
-#     return count_vars_in_keras_model(model, lambda m: m.trainable_variables)
-
-# def count_parameters_in_keras_model(model: keras.Model) -> int:
-#     return count_vars_in_keras_model(model, lambda m: m.variables)
-
-# def count_non_trainable_parameters_in_keras_model(model: keras.Model) -> int:
-#     return count_vars_in_keras_model(model,
-#                                      lambda m: m.non_trainable_variables)

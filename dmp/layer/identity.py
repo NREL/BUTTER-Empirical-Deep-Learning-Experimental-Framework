@@ -1,5 +1,5 @@
 from typing import List
-from dmp.layer.layer import Layer, LayerConfig, network_module_types
+from dmp.layer.layer import Layer, LayerConfig, register_layer_type
 from dmp.layer.a_element_wise_operator_layer import AElementWiseOperatorLayer
 
 
@@ -21,4 +21,4 @@ class Identity(AElementWiseOperatorLayer):
         return self
 
 
-network_module_types.append(Identity)
+register_layer_type(Identity)

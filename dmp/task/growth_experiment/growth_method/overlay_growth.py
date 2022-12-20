@@ -2,10 +2,8 @@ from functools import singledispatchmethod
 from typing import Any, Dict, Iterable, Set, Tuple
 
 import numpy
-import tensorflow
 import tensorflow.keras as keras
-from dmp.layer.convolutional_layer import AConvolutionalLayer, DenseConv, SeparableConv
-from dmp.layer.layer import *
+from dmp.layer import *
 from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer
 from dmp.model.model_info import ModelInfo
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
@@ -134,7 +132,7 @@ class OverlayGrowth:
             else:
                 raise NotImplementedError(f'Weight group dimension not supported {num_weight_dims} {num_dims}')
 
-        dest_keras_layer.set_weights(dest_params)
+        dest_keras_layer.set_weights(dest_params) # type: ignore
 
     @_do_visit.register
     def _(

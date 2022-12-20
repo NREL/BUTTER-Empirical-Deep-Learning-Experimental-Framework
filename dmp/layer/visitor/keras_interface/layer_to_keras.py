@@ -8,7 +8,7 @@ from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 from dmp.model.model_info import ModelInfo
 from dmp.model.network_info import NetworkInfo
 from dmp.model.keras_network_info import KerasNetworkInfo
-from dmp.layer.visitor.keras_interface.keras_utils import keras_from_config, get_params_and_type_from_keras_config
+from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance
 import dmp.layer.visitor.keras_interface.keras_utils as keras_utils
 from dmp.layer import *
 
@@ -235,58 +235,47 @@ def _make_convolutional_layer(
     dimension_to_factory_map: Dict[int, Callable],
 ) -> KerasLayerInfo:
     config = config.copy()  # before putting keras objects in the config
-    _make_keras_regularizers(config)
-    _make_keras_activation(config)
+    _setup_regularizers(config)
+    _setup_activation(config)
     _make_keras_batch_normalization(config)
     config['conv_layer_factory'] = \
         dimension_to_factory_map[target.dimension]
     return _make_keras_layer(target, ConvolutionalKerasLayer, config, inputs)
 
 
-def _make_activation_from_config(config: Dict[str, Any]) -> Callable:
-    type, params = get_params_and_type_from_keras_config(config)
-    activation_function = keras.activations.get(type)
-    if activation_function is None:
-        raise ValueError(f'Unknown activation {config}.')
-    return lambda x: activation_function(x, **params)
-
-
-def make_in_config(
+def replace_config_key_with_keras_instance(
     config: Dict[str, Any],
-    key: str,
-    factory: Callable,
+    key: Union[Iterable[str], str],
 ) -> None:
-    key_config = config.get(key, None)
-    if key_config is not None:
-        config[key] = factory(key_config)
+    if isinstance(key, str):
+        key_config = config.get(key, None)
+        if key_config is not None:
+            config[key] = make_keras_instance(key_config)
+    else:
+        for k in key:
+            replace_config_key_with_keras_instance(config, k)
+        
 
 
-def _make_keras_regularizers(config: Dict[str, Any]) -> None:
-    factory = lambda x: keras_from_config(x, keras.regularizers.deserialize)
-    make_in_config(config, 'kernel_regularizer', factory)
-    make_in_config(config, 'bias_regularizer', factory)
-    make_in_config(config, 'activity_regularizer', factory)
+def _setup_regularizers(config: Dict[str, Any]) -> None:
+    replace_config_key_with_keras_instance(config, (
+        'kernel_regularizer',
+        'bias_regularizer',
+        'activity_regularizer',
+    ))
 
 
-def _make_keras_initializers(config: Dict[str, Any]) -> None:
-    factory = lambda x: keras_from_config(x, keras.initializers.deserialize)
-    make_in_config(config, 'kernel_initializer', factory)
-    make_in_config(config, 'bias_initializer', factory)
+def _setup_initializers(config: Dict[str, Any]) -> None:
+    replace_config_key_with_keras_instance(config, (
+        'kernel_initializer',
+        'bias_initializer',
+    ))
 
-
-def _make_keras_activation(config: Dict[str, Any]) -> None:
-    make_in_config(config, 'activation', _make_activation_from_config)
-
-
-def _make_batch_norm_from_config(config: Optional[Dict[str, Any]]) -> Any:
-    if config is None:
-        return lambda x: x
-    return keras.layers.BatchNormalization(**config)
-
+def _setup_activation(config: Dict[str, Any]) -> None:
+    replace_config_key_with_keras_instance(config, 'activation')
 
 def _make_keras_batch_normalization(config: Dict[str, Any]) -> None:
-    make_in_config(config, 'batch_normalization', _make_batch_norm_from_config)
-
+    replace_config_key_with_keras_instance(config, 'batch_normalization')
 
 def _make_keras_layer(
     layer: Layer,
@@ -295,10 +284,10 @@ def _make_keras_layer(
     inputs: List[KerasLayer],
 ) -> KerasLayerInfo:
     config = config.copy()
-    _make_keras_regularizers(config)
-    _make_keras_activation(config)
+    _setup_regularizers(config)
+    _setup_activation(config)
     _make_keras_batch_normalization(config)
-    _make_keras_initializers(config)
+    _setup_initializers(config)
     keras_layer = target(**config)
     keras_output = keras_layer(*inputs)
     return KerasLayerInfo(layer, keras_layer, keras_output)  # type: ignore

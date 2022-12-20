@@ -2,7 +2,7 @@ import dataclasses
 from dataclasses import dataclass, field
 from typing import Optional, Any, Dict
 
-from dmp.task.task import task_types
+from dmp.task.task import register_task_type
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
 
@@ -30,4 +30,4 @@ class GrowthExperiment(TrainingExperiment):
         return GrowthExperimentExecutor(self, worker, *args, **kwargs)()
 
 
-task_types.append(GrowthExperiment)
+register_task_type(GrowthExperiment)

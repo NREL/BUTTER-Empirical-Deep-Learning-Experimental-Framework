@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, Callable
 from lmarshal import Marshaler, Demarshaler
-from dmp.layer.layer_factory import LayerFactory
 from lmarshal.src.custom_marshalable import CustomMarshalable
 
-LayerConfig = Dict[str,Any]
+LayerConfig = Dict[str, Any]
 
 uninitialized_shape: Tuple[int, ...] = tuple()
 marshaled_shape_key: str = 'shape'
@@ -15,8 +14,21 @@ empty_inputs: List = []
 
 T = TypeVar('T')
 
-network_module_types: List[Type] = []
+layer_types: List[Type] = []
 
+
+def register_layer_type(type: Type) -> None:
+    layer_types.append(type)
+
+class LayerFactory(ABC):
+
+    @abstractmethod
+    def make_layer(
+        self,
+        inputs: List['Layer'],
+        config: 'LayerConfig',
+    ) -> 'Layer':
+        pass
 
 class Layer(LayerFactory, CustomMarshalable, ABC):
 
@@ -72,7 +84,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         override_if_exists: LayerConfig,
     ) -> 'Layer':
         layer_inputs = inputs
-        if len(self.inputs) > 0: 
+        if len(self.inputs) > 0:
             layer_inputs = [
                 input.make_layer(inputs, override_if_exists)
                 for input in self.inputs
@@ -160,23 +172,3 @@ LayerConstructor = Callable[
 #     + more compact serialization
 #     + could avoid serializing config or inputs in a few cases
 # '''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

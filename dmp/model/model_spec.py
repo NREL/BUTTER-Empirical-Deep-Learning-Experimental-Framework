@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence, Any, Tuple, Dict, TypeVar
 
 from dmp.layer.layer import Layer
-from dmp.layer.layer_factory import LayerFactory
 from dmp.model.network_info import NetworkInfo
 
 T = TypeVar('T')

@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Any, Dict, Optional, Sequence, Tuple, Callable, TypeVar, List, Union
-from dmp.layer.layer import Layer, LayerConfig, LayerConstructor, network_module_types, empty_config, empty_inputs
+from dmp.layer.layer import Layer, LayerConfig, LayerConstructor, layer_types, empty_config, empty_inputs
 from dmp.layer.spatitial_layer import ASpatitialLayer
 
 T = TypeVar('T')

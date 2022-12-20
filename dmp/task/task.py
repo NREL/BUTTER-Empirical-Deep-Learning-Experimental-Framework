@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 import collections as collections
 import collections.abc
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 from dmp.common import keras_type_key, marshal_type_key, tensorflow_type_key, tensorflow_config_key
 from dmp.task.task_result_record import TaskResultRecord
-from dmp.task.task_util import flatten
+from dmp.common import flatten
 
 ParameterValue = Union[None, bool, int, float, str]
 ParameterDict = Dict[str, 'Parameter']
@@ -13,7 +13,9 @@ Parameter = Union[ParameterValue, ParameterDict]
 FlatParameterDict = Dict[str, ParameterValue]
 
 # register task types here
-task_types: ['Task'] = []
+task_types: List['Task'] = []
+def register_task_type(type:Type)->None:
+    task_types.append(type)
 
 @dataclass
 class Task(ABC):

@@ -1,8 +1,8 @@
 from dmp.layer.a_element_wise_operator_layer import AElementWiseOperatorLayer
-from dmp.layer.layer import Layer, network_module_types
+from dmp.layer.layer import register_layer_type
 
 class Zeroize(AElementWiseOperatorLayer):
     pass
 
 
-network_module_types.append(Zeroize)
+register_layer_type(Zeroize)
