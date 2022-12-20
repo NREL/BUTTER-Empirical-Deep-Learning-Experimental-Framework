@@ -22,38 +22,35 @@ class CountFreeParametersVisitor:
         return sum(target.shape)
 
     @singledispatchmethod
-    def _visit(self, target: Layer, config: Dict[str, Any]) -> int:
+    def _visit(self, target: Layer) -> int:
         return 0
 
     @_visit.register
-    def _(self, target: Dense, config: Dict[str, Any]) -> int:
-        return config['units'] * \
+    def _(self, target: Dense) -> int:
+        return target['units'] * \
             (sum((self._get_size(i) for i in target.inputs)) +\
                  (1 if target.use_bias else 0))
 
     @_visit.register
-    def _(self, target: AConvolutionalLayer, config: Dict[str, Any]) -> int:
+    def _(self, target: AConvolutionalLayer) -> int:
         return self._get_count_for_conv_layer(
             target,
-            config,
-            math.prod(config['kernel_size']),
+            math.prod(target['kernel_size']),
         )
 
     @_visit.register
-    def _(self, target: SeparableConv, config: Dict[str, Any]) -> int:
+    def _(self, target: SeparableConv) -> int:
         return self._get_count_for_conv_layer(
             target,
-            config,
-            sum(config['kernel_size']),
+            sum(target['kernel_size']),
         )
 
     def _get_count_for_conv_layer(
         self,
         target: ASpatitialLayer,
-        config: Dict[str, Any],
         num_nodes_per_filter: int,
     ) -> int:
-        num_nodes = num_nodes_per_filter * config['filters']
+        num_nodes = num_nodes_per_filter * target['filters']
 
         input_conv_shape, input_channels = \
             target.to_conv_shape_and_channels(target.input.shape)

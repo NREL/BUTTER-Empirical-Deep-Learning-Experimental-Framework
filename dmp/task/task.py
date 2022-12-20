@@ -3,7 +3,6 @@ import collections as collections
 import collections.abc
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
-from dmp.jobqueue_interface import jobqueue_marshal
 from dmp.common import keras_type_key, marshal_type_key, tensorflow_type_key, tensorflow_config_key
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.task_util import flatten
@@ -37,6 +36,7 @@ class Task(ABC):
         return parameters  # type: ignore
 
     def extract_parameters(self) -> ParameterDict:
+        from dmp.jobqueue_interface import jobqueue_marshal
         separator = '_'
         marshaled = jobqueue_marshal.marshal(self)
         parameters = {}

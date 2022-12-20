@@ -9,7 +9,7 @@ from psycopg2 import sql
 
 import pyarrow
 import pyarrow.parquet as parquet
-from jobqueue import *
+from jobqueue import load_credentials
 from jobqueue.cursor_manager import CursorManager
 import numpy
 from sqlalchemy import column
@@ -162,10 +162,10 @@ def main():
                 )
                 # shrinkage.append(bytes_written / uncompressed)
 
-        shrinkage = numpy.array(shrinkage)
-        print(
-            f'average shrinkage: {numpy.average(shrinkage)} average ratio: {numpy.average(1.0/shrinkage)}'
-        )
+        # shrinkage = numpy.array(shrinkage)
+        # print(
+        #     f'average shrinkage: {numpy.average(shrinkage)} average ratio: {numpy.average(1.0/shrinkage)}'
+        # )
 
 
 # import pathos.multiprocessing as multiprocessing

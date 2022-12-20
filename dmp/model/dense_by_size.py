@@ -51,7 +51,8 @@ class DenseBySize(ModelSpec):
 
         def make_network_with_scale(scale):
             widths = widths_factory(self, num_outputs, scale)
-            return NetworkInfo(
+            
+            result = NetworkInfo(
                 self._make_network_from_widths(
                     self.input,  # type: ignore
                     self.output,  # type: ignore
@@ -60,6 +61,7 @@ class DenseBySize(ModelSpec):
                 ),
                 {'widths': widths},
             )
+            return result
 
         delta, network = find_closest_network_to_target_size_int(
             self.size,
@@ -71,7 +73,7 @@ class DenseBySize(ModelSpec):
         relative_error = delta / self.size
         if abs(relative_error) > .2:
             raise ValueError(
-                f'Could not find conformant network error : {relative_error}%, delta : {delta}, size: {self.size}.'
+                f'Could not find conformant network error : {100 * relative_error}%, delta : {delta}, size: {self.size}, actual: {network.num_free_parameters}.'
             )
 
         return network
@@ -90,9 +92,9 @@ class DenseBySize(ModelSpec):
         for depth, width in enumerate(widths):
             layer = None
             if depth == len(widths) - 1:
-                layer = output.make_layer([parent])
+                layer = output.make_layer([parent], {})
             else:
-                layer = self.inner_layers.make_layer([parent])
+                layer = self.inner_layers.make_layer([parent], {})
                 layer['units'] = width
 
             # Skip connections for residual modes

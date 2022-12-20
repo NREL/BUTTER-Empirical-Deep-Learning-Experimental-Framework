@@ -14,12 +14,17 @@ def keras_to_config(target: Any) -> Dict[str, Any]:
     raise NotImplementedError('Unknown keras serialization format {s}.')
 
 
-def keras_from_config(target: Union[str, Dict[str, Any]]) -> Any:
+def keras_from_config(
+    target: Union[str, Dict[str, Any]],
+    deserializer: Callable,
+) -> Any:
     type, params = get_params_and_type_from_keras_config(target)
-    return keras.utils.deserialize_keras_object({
-        tensorflow_type_key: type,
-        tensorflow_config_key: params
-    })
+    keras_config = {tensorflow_type_key: type, tensorflow_config_key: params}
+    return deserializer(keras_config)
+    # return keras.utils.deserialize_keras_object({
+    #     tensorflow_type_key: type,
+    #     tensorflow_config_key: params
+    # })
 
 
 def make_keras_config(type_name: str, params: Optional[dict] = None) -> dict:
@@ -34,7 +39,7 @@ def make_keras_config(type_name: str, params: Optional[dict] = None) -> dict:
 
 
 def get_params_and_type_from_keras_config(
-        config: Union[str, Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
+    config: Union[str, Dict[str, Any]], ) -> Tuple[str, Dict[str, Any]]:
     if isinstance(config, str):
         return config, {}
     params = config.copy()

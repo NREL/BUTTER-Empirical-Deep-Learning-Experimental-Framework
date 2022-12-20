@@ -110,7 +110,7 @@ def make_validation_split(spec: DatasetSpec, dataset: Dataset) -> None:
             sklearn.model_selection.train_test_split(
                 dataset.train.inputs,
                 dataset.train.outputs,
-                test_size=int(validation_split/(1-spec.test_split)),
+                test_size=(validation_split/(1.0-spec.test_split)),
                 shuffle=True,
             )
     dataset.train = DatasetGroup(train_inputs, train_outputs)
@@ -124,17 +124,13 @@ def make_tensorflow_dataset(
     if group is None:
         return None
 
-    datasets = [group.inputs, group.outputs]
+    datasets = (group.inputs, group.outputs)
     import tensorflow
     dataset_options = tensorflow.data.Options()
     dataset_options.experimental_distribute.auto_shard_policy = \
         tensorflow.data.experimental.AutoShardPolicy.DATA
 
-    tf_datasets = tuple((tensorflow.data.Dataset.from_tensor_slices(
-        dataset).with_options(dataset_options).astype('float32')
-                         for dataset in datasets))
-
-    tf_datasets = tensorflow.data.Dataset.from_tensor_slices(tf_datasets)
+    tf_datasets = tensorflow.data.Dataset.from_tensor_slices(datasets)
     tf_datasets = tf_datasets.with_options(dataset_options)
     tf_datasets = tf_datasets.batch(batch_size)
     return tf_datasets

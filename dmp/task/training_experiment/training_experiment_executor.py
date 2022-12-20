@@ -151,7 +151,7 @@ class TrainingExperimentExecutor():
         return model_spec.make_network()
 
     def _make_model_from_network(self, network: NetworkInfo):
-        with worker.strategy.scope() as s:  # type: ignore
+        with self.worker.strategy.scope() as s:  # type: ignore
             tensorflow.config.optimizer.set_jit(True)
             return make_keras_model_from_network(network)
 
@@ -162,8 +162,8 @@ class TrainingExperimentExecutor():
         metrics: List[Union[str, keras.metrics.Metric]],
     ) -> None:
         model.keras_model.compile(
-            loss=keras_from_config(self.task.loss),  # type: ignore
-            optimizer=keras_from_config(self.task.optimizer),
+            loss=keras_from_config(self.task.loss, keras.losses.deserialize ),  # type: ignore
+            optimizer=keras_from_config(self.task.optimizer, keras.optimizers.deserialize),
             metrics=metrics,
             run_eagerly=False,
         )
@@ -240,7 +240,9 @@ class TrainingExperimentExecutor():
             for k, v in model.network.description.items()
         })
 
-        run_data = self.worker.worker_info.copy()
+        run_data = {}
+        if self.worker is not None:
+            run_data = self.worker.worker_info.copy()
         run_data.update({
             'run_id':
             uuid.uuid4(),

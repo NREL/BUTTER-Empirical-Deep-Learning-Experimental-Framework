@@ -33,7 +33,6 @@ def get_pyarrow_type_mapping(
         if len(values) == 0:
             return None
         t = type(values[0])
-    print(t)
 
     def check_type(t, x):
         return (isinstance(t, Type) and issubclass(t, x))

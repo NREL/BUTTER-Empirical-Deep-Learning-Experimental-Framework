@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from io import BytesIO
 import json
 import os
+import pickle
 import traceback
 from typing import (
     Callable,
@@ -12,8 +13,7 @@ from typing import (
     Tuple,
     Any,
 )
-import pyarrow
-import pyarrow.compute as pc
+import zstandard
 import numpy
 import numpy as np
 from numpy import ndarray
@@ -54,34 +54,19 @@ class DatasetLoader(ABC):
         return os.path.join(dataset_cache_directory, filename)
 
     def _try_read_from_cache(self) -> Optional[Dataset]:
-        lockfile_name = self._get_cache_path('lock')
+        filename = self._get_cache_path('.pkl')
         try:
             os.makedirs(dataset_cache_directory, exist_ok=True)
-            array_dict = numpy.load(self._get_cache_path('.npz'))
+            with open(filename, 'rb') as file_handle:
+                return pickle.load(file_handle)
 
-            def get_group(name):
-                input_name = f'{name}_inputs'
-                output_name = f'{name}_outputs'
-                if input_name in array_dict:
-                    return DatasetGroup(
-                        array_dict[input_name],
-                        array_dict[output_name],
-                    )
-                return None
-
-            return Dataset(
-                self.ml_task,
-                get_group('train'),
-                get_group('test'),
-                get_group('validation'),
-            )
         except FileNotFoundError:
             return None
         except:
             print(f'Error reading from dataset cache for {self}:')
             traceback.print_exc()
             try:
-                os.remove(lockfile_name)
+                os.remove(filename)
             except:
                 print(f'Error removing bad cache file for {self}:')
                 traceback.print_exc()
@@ -92,12 +77,8 @@ class DatasetLoader(ABC):
         pass
 
     def _write_to_cache(self, data: Dataset) -> None:
-        array_dict = {}
-        for name, split in data.splits:
-            array_dict[f'{name}_inputs'] = split.inputs
-            array_dict[f'{name}_outputs'] = split.outputs
-
-        np.savez(self._get_cache_path('.npz'), **array_dict)
+        with open(self._get_cache_path('.pkl'), 'wb') as file_handle:
+            pickle.dump(data, file_handle)
 
     def _prepare_dataset_data(self, data: Dataset) -> Dataset:
         data.train = self._prepare_data_group(data.train)

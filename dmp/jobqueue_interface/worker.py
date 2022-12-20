@@ -71,13 +71,6 @@ if __name__ == "__main__":
 
     gpus = list(range(first_gpu, first_gpu + num_gpus))
 
-    strategy = make_strategy(
-        num_cores,
-        first_gpu,
-        num_gpus,
-        gpu_memory,
-    )
-
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     print('\n', flush=True)
@@ -93,6 +86,13 @@ if __name__ == "__main__":
     result_logger = PostgresResultLogger(credentials)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
 
+    strategy = make_strategy(
+            num_cores,
+            first_gpu,
+            num_gpus,
+            gpu_memory,
+        )
+        
     worker = Worker(
         job_queue,
         result_logger,

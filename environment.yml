@@ -15,7 +15,7 @@ dependencies:
 - conda-forge::tensorflow >= 2.7
 - simplejson
 - pip:
-  - pyarrow >= 8
+  - pyarrow >= 10
   - pytest
   - tensorflow_datasets
   - pmlb

@@ -27,8 +27,8 @@ class Dataset():
     
     @property
     def input_shape(self) -> List[int]:
-        return list(self.train.inputs.shape)  # type: ignore
+        return list(self.train.inputs.shape[1:])  # type: ignore
 
     @property
     def output_shape(self) -> List[int]:
-        return list(self.train.outputs.shape)  # type: ignore
+        return list(self.train.outputs.shape[1:])  # type: ignore
