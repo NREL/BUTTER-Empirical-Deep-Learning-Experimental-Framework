@@ -63,7 +63,9 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 math.floor(task.initial_size *
                            math.pow(task.growth_scale, growth_step)))
 
-            print(f'target_size {target_size}, task.initial_size {task.initial_size}, growth_step {growth_step}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}')
+            print(
+                f'target_size {target_size}, task.initial_size {task.initial_size}, growth_step {growth_step}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}'
+            )
             # if we 'skipped' over a growth step, handle it
             if src_model is not None and \
                 target_size <= src_model.network.num_free_parameters:
@@ -90,8 +92,11 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                     target_size,
                     make_network,
                 )
-                print(f'Growing to {target_size} {network.num_free_parameters}')
-                pprint.pprint(jobqueue_interface.jobqueue_marshal.marshal(network.description))
+                print(
+                    f'Growing to {target_size} {network.num_free_parameters}')
+                pprint.pprint(
+                    jobqueue_interface.jobqueue_marshal.marshal(
+                        network.description))
 
             model = self._make_model_from_network(network)
 
@@ -105,7 +110,10 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 break
 
             fit_config = self.task.fit_config.copy()
-            fit_config['epochs'] = max_epochs_at_this_iteration
+            fit_config['epochs'] = min(
+                fit_config['epochs'],
+                max_epochs_at_this_iteration,
+            )
 
             if src_model is not None:
                 task.growth_method.grow(
@@ -123,7 +131,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 self._make_callbacks(on_final_iteration),
             )
 
-            num_epochs = len(model_history['loss'])
+            num_epochs = len(model_history['train_loss'])
             model_history[scale_key] = [network.description[scale_key]
                                         ] * num_epochs
             model_history['num_free_parameters_history'] = \
@@ -135,7 +143,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             # that achieves lowest val_loss else growth occured at final epoch
             if task.growth_trigger.get('restore_best_weights', False):
                 model_history[growth_points_key][numpy.argmin(
-                    model_history['val_loss'])] = 1
+                    model_history['validation_loss'])] = 1
             else:
                 model_history[growth_points_key][-1] = 1
 

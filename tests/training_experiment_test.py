@@ -70,7 +70,7 @@ def test_growth_experiment():
         seed=0,
         batch='test',
         dataset=DatasetSpec(
-            'connect_4',
+            'titanic',
             'pmlb',
             'shuffled_train_test_split',
             0.2,
@@ -78,19 +78,19 @@ def test_growth_experiment():
             0.0,
         ),
         model=DenseBySize(
-            None,
-            None,
-            'rectangle',
-            16384,
-            2,
-            Dense.make(-1, {
+            input=None,
+            output=None,
+            shape='rectangle',
+            size=16384,
+            depth=3,
+            inner=Dense.make(-1, {
                 'activation': 'relu',
                 'kernel_initializer': 'GlorotUniform',
             }),
         ),
         fit_config={
             'batch_size': 32,
-            'epochs': 5,
+            'epochs': 4,
         },
         optimizer={
             'class': 'Adam',
@@ -113,8 +113,8 @@ def test_growth_experiment():
         growth_method=OverlayGrowthMethod(),
         growth_scale=2.0,
         initial_size=128,
-        max_total_epochs=50,
-        max_equivalent_epoch_budget=50,
+        max_total_epochs=16,
+        max_equivalent_epoch_budget=16,
     )
 
     worker = Worker(

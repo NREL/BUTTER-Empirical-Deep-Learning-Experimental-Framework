@@ -197,6 +197,7 @@ class TrainingExperimentExecutor():
             callbacks=callbacks,
             **fit_config,
         ).history  # type: ignore
+        history = self._map_history(dataset, history)
 
         # Add test set history into history dict.
         if test_callback is not None:
@@ -210,7 +211,7 @@ class TrainingExperimentExecutor():
         history: Dict[str, Any],
     ) -> TaskResultRecord:
         from dmp.jobqueue_interface import jobqueue_marshal
-        
+
         experiment_parameters = self.task.get_parameters()
         experiment_parameters.update({
             'ml_task': dataset.ml_task.value,
@@ -266,26 +267,30 @@ class TrainingExperimentExecutor():
             self._get_git_hash(),
         })
 
-        # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
-        print(f'premap keys: {list(history.keys())}')
-        if test_history_key in history:
-            history = remap_key_prefixes(history, [
-                ('val_', 'validation_'),
-                (test_history_key + '_', 'test_'),
-                ('', 'train_'),
-            ])  # type: ignore
-        else:
-            history = remap_key_prefixes(history, [
-                ('val_', 'test_'),
-                ('', 'train_'),
-            ])  # type: ignore
-        print(f'postmap keys: {list(history.keys())}')
         return TaskResultRecord(
             experiment_parameters,
             experiment_data,
             run_data,
             history,
         )
+
+    def _map_history(
+        self,
+        dataset: PreparedDataset,
+        history: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
+        if dataset.validation is None:
+            return remap_key_prefixes(history, [
+                ('val_', 'test_'),
+                ('', 'train_'),
+            ])  # type: ignore
+        else:
+            return remap_key_prefixes(history, [
+                ('val_', 'validation_'),
+                (test_history_key + '_', 'test_'),
+                ('', 'train_'),
+            ])  # type: ignore
 
     def _get_slurm_id(self) -> Optional[int]:
         try:
