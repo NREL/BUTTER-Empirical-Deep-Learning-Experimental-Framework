@@ -6,7 +6,7 @@ from jobqueue.job_queue import JobQueue
 from dmp.logging.result_logger import ResultLogger
 from dmp.task.task import Task
 
-from dmp.jobqueue_interface import jobqueue_marshal
+
 from lmarshal.src.marshal import Marshal
 import tensorflow
 
@@ -32,7 +32,8 @@ class Worker:
             lambda worker_id, job: self._handler(worker_id, job))
 
     def _handler(self, worker_id: uuid.UUID, job: Job) -> bool:
-
+        from dmp.jobqueue_interface import jobqueue_marshal
+        
         # demarshal task from job.command
         task: Task = jobqueue_marshal.demarshal(job.command)
 

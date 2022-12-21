@@ -12,10 +12,14 @@ ParameterDict = Dict[str, 'Parameter']
 Parameter = Union[ParameterValue, ParameterDict]
 FlatParameterDict = Dict[str, ParameterValue]
 
+
 # register task types here
-task_types: List['Task'] = []
-def register_task_type(type:Type)->None:
-    task_types.append(type)
+# task_types: List['Task'] = []
+def register_task_type(type: Type) -> None:
+    # task_types.append(type)
+    from dmp.marshal_registry import register_type
+    register_type(type)
+
 
 @dataclass
 class Task(ABC):
@@ -34,7 +38,7 @@ class Task(ABC):
     def get_parameters(self) -> ParameterDict:
         parameters = self.extract_parameters()
         # parameters['task'] = type(self).__name__ # migrate to marshal class type
-        parameters['task_version'] = self.version 
+        parameters['task_version'] = self.version
         return parameters  # type: ignore
 
     def extract_parameters(self) -> ParameterDict:
@@ -43,27 +47,28 @@ class Task(ABC):
         marshaled = jobqueue_marshal.marshal(self)
         parameters = {}
 
-        def get_parameters(prefix, target):
+        def get_parameters(key, target):
             target_type = type(target)
             if target_type is dict:
-                
-                skip_key = None
                 if marshal_type_key in target:
-                    parameters[prefix] = target[marshal_type_key]
-                    skip_key = marshal_type_key
-                elif keras_type_key in target:
-                    parameters[prefix] = target[keras_type_key]
-                    skip_key = keras_type_key
-                elif tensorflow_type_key in target:
-                    parameters[prefix] = target[tensorflow_type_key]
-                    target = target.get(tensorflow_config_key, {})
+                    get_parameters(key, target.pop(marshal_type_key))
+
+                if keras_type_key in target:
+                    get_parameters(key, target.pop(keras_type_key))
+                    # parameters[key] = target.pop(keras_type_key)
+                # if tensorflow_type_key in target:
+                #     parameters[key] = target[tensorflow_type_key]
+                #     target = target.get(tensorflow_config_key, {})
 
                 for k, v in target.items():
-                    if k != skip_key:
-                        get_parameters(prefix + separator + k, v)
+                    get_parameters(key + separator + k, v)
             else:
-                parameters[prefix] = target
+                if key in parameters:
+                    raise KeyError(f'Parameter conflict on key "{key}".')
+                parameters[key] = target
 
-        get_parameters('', marshaled)
+        # parameters['type'] = marshaled.pop(marshal_type_key)
+        for k, v in marshaled.items():
+            get_parameters(k, v)
+
         return parameters
-        

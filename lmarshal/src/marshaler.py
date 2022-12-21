@@ -1,8 +1,8 @@
-from typing import Any, Dict, Iterable, Mapping, Set, Tuple, Type
+from typing import Any, Dict, Iterable, Mapping, Sequence, Set, Tuple, Type
 
 from .common_marshaler import CommonMarshaler
 from .marshal_config import MarshalConfig
-from .marshal_types import ObjectMarshaler, TypeCode
+from .marshal_types import RawObjectMarshaler, TypeCode
 
 
 class Marshaler(CommonMarshaler):
@@ -18,11 +18,11 @@ class Marshaler(CommonMarshaler):
     def __init__(
         self,
         config: MarshalConfig,
-        type_map: Dict[Type, ObjectMarshaler],
+        type_map: Dict[Type, RawObjectMarshaler],
         source: Any,
     ) -> None:
         super().__init__(config)
-        self._type_map: Dict[Type, ObjectMarshaler] = type_map
+        self._type_map: Dict[Type, RawObjectMarshaler] = type_map
         self._vertex_index: Dict[int, Tuple[str, Any, Any]] = {}
         self._string_index: Dict[str, str] = {}
         self._referenced: Set[int] = set()
@@ -52,7 +52,7 @@ class Marshaler(CommonMarshaler):
     def marshal_untyped(
         marshaler: 'Marshaler',
         source: Any,
-        object_marshaler: ObjectMarshaler,
+        object_marshaler: RawObjectMarshaler,
     ) -> Any:
         vertex_index = marshaler._vertex_index
         source_id = id(source)
@@ -94,35 +94,44 @@ class Marshaler(CommonMarshaler):
             marshaler, source, lambda m, s: [m.marshal(e) for e in s])
 
     @staticmethod
-    def marshal_dict(marshaler: 'Marshaler', source: Mapping) -> dict:
+    def marshal_dict_items(m: 'Marshaler', s: Iterable[Sequence]) -> dict:
+        use_flat_dict = False
+        items = []
+        for t in s:
+            k = t[0]
+            if type(k) is not str:
+                use_flat_dict = True
+            else:
+                t = (m.marshal_key(k), t[1])
+            items.append(t)
 
-        def marshal_bare_dict(m: 'Marshaler', s: Mapping) -> dict:
-            if all((type(k) is str for k in s.keys())):
-                return {
-                    k: m.marshal(v)
-                    for k, v in sorted(((m.marshal_key(k), v)
-                                        for k, v in s.items()))
-                }
+        if use_flat_dict:
             return {
-                m._config.flat_dict_key:
-                m.marshal([[k, v] for k, v in s.items()])
+                m._config.flat_dict_key: [[
+                    m.marshal(m.demarshal_key(k) if type(k) is str else k),
+                    m.marshal(v)
+                ] for k, v in items]
             }
 
-        return Marshaler.marshal_untyped(marshaler, source, marshal_bare_dict)
+        items.sort()
+        result = {k: m.marshal(v) for k, v in items}
+        return result
 
-    def marshal_key(self, source: str) -> str:
-        if source in self._config.control_key_set or \
-            source.startswith(self._config.escape_prefix):
-            # TODO: optionally allow referenced strings as keys?
-            source = self._escape_string(source)
-        return source
+    @staticmethod
+    def marshal_bare_dict(m: 'Marshaler', s: Mapping) -> dict:
+        return Marshaler.marshal_dict_items(m, s.items())
+
+    @staticmethod
+    def marshal_dict(marshaler: 'Marshaler', source: Mapping) -> dict:
+        return Marshaler.marshal_untyped(marshaler, source,
+                                         Marshaler.marshal_bare_dict)
 
     @staticmethod
     def marshal_typed(
         marshaler: 'Marshaler',
         source: Any,
         type_code: TypeCode,
-        object_marshaler: ObjectMarshaler,
+        object_marshaler: RawObjectMarshaler,
     ) -> Any:
 
         def type_checked_object_marshaler(m: Marshaler, s: Any) -> dict:
@@ -138,14 +147,31 @@ class Marshaler(CommonMarshaler):
                                          type_checked_object_marshaler)
 
     @staticmethod
-    def default_object_marshaler(marshaler: 'Marshaler', source: Any) -> Dict:
+    def default_object_marshaler(
+        marshaler: 'Marshaler',
+        source: Any,
+    ) -> Dict:
+        return Marshaler.marshal_bare_dict(marshaler, vars(source))
+
+    @staticmethod
+    def custom_marshalable_marshaler(
+        marshaler: 'Marshaler',
+        source: Any,
+    ) -> Dict:
+        return Marshaler.marshal_bare_dict(marshaler, source.marshal())
+
+    @staticmethod
+    def enum_marshaler(
+        marshaler: 'Marshaler',
+        source: Any,
+    ) -> Dict:
         return {
-            marshaler.marshal_key(k): marshaler.marshal(v)
-            for k, v in sorted(vars(source).items())
+            marshaler.marshal_key(marshaler._config.enum_value_key):
+            marshaler.marshal(source.value)
         }
 
     @staticmethod
-    def initialize_type_map(type_map: Dict[Type, ObjectMarshaler],
+    def initialize_type_map(type_map: Dict[Type, RawObjectMarshaler],
                             config: MarshalConfig) -> None:
         type_map[type(None)] = Marshaler.marshal_passthrough
         type_map[bool] = Marshaler.marshal_passthrough

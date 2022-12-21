@@ -15,7 +15,7 @@ class DenseBySize(ModelSpec):
     depth: int  # (migrate)
     # input_layer : dict
     #input_layer.activation (migrate from input_activation)
-    inner_layers: Dense  # config of all but output layer (no units here)
+    inner: Dense  # config of all but output layer (no units here)
     '''
         + activation (migrate)
         + kernel_regularizer (migrate)
@@ -95,7 +95,7 @@ class DenseBySize(ModelSpec):
             if depth == len(widths) - 1:
                 layer = output.make_layer([parent], {})
             else:
-                layer = self.inner_layers.make_layer([parent], {})
+                layer = self.inner.make_layer([parent], {})
                 layer['units'] = width
 
             # Skip connections for residual modes

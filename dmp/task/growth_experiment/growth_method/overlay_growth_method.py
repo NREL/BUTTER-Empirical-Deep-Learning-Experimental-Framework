@@ -1,17 +1,18 @@
 from functools import singledispatchmethod
-from typing import Any, Dict, Iterable, Set, Tuple
+from typing import Any, Dict, Iterable, Set, Tuple, TypeVar
 
 import numpy
 import tensorflow.keras as keras
 from dmp.layer import *
 from dmp.layer.visitor.keras_interface.layer_to_keras import KerasLayer
 from dmp.model.model_info import ModelInfo
+from dmp.task.growth_experiment.growth_method.growth_method import GrowthMethod
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
 
 T = TypeVar('T')
 
 
-class OverlayGrowth:
+class OverlayGrowthMethod(GrowthMethod):
     """
     Visitor that fills one network with the values from another. 
     If the destination network is larger, this will 'grow' the src into
@@ -20,27 +21,24 @@ class OverlayGrowth:
 
     def __init__(
         self,
-        src: ModelInfo,  # 'parent' / 'previous' network
-        dest: ModelInfo,  # 'child' / 'next' network
-        growth_map: Dict[Layer, LayerGrowthInfo],
-        old_to_old_scale: float,
-        new_to_new_scale: float,
-        old_to_new_scale: float,
-        new_to_old_scale: float,
-        new_add_to_old_scale: float,
+        old_to_old_scale: float = 1.0,
+        new_to_new_scale: float = 1.0,
+        old_to_new_scale: float = 1.0,
+        new_to_old_scale: float = 0.0,
+        new_add_to_old_scale: float = 0.0,
     ) -> None:
-        self._src: ModelInfo = src
-        self._dest: ModelInfo = dest
-        self._growth_map: Dict[Layer, LayerGrowthInfo] = growth_map
-
         self.old_to_old_scale: float = old_to_old_scale
         self.new_to_new_scale: float = new_to_new_scale
         self.old_to_new_scale: float = old_to_new_scale
         self.new_to_old_scale: float = new_to_old_scale
         self.new_add_to_old_scale: float = new_add_to_old_scale
 
-        self._visited: Set[Layer] = set()
-
+    def grow(
+        self,
+        src: ModelInfo,  # 'parent' / 'previous' network
+        dest: ModelInfo,  # 'child' / 'next' network
+        growth_map: Dict[Layer, LayerGrowthInfo]
+    ) -> None:
         for growth_info in growth_map.values():
             self._do_visit(growth_info.src.layer, growth_info)
 
@@ -100,15 +98,19 @@ class OverlayGrowth:
 
         num_params = len(src_params)
         if num_params != len(dest_params):
-            raise NotImplementedError(f'Layer parameter group numbers do not match {num_params}, {len(dest_params)}')
+            raise NotImplementedError(
+                f'Layer parameter group numbers do not match {num_params}, {len(dest_params)}'
+            )
         if num_params <= 0:
             return
-        
+
         num_weight_dims = len(src_params[0].shape)
         for src_weights, dest_weights in zip(src_params, dest_params):
             num_dims = len(src_weights.shape)
             if num_dims != len(dest_weights.shape):
-                raise ValueError(f'Mismatched wieght shapes {src_weights.shape}, {dest_weights.shape}')
+                raise ValueError(
+                    f'Mismatched wieght shapes {src_weights.shape}, {dest_weights.shape}'
+                )
 
             if num_dims == num_weight_dims:
                 src_channels_out = src_weights.shape[-1]
@@ -130,9 +132,11 @@ class OverlayGrowth:
                     dest_biases[..., num_src_biases:],
                 )
             else:
-                raise NotImplementedError(f'Weight group dimension not supported {num_weight_dims} {num_dims}')
+                raise NotImplementedError(
+                    f'Weight group dimension not supported {num_weight_dims} {num_dims}'
+                )
 
-        dest_keras_layer.set_weights(dest_params) # type: ignore
+        dest_keras_layer.set_weights(dest_params)  # type: ignore
 
     @_do_visit.register
     def _(
@@ -152,9 +156,9 @@ class OverlayGrowth:
     ):
         _blend_blocks(  # copy and scale old weights
             src_weights,
-            self.new_add_to_old_scale,
-            old_to_old,
             self.old_to_old_scale,
+            old_to_old,
+            self.new_add_to_old_scale,
         )
         _scale_block(  # scale old to new weights
             old_to_new,
@@ -177,9 +181,9 @@ class OverlayGrowth:
     ):
         _blend_blocks(  # copy and scale old biases
             src_biases,
-            self.new_add_to_old_scale,
-            old_biases,
             self.old_to_old_scale,
+            old_biases,
+            self.new_add_to_old_scale,
         )
         _scale_block(  # scale new biases
             new_biases,

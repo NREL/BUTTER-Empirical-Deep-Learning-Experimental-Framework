@@ -19,7 +19,7 @@ class CountFreeParametersVisitor:
         return self._num_free_parameters
 
     def _get_size(self, target: Layer) -> int:
-        return sum(target.shape)
+        return sum(target.computed_shape)
 
     @singledispatchmethod
     def _visit(self, target: Layer) -> int:
@@ -53,7 +53,7 @@ class CountFreeParametersVisitor:
         num_nodes = num_nodes_per_filter * target['filters']
 
         input_conv_shape, input_channels = \
-            target.to_conv_shape_and_channels(target.input.shape)
+            target.to_conv_shape_and_channels(target.input.computed_shape)
 
         params_per_node = input_channels + (1 if target.use_bias else 0)
         return num_nodes * params_per_node

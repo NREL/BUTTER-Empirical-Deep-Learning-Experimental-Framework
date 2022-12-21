@@ -9,9 +9,9 @@ from prometheus_client import Metric
 import tensorflow
 import tensorflow.keras as keras
 import numpy
+from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
 
-from dmp.jobqueue_interface import jobqueue_marshal
 from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance, make_keras_config
 from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
@@ -64,16 +64,15 @@ class TrainingExperimentExecutor():
     ) -> List[Union[str, keras.metrics.Metric]]:
         # auto-populate model inputs and outputs if not already set
         num_outputs: int = dataset.output_shape[0]
-        ml_task: str = dataset.ml_task
+        ml_task: MLTask = dataset.ml_task
 
         metrics = [
-            'accuracy',
             keras.metrics.CosineSimilarity(),
             keras.metrics.KLDivergence(),
         ]
         output_kernel_initializer = 'HeUniform'
         output_activation = 'relu'
-        if ml_task == 'regression':
+        if ml_task == MLTask.regression:
             output_activation = 'sigmoid'
             output_kernel_initializer = 'GlorotUniform'
             loss = 'MeanSquaredError'
@@ -83,7 +82,7 @@ class TrainingExperimentExecutor():
                 keras.metrics.MeanAbsoluteError(),
                 keras.metrics.MeanSquaredLogarithmicError(),
             ])
-        elif ml_task == 'classification':
+        elif ml_task == MLTask.classification:
             if num_outputs == 1:
                 output_activation = 'sigmoid'
                 output_kernel_initializer = 'GlorotUniform'
@@ -210,10 +209,11 @@ class TrainingExperimentExecutor():
         model: ModelInfo,
         history: Dict[str, Any],
     ) -> TaskResultRecord:
-
+        from dmp.jobqueue_interface import jobqueue_marshal
+        
         experiment_parameters = self.task.get_parameters()
         experiment_parameters.update({
-            'ml_task': dataset.ml_task,
+            'ml_task': dataset.ml_task.value,
         })
 
         experiment_data = {
@@ -245,7 +245,7 @@ class TrainingExperimentExecutor():
             run_data = self.worker.worker_info.copy()
         run_data.update({
             'run_id':
-            uuid.uuid4(),
+            str(uuid.uuid4()),
             'seed':
             experiment_parameters.pop('seed', None),
             'batch':
@@ -267,6 +267,7 @@ class TrainingExperimentExecutor():
         })
 
         # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
+        print(f'premap keys: {list(history.keys())}')
         if test_history_key in history:
             history = remap_key_prefixes(history, [
                 ('val_', 'validation_'),
@@ -278,6 +279,7 @@ class TrainingExperimentExecutor():
                 ('val_', 'test_'),
                 ('', 'train_'),
             ])  # type: ignore
+        print(f'postmap keys: {list(history.keys())}')
         return TaskResultRecord(
             experiment_parameters,
             experiment_data,

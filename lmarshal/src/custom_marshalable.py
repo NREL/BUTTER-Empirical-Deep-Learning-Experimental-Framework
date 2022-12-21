@@ -6,9 +6,9 @@ from .demarshaler import Demarshaler
 class CustomMarshalable(ABC):
 
     @abstractmethod
-    def marshal(self, marshaler: Marshaler) -> dict:
+    def marshal(self) -> dict:
         pass
 
     @abstractmethod
-    def demarshal(self, demarshaler: Demarshaler, source: dict) -> None:
+    def demarshal(self, source: dict) -> None:
         pass

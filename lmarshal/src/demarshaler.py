@@ -3,7 +3,7 @@ from typing import Dict, Mapping, Iterator, Union, Tuple, Type, Any
 
 from .common_marshaler import CommonMarshaler
 from .marshal_config import MarshalConfig
-from .marshal_types import TypeCode, ObjectDemarshaler, DemarshalingFactory, \
+from .marshal_types import TypeCode, RawObjectDemarshaler, DemarshalingFactory, \
     DemarshalingInitializer
 
 
@@ -13,11 +13,11 @@ class Demarshaler(CommonMarshaler):
     def __init__(
         self,
         config: MarshalConfig,
-        type_map: Dict[TypeCode, ObjectDemarshaler],
+        type_map: Dict[TypeCode, RawObjectDemarshaler],
         source: Any,
     ) -> None:
         super().__init__(config)
-        self._type_map: Dict[TypeCode, ObjectDemarshaler] = type_map
+        self._type_map: Dict[TypeCode, RawObjectDemarshaler] = type_map
         self._reference_index: Dict[str, Any] = {}
         self._result: Any = self.demarshal(source)
 
@@ -87,27 +87,17 @@ class Demarshaler(CommonMarshaler):
         self,
         source: Mapping,
     ) -> Iterator[Tuple[Any, Any]]:
-        if self._config.flat_dict_key in source:  # demarshal flattened key value pairs
-            items = self.demarshal(source[self._config.flat_dict_key])
-            if not isinstance(items, list):
-                raise ValueError(
-                    f'Found a {type(items)} instead of a list while demarshaling a flattened dict.'
-                )
-            for item in items:
-                if not isinstance(item, list) or len(item) != 2:
-                    raise ValueError(
-                        'Expected a list of length 2, but found something else.'
-                    )
-                yield tuple(item)
+        if self._config.flat_dict_key in source:
+            # demarshal flattened key value pairs
+            yield from ((self.demarshal(kvp[0]), self.demarshal(kvp[1]))
+                        for kvp in source[self._config.flat_dict_key])
 
+        # yield from ((k, self.demarshal(v)) for k, v in sorted((
+        #     (self.demarshal_key(k), v) for k, v in source.items()
+        #     if k not in self._config.control_key_set)))
         yield from ((self.demarshal_key(k), self.demarshal(v))
                     for k, v in sorted(source.items())
                     if k not in self._config.control_key_set)
-
-    def demarshal_key(self, source: str) -> str:
-        if source.startswith(self._config.escape_prefix):
-            source = self._unescape_string(source)
-        return source
 
     @staticmethod
     def demarshal_typed(
@@ -126,7 +116,7 @@ class Demarshaler(CommonMarshaler):
         demarshaler: 'Demarshaler',
         source: Any,
         target_type: Type,
-    ) -> dict:
+    ) -> Any:
         return target_type.__new__(target_type)
 
     @staticmethod
@@ -138,6 +128,32 @@ class Demarshaler(CommonMarshaler):
         for k, v in demarshaler.dict_demarshaling_generator(source):
             setattr(result, k, v)
 
+    @staticmethod
+    def custom_marshalable_initializer(
+        demarshaler: 'Demarshaler',
+        source: Any,
+        result: Any,
+    ) -> None:
+        result.demarshal(dict(demarshaler.dict_demarshaling_generator(source)))
+
+    @staticmethod
+    def enum_factory(
+        demarshaler: 'Demarshaler',
+        source: Any,
+        target_type: Type,
+    ) -> Any:
+        return target_type(
+            demarshaler.demarshal(
+                source[demarshaler.demarshal_key(demarshaler._config.enum_value_key)], ))
+
+    @staticmethod
+    def enum_initializer(
+        demarshaler: 'Demarshaler',
+        source: Any,
+        result: Any,
+    ) -> None:
+        return result
+
     # @staticmethod
     # def default_dataclass_initializer(demarshaler: 'Demarshaler', source: Any, result: Any) -> None:
     #     #dataclasses.fields(C)
@@ -146,7 +162,7 @@ class Demarshaler(CommonMarshaler):
 
     @staticmethod
     def initialize_type_map(
-        type_map: Dict[TypeCode, ObjectDemarshaler],
+        type_map: Dict[TypeCode, RawObjectDemarshaler],
         config: MarshalConfig,
     ) -> None:
         pass

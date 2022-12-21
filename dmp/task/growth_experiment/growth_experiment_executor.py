@@ -1,14 +1,16 @@
 import copy
 import math
+import pprint
 from typing import Any, Dict, Optional
 import tensorflow.keras as keras
 import numpy
+from dmp import jobqueue_interface
 from dmp.layer.layer import Layer
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
 from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.growth_experiment.growth_method.overlay_growth import OverlayGrowth
+from dmp.task.growth_experiment.growth_method.overlay_growth_method import OverlayGrowthMethod
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
 from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance, register_custom_keras_types
@@ -22,7 +24,7 @@ scale_key: str = 'scale'
 growth_points_key: str = 'growth_points'
 
 register_custom_keras_types({
-    'NetworkOverlayer': OverlayGrowth,
+    'NetworkOverlayer': OverlayGrowthMethod,
 })
 
 
@@ -43,6 +45,12 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         metrics = self._autoconfigure_for_dataset(dataset)
 
         goal_network: NetworkInfo = self._make_network(self.task.model)
+        goal_network.description[scale_key] = 1.0
+        goal_network.description[layer_map_key] = {
+            l: l
+            for l in goal_network.structure.all_descendants
+        }
+
         history: dict = {}
         growth_step: int = 0
         epoch_parameters: int = 0
@@ -55,6 +63,7 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 math.floor(task.initial_size *
                            math.pow(task.growth_scale, growth_step)))
 
+            print(f'target_size {target_size}, task.initial_size {task.initial_size}, growth_step {growth_step}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}')
             # if we 'skipped' over a growth step, handle it
             if src_model is not None and \
                 target_size <= src_model.network.num_free_parameters:
@@ -81,28 +90,32 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                     target_size,
                     make_network,
                 )
+                print(f'Growing to {target_size} {network.num_free_parameters}')
+                pprint.pprint(jobqueue_interface.jobqueue_marshal.marshal(network.description))
 
             model = self._make_model_from_network(network)
 
             max_epochs_at_this_iteration = min(
-                epochs - task.max_total_epochs,
-                math.floor((task.max_equivalent_epoch_budget *
-                            goal_network.num_free_parameters) /
-                           model.network.num_free_parameters))
+                task.max_total_epochs - epochs,
+                math.floor(
+                    (task.max_equivalent_epoch_budget *
+                     goal_network.num_free_parameters - epoch_parameters) /
+                    model.network.num_free_parameters))
             if max_epochs_at_this_iteration <= 0:
                 break
+
             fit_config = self.task.fit_config.copy()
             fit_config['epochs'] = max_epochs_at_this_iteration
 
             if src_model is not None:
-                make_keras_instance(
-                    task.growth_method,
+                task.growth_method.grow(
                     src_model,
                     model,
                     self._make_growth_map(src_model, model),
                 )
 
             self._compile_model(dataset, model, metrics)
+            print(f'on_final_iteration {on_final_iteration}')
             model_history = self._fit_model(
                 fit_config,
                 dataset,

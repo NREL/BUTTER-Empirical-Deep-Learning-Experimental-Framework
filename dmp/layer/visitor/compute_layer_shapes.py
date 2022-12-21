@@ -17,15 +17,15 @@ class ComputeLayerShapesVisitor:
         if target in self._visited:
             return
 
-        target.shape = _invalid_shape
+        target.computed_shape = _invalid_shape
         self._visited.add(target)
         for i in target.inputs:
             self._compute_output_shape(i)
-        target.shape = self._visit(target, target.config)
+        target.computed_shape = self._visit(target, target.config)
 
     def _get_output_shape(self, target: Layer) -> Tuple:
         self._compute_output_shape(target)
-        shape = target.shape
+        shape = target.computed_shape
         if shape is _invalid_shape:
             raise ValueError(f'Can not determine shape of Layer {target}.')
         return shape

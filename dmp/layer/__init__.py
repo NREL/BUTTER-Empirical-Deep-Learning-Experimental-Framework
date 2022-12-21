@@ -1,4 +1,4 @@
-from dmp.layer.layer import Layer, register_layer_type, empty_config, empty_inputs
+from dmp.layer.layer import Layer, LayerFactory, LayerConfig, register_layer_type, empty_config, empty_inputs
 # from dmp.layer.layer_factory import LayerFactory
 
 from dmp.layer.spatitial_layer import ASpatitialLayer
@@ -17,6 +17,6 @@ from dmp.layer.identity import Identity
 from dmp.layer.zeroize import Zeroize
 
 from dmp.layer.convolutional_layer import AConvolutionalLayer
-from dmp.layer.dense_conv import DenseConv
-from dmp.layer.separable_conv import SeparableConv
+from dmp.layer.dense_conv import *
+from dmp.layer.separable_conv import *
 

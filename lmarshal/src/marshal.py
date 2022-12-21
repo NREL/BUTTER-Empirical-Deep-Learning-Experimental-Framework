@@ -1,3 +1,4 @@
+from enum import Enum, EnumMeta
 from typing import Any, Dict, Iterable, Optional, Type
 
 from lmarshal.src.custom_marshalable import CustomMarshalable
@@ -6,7 +7,7 @@ from .tuple_marshaling import demarshal_tuple, initialize_tuple, marshal_tuple
 from .demarshaler import Demarshaler
 from .marshal_config import MarshalConfig
 from .marshaler import Marshaler
-from .marshal_types import ObjectDemarshaler, ObjectMarshaler, TypeCode, DemarshalingFactory, DemarshalingInitializer
+from .marshal_types import RawObjectDemarshaler, RawObjectMarshaler, TypeCode, DemarshalingFactory, DemarshalingInitializer
 
 
 class Marshal:
@@ -21,8 +22,8 @@ class Marshal:
         config = config if config is not None else MarshalConfig()
 
         self._config: MarshalConfig = config
-        self._marshaler_type_map: Dict[Type, ObjectMarshaler] = {}
-        self._demarshaler_type_map: Dict[TypeCode, ObjectDemarshaler] = {}
+        self._marshaler_type_map: Dict[Type, RawObjectMarshaler] = {}
+        self._demarshaler_type_map: Dict[TypeCode, RawObjectDemarshaler] = {}
 
         Marshaler.initialize_type_map(self._marshaler_type_map, config)
         Demarshaler.initialize_type_map(self._demarshaler_type_map, config)
@@ -57,25 +58,32 @@ class Marshal:
         self,
         target_type: Type,
         type_code: Optional[TypeCode] = None,
-        object_marshaler: Optional[ObjectMarshaler] = None,
+        object_marshaler: Optional[RawObjectMarshaler] = None,
         demarshaling_factory: Optional[DemarshalingFactory] = None,
         demarshaling_initializer: Optional[DemarshalingInitializer] = None,
     ) -> None:
         type_code = target_type.__name__ if type_code is None else type_code
         if object_marshaler is None:
             if issubclass(target_type, CustomMarshalable):
-                object_marshaler = lambda m, s: s.marshal(m)
+                object_marshaler = Marshaler.custom_marshalable_marshaler
+            elif issubclass(target_type, Enum):
+                object_marshaler = Marshaler.enum_marshaler
             else:
                 object_marshaler = Marshaler.default_object_marshaler
 
         if demarshaling_factory is None:
-            demarshaling_factory = \
-                lambda demarshaler, source: Demarshaler.default_object_factory(
-                demarshaler, source, target_type)
+            if issubclass(target_type, Enum):
+                demarshaling_factory = Demarshaler.enum_factory
+            else:
+                demarshaling_factory = \
+                    lambda demarshaler, source: Demarshaler.default_object_factory(
+                    demarshaler, source, target_type)
 
         if demarshaling_initializer is None:
             if issubclass(target_type, CustomMarshalable):
-                demarshaling_initializer = lambda d, s, r: r.demarshal(d, s)
+                demarshaling_initializer = Demarshaler.custom_marshalable_initializer
+            elif issubclass(target_type, Enum):
+                demarshaling_initializer = Demarshaler.enum_initializer
             # if dataclasses.is_dataclass(target_type):
             #     demarshaling_initializer = Demarshaler.default_dataclass_initializer
             else:

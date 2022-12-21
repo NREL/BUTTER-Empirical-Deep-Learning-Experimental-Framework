@@ -192,7 +192,7 @@ class LayerToKerasVisitor:
         config: Dict[str, Any],
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
-        keras_layer = tensorflow.zeros_like(target.shape)
+        keras_layer = tensorflow.zeros_like(target.computed_shape)
         return KerasLayerInfo(target, keras_layer, keras_layer)
 
 

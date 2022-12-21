@@ -1,24 +1,27 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, Callable
-from lmarshal import Marshaler, Demarshaler
 from lmarshal.src.custom_marshalable import CustomMarshalable
 
 LayerConfig = Dict[str, Any]
 
 uninitialized_shape: Tuple[int, ...] = tuple()
-marshaled_shape_key: str = 'shape'
+marshaled_computed_shape_key: str = 'computed_shape'
 marshaled_inputs_key: str = 'inputs'
 marshaled_free_parameters_key: str = 'free_parameters'
 empty_config: Dict[str, Any] = {}
 empty_inputs: List = []
+unitialized_parameter_count: int = -1
 
 T = TypeVar('T')
 
-layer_types: List[Type] = []
+# layer_types: List[Type] = []
 
 
 def register_layer_type(type: Type) -> None:
-    layer_types.append(type)
+    from dmp.marshal_registry import register_type
+    register_type(type)
+    # layer_types.append(type)
+
 
 class LayerFactory(ABC):
 
@@ -29,6 +32,7 @@ class LayerFactory(ABC):
         config: 'LayerConfig',
     ) -> 'Layer':
         pass
+
 
 class Layer(LayerFactory, CustomMarshalable, ABC):
 
@@ -48,9 +52,9 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
         self.config: LayerConfig = config
         self.inputs: List['Layer'] = input
-        self.shape: Tuple[
+        self.computed_shape: Tuple[
             int, ...] = uninitialized_shape  # must be computed in context
-        self.free_parameters: int = -1  # must be computed in context
+        self.free_parameters: int = unitialized_parameter_count  # must be computed in context
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -59,7 +63,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         return id(self) == id(other)
 
     def __copy__(self) -> 'Layer':
-        return self.__class__(self.config, self.input)
+        return self.__class__(self.config, self.inputs)
 
     def __setitem__(self, key, value):
         self.config[key] = value
@@ -121,12 +125,12 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
     @property
     def dimension(self) -> int:
-        return len(self.shape) - 1
+        return len(self.computed_shape) - 1
 
     def get(self, key, default):
         return self.config.get(key, default)
 
-    def marshal(self, marshaler: Marshaler) -> dict:
+    def marshal(self) -> dict:
         flat = self.config.copy()
 
         def safe_set(key, value):
@@ -136,19 +140,20 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
         if len(self.inputs) > 0:
             safe_set(marshaled_inputs_key, self.inputs)
-        if self.shape is not uninitialized_shape:
-            safe_set(marshaled_shape_key, list(self.shape))
+        if self.computed_shape is not uninitialized_shape:
+            safe_set(marshaled_computed_shape_key, list(self.computed_shape))
         if self.free_parameters >= 0:
             safe_set(marshaled_free_parameters_key, self.free_parameters)
+        return flat
 
-        return Marshaler.marshal_dict(marshaler, flat)
-
-    def demarshal(self, demarshaler: Demarshaler, source: dict) -> None:
-        flat = Demarshaler.demarshal_dict(demarshaler, source)
+    def demarshal(self, flat: dict) -> None:
         self.config = flat
         self.inputs = flat.pop(marshaled_inputs_key, [])
-        self.shape = flat.pop(marshaled_shape_key, uninitialized_shape)
-        self.free_parameters = flat.pop(marshaled_free_parameters_key, -1)
+        computed_shape = flat.pop(marshaled_computed_shape_key, None)
+        self.computed_shape = uninitialized_shape if computed_shape is None \
+            else tuple(computed_shape)
+        self.free_parameters = flat.pop(marshaled_free_parameters_key,
+                                        unitialized_parameter_count)
 
 
 LayerConstructor = Callable[
