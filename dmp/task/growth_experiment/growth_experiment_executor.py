@@ -11,6 +11,7 @@ from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 import dmp.task.growth_experiment.growth_experiment_utils as growth_experiment_utils
 from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.growth_experiment.growth_method.overlay_growth_method import OverlayGrowthMethod
+from dmp.task.growth_experiment.growth_trigger.proportional_stopping import ProportionalStopping
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
 from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance, register_custom_keras_types
@@ -18,13 +19,19 @@ from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
 from dmp.model.model_info import ModelInfo
+from dmp.common import train_key, epoch_key
 
 layer_map_key: str = 'layer_map'
 scale_key: str = 'scale'
 growth_points_key: str = 'growth_points'
+growth_source_key: str = 'growth_source'
+model_epoch_key: str = 'model_epoch'
+parent_epoch_key: str = 'parent_epoch'
+free_parameter_count_key: str = 'free_parameter_count'
 
 register_custom_keras_types({
     'NetworkOverlayer': OverlayGrowthMethod,
+    'ProportionalStopping': ProportionalStopping,
 })
 
 
@@ -44,18 +51,20 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         dataset = self._load_and_prepare_dataset()
         metrics = self._autoconfigure_for_dataset(dataset)
 
-        goal_network: NetworkInfo = self._make_network(self.task.model)
+        goal_network: NetworkInfo = self._make_network(task.model)
         goal_network.description[scale_key] = 1.0
         goal_network.description[layer_map_key] = {
             l: l
             for l in goal_network.structure.all_descendants
         }
 
+        max_total_epochs: int = task.fit['epochs']
         history: dict = {}
         growth_step: int = 0
         epoch_parameters: int = 0
-        epochs: int = 0
+        epoch_count: int = 0
         src_model: Optional[ModelInfo] = None
+        parent_epoch: int = 0
         on_final_iteration: bool = False
         while not on_final_iteration:
 
@@ -72,6 +81,8 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 growth_step += 1
                 continue
 
+            max_epochs_at_this_iteration = max_total_epochs - epoch_count
+
             # if we topped out at the maximum size, this is the last iteration
             network = None
             if target_size >= goal_network.num_free_parameters:
@@ -79,6 +90,10 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 target_size = goal_network.num_free_parameters
                 network = goal_network
             else:
+                max_epochs_at_this_iteration = min(
+                    max_epochs_at_this_iteration,
+                    task.max_epochs_per_stage,
+                )
 
                 def make_network(scale: float) -> NetworkInfo:
                     scaled, layer_map = WidthScaler(goal_network.structure,
@@ -94,26 +109,25 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 )
                 print(
                     f'Growing to {target_size} {network.num_free_parameters}')
-                pprint.pprint(
-                    jobqueue_interface.jobqueue_marshal.marshal(
-                        network.description))
+                # pprint.pprint(
+                #     jobqueue_interface.jobqueue_marshal.marshal(
+                #         network.description))
 
             model = self._make_model_from_network(network)
 
             max_epochs_at_this_iteration = min(
-                task.max_total_epochs - epochs,
-                math.floor(
+                max_epochs_at_this_iteration,
+                math.ceil(
                     (task.max_equivalent_epoch_budget *
                      goal_network.num_free_parameters - epoch_parameters) /
-                    model.network.num_free_parameters))
+                    model.network.num_free_parameters),
+            )
+
             if max_epochs_at_this_iteration <= 0:
                 break
 
-            fit_config = self.task.fit_config.copy()
-            fit_config['epochs'] = min(
-                fit_config['epochs'],
-                max_epochs_at_this_iteration,
-            )
+            fit_config = task.fit.copy()
+            fit_config['epochs'] = max_epochs_at_this_iteration
 
             if src_model is not None:
                 task.growth_method.grow(
@@ -123,42 +137,59 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                 )
 
             self._compile_model(dataset, model, metrics)
-            print(f'on_final_iteration {on_final_iteration}')
+
+            early_stopping_callback = None
+            if on_final_iteration:
+                early_stopping_callback = self._make_early_stopping_callback()
+            else:
+                early_stopping_callback = make_keras_instance(
+                    task.growth_trigger)
+
             model_history = self._fit_model(
                 fit_config,
                 dataset,
                 model,
-                self._make_callbacks(on_final_iteration),
+                [early_stopping_callback],
             )
 
-            num_epochs = len(model_history['train_loss'])
-            model_history[scale_key] = [network.description[scale_key]
-                                        ] * num_epochs
-            model_history['num_free_parameters_history'] = \
-                [network.num_free_parameters] * num_epochs
-            model_history[growth_points_key] = [0] * num_epochs
+            # add additional history columns
+            model_history_length = len(model_history[train_key + '_loss'])
 
-            # If the growth trigger is EarlyStopping and the
-            # 'restore_best_weights' flag is set, indicate growth point at epoch
-            # that achieves lowest val_loss else growth occured at final epoch
-            if task.growth_trigger.get('restore_best_weights', False):
-                model_history[growth_points_key][numpy.argmin(
-                    model_history['validation_loss'])] = 1
-            else:
-                model_history[growth_points_key][-1] = 1
+            # # model scale as % of target model's num parameters
+            # model_history[scale_key] = \
+            #     [network.description[scale_key]] * num_epochs
+
+            # free parameter count history
+            model_history[free_parameter_count_key] = \
+                [network.num_free_parameters] * model_history_length
+
+            # epoch of source model
+            parent_epochs: List[Optional[int]] = [None] * model_history_length
+            if src_model is not None:
+                parent_epochs[0] = parent_epoch
+            model_history[parent_epoch_key] = parent_epoch
+
+            parent_epoch = model_history_length - 1
+            if early_stopping_callback is not None \
+                and early_stopping_callback.stopped_epoch > 0:
+                parent_epoch -= early_stopping_callback.patience  # type: ignore
+
+            growth_source = [False] * model_history_length
+            growth_source[parent_epoch] = True
+            model_history[growth_source_key] = growth_source
 
             # Extend histories dictionary
-            if len(history.keys()) == 0:
-                history = copy.deepcopy(model_history)
-            else:
-                for k, v in history.items():
-                    if type(v) is list:
-                        v.extend(model_history[k])
+            self._append_history_dicts(history, model_history)
+
+            parent_epoch = history[epoch_key][-1]
+            if early_stopping_callback is not None \
+                and early_stopping_callback.stopped_epoch > 0:
+                parent_epoch -= early_stopping_callback.patience  # type: ignore
 
             src_model = model
             growth_step += 1
-            epochs += num_epochs
-            epoch_parameters += num_epochs * model.network.num_free_parameters
+            epoch_count += (model_history_length - 1)
+            epoch_parameters += model_history_length * model.network.num_free_parameters
             continue  # just put this here for better readability
 
         if src_model is None:
@@ -173,7 +204,12 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
     ) -> List[keras.callbacks.Callback]:
         if on_final_iteration:
             return super()._make_callbacks()
-        return [make_keras_instance(self.task.growth_trigger)]
+        result = []
+        growth_trigger = self.task.growth_trigger
+        if growth_trigger is not None:
+            result.append(make_keras_instance(growth_trigger))
+            pprint.pprint(growth_trigger)
+        return result
 
     def _make_growth_map(self, src: ModelInfo, dest: ModelInfo):
         src_layer_map, src_layer_to_keras_map = self._get_layer_maps(src)

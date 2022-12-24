@@ -249,8 +249,7 @@ def replace_config_key_with_keras_instance(
 ) -> None:
     if isinstance(key, str):
         key_config = config.get(key, None)
-        if key_config is not None:
-            config[key] = make_keras_instance(key_config)
+        config[key] = make_keras_instance(key_config)
     else:
         for k in key:
             replace_config_key_with_keras_instance(config, k)

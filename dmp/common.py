@@ -6,6 +6,12 @@ tensorflow_config_key:str = 'config'
 keras_type_key: str = 'class'
 marshal_type_key:str = 'type'
 
+epoch_key: str = 'epoch'
+test_key: str = 'test'
+train_key: str = 'train'
+trained_key :str = 'trained'
+validation_key :str = 'validation'
+
 K = TypeVar('K')
 V = TypeVar('V')
 

@@ -25,11 +25,17 @@ def register_custom_keras_types(type_map: Dict[str, Callable]) -> None:
 # __get_keras_factory = make_dispatcher('keras type', __keras_dispatch_table)
 
 
-def make_keras_instance(config: Dict[str, Any], *params,
-                        **override_kwargs) -> Any:
+def make_keras_instance(
+    config: Optional[Dict[str, Any]],
+    *params,
+    **overrides,
+) -> Any:
+    if config is None:
+        return None
+
     type_name, kwargs = __get_params_and_type_from_keras_config(config)
     factory = dispatch('keras type', __keras_dispatch_table, type_name)
-    kwargs.update(override_kwargs)
+    kwargs.update(overrides)
     return factory(*params, **kwargs)
 
 

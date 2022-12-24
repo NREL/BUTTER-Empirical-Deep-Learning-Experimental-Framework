@@ -40,7 +40,7 @@ class WidthScaler:
     def _(self, target: Dense) -> None:
         o = target['units']
         target['units'] = int(ceil(target['units'] * self._scale_factor))
-        print(f'scale layer {o} -> {target["units"]} @ {self._scale_factor}')
+        # print(f'scale layer {o} -> {target["units"]} @ {self._scale_factor}')
 
     @_scale_layer.register
     def _(self, target: AConvolutionalLayer) -> None:

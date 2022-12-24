@@ -3,7 +3,7 @@ from typing import List, Dict, Tuple, Optional, Any, Sequence
 
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.ml_task import MLTask
-
+from dmp.common import train_key, test_key, validation_key
 
 @dataclass
 class Dataset():
@@ -20,9 +20,9 @@ class Dataset():
             if value is not None:
                 splits.append((key, value))
 
-        try_add('train', self.train)
-        try_add('test', self.test)
-        try_add('validation', self.validation)
+        try_add(train_key, self.train)
+        try_add(test_key, self.test)
+        try_add(validation_key, self.validation)
         return splits
     
     @property

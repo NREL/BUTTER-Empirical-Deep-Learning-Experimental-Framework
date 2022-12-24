@@ -10,7 +10,8 @@ Done:
 ---
 Current:
 
-
++ saving pre-training metrics, loss
++ saving post-training train metrics
 
 + dataset-based fixed train-test split method
 

@@ -15,7 +15,7 @@ def main():
                           depth=3,
                           test_split=0.3,
                           test_split_method='shuffled_train_val_test_split',
-                          fit_config= {'shuffle': True,'epochs': None,'batch_size': 256,'verbose': 0,},
+                          fit= {'shuffle': True,'epochs': None,'batch_size': 256,'verbose': 0,},
                           label_noise=0.0,
                           kernel_regularizer=None,
                           bias_regularizer=None,

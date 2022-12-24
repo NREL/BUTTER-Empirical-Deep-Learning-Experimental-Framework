@@ -37,7 +37,9 @@ def get_pyarrow_type_mapping(
     def check_type(t, x):
         return (isinstance(t, Type) and issubclass(t, x))
 
-    if check_type(t, int) or numpy.issubdtype(t, numpy.integer):
+    if check_type(t, bool) or numpy.issubdtype(t, bool):
+        return pyarrow.bool_()
+    elif check_type(t, int) or numpy.issubdtype(t, numpy.integer):
         hi = numpy.max(values)
         lo = numpy.min(values)
         if hi <= (2**7 - 1) and lo >= (-2**7):

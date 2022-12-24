@@ -17,13 +17,16 @@ from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_fr
 from dmp.layer import *
 from dmp.model.model_spec import ModelSpec
 from dmp.task.task_result_record import TaskResultRecord
-from dmp.task.training_experiment.validation_history_recorder import ValidationHistoryRecorder
+from dmp.task.training_experiment.test_set_history_recorder import TestSetHistoryRecorder
 from dmp.task.task_util import *
+from dmp.task.training_experiment.test_set_info import TestSetInfo
+from dmp.task.training_experiment.test_set_recorder import TestSetRecorder
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
 from dmp.model.network_info import NetworkInfo
 from dmp.model.model_info import ModelInfo
+from dmp.task.training_experiment.zero_epoch_recorder import ZeroEpochRecorder
 
-test_history_key: str = 'test'
+from dmp.common import train_key, test_key, trained_key, validation_key, epoch_key
 
 
 class TrainingExperimentExecutor():
@@ -39,7 +42,7 @@ class TrainingExperimentExecutor():
         model = self._make_model(self.task.model)
         self._compile_model(dataset, model, metrics)
         history = self._fit_model(
-            self.task.fit_config,
+            self.task.fit,
             dataset,
             model,
             self._make_callbacks(),
@@ -55,7 +58,7 @@ class TrainingExperimentExecutor():
     def _load_and_prepare_dataset(self) -> PreparedDataset:
         return PreparedDataset(
             self.task.dataset,
-            self.task.fit_config['batch_size'],
+            self.task.fit['batch_size'],
         )
 
     def _autoconfigure_for_dataset(
@@ -151,7 +154,7 @@ class TrainingExperimentExecutor():
 
     def _make_model_from_network(self, network: NetworkInfo):
         with self.worker.strategy.scope() as s:  # type: ignore
-            tensorflow.config.optimizer.set_jit(True)
+            # tensorflow.config.optimizer.set_jit(True)
             return make_keras_model_from_network(network)
 
     def _compile_model(
@@ -167,42 +170,103 @@ class TrainingExperimentExecutor():
             run_eagerly=False,
         )
 
-    def _make_callbacks(self) -> List[keras.callbacks.Callback]:
-        if self.task.early_stopping is None:
-            return []
-        return [keras.callbacks.EarlyStopping(**self.task.early_stopping)]
-
     def _fit_model(
-        self,
-        fit_config: Dict[str, Any],
-        dataset: PreparedDataset,
-        model: ModelInfo,
-        callbacks: List[keras.callbacks.Callback],
-    ) -> Dict:
+            self, fit_config: Dict[str, Any], dataset: PreparedDataset,
+            model: ModelInfo,
+            callbacks: List[Optional[keras.callbacks.Callback]]) -> Dict:
+        callbacks = [cb for cb in callbacks if cb is not None]
+
         # setup training, validation, and test datasets
         fit_config = fit_config.copy()
         fit_config['x'] = dataset.train
         test_callback = None
-        if dataset.validation is None:
-            fit_config['validation_data'] = dataset.test
-        else:
-            fit_config['validation_data'] = dataset.validation
-            test_callback = ValidationHistoryRecorder(
-                [(test_history_key, dataset.test)],
-                batch_size=self.task.fit_config['batch_size'],
-            )
-            callbacks.append(test_callback)
 
-        history = model.keras_model.fit(
+        # if dataset.validation is None:
+        #     fit_config['validation_data'] = dataset.test
+        # else:
+
+        fit_config['validation_data'] = dataset.validation
+
+        test_set_info = TestSetInfo(test_key, dataset.test)
+        validation_set_info = TestSetInfo(validation_key, dataset.validation)
+        train_set_info = TestSetInfo(train_key, dataset.train)
+
+        zero_epoch_recorder = ZeroEpochRecorder(
+            [train_set_info, validation_set_info, test_set_info])
+
+        additional_test_sets = [test_set_info]
+        if self.task.record_post_training_metrics:
+            additional_test_sets.append(TestSetInfo(trained_key,
+                                                    dataset.train))
+
+        history_callbacks = [
+            zero_epoch_recorder,
+            TestSetHistoryRecorder(additional_test_sets),
+        ]
+
+        callbacks.extend(history_callbacks)
+
+        history: keras.callbacks.History = model.keras_model.fit(
             callbacks=callbacks,
             **fit_config,
-        ).history  # type: ignore
-        history = self._map_history(dataset, history)
+        )  # type: ignore
+
+        # convert keras History dictionary and epoch list to our standard
+        remap_key_prefixes(
+            history.history,
+            [
+                ('val_', validation_key + '_', True),
+                # (test_history_key + '_', 'test_'),
+                ('', train_key + '_', True),
+            ])
+        # History's epochs start at 0 and our epochs start at 1
+        history.epoch = [epoch + 1 for epoch in history.epoch]
+        history_callbacks.append(history)
+
+        if self.task.record_post_training_metrics:
+            # copy zero epoch recorder's train_ metrics to trained_ metrics
+            remap_key_prefixes(zero_epoch_recorder.history, [
+                (trained_key + '_', train_key + '_', False),
+            ])
 
         # Add test set history into history dict.
-        if test_callback is not None:
-            history.update(test_callback.history)
-        return history
+        return self._merge_histories(history_callbacks)
+
+    def _make_callbacks(self) -> List[Optional[keras.callbacks.Callback]]:
+        return [self._make_early_stopping_callback()]
+
+    def _make_early_stopping_callback(
+            self) -> Optional[keras.callbacks.EarlyStopping]:
+        return make_keras_instance(self.task.early_stopping)
+
+    def _merge_histories(
+        self,
+        histories: Iterable[Union[keras.callbacks.History, TestSetRecorder]],
+    ) -> Dict[str, Any]:
+        epoch_set = set()
+        metric_map = {}
+
+        for history in histories:
+            for metric, metric_history in history.history.items():
+                for epoch, value in zip(history.epoch, metric_history):
+                    epoch_set.add(epoch)
+                    metric_map.setdefault(metric, {})[epoch] = value
+
+        epochs = sorted(epoch_set)
+        merged_history = {epoch_key: epochs}
+        for metric, epoch_map in metric_map.items():
+            merged_history[metric] = [
+                epoch_map.get(epoch, None) for epoch in epochs
+            ]
+        return merged_history
+
+    def _append_history_dicts(
+        self,
+        target: Dict[str, Any],
+        source: Dict[str, Any],
+    ) -> None:
+        for metric, metric_history in source.items():
+            target.setdefault(metric, []).extend(metric_history)
 
     def _make_result_record(
         self,
@@ -218,54 +282,47 @@ class TrainingExperimentExecutor():
         })
 
         experiment_data = {
-            'model_computed_num_free_parameters':
+            'model_derived_num_free_parameters':
             model.network.num_free_parameters,
-            'model_computed_network_structure':
+            'model_derived_network_structure':
             jobqueue_marshal.marshal(model.network.structure),
-            'input_shape':
+            'model_derived_input_shape':
             dataset.input_shape,
-            'output_shape':
+            'model_derived_output_shape':
             dataset.output_shape,
-            'training_set_size':
+            'dataset_derived_training_set_size':
             dataset.train_size,
-            'test_set_size':
+            'dataset_derived_test_set_size':
             dataset.test_size,
-            'validation_set_size':
+            'dataset_derived_validation_set_size':
             dataset.validation_size,
-            'total_dataset_size':
+            'dataset_derived_total_size':
             dataset.train_size + dataset.test_size + dataset.validation_size
         }
 
-        experiment_data.update({
-            f'model_computed_{k}': v
-            for k, v in model.network.description.items()
-        })
+        for k, v in model.network.description.items():
+            experiment_data[f'model_{k}'] = v
 
-        run_data = {}
+        run_data = {
+            'run_id': uuid.uuid4(),
+            'python_version': str(platform.python_version()),
+            'platform': str(platform.platform()),
+            'tensorflow_version': str(tensorflow.__version__),
+            'host_name': str(platform.node()),
+            'slurm_job_id': self._get_slurm_id(),
+            'git_hash': self._get_git_hash(),
+        }
+
         if self.worker is not None:
-            run_data = self.worker.worker_info.copy()
-        run_data.update({
-            'run_id':
-            str(uuid.uuid4()),
-            'seed':
-            experiment_parameters.pop('seed', None),
-            'batch':
-            experiment_parameters.pop('batch', None),
-            'task_version':
-            experiment_parameters.pop('task_version', None),
-            'python_version':
-            str(platform.python_version()),
-            'platform':
-            str(platform.platform()),
-            'tensorflow_version':
-            str(tensorflow.__version__),
-            'host_name':
-            str(platform.node()),
-            'slurm_job_id':
-            self._get_slurm_id(),
-            'git_hash':
-            self._get_git_hash(),
-        })
+            run_data.update(self.worker.worker_info)
+
+        for key in (
+                'seed',
+                'batch',
+                'task_version',
+                'record_post_training_metrics',
+        ):
+            run_data[key] = experiment_parameters.pop(key, None)
 
         return TaskResultRecord(
             experiment_parameters,
@@ -274,23 +331,18 @@ class TrainingExperimentExecutor():
             history,
         )
 
-    def _map_history(
-        self,
-        dataset: PreparedDataset,
-        history: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        # rename 'val_' keys to 'test_' and un-prefixed history keys to 'train_'
-        if dataset.validation is None:
-            return remap_key_prefixes(history, [
-                ('val_', 'test_'),
-                ('', 'train_'),
-            ])  # type: ignore
-        else:
-            return remap_key_prefixes(history, [
-                ('val_', 'validation_'),
-                (test_history_key + '_', 'test_'),
-                ('', 'train_'),
-            ])  # type: ignore
+    # def _map_history(
+    #     self,
+    #     dataset: PreparedDataset,
+    #     history: Dict[str, Any],
+    # ) -> Dict[str, Any]:
+    #     return remap_key_prefixes(
+    #         history,
+    #         [
+    #             ('val_', validation_key + '_'),
+    #             # (test_history_key + '_', 'test_'),
+    #             ('', train_key + '_'),
+    #         ])  # type: ignore
 
     def _get_slurm_id(self) -> Optional[int]:
         try:

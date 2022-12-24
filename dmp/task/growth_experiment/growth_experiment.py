@@ -29,7 +29,7 @@ class GrowthExperiment(TrainingExperiment):
     growth_scale: float = 2.0
     # num_scales: int = 1024
     initial_size: int = 1024
-    max_total_epochs: int = 3000
+    max_epochs_per_stage: int = 3000
     max_equivalent_epoch_budget: int = 3000
 
     def __call__(self, worker, *args, **kwargs) -> TaskResultRecord:

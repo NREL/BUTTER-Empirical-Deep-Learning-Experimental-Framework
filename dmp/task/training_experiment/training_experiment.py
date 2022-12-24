@@ -10,11 +10,12 @@ from dmp.task.task_result_record import TaskResultRecord
 class TrainingExperiment(Task):
     dataset: DatasetSpec  # migrate dataset stuff into here
     model: ModelSpec  # defines network
-    fit_config: dict  # contains batch size, epochs, shuffle (migrate from run_config)
+    fit: dict  # contains batch size, epochs, shuffle (migrate from run_config)
     optimizer: dict  # contains learning rate (migrate converting to typed config from keras serialization)
     loss: Optional[dict]  # set to None for runtime determination
     early_stopping: Optional[dict]  # direct migration
     save_every_epochs: int  # migrate with None mapping to -1
+    record_post_training_metrics: bool # new default false
 
     def __call__(self, worker, *args, **kwargs) -> TaskResultRecord:
         from .training_experiment_executor import TrainingExperimentExecutor

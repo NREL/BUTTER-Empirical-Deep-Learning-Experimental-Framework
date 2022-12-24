@@ -17,7 +17,7 @@ def _find_closest_network_to_target_size(
         nonlocal best
         network = make_network(search_parameter)
         delta = network.num_free_parameters - target_num_free_parameters
-        print(f'search_objective {search_parameter}, {network.num_free_parameters}, {target_num_free_parameters}, {delta}')
+        # print(f'search_objective {search_parameter}, {network.num_free_parameters}, {target_num_free_parameters}, {delta}')
         if abs(delta) < abs(best[0]):
             best = (delta, network)
         return delta
@@ -59,14 +59,20 @@ def find_closest_network_to_target_size_int(
 
 def remap_key_prefixes(
     target: Dict[str, Any],
-    prefix_mapping: Iterable[Tuple[str, str]],
+    prefix_mapping: Iterable[Tuple[str, str, bool]],
 ) -> dict:
-    result = {}
+    plan = []
     for k, v in target.items():
-        for from_prefix, to_prefix in prefix_mapping:
-            if k.startswith(from_prefix):
-                k = to_prefix + k[len(from_prefix):]
+        for src_prefix, dst_prefix, rename in prefix_mapping:
+            if k.startswith(src_prefix):
+                plan.append((k, v, dst_prefix + k[len(src_prefix):], rename))
                 break
-        result[k] = v
-    return result
+
+    for src_key, v, dst_key, rename in plan:
+        if rename:
+            del target[src_key]
+
+    for src_key, v, dst_key, rename in plan:
+        target[dst_key] = v
+    return target
 
