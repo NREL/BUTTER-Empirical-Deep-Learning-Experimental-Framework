@@ -1,25 +1,19 @@
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 import math
 
-tensorflow_type_key :str = 'class_name'
-tensorflow_config_key:str = 'config'
+tensorflow_type_key: str = 'class_name'
+tensorflow_config_key: str = 'config'
 keras_type_key: str = 'class'
-marshal_type_key:str = 'type'
-
-epoch_key: str = 'epoch'
-test_key: str = 'test'
-train_key: str = 'train'
-trained_key :str = 'trained'
-validation_key :str = 'validation'
+marshal_type_key: str = 'type'
 
 K = TypeVar('K')
 V = TypeVar('V')
 
 
 def dispatch(
-    dispatch_name: str,
-    dispatch_table: Dict[K, V],
-    key: K,  # key to dispatch on
+        dispatch_name: str,
+        dispatch_table: Dict[K, V],
+        key: K,  # key to dispatch on
 ) -> V:
     try:
         return dispatch_table[key]
@@ -36,6 +30,7 @@ def make_dispatcher(
         return dispatch(dispatch_name, dispatch_table, key)
 
     return dispatch_function
+
 
 def binary_search_int(
     objective: Callable[[int], Union[int, float]],
@@ -76,7 +71,6 @@ def binary_search_float(
     return candidate, False
 
 
-
 def flatten(items):
     '''
     Generator that recursively flattens nested Iterables
@@ -101,4 +95,3 @@ def flatten_dict(items: Mapping, connector: str):
             yield (prefix, target)
 
     yield from do_flatten('', items)
-

@@ -57,6 +57,7 @@ def test_simple():
         early_stopping=None,
         save_every_epochs=-1,
         record_post_training_metrics=True,
+        record_times=True,
         )
 
     worker = Worker(
@@ -105,6 +106,7 @@ def test_growth_experiment():
         early_stopping=None,
         save_every_epochs=-1,
         record_post_training_metrics=True,
+        record_times=True,
         growth_trigger=make_keras_kwcfg(
             'ProportionalStopping',
             restore_best_weights=True,
@@ -135,5 +137,5 @@ def test_growth_experiment():
     pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=2)
 
 
-test_growth_experiment()
-# test_simple()
+# test_growth_experiment()
+test_simple()

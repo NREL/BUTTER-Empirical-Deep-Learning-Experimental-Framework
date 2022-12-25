@@ -15,7 +15,9 @@ class TrainingExperiment(Task):
     loss: Optional[dict]  # set to None for runtime determination
     early_stopping: Optional[dict]  # direct migration
     save_every_epochs: int  # migrate with None mapping to -1
+
     record_post_training_metrics: bool # new default false
+    record_times : bool 
 
     def __call__(self, worker, *args, **kwargs) -> TaskResultRecord:
         from .training_experiment_executor import TrainingExperimentExecutor

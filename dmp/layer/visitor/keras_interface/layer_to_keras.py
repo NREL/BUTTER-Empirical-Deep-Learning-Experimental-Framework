@@ -249,11 +249,11 @@ def replace_config_key_with_keras_instance(
 ) -> None:
     if isinstance(key, str):
         key_config = config.get(key, None)
-        config[key] = make_keras_instance(key_config)
+        if key_config is not None:
+            config[key] = make_keras_instance(key_config)
     else:
         for k in key:
             replace_config_key_with_keras_instance(config, k)
-        
 
 
 def _setup_regularizers(config: Dict[str, Any]) -> None:
@@ -270,11 +270,14 @@ def _setup_initializers(config: Dict[str, Any]) -> None:
         'bias_initializer',
     ))
 
+
 def _setup_activation(config: Dict[str, Any]) -> None:
     replace_config_key_with_keras_instance(config, 'activation')
 
+
 def _make_keras_batch_normalization(config: Dict[str, Any]) -> None:
     replace_config_key_with_keras_instance(config, 'batch_normalization')
+
 
 def _make_keras_layer(
     layer: Layer,

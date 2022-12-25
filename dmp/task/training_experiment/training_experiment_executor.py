@@ -16,22 +16,29 @@ from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance, m
 from dmp.layer.visitor.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
 from dmp.model.model_spec import ModelSpec
+from dmp.task.recorder.timestamp_recorder import TimestampRecorder
 from dmp.task.task_result_record import TaskResultRecord
-from dmp.task.training_experiment.test_set_history_recorder import TestSetHistoryRecorder
+from dmp.task.recorder.test_set_history_recorder import TestSetHistoryRecorder
 from dmp.task.task_util import *
 from dmp.task.training_experiment.test_set_info import TestSetInfo
-from dmp.task.training_experiment.test_set_recorder import TestSetRecorder
+from dmp.task.recorder.test_set_recorder import TestSetRecorder
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
 from dmp.model.network_info import NetworkInfo
 from dmp.model.model_info import ModelInfo
-from dmp.task.training_experiment.zero_epoch_recorder import ZeroEpochRecorder
+from dmp.task.recorder.zero_epoch_recorder import ZeroEpochRecorder
 
-from dmp.common import train_key, test_key, trained_key, validation_key, epoch_key
+from dmp.task.training_experiment.training_experiment_keys import TrainingExperimentKeys
 
 
 class TrainingExperimentExecutor():
 
-    def __init__(self, task: TrainingExperiment, worker) -> None:
+    key_names = TrainingExperimentKeys()
+
+    def __init__(
+        self,
+        task: TrainingExperiment,
+        worker,
+    ) -> None:
         self.task: TrainingExperiment = task
         self.worker = worker
 
@@ -187,21 +194,27 @@ class TrainingExperimentExecutor():
 
         fit_config['validation_data'] = dataset.validation
 
-        test_set_info = TestSetInfo(test_key, dataset.test)
-        validation_set_info = TestSetInfo(validation_key, dataset.validation)
-        train_set_info = TestSetInfo(train_key, dataset.train)
+        test_set_info = TestSetInfo(self.key_names.test_key, dataset.test)
+        validation_set_info = TestSetInfo(self.key_names.validation_key,
+                                          dataset.validation)
+        train_set_info = TestSetInfo(self.key_names.train_key, dataset.train)
 
+        timestamp_recorder = TimestampRecorder() if self.task.record_times else None
+        
         zero_epoch_recorder = ZeroEpochRecorder(
-            [train_set_info, validation_set_info, test_set_info])
+            [train_set_info, validation_set_info, test_set_info],
+            None
+            )
 
         additional_test_sets = [test_set_info]
         if self.task.record_post_training_metrics:
-            additional_test_sets.append(TestSetInfo(trained_key,
-                                                    dataset.train))
+            additional_test_sets.append(
+                TestSetInfo(self.key_names.trained_key, dataset.train))
 
         history_callbacks = [
+            timestamp_recorder,
             zero_epoch_recorder,
-            TestSetHistoryRecorder(additional_test_sets),
+            TestSetHistoryRecorder(additional_test_sets, timestamp_recorder),
         ]
 
         callbacks.extend(history_callbacks)
@@ -215,18 +228,17 @@ class TrainingExperimentExecutor():
         remap_key_prefixes(
             history.history,
             [
-                ('val_', validation_key + '_', True),
+                ('val_', self.key_names.validation_key + '_', True),
                 # (test_history_key + '_', 'test_'),
-                ('', train_key + '_', True),
+                ('', self.key_names.train_key + '_', True),
             ])
-        # History's epochs start at 0 and our epochs start at 1
-        history.epoch = [epoch + 1 for epoch in history.epoch]
         history_callbacks.append(history)
 
         if self.task.record_post_training_metrics:
             # copy zero epoch recorder's train_ metrics to trained_ metrics
             remap_key_prefixes(zero_epoch_recorder.history, [
-                (trained_key + '_', train_key + '_', False),
+                (self.key_names.trained_key + '_',
+                 self.key_names.train_key + '_', False),
             ])
 
         # Add test set history into history dict.
@@ -249,11 +261,13 @@ class TrainingExperimentExecutor():
         for history in histories:
             for metric, metric_history in history.history.items():
                 for epoch, value in zip(history.epoch, metric_history):
+                    epoch += 1
                     epoch_set.add(epoch)
                     metric_map.setdefault(metric, {})[epoch] = value
 
+        # offset epoch numbers by 1 (untrained network becomes the 0th epoch)
         epochs = sorted(epoch_set)
-        merged_history = {epoch_key: epochs}
+        merged_history = {self.key_names.epoch_key: epochs}
         for metric, epoch_map in metric_map.items():
             merged_history[metric] = [
                 epoch_map.get(epoch, None) for epoch in epochs

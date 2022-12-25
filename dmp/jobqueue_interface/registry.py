@@ -10,7 +10,7 @@ import dmp.layer
 from dmp.model.dense_by_size import DenseBySize
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.growth_experiment.growth_method.overlay_growth_method import OverlayGrowthMethod
-from dmp.task.training_experiment.test_set_history_recorder import TestSetHistoryRecorder
+from dmp.task.recorder.test_set_history_recorder import TestSetHistoryRecorder
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 

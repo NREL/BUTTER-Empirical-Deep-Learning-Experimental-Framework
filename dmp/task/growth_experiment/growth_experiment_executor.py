@@ -15,19 +15,12 @@ from dmp.task.growth_experiment.growth_trigger.proportional_stopping import Prop
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
 from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance, register_custom_keras_types
+from dmp.task.growth_experiment.training_experiment_keys import GrowthExperimentKeys
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.task_util import *
 from dmp.task.training_experiment.training_experiment_executor import TrainingExperimentExecutor
 from dmp.model.model_info import ModelInfo
-from dmp.common import train_key, epoch_key
 
-layer_map_key: str = 'layer_map'
-scale_key: str = 'scale'
-growth_points_key: str = 'growth_points'
-growth_source_key: str = 'growth_source'
-model_epoch_key: str = 'model_epoch'
-parent_epoch_key: str = 'parent_epoch'
-free_parameter_count_key: str = 'free_parameter_count'
 
 register_custom_keras_types({
     'NetworkOverlayer': OverlayGrowthMethod,
@@ -38,12 +31,12 @@ register_custom_keras_types({
 class GrowthExperimentExecutor(TrainingExperimentExecutor):
     '''
     '''
+    key_names = GrowthExperimentKeys()
 
     def __init__(self, task: GrowthExperiment, worker):
+        super().__init__(task, worker)
         if task.growth_scale <= 1:
             raise RuntimeError(f'Growth scale {task.growth_scale} <= 1.')
-        self.task: GrowthExperiment = task
-        self.worker = worker
 
     def __call__(self) -> TaskResultRecord:
         task = self.task
@@ -52,8 +45,8 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         metrics = self._autoconfigure_for_dataset(dataset)
 
         goal_network: NetworkInfo = self._make_network(task.model)
-        goal_network.description[scale_key] = 1.0
-        goal_network.description[layer_map_key] = {
+        goal_network.description[self.key_names.scale_key] = 1.0
+        goal_network.description[self.key_names.layer_map_key] = {
             l: l
             for l in goal_network.structure.all_descendants
         }
@@ -99,8 +92,8 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
                     scaled, layer_map = WidthScaler(goal_network.structure,
                                                     scale)()
                     description = goal_network.description.copy()
-                    description[scale_key] = scale
-                    description[layer_map_key] = layer_map
+                    description[self.key_names.scale_key] = scale
+                    description[self.key_names.layer_map_key] = layer_map
                     return NetworkInfo(scaled, description)
 
                 delta, network = find_closest_network_to_target_size_float(
@@ -153,21 +146,45 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
             )
 
             # add additional history columns
-            model_history_length = len(model_history[train_key + '_loss'])
+            model_history_length = len(model_history[self.key_names.train_key + '_loss'])
 
             # # model scale as % of target model's num parameters
             # model_history[scale_key] = \
             #     [network.description[scale_key]] * num_epochs
 
+            '''
+            + aggregate statistics:
+                + growth points (medians, iqr)
+                + parameter count history
+                + losses for non-discarded/rewound epochs 
+                + "overshoot" burden? cumulative # of discarded epochs?
+                + epoch 
+                + start training
+                + stop training
+
+                
+            + new run statistics:
+                + start timestamp
+                + end timestamp
+                + per epoch
+                    + start training/epoch
+                    + end train (or delta?)
+                    + 
+                + total time:
+                    + training
+                    + validating
+                    + testing
+            '''
+
             # free parameter count history
-            model_history[free_parameter_count_key] = \
+            model_history[self.key_names.free_parameter_count_key] = \
                 [network.num_free_parameters] * model_history_length
 
             # epoch of source model
             parent_epochs: List[Optional[int]] = [None] * model_history_length
             if src_model is not None:
                 parent_epochs[0] = parent_epoch
-            model_history[parent_epoch_key] = parent_epoch
+            model_history[self.key_names.parent_epoch_key] = parent_epoch
 
             parent_epoch = model_history_length - 1
             if early_stopping_callback is not None \
@@ -176,12 +193,12 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
 
             growth_source = [False] * model_history_length
             growth_source[parent_epoch] = True
-            model_history[growth_source_key] = growth_source
+            model_history[self.key_names.growth_source_key] = growth_source
 
             # Extend histories dictionary
             self._append_history_dicts(history, model_history)
 
-            parent_epoch = history[epoch_key][-1]
+            parent_epoch = history[self.key_names.epoch_key][-1]
             if early_stopping_callback is not None \
                 and early_stopping_callback.stopped_epoch > 0:
                 parent_epoch -= early_stopping_callback.patience  # type: ignore
@@ -228,6 +245,6 @@ class GrowthExperimentExecutor(TrainingExperimentExecutor):
         model: ModelInfo,
     ) -> Tuple[Dict[Layer, Layer], Dict[Layer, KerasLayerInfo]]:
         return (
-            model.network.description[layer_map_key],
+            model.network.description[self.key_names.layer_map_key],
             model.keras_network.layer_to_keras_map,
         )
