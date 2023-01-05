@@ -22,7 +22,35 @@ from
 ) x
 ;
 
-
+select e.experiment_id, pc.*
+from experiment_ e,
+    lateral (
+        select
+            p.kind, 
+            COALESCE(to_jsonb(bool_value), to_jsonb(integer_value), to_jsonb(real_value), to_jsonb(string_value)) val,
+            count(1) num_exps,
+            array_agg(x.experiment_id) matching_exp_ids,
+            array_agg(x.primary_sweep) primary_sweeps
+        from
+            unnest(e.experiment_parameters) parameter_id,
+            parameter_ p,
+            experiment_ x
+        where
+            p.id = parameter_id AND
+            x.experiment_parameters @> (
+                SELECT array_agg(pid) 
+                from (select pid
+                    from unnest(e.experiment_parameters) pid
+                    where pid <> parameter_id
+                    order by pid asc
+                      ) x ) AND
+            x.experiment_id <> e.experiment_id AND
+            x.primary_sweep
+        group by p.kind, val
+    ) pc
+where
+    e.experiment_id = ;
+    
 
 SELECT 
     COUNT(1)

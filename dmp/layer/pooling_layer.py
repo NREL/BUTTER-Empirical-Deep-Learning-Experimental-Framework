@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
-from dmp.layer.spatitial_layer import ASpatitialLayer
+from dmp.layer.spatitial_layer import SpatitialLayer
 from dmp.layer.layer import Layer, LayerConstructor, LayerConfig, empty_config, empty_inputs
 
 
@@ -8,7 +8,7 @@ T = TypeVar('T')
 
 
 
-class APoolingLayer(ASpatitialLayer, ABC):
+class PoolingLayer(SpatitialLayer, ABC):
 
     @property
     def strides(self) -> Tuple:

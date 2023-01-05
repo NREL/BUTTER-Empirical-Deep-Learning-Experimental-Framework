@@ -39,9 +39,9 @@ class AspectTestTask(Task):
     # def parameters(self) -> ParameterDict:
     #     parameters = super().parameters
 
-    #     def rename_param(src, dest):
+    #     def rename_param(src, dst):
     #         if src in parameters:
-    #             parameters[dest] = parameters[src]
+    #             parameters[dst] = parameters[src]
     #             del parameters[src]
 
     #     rename_param('optimizer.config.learning_rate', 'learning_rate')

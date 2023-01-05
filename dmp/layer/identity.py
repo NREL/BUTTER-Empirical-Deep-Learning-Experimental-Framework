@@ -1,9 +1,9 @@
 from typing import List
 from dmp.layer.layer import Layer, LayerConfig, register_layer_type
-from dmp.layer.a_element_wise_operator_layer import AElementWiseOperatorLayer
+from dmp.layer.element_wise_operator_layer import ElementWiseOperatorLayer
 
 
-class Identity(AElementWiseOperatorLayer):
+class Identity(ElementWiseOperatorLayer):
 
     def make_layer(
         self,

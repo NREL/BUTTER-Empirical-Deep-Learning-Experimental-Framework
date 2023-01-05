@@ -5,7 +5,7 @@ from dmp.layer.layer import Layer
 T = TypeVar('T')
 
 
-class ASpatitialLayer(Layer, ABC):
+class SpatitialLayer(Layer, ABC):
 
     def on_padding(
         self,

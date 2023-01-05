@@ -1,19 +1,18 @@
 
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Tuple
 from dmp.layer.layer import Layer
 
 from dmp.model.model_info import ModelInfo
 from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
 
 
-class GrowthMethod(ABC):
+class ScalingMethod(ABC):
     
     @abstractmethod
-    def grow(
+    def scale(
         self,
-        src: ModelInfo,  # 'parent' / 'previous' network
-        dest: ModelInfo,  # 'child' / 'next' network
-        growth_map: Dict[Layer, LayerGrowthInfo]
-    ) -> None:
+        target: Layer, 
+        scale_factor: float,
+    ) -> Tuple[Layer, Dict[Layer, Layer]]:
         pass

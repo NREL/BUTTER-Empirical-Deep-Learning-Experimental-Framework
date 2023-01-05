@@ -32,7 +32,7 @@ class CountFreeParametersVisitor:
                  (1 if target.use_bias else 0))
 
     @_visit.register
-    def _(self, target: AConvolutionalLayer) -> int:
+    def _(self, target: ConvolutionalLayer) -> int:
         return self._get_count_for_conv_layer(
             target,
             math.prod(target['kernel_size']),
@@ -47,7 +47,7 @@ class CountFreeParametersVisitor:
 
     def _get_count_for_conv_layer(
         self,
-        target: ASpatitialLayer,
+        target: SpatitialLayer,
         num_nodes_per_filter: int,
     ) -> int:
         num_nodes = num_nodes_per_filter * target['filters']

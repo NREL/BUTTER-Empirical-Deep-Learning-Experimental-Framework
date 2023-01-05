@@ -1,7 +1,7 @@
-from dmp.layer.a_element_wise_operator_layer import AElementWiseOperatorLayer
+from dmp.layer.element_wise_operator_layer import ElementWiseOperatorLayer
 from dmp.layer.layer import register_layer_type
 
-class Zeroize(AElementWiseOperatorLayer):
+class Zeroize(ElementWiseOperatorLayer):
     pass
 
 

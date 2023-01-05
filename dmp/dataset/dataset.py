@@ -20,9 +20,9 @@ class Dataset():
             if value is not None:
                 splits.append((key, value))
 
-        try_add(TrainingExperimentKeys.train_key, self.train)
-        try_add(TrainingExperimentKeys.test_key, self.test)
-        try_add(TrainingExperimentKeys.validation_key, self.validation)
+        try_add(TrainingExperimentKeys.train, self.train)
+        try_add(TrainingExperimentKeys.test, self.test)
+        try_add(TrainingExperimentKeys.validation, self.validation)
         return splits
     
     @property

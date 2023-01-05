@@ -1,8 +1,8 @@
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
-from dmp.layer.convolutional_layer import AConvolutionalLayer
+from dmp.layer.convolutional_layer import ConvolutionalLayer
 from dmp.layer.layer import Layer, register_layer_type, empty_config, empty_inputs, LayerConfig
 
-class DenseConv(AConvolutionalLayer):
+class DenseConv(ConvolutionalLayer):
 
     @staticmethod
     def make(
@@ -12,7 +12,7 @@ class DenseConv(AConvolutionalLayer):
         config: LayerConfig = empty_config,
         inputs: List[Layer] = empty_inputs,
     ) -> 'DenseConv':
-        return AConvolutionalLayer.make(DenseConv, filters, kernel_size,
+        return ConvolutionalLayer.make(DenseConv, filters, kernel_size,
                                        strides, config, inputs)
 
     @staticmethod

@@ -46,7 +46,7 @@ class ComputeLayerShapesVisitor:
         return (config['units'], )
 
     @_visit.register
-    def _(self, target: AElementWiseOperatorLayer, config: Dict) -> Tuple:
+    def _(self, target: ElementWiseOperatorLayer, config: Dict) -> Tuple:
         return self._get_input_shape(target)
 
     @_visit.register
@@ -57,7 +57,7 @@ class ComputeLayerShapesVisitor:
         return input_shape[:axis] + (total, ) + input_shape[axis + 1:]
 
     @_visit.register
-    def _(self, target: AConvolutionalLayer, config: Dict) -> Tuple:
+    def _(self, target: ConvolutionalLayer, config: Dict) -> Tuple:
         input_conv_shape, input_channels = \
             target.to_conv_shape_and_channels(
                 self._get_input_shape(target))
@@ -84,7 +84,7 @@ class ComputeLayerShapesVisitor:
         )
 
     @_visit.register
-    def _(self, target: APoolingLayer, config: Dict) -> Tuple:
+    def _(self, target: PoolingLayer, config: Dict) -> Tuple:
         input_conv_shape, input_channels = \
             target.to_conv_shape_and_channels(
                 self._get_input_shape(target))
@@ -107,7 +107,7 @@ class ComputeLayerShapesVisitor:
         )
 
     @_visit.register
-    def _(self, target: AGlobalPoolingLayer, config: Dict) -> Tuple:
+    def _(self, target: GlobalPoolingLayer, config: Dict) -> Tuple:
         input_conv_shape, input_channels = \
             target.to_conv_shape_and_channels(
                 self._get_input_shape(target))

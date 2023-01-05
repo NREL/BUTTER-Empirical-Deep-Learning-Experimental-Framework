@@ -1,6 +1,6 @@
 from abc import ABC
-from dmp.layer.spatitial_layer import ASpatitialLayer
+from dmp.layer.spatitial_layer import SpatitialLayer
 
 
-class AGlobalPoolingLayer(ASpatitialLayer, ABC):
+class GlobalPoolingLayer(SpatitialLayer, ABC):
     pass

@@ -24,7 +24,7 @@ def main():
                           save_every_epochs=None,
                           growth_trigger='EarlyStopping',
                           growth_trigger_params={'patience':2},
-                          growth_method='grow_network',
+                          transfer_method='grow_network',
                           growth_method_params=None,
                           growth_scale=2.0,
                           max_size=2**15,

@@ -1,8 +1,8 @@
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
-from dmp.layer.pooling_layer import APoolingLayer
+from dmp.layer.pooling_layer import PoolingLayer
 from dmp.layer.layer import register_layer_type
 
-class MaxPool(APoolingLayer):
+class MaxPool(PoolingLayer):
 
     @staticmethod
     def make(
@@ -11,7 +11,7 @@ class MaxPool(APoolingLayer):
         *args,
         **kwargs,
     ) -> 'MaxPool':
-        return APoolingLayer.make(
+        return PoolingLayer.make(
             MaxPool,
             pool_size,
             strides,

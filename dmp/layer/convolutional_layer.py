@@ -1,12 +1,12 @@
 from abc import ABC
 from typing import Any, Dict, Optional, Sequence, Tuple, Callable, TypeVar, List, Union
 from dmp.layer.layer import Layer, LayerConfig, LayerConstructor, empty_config, empty_inputs
-from dmp.layer.spatitial_layer import ASpatitialLayer
+from dmp.layer.spatitial_layer import SpatitialLayer
 
 T = TypeVar('T')
 
 
-class AConvolutionalLayer(ASpatitialLayer, ABC):
+class ConvolutionalLayer(SpatitialLayer, ABC):
 
     _default_config: LayerConfig = {
         'strides': (1, 1),
@@ -41,7 +41,7 @@ class AConvolutionalLayer(ASpatitialLayer, ABC):
             'strides': strides,
         })
         return layer_factory(
-            AConvolutionalLayer._default_config,
+            ConvolutionalLayer._default_config,
             inputs,
             config,
         )

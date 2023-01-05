@@ -1,10 +1,11 @@
 import sys
 
 from dmp import jobqueue_interface
+from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.worker import Worker
-from dmp.layer.visitor.keras_interface.keras_utils import make_keras_kwcfg
+from dmp.keras_interface.keras_utils import make_keras_kwcfg
 from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.growth_experiment.growth_method.overlay_growth_method import OverlayGrowthMethod
+from dmp.task.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
 
 sys.path.insert(0, './')
 
@@ -96,7 +97,7 @@ def test_growth_experiment():
         ),
         fit={
             'batch_size': 32,
-            'epochs': 300,
+            'epochs': 100,
         },
         optimizer={
             'class': 'Adam',
@@ -111,15 +112,16 @@ def test_growth_experiment():
             'ProportionalStopping',
             restore_best_weights=True,
             monitor='val_loss',
-            min_delta=0.001,
-            patience=2,
+            min_delta=0.005,
+            patience=3,
             verbose=1,
             mode='min',
             baseline=None,
             # start_from_epoch=0,
         ),
         # growth_trigger=None,
-        growth_method=OverlayGrowthMethod(),
+        scaling_method=WidthScaler(),
+        transfer_method=OverlayTransfer(),
         growth_scale=2.0,
         initial_size=4,
         max_epochs_per_stage=300,
@@ -137,5 +139,5 @@ def test_growth_experiment():
     pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=2)
 
 
-# test_growth_experiment()
-test_simple()
+test_growth_experiment()
+# test_simple()

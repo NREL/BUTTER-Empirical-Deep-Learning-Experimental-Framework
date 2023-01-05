@@ -3,13 +3,13 @@ from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optio
 import numpy
 import tensorflow.keras as keras
 import tensorflow
-from dmp.layer.visitor.keras_interface.convolutional_keras_layer import ConvolutionalKerasLayer
+from dmp.keras_interface.convolutional_keras_layer import ConvolutionalKerasLayer
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 from dmp.model.model_info import ModelInfo
 from dmp.model.network_info import NetworkInfo
 from dmp.model.keras_network_info import KerasNetworkInfo
-from dmp.layer.visitor.keras_interface.keras_utils import make_keras_instance
-import dmp.layer.visitor.keras_interface.keras_utils as keras_utils
+from dmp.keras_interface.keras_utils import make_keras_instance
+import dmp.keras_interface.keras_utils as keras_utils
 from dmp.layer import *
 
 
@@ -229,7 +229,7 @@ def _make_by_dimension(
 
 
 def _make_convolutional_layer(
-    target: AConvolutionalLayer,
+    target: ConvolutionalLayer,
     config: Dict[str, Any],
     inputs: List[KerasLayer],
     dimension_to_factory_map: Dict[int, Callable],

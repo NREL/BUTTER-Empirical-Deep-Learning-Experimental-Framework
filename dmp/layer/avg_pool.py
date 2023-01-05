@@ -1,11 +1,11 @@
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
 from dmp.layer.layer import register_layer_type
-from dmp.layer.pooling_layer import APoolingLayer
-from dmp.layer.spatitial_layer import ASpatitialLayer
+from dmp.layer.pooling_layer import PoolingLayer
+from dmp.layer.spatitial_layer import SpatitialLayer
 
 
 
-class AvgPool(APoolingLayer):
+class AvgPool(PoolingLayer):
 
     @staticmethod
     def make(
@@ -14,7 +14,7 @@ class AvgPool(APoolingLayer):
         *args,
         **kwargs,
     ) -> 'AvgPool':
-        return APoolingLayer.make(
+        return PoolingLayer.make(
             AvgPool,
             pool_size,
             strides,

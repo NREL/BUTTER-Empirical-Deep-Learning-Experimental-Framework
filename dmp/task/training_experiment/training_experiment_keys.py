@@ -1,10 +1,10 @@
 class TrainingExperimentKeys():
 
-    epoch_key: str = 'epoch'
-    test_key: str = 'test'
-    train_key: str = 'train'
-    trained_key: str = 'trained'
-    validation_key: str = 'validation'
+    epoch: str = 'epoch'
+    test: str = 'test'
+    train: str = 'train'
+    trained: str = 'trained'
+    validation: str = 'validation'
 
     train_start_timestamp: str = 'train_start_timestamp'
     

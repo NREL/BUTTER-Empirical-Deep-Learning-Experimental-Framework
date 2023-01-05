@@ -32,7 +32,7 @@ def make_layer_from_operation(
         return SeparableConv.make(\
             width, (5,5), (1,1), conv_config, input)
     elif op == 'maxpool3x3':
-        return APoolingLayer.make(\
+        return PoolingLayer.make(\
             MaxPool, (3, 3), (1, 1), pooling_config, input)
     elif op == 'identity':
         return Identity({}, input)

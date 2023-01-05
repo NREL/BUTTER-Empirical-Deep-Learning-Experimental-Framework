@@ -57,21 +57,21 @@ class Marshaler(CommonMarshaler):
         vertex_index = marshaler._vertex_index
         source_id = id(source)
         if source_id in vertex_index:  # if source is already indexed, return its reference index
-            label, _, dest = vertex_index[source_id]
+            label, _, dst = vertex_index[source_id]
             if marshaler._config.label_referenced:
                 marshaler._referenced.add(source_id)
-            if marshaler._config.circular_references_only and dest is not None:
-                return dest
+            if marshaler._config.circular_references_only and dst is not None:
+                return dst
             return marshaler._config.reference_prefix + label
 
         label = marshaler._make_label(len(vertex_index))
         vertex_index[source_id] = (label, source, None)
-        dest = object_marshaler(marshaler, source)
-        vertex_index[source_id] = (label, source, dest)
+        dst = object_marshaler(marshaler, source)
+        vertex_index[source_id] = (label, source, dst)
 
-        if marshaler._config.label_all and type(dest) is dict:
-            dest[marshaler._config.label_key] = label
-        return dest
+        if marshaler._config.label_all and type(dst) is dict:
+            dst[marshaler._config.label_key] = label
+        return dst
 
     @staticmethod
     def marshal_string(marshaler: 'Marshaler', source: str) -> str:

@@ -1,8 +1,8 @@
 from dmp.layer.layer import register_layer_type
-from dmp.layer.global_average_pooling import AGlobalPoolingLayer
+from dmp.layer.global_average_pooling import GlobalPoolingLayer
 
 
-class GlobalMaxPooling(AGlobalPoolingLayer):
+class GlobalMaxPooling(GlobalPoolingLayer):
     pass
 
 
