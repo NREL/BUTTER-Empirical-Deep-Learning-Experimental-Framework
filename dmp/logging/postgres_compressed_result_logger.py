@@ -14,6 +14,8 @@ from typing import Any, Dict, Iterable, Optional, Tuple, List
 import simplejson
 import psycopg2
 
+from dmp.task.task_result_record import TaskResultRecord
+
 psycopg2.extras.register_default_json(loads=simplejson.loads, globally=True)  # type: ignore
 psycopg2.extras.register_default_jsonb(loads=simplejson.loads, globally=True)  # type: ignore
 psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)  # type: ignore
@@ -27,81 +29,29 @@ class PostgresCompressedResultLogger(ResultLogger):
 
     def __init__(self,
                  credentials: Dict[str, Any],
-                 experiment_table: str = 'experiment_',
-                 run_table: str = 'run_',
-                 experiment_columns: Optional[List[Tuple[str, str]]] = None,
-                 run_columns: Optional[List[Tuple[str, str]]] = None,
                  ) -> None:
         super().__init__()
         self._credentials = credentials
 
-        self._experiment_columns = sorted([
-            ('num_free_parameters', 'bigint'),
-            ('widths', 'integer[]'),
-            ('network_structure', 'jsonb'),
-            
-        ] if experiment_columns is None else experiment_columns)
+        self.run_table:str= 'run'
+        self.experiment_table : str = 'experiment'
 
-        self._run_only_parameters = sorted([
-            'task_version',
-            'tensorflow_version',
-            'python_version',
+        self._experiment_columns = sorted([
+            ('network_structure', 'jsonb'),
         ])
 
-        self._run_columns = [
-            ('platform', 'text'),
-            ('git_hash', 'text'),
-            ('hostname', 'text'),
-            ('slurm_job_id', 'text'),
-            
-            ('num_gpus', 'integer'),
-            ('num_nodes', 'integer'),
-            ('num_cpus', 'integer'),
-            ('gpu_memory', 'integer'),            
-            ('nodes', 'text'),
-            ('cpus', 'text'),
-            ('gpus', 'text'),
-            ('strategy', 'text'),
-
-            ('seed', 'bigint'),
-            ('save_every_epochs', 'smallint'),
-
-            ('train_loss', 'real[]'),
-            ('train_accuracy', 'real[]'),
-            ('train_mean_squared_error', 'real[]'),
-            ('train_mean_absolute_error', 'real[]'),
-            ('train_root_mean_squared_error', 'real[]'),
-            ('train_mean_squared_logarithmic_error', 'real[]'),
-            ('train_hinge', 'real[]'),
-            ('train_squared_hinge', 'real[]'),
-            ('train_cosine_similarity', 'real[]'),
-            ('train_kullback_leibler_divergence', 'real[]'),
-
-            ('test_loss', 'real[]'),            
-            ('test_accuracy', 'real[]'),            
-            ('test_mean_squared_error', 'real[]'),
-            ('test_mean_absolute_error', 'real[]'),
-            ('test_root_mean_squared_error', 'real[]'),            
-            ('test_mean_squared_logarithmic_error', 'real[]'),            
-            ('test_hinge', 'real[]'),            
-            ('test_squared_hinge', 'real[]'),            
-            ('test_cosine_similarity', 'real[]'),            
-            ('test_kullback_leibler_divergence', 'real[]'),
-
-            ('validation_loss', 'real[]'),
-            ('validation_accuracy', 'real[]'),
-            ('validation_mean_squared_error', 'real[]'),
-            ('validation_mean_absolute_error', 'real[]'),
-            ('validation_root_mean_squared_error', 'real[]'),
-            ('validation_mean_squared_logarithmic_error', 'real[]'),
-            ('validation_hinge', 'real[]'),
-            ('validation_squared_hinge', 'real[]'),
-            ('validation_cosine_similarity', 'real[]'),
-            ('validation_kullback_leibler_divergence', 'real[]'),
-
-            ('parameter_count', 'bigint[]'),
-            ('growth_points', 'smallint[]'),
-        ] if run_columns is None else run_columns
+        self._run_columns = sorted([
+            ('job_id', 'uuid'),
+            ('run_id', 'uuid'),
+            ('slurm_job_id', 'bigint'),
+            ('task_version', 'smallint'),
+            ('num_gpus', 'smallint'),
+            ('num_cpus', 'smallint'),
+            ('num_nodes', 'smallint'),
+            ('gpu_memory', 'integer'),
+            ('host_name', 'text'),
+            ('batch', 'text'),
+        ])
 
         experiment_columns_sql, cast_experiment_columns_sql = \
             self._make_column_sql(self._experiment_columns)
@@ -111,9 +61,8 @@ class PostgresCompressedResultLogger(ResultLogger):
         self._log_query_prefix = sql.SQL("""
 WITH v as (
     SELECT
-        job_id::uuid,
-        run_id::uuid,
         experiment_parameters::smallint[] experiment_parameters,
+        experiment_data::jsonb
         run_parameters::smallint[] run_parameters,
         {cast_experiment_columns},
         {cast_run_columns}
@@ -210,7 +159,9 @@ ON CONFLICT DO NOTHING
 
     def log(
         self,
-        results: List[Tuple[UUID, UUID, Dict]],
+        result: TaskResultRecord,
+        job_id: UUID,
+        worker_id: UUID,
     ) -> None:
         # TODO: finish compressed logger
         # TODO: does it make sense to canonicalize columns?

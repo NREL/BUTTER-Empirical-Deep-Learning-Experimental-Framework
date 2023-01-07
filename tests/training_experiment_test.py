@@ -69,7 +69,7 @@ def test_simple():
     )
 
     results = experiment(worker)
-    pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=2)
+    pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=1)
 
 
 def test_growth_experiment():
@@ -136,8 +136,101 @@ def test_growth_experiment():
     )
 
     results = experiment(worker)
-    pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=2)
+    pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=1)
 
 
-test_growth_experiment()
+def test_from_optimizer():
+
+    '''
+
+    
+
+    
+
+"activation","relu"
+"activity_regularizer",
+"batch","optimizer_energy_1_cpu"
+"batch_size",128
+"bias_regularizer",
+"dataset","mnist"
+"depth",2
+"early_stopping",
+"epochs",3000
+"input_activation","relu"
+"kernel_regularizer",
+"label_noise",0
+"learning_rate",0.00001
+"optimizer","SGD"
+"optimizer.config.momentum",0.9
+"optimizer.config.nesterov",false
+"output_activation","softmax"
+"python_version","3.9.10"
+"run_config.shuffle",true
+"shape","rectangle"
+"size",131072
+"task","AspectTestTask"
+"task_version",3
+"tensorflow_version","2.8.0"
+"test_split",0.2
+"test_split_method","shuffled_train_test_split"
+
+{
+  "": "AspectTestTask",
+  "seed": 1666301679,
+  "run_config": {
+    "verbose": 0,
+  },
+  "save_every_epochs": null,
+}
+    '''
+    experiment = TrainingExperiment(
+        seed=0,
+        batch='test',
+        dataset=DatasetSpec(
+            'banana',
+            'pmlb',
+            'shuffled_train_test_split',
+            0.2,
+            0.05,
+            0.0,
+        ),
+        model=DenseBySize(
+            None,
+            None,
+            'exponential',
+            16384,
+            3,
+            Dense.make(-1, {
+                'activation': 'relu',
+                'kernel_initializer': 'GlorotUniform',
+            }),
+        ),
+        fit={
+            'batch_size': 16,
+            'epochs': 3,
+        },
+        optimizer={
+            'class': 'Adam',
+            'learning_rate': 0.0001
+        },
+        loss=None,
+        early_stopping=None,
+        save_every_epochs=-1,
+        record_post_training_metrics=True,
+        record_times=True,
+        )
+
+    worker = Worker(
+        None,
+        None,
+        strategy,
+        {},
+    )
+
+    results = experiment(worker)
+    pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=1)
+
+# test_growth_experiment()
 # test_simple()
+
+test_from_optimizer()

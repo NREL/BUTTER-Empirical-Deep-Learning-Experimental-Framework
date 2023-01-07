@@ -41,6 +41,10 @@ class Task(ABC):
         parameters['task_version'] = self.version
         return parameters  # type: ignore
 
+    # def extract_parameters(self) -> ParameterDict:
+    #     from dmp.jobqueue_interface import jobqueue_marshal
+    #     return jobqueue_marshal.marshal(self)
+
     def extract_parameters(self) -> ParameterDict:
         from dmp.jobqueue_interface import jobqueue_marshal
         separator = '_'

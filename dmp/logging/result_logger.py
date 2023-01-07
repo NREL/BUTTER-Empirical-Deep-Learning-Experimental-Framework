@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple
 from uuid import UUID
 
+from dmp.task.task_result_record import TaskResultRecord
+
 
 class ResultLogger(ABC):
     '''
@@ -15,6 +17,8 @@ class ResultLogger(ABC):
     @abstractmethod
     def log(
         self,
-        results: List[Tuple[UUID, UUID, Dict]],
+        result: TaskResultRecord,
+        job_id: UUID,
+        worker_id: UUID,
     ) -> None:
         pass

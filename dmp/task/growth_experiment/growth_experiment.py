@@ -68,7 +68,7 @@ class GrowthExperiment(TrainingExperiment):
 
         max_total_epochs: int = self.fit['epochs']
         history: dict = {}
-        growth_step: int = 0
+        model_number: int = 0
         epoch_parameters: int = 0
         epoch_count: int = 0
         src_model: Optional[ModelInfo] = None
@@ -78,15 +78,15 @@ class GrowthExperiment(TrainingExperiment):
 
             target_size: int = int(
                 math.floor(self.initial_size *
-                           math.pow(self.growth_scale, growth_step)))
+                           math.pow(self.growth_scale, model_number)))
 
-            print(
-                f'target_size {target_size}, self.initial_size {self.initial_size}, growth_step {growth_step}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}'
-            )
+            # print(
+            #     f'target_size {target_size}, self.initial_size {self.initial_size}, growth_step {model_number}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}'
+            # )
             # if we 'skipped' over a growth step, handle it
             if src_model is not None and \
                 target_size <= src_model.network.num_free_parameters:
-                growth_step += 1
+                model_number += 1
                 continue
 
             max_epochs_at_this_iteration = max_total_epochs - epoch_count
@@ -117,8 +117,8 @@ class GrowthExperiment(TrainingExperiment):
                     target_size,
                     make_network,
                 )
-                print(
-                    f'Growing to {target_size} {network.num_free_parameters}')
+                # print(
+                #     f'Growing to {target_size} {network.num_free_parameters}')
                 # pprint.pprint(
                 #     jobqueue_interface.jobqueue_marshal.marshal(
                 #         network.description))
@@ -141,8 +141,7 @@ class GrowthExperiment(TrainingExperiment):
 
             if src_model is not None:
                 self.transfer_method.transfer(
-                    self._make_transfer_map(src_model, model),
-                )
+                    self._make_transfer_map(src_model, model), )
 
             self._compile_model(dataset, model, metrics)
 
@@ -164,6 +163,14 @@ class GrowthExperiment(TrainingExperiment):
             model_history_length = len(model_history[self.key_names.train +
                                                      '_loss'])
 
+            # model number
+            model_history[self.key_names.model_number] = \
+                [model_number] * model_history_length
+
+            # model epoch
+            model_history[self.key_names.model_epoch] = \
+                model_history.pop(self.key_names.epoch)
+
             # free parameter count history
             model_history[self.key_names.free_parameter_count_key] = \
                 [network.num_free_parameters] * model_history_length
@@ -178,15 +185,15 @@ class GrowthExperiment(TrainingExperiment):
                 retained[i] = True
             model_history[self.key_names.retained] = retained
 
-            model_history[self.key_names.epoch] = [
-                e + epoch_count for e in model_history[self.key_names.epoch]
-            ]
+            # model_history[self.key_names.epoch] = [
+            #     e + epoch_count for e in model_history[self.key_names.epoch]
+            # ]
 
             # Extend histories dictionary
             self._append_history_dicts(history, model_history)
 
             src_model = model
-            growth_step += 1
+            model_number += 1
             epoch_count += (model_history_length - 1)
             epoch_parameters += model_history_length * model.network.num_free_parameters
             continue  # just put this here for better readability
@@ -195,7 +202,12 @@ class GrowthExperiment(TrainingExperiment):
             raise RuntimeError(f'No result record generated for task {self}.')
 
         src_model.network.description = goal_network.description
-        return self._make_result_record(worker, dataset, src_model, history)
+        return self._make_result_record(
+            worker.worker_info,
+            dataset,
+            src_model.network,
+            history,
+        )
 
     def _make_transfer_map(
         self,

@@ -64,9 +64,9 @@ class TrainingExperiment(Task):
             self._make_callbacks(),
         )
         return self._make_result_record(
-            worker,
+            worker.worker_info,
             dataset,
-            model,
+            model.network,
             history,
         )
 
@@ -203,12 +203,6 @@ class TrainingExperiment(Task):
         # setup training, validation, and test datasets
         fit_config = fit_config.copy()
         fit_config['x'] = dataset.train
-        test_callback = None
-
-        # if dataset.validation is None:
-        #     fit_config['validation_data'] = dataset.test
-        # else:
-
         fit_config['validation_data'] = dataset.validation
 
         test_set_info = TestSetInfo(self.key_names.test, dataset.test)
@@ -217,7 +211,6 @@ class TrainingExperiment(Task):
         train_set_info = TestSetInfo(self.key_names.train, dataset.train)
 
         timestamp_recorder = TimestampRecorder() if self.record_times else None
-
         zero_epoch_recorder = ZeroEpochRecorder(
             [train_set_info, validation_set_info, test_set_info], None)
 
@@ -236,6 +229,7 @@ class TrainingExperiment(Task):
 
         history: keras.callbacks.History = model.keras_model.fit(
             callbacks=callbacks,
+            verbose=0, # type: ignore
             **fit_config,
         )  # type: ignore
 
@@ -252,7 +246,7 @@ class TrainingExperiment(Task):
         if self.record_post_training_metrics:
             # copy zero epoch recorder's train_ metrics to trained_ metrics
             remap_key_prefixes(zero_epoch_recorder.history, [
-                (self.key_names.trained + '_', self.key_names.train + '_',
+                (self.key_names.train + '_', self.key_names.trained + '_',
                  False),
             ])
 
@@ -299,9 +293,9 @@ class TrainingExperiment(Task):
 
     def _make_result_record(
         self,
-        worker,
+        worker_info,
         dataset: PreparedDataset,
-        model: ModelInfo,
+        network: NetworkInfo,
         history: Dict[str, Any],
     ) -> TaskResultRecord:
         from dmp.jobqueue_interface import jobqueue_marshal
@@ -312,26 +306,32 @@ class TrainingExperiment(Task):
         })
 
         experiment_data = {
-            'model_derived_num_free_parameters':
-            model.network.num_free_parameters,
-            'model_derived_network_structure':
-            jobqueue_marshal.marshal(model.network.structure),
-            'model_derived_input_shape':
+            'num_free_parameters':
+            network.num_free_parameters,
+            'network_structure':
+            jobqueue_marshal.marshal(network.structure),
+            'input_shape':
             dataset.input_shape,
-            'model_derived_output_shape':
+            'output_shape':
             dataset.output_shape,
-            'dataset_derived_training_set_size':
+            'train_set_size':
             dataset.train_size,
-            'dataset_derived_test_set_size':
+            'test_set_size':
             dataset.test_size,
-            'dataset_derived_validation_set_size':
+            'validation_set_size':
             dataset.validation_size,
-            'dataset_derived_total_size':
+            'data_set_size':
             dataset.train_size + dataset.test_size + dataset.validation_size
         }
 
-        for k, v in model.network.description.items():
+        for k, v in network.description.items():
             experiment_data[f'model_{k}'] = v
+
+        run_parameters = {
+            'python_version': str(platform.python_version()),
+            'platform': str(platform.platform()),
+            'tensorflow_version': str(tensorflow.__version__),
+        }
 
         run_data = {
             'run_id': uuid.uuid4(),
@@ -343,7 +343,7 @@ class TrainingExperiment(Task):
             'git_hash': self._get_git_hash(),
         }
 
-        run_data.update(worker.worker_info)
+        run_data.update(worker_info)
 
         for key in (
                 'seed',

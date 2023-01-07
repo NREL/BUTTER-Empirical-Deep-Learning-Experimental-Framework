@@ -9,6 +9,7 @@ import dmp.layer
 
 from dmp.model.dense_by_size import DenseBySize
 from dmp.task.growth_experiment.growth_trigger.proportional_stopping import ProportionalStopping
+from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
 
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
@@ -38,10 +39,20 @@ register_types((
 # stopping methods and growth triggers
 register_custom_keras_type('ProportionalStopping', ProportionalStopping)
 
+# scaling methods
+register_types((
+    WidthScaler,
+))
+
+# transfer methods
+register_types((
+    OverlayTransfer,
+))
+
+
 # Other types:
 register_types((
     TaskResultRecord,
-    OverlayTransfer,
     TestSetHistoryRecorder,
     DatasetSpec,
     MLTask,

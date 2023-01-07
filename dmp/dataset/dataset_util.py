@@ -61,7 +61,8 @@ def __make_load_pmlb_dataset():
 
     loader_list: List[DatasetLoader] = []
     for _, row in dataset_index.iterrows():
-        loader_list.append(PMLBDatasetLoader(row['Dataset'], MLTask(row['Task'])))
+        loader_list.append(
+            PMLBDatasetLoader(row['Dataset'], MLTask(row['Task'])))
 
     loaders: Dict[str, DatasetLoader] = _make_loader_map(loader_list)
     loaders.update(
@@ -114,8 +115,6 @@ __source_loaders = make_dispatcher(
         'pmlb': __load_pmlb_dataset,
         'imagenet': __load_imagenet_dataset,
     })
-
-
 '''
     keras_datasets = ['mnist', 'fashion_mnist', 'cifar10', 'cifar100']
     tensorflow_datasets = [
@@ -129,6 +128,10 @@ __source_loaders = make_dispatcher(
         imagenet_32
         imagenet_32_120
 '''
+
+
+def get_dataset_loader(source: str, name: str):
+    return __source_loaders(source)(name)
 
 
 def load_dataset(source: str, name: str) -> Dataset:

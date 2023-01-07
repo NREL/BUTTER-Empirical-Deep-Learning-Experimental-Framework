@@ -5,6 +5,7 @@ from jobqueue.job import Job
 from jobqueue.job_queue import JobQueue
 from dmp.logging.result_logger import ResultLogger
 from dmp.task.task import Task
+from dmp.task.task_result_record import TaskResultRecord
 
 
 from lmarshal.src.marshal import Marshal
@@ -38,17 +39,13 @@ class Worker:
         task: Task = jobqueue_marshal.demarshal(job.command)
 
         # run task
-        result = task(self)
+        result : TaskResultRecord = task(self)
 
         # log task run
         self._result_logger.log(
-            [
-                (
-                    job.id,
-                    job.id,
-                    result
-                )
-            ]
+            result,
+            job.id,
+            worker_id,
         )
 
         if self._max_jobs is None:
