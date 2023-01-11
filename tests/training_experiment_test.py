@@ -38,12 +38,13 @@ def test_simple():
             0.0,
         ),
         model=DenseBySize(
-            None,
-            None,
-            'exponential',
-            16384,
-            3,
-            Dense.make(-1, {
+            input=None,
+            output=None,
+            shape='exponential',
+            size=16384,
+            depth=3,
+            search_method='integer',
+            inner=Dense.make(-1, {
                 'activation': 'relu',
                 'kernel_initializer': 'GlorotUniform',
             }),
@@ -92,6 +93,7 @@ def test_growth_experiment():
             shape='rectangle',
             size=4096,
             depth=3,
+            search_method='integer',
             inner=Dense.make(-1, {
                 'activation': 'relu',
                 'kernel_initializer': 'GlorotUniform',
@@ -202,6 +204,7 @@ def test_from_optimizer():
             'exponential',
             16384,
             3,
+            'integer',
             Dense.make(-1, {
                 'activation': 'relu',
                 'kernel_initializer': 'GlorotUniform',

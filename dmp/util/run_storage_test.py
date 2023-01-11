@@ -280,6 +280,7 @@ def main():
                     shape=str(src_parameters['shape']),
                     size=int(src_parameters['size']),
                     depth=int(src_parameters['depth']),
+                    search_method='integer',
                     inner=Dense.make(
                         -1,
                         layer_config | {
@@ -299,21 +300,26 @@ def main():
                 record_post_training_metrics=False,
                 record_times=False,
             )
+            
+            def get_input_shape(target)->List[int]:
+                if target[''] == 'NInput':
+                    return target['shape']
+                return get_input_shape(target['inputs'][0])
 
-            # prepared_dataset = PsuedoPreparedDataset(
-            #     ml_task=ml_task,
-            #     # input_shape=[int(dsinfo['n_features'])],
-            #     input_shape=input_shape,
-            #     output_shape=[num_outputs],
-            #     train_size=train_size,
-            #     test_size=dataset_size - train_size,
-            #     validation_size=0,
-            # )
-
-            prepared_dataset = PreparedDataset(
-                experiment.dataset,
-                int(src_parameters['batch_size']),
+            prepared_dataset = PsuedoPreparedDataset(
+                ml_task=ml_task,
+                # input_shape=[int(dsinfo['n_features'])],
+                input_shape=get_input_shape(get_cell('network_structure')),
+                output_shape=[num_outputs],
+                train_size=train_size,
+                test_size=dataset_size - train_size,
+                validation_size=0,
             )
+
+            # prepared_dataset = PreparedDataset(
+            #     experiment.dataset,
+            #     int(src_parameters['batch_size']),
+            # )
 
             metrics = experiment._autoconfigure_for_dataset(
                 prepared_dataset, )  # type: ignore
@@ -321,7 +327,12 @@ def main():
             metric_names.append('loss')
             print(metric_names)
 
+            
+
+
             network = experiment._make_network(experiment.model)
+            pprint(get_cell('widths'))
+            pprint(get_cell('network_structure'))
             if network.num_free_parameters != get_cell('num_free_parameters'):
                 print(
                     f'num_free_parameters {network.num_free_parameters} != {get_cell("num_free_parameters")}'

@@ -63,8 +63,13 @@ class PostgresCompressedResultLogger(ResultLogger):
             self._make_column_sql(self._run_columns)
 
         self._log_query_prefix = sql.SQL("""
-WITH v as (
+WITH query_values as (
     SELECT
+        (   SELECT experiment_id 
+            FROM {experiment_table} e 
+            WHERE e.experiment_parameters = t.experiment_parameters::::integer[]
+            LIMIT 1
+        ) experiment_id,
         experiment_parameters::integer[] experiment_parameters,
         experiment_attributes::integer[] experiment_attributes,
         {cast_experiment_columns},
@@ -84,60 +89,69 @@ WITH v as (
             {run_columns}
             )
 ),
-exp_to_insert as (
-    SELECT * FROM
-    (
-        SELECT distinct experiment_parameters
-        FROM v
-        WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
-    ) d,
-    lateral (
-        SELECT experiment_attributes, {experiment_columns}
-        FROM v
-        WHERE v.experiment_parameters = d.experiment_parameters
-        LIMIT 1
-    ) l
+to_insert as (
+    SELECT
+        experiment_parameters,
+        experiment_attributes,
+        {experiment_columns}
+    FROM query_values
+    WHERE experiment_id IS NULL
 ),
-ir as (
-    INSERT INTO {experiment_table} (
+inserted as (
+    INSERT INTO {experiment_table} e (
         experiment_parameters,
         experiment_attributes,
         {experiment_columns}
     )
-    SELECT * FROM exp_to_insert
-    ON CONFLICT DO NOTHING
+    SELECT *
+    FROM to_insert
+    ON CONFLICT (experiment_parameters) DO UPDATE
+        SET experiment_id = e.experiment_id WHERE FALSE
     RETURNING 
         experiment_id, 
         experiment_parameters
 ),
-i as (
-    SELECT * FROM ir
-    UNION ALL
-    SELECT 
-        e.experiment_id, 
-        v.experiment_parameters
+retried AS (
+    INSERT INTO {experiment_table} e (
+        experiment_parameters,
+        experiment_attributes,
+        {experiment_columns}
+    )
+    SELECT to_insert.*
     FROM
-        v INNER JOIN {experiment_table} e ON (e.experiment_parameters = v.experiment_parameters)
+        to_insert
+        LEFT JOIN inserted USING (experiment_parameters)
+    WHERE inserted.experiment_id IS NULL
+    ON CONFLICT (experiment_parameters) DO UPDATE
+        SET experiment_id = p.experiment_id WHERE FALSE
+    RETURNING 
+        experiment_id, 
+        experiment_parameters
+   )
 ),
-x as (
-    SELECT
-        i.experiment_id experiment_id,
-        v.*
-    FROM
-        i INNER JOIN v ON (i.experiment_parameters = v.experiment_parameters)
-)
 INSERT INTO {run_table} (
     experiment_id,
     run_parameters,
     {run_columns}
     )
 SELECT
-    experiment_id,
+    COALESCE (
+        query_values.experiment_id,
+        new_experiments.experiment_id
+    ) experiment_id,
     run_parameters,
     {run_columns}
 FROM
-    x
-ON CONFLICT DO NOTHING;""").format(
+    query_values
+    LEFT JOIN (
+        SELECT * FROM inserted
+        UNION ALL
+        SELECT * FROM retried
+        ) new_experiments USING (experiment_parameters)
+ON CONFLICT DO NOTHING
+RETURNING 
+    experiment_id
+;""").format(
             experiment_columns=experiment_columns_sql,
             run_columns=run_columns_sql,
             experiment_table=sql.Identifier(self._experiment_table),
@@ -193,11 +207,11 @@ ON CONFLICT DO NOTHING;""").format(
         ])
         return columns_sql, cast_columns_sql
 
-    @staticmethod
-    def _make_values_array(cursor, values: Iterable[Tuple]) -> sql.SQL:
-        return sql.SQL(','.join(
-            (cursor.mogrify('(' + (','.join(['%s' for _ in e])) + ')',
-                            e).decode("utf-8") for e in values)))
+    # @staticmethod
+    # def _make_values_array(cursor, values: Iterable[Tuple]) -> sql.SQL:
+    #     return sql.SQL(','.join(
+    #         (cursor.mogrify('(' + (','.join(['%s' for _ in e])) + ')',
+    #                         e).decode("utf-8") for e in values)))
 
 
 '''

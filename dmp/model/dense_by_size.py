@@ -4,7 +4,7 @@ from typing import Any, Callable, List, Tuple, Dict
 from dmp.common import make_dispatcher
 from dmp.model.model_spec import ModelSpec
 from dmp.model.network_info import NetworkInfo
-from dmp.task.task_util import find_closest_network_to_target_size_int
+from dmp.task.task_util import find_closest_network_to_target_size_float, find_closest_network_to_target_size_int
 from dmp.layer import *
 
 
@@ -15,7 +15,9 @@ class DenseBySize(ModelSpec):
     depth: int  # (migrate)
     # input_layer : dict
     #input_layer.activation (migrate from input_activation)
+    search_method: str # use 'integer' or 'float' network width search method
     inner: Dense  # config of all but output layer (no units here)
+    
     '''
         + activation (migrate)
         + kernel_regularizer (migrate)
@@ -64,10 +66,15 @@ class DenseBySize(ModelSpec):
             )
             return result
 
-        delta, network = find_closest_network_to_target_size_int(
-            self.size,
-            make_network_with_scale,
-        )
+        search_func = find_closest_network_to_target_size_int
+        if self.search_method == 'integer':
+            search_func = find_closest_network_to_target_size_int
+        elif self.search_method == 'float':
+            search_func = find_closest_network_to_target_size_float
+        else:
+            raise NotImplementedError(f'Unknown search method {self.search_method}.')
+
+        delta, network = search_func(self.size, make_network_with_scale)
 
         # reject non-conformant network sizes
         delta = network.num_free_parameters - self.size

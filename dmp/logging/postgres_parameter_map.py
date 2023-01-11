@@ -12,6 +12,13 @@ class ParameterValueType(IntEnum):
     String = 4
 
 
+def _make_column_identifier_seq(
+    source: List[Tuple[str, str]],
+) -> List[Tuple[sql.Identifier, sql.Identifier]]:
+    return [(sql.Identifier(column_name), sql.Identifier(column_type))
+            for column_name, column_type in source]
+
+
 class PostgresParameterMap:
 
     _parameter_table: sql.Identifier
@@ -19,21 +26,24 @@ class PostgresParameterMap:
     _parameter_to_id_map: Dict[str, Dict[Any, int]]  # {kind->{value->id}}
     _id_to_parameter_map: Dict[int, Tuple[str, Any]]  # {id->(kind,value)}
 
-    _id_columns: List[Tuple[str, str]] = [
-        ('id', 'integer'),
-    ]
+    _id_columns: List[Tuple[sql.Identifier,
+                            sql.Identifier]] = _make_column_identifier_seq([
+                                ('id', 'integer'),
+                            ])
 
-    _index_columns: List[Tuple[str, str]] = [
-        ('value_type', 'smallint'),
-        ('kind', 'text'),
-    ]
+    _index_columns: List[Tuple[sql.Identifier,
+                               sql.Identifier]] = _make_column_identifier_seq([
+                                   ('value_type', 'smallint'),
+                                   ('kind', 'text'),
+                               ])
 
-    _value_columns: List[Tuple[str, str]] = [
-        ('bool_value', 'boolean'),
-        ('integer_value', 'bigint'),
-        ('float_value', 'double precision'),
-        ('string_value', 'text'),
-    ]
+    _value_columns: List[Tuple[sql.Identifier,
+                               sql.Identifier]] = _make_column_identifier_seq([
+                                   ('bool_value', 'boolean'),
+                                   ('integer_value', 'bigint'),
+                                   ('float_value', 'double precision'),
+                                   ('string_value', 'text'),
+                               ])
 
     # _column_names: List[str]
 
@@ -53,6 +63,7 @@ class PostgresParameterMap:
     _matching_clause: sql.Composable
     _casting_clause: sql.Composable
     _key_columns: sql.Composable
+    _query_values_key_columns: sql.Composable
 
     # _column_map : Dict[str, int]
     # _value_type_to_column_map : Dict[ParameterValueType, int]
@@ -71,24 +82,29 @@ class PostgresParameterMap:
         #     name : col for col, name in enumerate(self._columns)
         # }
 
+        index_and_value_columns = self._index_columns + self._value_columns
+
         self._matching_clause = sql.SQL(' and ').join(
             (sql.SQL(
                 "{column_name} IS NOT DISTINCT FROM t.{column_name}").format(
-                    column_name=sql.Identifier(column_name), )
-             for column_name, column_type in (self._index_columns +
-                                              self._value_columns)))
+                    column_name=column_name, )
+             for column_name, column_type in index_and_value_columns))
 
         self._casting_clause = sql.SQL(', ').join(
             (sql.SQL("{column_name}::{column_type}").format(
-                column_name=sql.Identifier(column_name),
-                column_type=sql.Identifier(column_type),
-            ) for column_name, column_type in (self._index_columns +
-                                               self._value_columns)))
+                column_name=column_name,
+                column_type=column_type,
+            ) for column_name, column_type in index_and_value_columns))
 
         self._key_columns = sql.SQL(',').join(
-            (sql.Identifier(column_name)
-             for column_name, column_type in (self._index_columns +
-                                              self._value_columns)), )
+            (column_name
+             for column_name, column_type in index_and_value_columns))
+
+        self._query_values_key_columns = sql.SQL(', ').join(
+            (sql.SQL(
+                'query_values.{column_name}').format(
+                    column_name=column_name, )
+             for column_name, column_type in index_and_value_columns))
 
         self._parameter_to_id_map = {}
         self._id_to_parameter_map = {}
@@ -96,10 +112,8 @@ class PostgresParameterMap:
         cursor.execute(
             sql.SQL("SELECT {columns} FROM {parameter_table}").format(
                 columns=sql.SQL(',').join(
-                    (sql.Identifier(column_name)
-                     for column_name, column_type in (self._id_columns +
-                                                      self._index_columns +
-                                                      self._value_columns))),
+                    (column_name for column_name, column_type in (
+                        self._id_columns + index_and_value_columns))),
                 parameter_table=self._parameter_table,
             ))
 
@@ -123,33 +137,56 @@ class PostgresParameterMap:
 
             cursor.execute(
                 sql.SQL("""
-WITH v as (
+WITH query_values as (
     SELECT 
-        (
-            SELECT id from {parameter_table}
+        (   SELECT id
+            FROM {parameter_table}
             WHERE {matching_clause}
             LIMIT 1
         ) id,
         *
-    FROM 
-    (
-        SELECT
-        {casting_clause}
+    FROM
+    (   SELECT {casting_clause}
         FROM (VALUES %s) AS t ({key_columns})
     ) t
 ),
-i as (
-    INSERT INTO {parameter_table} ({key_columns})
-        SELECT {key_columns} FROM (SELECT * from v WHERE v.id IS NULL) s
-    ON CONFLICT DO NOTHING
-    RETURNING id, {key_columns}
-)
-SELECT * from v WHERE id IS NOT NULL
+to_insert as (
+    SELECT {key_columns}
+    FROM query_values
+    WHERE id IS NULL
+),
+inserted as (
+    INSERT INTO {parameter_table} p ({key_columns})
+    SELECT *
+    FROM to_insert
+    ON CONFLICT ({key_columns}) DO UPDATE
+        SET id = p.id WHERE FALSE
+    RETURNING
+        id, 
+        {key_columns}
+),
+retried AS (
+    INSERT INTO {parameter_table} p ({key_columns})
+    SELECT to_insert.*
+    FROM
+        to_insert
+        LEFT JOIN inserted USING ({key_columns})
+    WHERE inserted.id IS NULL
+    ON CONFLICT ({key_columns}) DO UPDATE
+        SET id = p.id WHERE FALSE
+    RETURNING
+        id,
+        {key_columns}
+   )
+SELECT * from query_values WHERE id IS NOT NULL
+UNION ALL
+SELECT * from inserted WHERE id IS NOT NULL
 UNION ALL 
-SELECT * from i
+SELECT * from retried
 ;""").format(
                     parameter_table=self._parameter_table,
                     key_columns=self._key_columns,
+                    query_values_key_columns=self._query_values_key_columns
                 ), ((value_type.value, kind, *(typed_values[1:])), ))
             result = cursor.fetchone()
 
