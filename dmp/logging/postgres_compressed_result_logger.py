@@ -1,19 +1,20 @@
-from pprint import pprint
 from uuid import UUID
+from typing import Any, Dict, Iterable, Optional, Tuple, List
+import io
+from psycopg2 import sql
+import simplejson
+import psycopg2
+import pyarrow
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
 from dmp.logging.result_logger import ResultLogger
 
 from jobqueue.cursor_manager import CursorManager
 
-from psycopg2 import sql
-
-from typing import Any, Dict, Iterable, Optional, Tuple, List
-
-import simplejson
-import psycopg2
+from dmp.parquet_util import make_pyarrow_schema
 
 from dmp.task.task_result_record import TaskResultRecord
 
+psycopg2.extras.register_uuid()
 psycopg2.extras.register_default_json(loads=simplejson.loads,
                                       globally=True)  # type: ignore
 psycopg2.extras.register_default_jsonb(loads=simplejson.loads,
@@ -28,6 +29,7 @@ class PostgresCompressedResultLogger(ResultLogger):
     _experiment_table: sql.Identifier
     _experiment_columns: List[Tuple[str, str]]
     _run_columns: List[Tuple[str, str]]
+    _run_history_idx:int
     _log_query_prefix: sql.Composed
     _log_query_suffix: sql.Composed
     _insert_experiment_prefix: sql.Composed
@@ -61,6 +63,8 @@ class PostgresCompressedResultLogger(ResultLogger):
             ('host_name', 'text'),
             ('run_history', 'bytea'),
         ]
+
+        self._run_history_idx = -1
 
         experiment_columns, cast_experiment_columns = \
             self._make_column_sql(self._experiment_columns)
@@ -219,6 +223,13 @@ ON CONFLICT DO NOTHING
 
             run_values = extract_values(result.run_data, self._run_columns)
             run_parameters = get_ids(result.run_data)
+            
+            with io.BytesIO() as history_buffer:
+                self._make_history_bytes(
+                    run_values[self._run_history_idx], # type: ignore
+                    history_buffer,
+                    ) 
+                run_values[self._run_history_idx] = history_buffer.getvalue()
 
             if experiment_id is not None:
                 cursor.execute(self._insert_experiment_prefix +
@@ -241,6 +252,7 @@ ON CONFLICT DO NOTHING
 
             cursor.execute(self._log_query_prefix + sql_values +
                            self._log_query_suffix)
+    
 
     def _make_column_sql(
         self,
@@ -253,6 +265,37 @@ ON CONFLICT DO NOTHING
             for x in columns
         ])
         return columns_sql, cast_columns_sql
+
+    def _make_history_bytes(self, history: dict, buffer: io.BytesIO,)->None:
+        schema, use_byte_stream_split = make_pyarrow_schema(
+                    history.items())
+
+        table = pyarrow.Table.from_pydict(history, schema=schema)
+
+        pyarrow_file = pyarrow.PythonFile(buffer)
+
+        pyarrow.parquet.write_table(
+            table,
+            pyarrow_file,
+            # root_path=dataset_path,
+            # schema=schema,
+            # partition_cols=partition_cols,
+            data_page_size=8 * 1024,
+            # compression='BROTLI',
+            # compression_level=8,
+            compression='ZSTD',
+            compression_level=12,
+            use_dictionary=False,
+            use_byte_stream_split=use_byte_stream_split,
+            version='2.6',
+            data_page_version='2.0',
+            # existing_data_behavior='overwrite_or_ignore',
+            # use_legacy_dataset=False,
+            write_statistics=False,
+            # write_batch_size=64,
+            # dictionary_pagesize_limit=64*1024,
+        )
+        # bytes_written = buffer.getbuffer().nbytes
 
     # @staticmethod
     # def _make_values_array(cursor, values: Iterable[Tuple]) -> sql.SQL:

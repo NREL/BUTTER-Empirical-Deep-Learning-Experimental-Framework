@@ -350,7 +350,6 @@ def main():
                 return [int(i) for i in (src[1:-2].split(',')) if len(i) > 0]
 
             history = {}
-
             for m in metric_names:
                 for p in ['test_', 'train_']:
                     k = p + m
@@ -358,9 +357,11 @@ def main():
                         history[k] = get_cell(k)
                     except KeyError:
                         continue
-
-            num_epochs = len(history['train_loss'])
-            history['epoch'] = list(range(1, num_epochs))
+            num_epochs = max(
+                    (len(h) for h in history.values() if h is not None))
+            for h in history.values():
+                h.extend([None] * (num_epochs - len(h)))
+            history['epoch'] = list(range(1, num_epochs+1))
 
             result_record = experiment._make_result_record(
                 worker_info={
@@ -425,24 +426,12 @@ def main():
                 ml_task = MLTask.classification
             print(f'ml_task {ml_task}')
 
-            result_block = {}
-            for name in history_columns:
-                v = row[column_index_map[name]]
-                if v is not None and len(v) > 0:
-                    result_block[name] = v
-
-            if len(result_block) > 0:
-                num_epochs = max(
-                    (len(h) for h in result_block.values() if h is not None))
-                for h in result_block.values():
-                    h.extend([float('NaN')] * (num_epochs - len(h)))
-
-                result_block['epoch'] = list(range(1, 1 + num_epochs))
-
+            
+            if len(history) > 0:
                 schema, use_byte_stream_split = make_pyarrow_schema(
-                    result_block.items())
+                    history.items())
 
-                table = pyarrow.Table.from_pydict(result_block, schema=schema)
+                table = pyarrow.Table.from_pydict(history, schema=schema)
 
                 buffer = io.BytesIO()
                 pyarrow_file = pyarrow.PythonFile(buffer)
