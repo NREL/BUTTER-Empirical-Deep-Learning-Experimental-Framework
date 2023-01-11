@@ -1,4 +1,4 @@
-from dmp.layer.layer import Layer, register_layer_type
+from dmp.layer.layer import Layer
 
 class Input(Layer):
     def marshal(self) -> dict:
@@ -14,5 +14,3 @@ class Input(Layer):
             flat['shape'] = tuple(shape)
         self.__init__(flat)
 
-
-register_layer_type(Input)

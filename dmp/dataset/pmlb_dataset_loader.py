@@ -17,7 +17,6 @@ class PMLBDatasetLoader(DatasetLoader):
 
     def _fetch_from_source(self):
         import pmlb
-
         
         return Dataset(self.ml_task,
                        DatasetGroup(*pmlb.fetch_data(

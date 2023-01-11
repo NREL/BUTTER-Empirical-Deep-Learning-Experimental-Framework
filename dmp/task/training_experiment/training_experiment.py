@@ -5,6 +5,7 @@ import os
 import platform
 import subprocess
 import uuid
+from jobqueue.job import Job
 import tensorflow
 import tensorflow.keras as keras
 import numpy
@@ -28,8 +29,9 @@ from dmp.task.recorder.zero_epoch_recorder import ZeroEpochRecorder
 
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
-from dmp.task.task import Task, register_task_type
+from dmp.task.task import Task
 from dmp.task.training_experiment.training_experiment_keys import TrainingExperimentKeys
+from dmp.worker import Worker
 
 
 @dataclass
@@ -49,9 +51,9 @@ class TrainingExperiment(Task):
 
     @property
     def version(self) -> int:
-        return 0
+        return 10
 
-    def __call__(self, worker, *args, **kwargs) -> TaskResultRecord:
+    def __call__(self, worker : Worker, job:Job, *args, **kwargs) -> TaskResultRecord:
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
         metrics = self._autoconfigure_for_dataset(dataset)
@@ -65,6 +67,7 @@ class TrainingExperiment(Task):
         )
         return self._make_result_record(
             worker.worker_info,
+            job.id,
             dataset,
             model.network,
             history,
@@ -87,7 +90,7 @@ class TrainingExperiment(Task):
         dataset: PreparedDataset,
     ) -> List[Union[str, keras.metrics.Metric]]:
         # auto-populate model inputs and outputs if not already set
-        num_outputs: int = dataset.output_shape[0]
+        num_outputs: int = int(dataset.output_shape[0])
         ml_task: MLTask = dataset.ml_task
 
         metrics = [
@@ -133,19 +136,20 @@ class TrainingExperiment(Task):
         if model.input is None:
             model.input = Input()
         if model.input.get('shape', None) is None:
-            input_dim = len(dataset.input_shape)
+            input_shape = dataset.input_shape
+            input_dim = len(input_shape)
             if input_dim <= 2:
-                model.input['shape'] = dataset.input_shape
+                model.input['shape'] = input_shape
             elif input_dim == 3:
-                model.input['shape'] = dataset.input_shape[0:2]
-                model.input['channels'] = dataset.input_shape[2]
+                model.input['shape'] = list(input_shape[0:2])
+                model.input['channels'] = input_shape[2]
             else:
                 raise NotImplementedError(
-                    f'Unsupported input shape {dataset.input_shape}.')
-
+                    f'Unsupported input shape {input_shape}.')
+        
         if model.output is None:
             model.output = Dense.make(
-                dataset.output_shape[0],
+                int(dataset.output_shape[0]),
                 {
                     'activation': None,
                     'kernel_initializer': None,
@@ -155,7 +159,7 @@ class TrainingExperiment(Task):
         output = model.output
         if isinstance(output, Dense):
             if output.get('units', None) is None:
-                output['units'] = dataset.output_shape[0]
+                output['units'] = int(dataset.output_shape[0])
             if output.get('activation', None) is None:
                 output['activation'] = make_keras_config(output_activation)
             if output.get('kernel_initializer', None) is None:
@@ -229,7 +233,7 @@ class TrainingExperiment(Task):
 
         history: keras.callbacks.History = model.keras_model.fit(
             callbacks=callbacks,
-            verbose=0, # type: ignore
+            verbose=0,  # type: ignore
             **fit_config,
         )  # type: ignore
 
@@ -293,12 +297,13 @@ class TrainingExperiment(Task):
 
     def _make_result_record(
         self,
-        worker_info,
+        worker_info: Dict[str, Any],
+        job_id: uuid.UUID,
         dataset: PreparedDataset,
         network: NetworkInfo,
         history: Dict[str, Any],
     ) -> TaskResultRecord:
-        from dmp.jobqueue_interface import jobqueue_marshal
+        from dmp.marshaling import marshal
 
         experiment_parameters = self.get_parameters()
         experiment_parameters.update({
@@ -308,8 +313,8 @@ class TrainingExperiment(Task):
         experiment_data = {
             'num_free_parameters':
             network.num_free_parameters,
-            'network_structure':
-            jobqueue_marshal.marshal(network.structure),
+            'model_structure':
+            marshal.marshal(network.structure),
             'input_shape':
             dataset.input_shape,
             'output_shape':
@@ -334,7 +339,8 @@ class TrainingExperiment(Task):
         }
 
         run_data = {
-            'run_id': uuid.uuid4(),
+            'job_id': job_id,
+            'run_id': job_id,
             'python_version': str(platform.python_version()),
             'platform': str(platform.platform()),
             'tensorflow_version': str(tensorflow.__version__),
@@ -418,7 +424,6 @@ class TrainingExperiment(Task):
             return None
 
 
-register_task_type(TrainingExperiment)
 '''
     + what if attributes are more free-form?
         + could define experiment with a more minimal set of parameters

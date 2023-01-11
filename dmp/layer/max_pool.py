@@ -1,6 +1,5 @@
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
 from dmp.layer.pooling_layer import PoolingLayer
-from dmp.layer.layer import register_layer_type
 
 class MaxPool(PoolingLayer):
 
@@ -19,5 +18,3 @@ class MaxPool(PoolingLayer):
             **kwargs,
         )
 
-
-register_layer_type(MaxPool)

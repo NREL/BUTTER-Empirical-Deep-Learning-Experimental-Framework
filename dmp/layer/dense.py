@@ -1,6 +1,6 @@
 
 from typing import List, Union
-from dmp.layer.layer import Layer, LayerConfig, empty_config, empty_inputs, register_layer_type
+from dmp.layer.layer import Layer, LayerConfig, empty_config, empty_inputs
 
 
 class Dense(Layer):
@@ -26,5 +26,3 @@ class Dense(Layer):
         config['units'] = units
         return Dense(Dense._default_config, input, config)
 
-
-register_layer_type(Dense)

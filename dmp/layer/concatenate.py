@@ -1,7 +1,5 @@
-from dmp.layer.layer import Layer, register_layer_type
+from dmp.layer.layer import Layer
 
 class Concatenate(Layer):
     pass
 
-
-register_layer_type(Concatenate)

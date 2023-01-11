@@ -1,96 +1,161 @@
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Type, Union
+from enum import IntEnum
 
 from psycopg2 import sql
+
+
+class ParameterValueType(IntEnum):
+    Null = 0
+    Bool = 1
+    Integer = 2
+    Float = 3
+    String = 4
 
 
 class PostgresParameterMap:
 
     _parameter_table: sql.Identifier
     _select_parameter: sql.Composed
-    _parameter_to_id_map: Dict[str, Dict[Any, int]]
-    _id_to_parameter_map: Dict[int, Tuple[str, Any]]
+    _parameter_to_id_map: Dict[str, Dict[Any, int]]  # {kind->{value->id}}
+    _id_to_parameter_map: Dict[int, Tuple[str, Any]]  # {id->(kind,value)}
 
-    _key_columns = sql.SQL(',').join(
-        map(sql.Identifier, [
-            'kind',
-            'bool_value',
-            'integer_value',
-            'real_value',
-            'string_value',
-        ]))
+    _id_columns: List[Tuple[str, str]] = [
+        ('id', 'integer'),
+    ]
+
+    _index_columns: List[Tuple[str, str]] = [
+        ('value_type', 'smallint'),
+        ('kind', 'text'),
+    ]
+
+    _value_columns: List[Tuple[str, str]] = [
+        ('bool_value', 'boolean'),
+        ('integer_value', 'bigint'),
+        ('float_value', 'double precision'),
+        ('string_value', 'text'),
+    ]
+
+    # _column_names: List[str]
+
+    _id_column: int = 0
+    _type_column: int = 1
+    _kind_column: int = 2
+    _type_to_column_map: Dict[int, int] = {
+        ParameterValueType.Null: 3,
+        ParameterValueType.Bool: 3,
+        ParameterValueType.Integer: 4,
+        ParameterValueType.Float: 5,
+        ParameterValueType.String: 6,
+    }
+
+    _value_types: List[Type] = [type(None), bool, int, float, str]
+
+    _matching_clause: sql.Composable
+    _casting_clause: sql.Composable
+    _key_columns: sql.Composable
+
+    # _column_map : Dict[str, int]
+    # _value_type_to_column_map : Dict[ParameterValueType, int]
 
     def __init__(
         self,
         cursor,
-        parameter_table='parameter_',
+        parameter_table='parameter',
     ) -> None:
         super().__init__()
 
         self._parameter_table = sql.Identifier(parameter_table)
-        self._select_parameter = \
-            sql.SQL("""
-SELECT id, {}
-FROM {}"""
-                    ).format(self._key_columns, self._parameter_table)
+        # self._column_names = [name for name, type in self._columns]
+
+        # self._column_map = {
+        #     name : col for col, name in enumerate(self._columns)
+        # }
+
+        self._matching_clause = sql.SQL(' and ').join(
+            (sql.SQL(
+                "{column_name} IS NOT DISTINCT FROM t.{column_name}").format(
+                    column_name=sql.Identifier(column_name), )
+             for column_name, column_type in (self._index_columns +
+                                              self._value_columns)))
+
+        self._casting_clause = sql.SQL(', ').join(
+            (sql.SQL("{column_name}::{column_type}").format(
+                column_name=sql.Identifier(column_name),
+                column_type=sql.Identifier(column_type),
+            ) for column_name, column_type in (self._index_columns +
+                                               self._value_columns)))
+
+        self._key_columns = sql.SQL(',').join(
+            (sql.Identifier(column_name)
+             for column_name, column_type in (self._index_columns +
+                                              self._value_columns)), )
+
         self._parameter_to_id_map = {}
         self._id_to_parameter_map = {}
 
-        cursor.execute(self._select_parameter)
+        cursor.execute(
+            sql.SQL("SELECT {columns} FROM {parameter_table}").format(
+                columns=sql.SQL(',').join(
+                    (sql.Identifier(column_name)
+                     for column_name, column_type in (self._id_columns +
+                                                      self._index_columns +
+                                                      self._value_columns))),
+                parameter_table=self._parameter_table,
+            ))
+
         for row in cursor.fetchall():
-            self._register_parameter_from_row(row)
+            value_type = ParameterValueType(row[self._type_column])
+            value_column = self._type_to_column_map[value_type]
+            self._register_parameter(
+                row[self._kind_column],
+                row[value_column],
+                row[self._id_column],
+            )
 
     def to_parameter_id(self, kind: str, value: Any, cursor=None) -> int:
         try:
             return self._parameter_to_id_map[kind][value]
         except KeyError:
-            if cursor is not None:
-                typed_values = self._make_typed_values(value)
+            if cursor is None:
+                raise KeyError(
+                    f'Unable to translate parameter {kind} : {value}.')
+            value_type, typed_values = self._make_typed_values(value)
 
-                cursor.execute(
-                    sql.SQL("""
+            cursor.execute(
+                sql.SQL("""
 WITH v as (
     SELECT 
         (
-            SELECT id from {_parameter_table}
-            WHERE
-                kind = t.kind and
-                bool_value IS NOT DISTINCT FROM t.bool_value and
-                integer_value IS NOT DISTINCT FROM t.integer_value and
-                real_value IS NOT DISTINCT FROM (t.real_value)::real and
-                string_value IS NOT DISTINCT FROM t.string_value
+            SELECT id from {parameter_table}
+            WHERE {matching_clause}
             LIMIT 1
         ) id,
         *
     FROM 
     (
         SELECT
-        kind,
-        bool_value::bool,
-        integer_value::bigint,
-        real_value::real,
-        string_Value::text
-        FROM (VALUES %s) AS t ({_key_columns})
+        {casting_clause}
+        FROM (VALUES %s) AS t ({key_columns})
     ) t
 ),
 i as (
-    INSERT INTO {_parameter_table} ({_key_columns})
-        SELECT {_key_columns} FROM (SELECT * from v WHERE v.id IS NULL) s
+    INSERT INTO {parameter_table} ({key_columns})
+        SELECT {key_columns} FROM (SELECT * from v WHERE v.id IS NULL) s
     ON CONFLICT DO NOTHING
-    RETURNING id, {_key_columns}
+    RETURNING id, {key_columns}
 )
 SELECT * from v WHERE id IS NOT NULL
 UNION ALL 
 SELECT * from i
 ;""").format(
-                        _parameter_table=self._parameter_table,
-                        _key_columns=self._key_columns,
-                    ), ((kind, *typed_values), ))
-                result = cursor.fetchone()
+                    parameter_table=self._parameter_table,
+                    key_columns=self._key_columns,
+                ), ((value_type.value, kind, *(typed_values[1:])), ))
+            result = cursor.fetchone()
 
-                if result is not None:
-                    self._register_parameter(kind, value, result[0])
-                    return self.to_parameter_id(kind, value, None)
-            raise KeyError(f'Unable to translate parameter {kind} : {value}.')
+            if result is not None and result[0] is not None:
+                self._register_parameter(kind, value, result[0])
+            return self.to_parameter_id(kind, value, None)  # retry
 
     def get_all_kinds(self) -> Sequence[str]:
         return tuple(self._parameter_to_id_map.keys())
@@ -128,11 +193,6 @@ SELECT * from i
             return [self.parameter_from_id(e, cursor) for e in i]
         return self._id_to_parameter_map[i]
 
-    def _register_parameter_from_row(self, row) -> None:
-        value = next(
-            (v for v in (row[i + 2] for i in range(4)) if v is not None), None)
-        self._register_parameter(row[1], value, row[0])
-
     def _register_parameter(
         self,
         kind: str,
@@ -145,18 +205,20 @@ SELECT * from i
             self._parameter_to_id_map[kind] = {}
         self._parameter_to_id_map[kind][value] = parameter_id
 
-    def _make_typed_values(self, value: Any) -> List[Any]:
-        value_types = [bool, int, float, str]
-        typed_values = [None] * len(value_types)
-        type_index = None
-        for i, t in enumerate(value_types):
+    def _make_typed_values(
+        self,
+        value: Any,
+    ) -> Tuple[ParameterValueType, List[Any]]:
+        typed_values = [None] * len(self._value_types)
+        value_type = None
+        for i, t in enumerate(self._value_types):
             if isinstance(value, t):
                 typed_values[i] = value
-                type_index = i
+                value_type = ParameterValueType(i)
                 break
 
-        if type_index is None and value is not None:
+        if value_type is None:
             raise ValueError(
                 f'Value is not a supported parameter type, type "{type(value)}".'
             )
-        return typed_values
+        return value_type, typed_values

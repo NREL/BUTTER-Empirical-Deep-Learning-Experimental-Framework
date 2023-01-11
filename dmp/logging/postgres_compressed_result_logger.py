@@ -1,9 +1,7 @@
-
 from pprint import pprint
 from uuid import UUID
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
 from dmp.logging.result_logger import ResultLogger
-
 
 from jobqueue.cursor_manager import CursorManager
 
@@ -16,9 +14,13 @@ import psycopg2
 
 from dmp.task.task_result_record import TaskResultRecord
 
-psycopg2.extras.register_default_json(loads=simplejson.loads, globally=True)  # type: ignore
-psycopg2.extras.register_default_jsonb(loads=simplejson.loads, globally=True)  # type: ignore
-psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)  # type: ignore
+psycopg2.extras.register_default_json(loads=simplejson.loads,
+                                      globally=True)  # type: ignore
+psycopg2.extras.register_default_jsonb(loads=simplejson.loads,
+                                       globally=True)  # type: ignore
+psycopg2.extensions.register_adapter(dict,
+                                     psycopg2.extras.Json)  # type: ignore
+
 
 class PostgresCompressedResultLogger(ResultLogger):
     _credentials: Dict[str, Any]
@@ -27,31 +29,33 @@ class PostgresCompressedResultLogger(ResultLogger):
     _log_query_suffix: sql.Composed
     _parameter_map: PostgresParameterMap
 
-    def __init__(self,
-                 credentials: Dict[str, Any],
-                 ) -> None:
+    def __init__(
+        self,
+        credentials: Dict[str, Any],
+    ) -> None:
         super().__init__()
         self._credentials = credentials
 
-        self.run_table:str= 'run'
-        self.experiment_table : str = 'experiment'
+        self._run_table: str = 'run'
+        self._experiment_table: str = 'experiment'
 
-        self._experiment_columns = sorted([
-            ('network_structure', 'jsonb'),
-        ])
+        self._experiment_columns = [
+            ('model_structure', 'bytea'),
+        ]
 
-        self._run_columns = sorted([
+        self._run_columns = [
+            ('task_version', 'smallint'),
+            ('num_nodes', 'smallint'),
+            ('slurm_job_id', 'bigint'),
             ('job_id', 'uuid'),
             ('run_id', 'uuid'),
-            ('slurm_job_id', 'bigint'),
-            ('task_version', 'smallint'),
-            ('num_gpus', 'smallint'),
             ('num_cpus', 'smallint'),
-            ('num_nodes', 'smallint'),
+            ('num_gpus', 'smallint'),
             ('gpu_memory', 'integer'),
+            ('seed', 'bigint'),
             ('host_name', 'text'),
-            ('batch', 'text'),
-        ])
+            ('run_history', 'bytea'),
+        ]
 
         experiment_columns_sql, cast_experiment_columns_sql = \
             self._make_column_sql(self._experiment_columns)
@@ -61,10 +65,10 @@ class PostgresCompressedResultLogger(ResultLogger):
         self._log_query_prefix = sql.SQL("""
 WITH v as (
     SELECT
-        experiment_parameters::smallint[] experiment_parameters,
-        experiment_data::jsonb
-        run_parameters::smallint[] run_parameters,
+        experiment_parameters::integer[] experiment_parameters,
+        experiment_attributes::integer[] experiment_attributes,
         {cast_experiment_columns},
+        run_parameters::integer[] run_parameters,
         {cast_run_columns}
     FROM
         (VALUES """).format(
@@ -73,11 +77,10 @@ WITH v as (
         )
 
         self._log_query_suffix = sql.SQL(""" ) AS t (
-            job_id,
-            run_id,
             experiment_parameters,
-            run_parameters,
+            experiment_attributes,
             {experiment_columns},
+            run_parameters,
             {run_columns}
             )
 ),
@@ -89,7 +92,7 @@ exp_to_insert as (
         WHERE NOT EXISTS (SELECT * from {experiment_table} ex where ex.experiment_parameters = v.experiment_parameters)
     ) d,
     lateral (
-        SELECT {experiment_columns}
+        SELECT experiment_attributes, {experiment_columns}
         FROM v
         WHERE v.experiment_parameters = d.experiment_parameters
         LIMIT 1
@@ -98,6 +101,7 @@ exp_to_insert as (
 ir as (
     INSERT INTO {experiment_table} (
         experiment_parameters,
+        experiment_attributes,
         {experiment_columns}
     )
     SELECT * FROM exp_to_insert
@@ -113,60 +117,90 @@ i as (
         e.experiment_id, 
         v.experiment_parameters
     FROM
-        v,
-        {experiment_table} e
-    WHERE
-        e.experiment_parameters = v.experiment_parameters
+        v INNER JOIN {experiment_table} e ON (e.experiment_parameters = v.experiment_parameters)
 ),
 x as (
     SELECT
-        v.*,
-        i.experiment_id experiment_id
+        i.experiment_id experiment_id,
+        v.*
     FROM
-        v,
-        i
-    WHERE
-        i.experiment_parameters = v.experiment_parameters
+        i INNER JOIN v ON (i.experiment_parameters = v.experiment_parameters)
 )
 INSERT INTO {run_table} (
     experiment_id,
-    run_id,
-    job_id,
     run_parameters,
     {run_columns}
     )
 SELECT
     experiment_id,
-    run_id,
-    job_id,
     run_parameters,
     {run_columns}
 FROM
     x
-ON CONFLICT DO NOTHING
-;
-        """).format(
+ON CONFLICT DO NOTHING;""").format(
             experiment_columns=experiment_columns_sql,
             run_columns=run_columns_sql,
-            experiment_table=sql.Identifier(experiment_table),
-            run_table=sql.Identifier(run_table),
+            experiment_table=sql.Identifier(self._experiment_table),
+            run_table=sql.Identifier(self._run_table),
         )
 
         # initialize parameter map
         with CursorManager(self._credentials) as cursor:
             self._parameter_map = PostgresParameterMap(cursor)
-        pass
 
     def log(
         self,
         result: TaskResultRecord,
-        job_id: UUID,
-        worker_id: UUID,
     ) -> None:
-        # TODO: finish compressed logger
-        # TODO: does it make sense to canonicalize columns?
-        
-        '''
+        with CursorManager(self._credentials) as cursor:
+
+            def get_ids(parameter_dict: Dict[str, Any]) -> List[int]:
+                return self._parameter_map.to_sorted_parameter_ids(
+                    parameter_dict, cursor)
+
+            def extract_values(target, columns):
+                return [target.pop(c, None) for c in columns]
+
+            experiment_parameters = get_ids(result.experiment_parameters)
+            experiment_values = extract_values(result.experiment_data,
+                                               self._experiment_columns)
+            experiment_attributes = get_ids(result.experiment_data)
+
+            run_values = extract_values(result.run_data, self._run_columns)
+            run_parameters = get_ids(result.run_data)
+
+            sql_values = sql.SQL(',').join(
+                sql.Literal(v) for v in (
+                    experiment_parameters,
+                    experiment_attributes,
+                    *experiment_values,
+                    run_parameters,
+                    *run_values,
+                ))
+
+            cursor.execute(self._log_query_prefix + sql_values +
+                           self._log_query_suffix)
+
+    def _make_column_sql(
+        self,
+        columns: List[Tuple[str, str]],
+    ) -> Tuple[sql.Composed, sql.Composed]:
+        columns_sql = sql.SQL(',').join(
+            [sql.Identifier(x[0]) for x in columns])
+        cast_columns_sql = sql.SQL(',').join([
+            sql.SQL('{}::{}').format(sql.Identifier(x[0]), sql.SQL(x[1]))
+            for x in columns
+        ])
+        return columns_sql, cast_columns_sql
+
+    @staticmethod
+    def _make_values_array(cursor, values: Iterable[Tuple]) -> sql.SQL:
+        return sql.SQL(','.join(
+            (cursor.mogrify('(' + (','.join(['%s' for _ in e])) + ')',
+                            e).decode("utf-8") for e in values)))
+
+
+'''
         + encode data payload as parquet bytestream
         + encode run indexing/table data as columns
         + canonicalize experiment parameters
@@ -251,73 +285,3 @@ ON CONFLICT DO NOTHING
                 ('parameter_count', 'bigint[]'),
                 ('growth_points', 'smallint[]'),
         '''
-        
-
-
-        
-        
-
-        with CursorManager(self._credentials) as cursor:
-            log_entries = [
-                self._transform_row(cursor, *result)
-                for result in results]
-            values = self._make_values_array(cursor, log_entries)
-            # print(cursor.mogrify(self._log_query_prefix + values + self._log_query_suffix))
-            cursor.execute(
-                self._log_query_prefix + values + self._log_query_suffix)
-
-    def _transform_row(
-        self,
-        cursor,
-        job_id: UUID,
-        run_id: UUID,
-        result: Dict[str, Any],
-    ):
-        def extract_values(columns):
-            return [result.pop(c[0], None) for c in columns]
-
-        experiment_column_values = extract_values(self._experiment_columns)
-        run_column_values = extract_values(self._run_columns)
-
-        experiment_parameters = result.copy()
-        for k in self._run_only_parameters:
-            experiment_parameters.pop(k, None)
-        run_parameters = result
-
-        # get sorted parameter ids
-        run_parameter_ids = \
-            self._parameter_map.to_sorted_parameter_ids(
-                run_parameters, cursor)
-
-        experiment_parameter_ids = \
-            self._parameter_map.to_sorted_parameter_ids(
-                experiment_parameters, cursor)
-
-        return (
-            job_id,
-            run_id,
-            experiment_parameter_ids,
-            run_parameter_ids,
-            *experiment_column_values,
-            *run_column_values,
-        )
-
-    def _make_column_sql(
-        self,
-        columns: List[Tuple[str, str]],
-    ) -> Tuple[sql.Composed, sql.Composed]:
-        columns_sql = sql.SQL(',').join(
-            [sql.Identifier(x[0]) for x in columns])
-        cast_columns_sql = sql.SQL(',').join(
-            [sql.SQL('{}::{}').format(
-                sql.Identifier(x[0]), sql.SQL(x[1]))
-                for x in columns])
-        return columns_sql, cast_columns_sql
-
-    @staticmethod
-    def _make_values_array(cursor, values: Iterable[Tuple]) -> sql.SQL:
-        return sql.SQL(','.join((
-            cursor.mogrify(
-                '(' + (','.join(['%s' for _ in e])) + ')', e).decode("utf-8")
-            for e in values)))
-

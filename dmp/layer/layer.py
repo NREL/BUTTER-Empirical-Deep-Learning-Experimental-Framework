@@ -17,10 +17,10 @@ T = TypeVar('T')
 # layer_types: List[Type] = []
 
 
-def register_layer_type(type: Type) -> None:
-    from dmp.marshal_registry import register_type
-    register_type(type)
-    # layer_types.append(type)
+# def register_layer_type(type: Type) -> None:
+#     from dmp.marshal_registry import register_type
+#     register_type(type)
+#     # layer_types.append(type)
 
 
 class LayerFactory(ABC):

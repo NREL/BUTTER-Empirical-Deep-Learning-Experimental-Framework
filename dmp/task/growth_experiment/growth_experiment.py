@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Optional, Any, Dict, Tuple
 import math
+
+from jobqueue.job import Job
 from dmp.layer.layer import Layer
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 from dmp.model.network_info import NetworkInfo
@@ -19,10 +21,10 @@ from dmp.task.growth_experiment.growth_experiment_keys import GrowthExperimentKe
 from dmp.task.growth_experiment.transfer_method.transfer_method import TransferMethod
 from dmp.task.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
 
-from dmp.task.task import register_task_type
 from dmp.task.task_result_record import TaskResultRecord
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
 from dmp.task.task_util import find_closest_network_to_target_size_float
+from dmp.worker import Worker
 
 
 @dataclass
@@ -54,7 +56,8 @@ class GrowthExperiment(TrainingExperiment):
     def version(self) -> int:
         return 0
 
-    def __call__(self, worker, *args, **kwargs) -> TaskResultRecord:
+    def __call__(self, worker: Worker, job: Job, *args,
+                 **kwargs) -> TaskResultRecord:
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
         metrics = self._autoconfigure_for_dataset(dataset)
@@ -204,6 +207,7 @@ class GrowthExperiment(TrainingExperiment):
         src_model.network.description = goal_network.description
         return self._make_result_record(
             worker.worker_info,
+            job.id,
             dataset,
             src_model.network,
             history,
@@ -248,5 +252,3 @@ class GrowthExperiment(TrainingExperiment):
                 + cumulative # of discarded epochs?
         '''
 
-
-register_task_type(GrowthExperiment)

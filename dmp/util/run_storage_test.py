@@ -19,14 +19,18 @@ import numpy
 from sqlalchemy import column
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
+from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.layer.dense import Dense
 
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
 import sys
+from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
 
 from dmp.parquet_util import make_pyarrow_schema
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
+
+from dmp.marshaling import marshal
 
 pmlb_index_path = os.path.join(
     os.path.realpath(os.path.join(
@@ -55,9 +59,11 @@ class PsuedoPreparedDataset():
 def main():
 
     credentials = load_credentials('dmp')
-    parameter_map = None
+    old_parameter_map = None
+    new_parameter_map = None
     with CursorManager(credentials) as cursor:
-        parameter_map = PostgresParameterMap(cursor)
+        old_parameter_map = PostgresParameterMapV1(cursor)
+        new_parameter_map = PostgresParameterMap(cursor)
 
     # columns
     # schema = pyarrow.schema(columns)
@@ -74,29 +80,8 @@ def main():
 
     # use_dictionary = [c.name for c in parameter_columns]
 
-    info_columns = [
-        'experiment_id',
-        'run_id',
-        'run_parameters',
-        'record_timestamp',
-        'platform',
-        'git_hash',
-        'hostname',
-        'slurm_job_id',
-        'seed',
-        'save_every_epochs',
-        'parameter_count',
-        'num_gpus',
-        'num_nodes',
-        'num_cpus',
-        'gpu_memory',
-        'nodes',
-        'cpus',
-        'gpus',
-        'strategy',
-    ]
-
     experiment_columns = [
+        'experiment_id',
         'num_free_parameters',
         'network_structure',
         'widths',
@@ -113,6 +98,27 @@ def main():
         'learning_rate_batch_size_sweep',
         'size_adjusted_regularization_sweep',
         'butter',
+    ]
+
+    run_columns = [
+        'run_id',
+        'job_id',
+        'run_parameters',
+        'record_timestamp',
+        'platform',
+        'git_hash',
+        'hostname',
+        'slurm_job_id',
+        'seed',
+        'save_every_epochs',
+        'num_gpus',
+        'num_nodes',
+        'num_cpus',
+        'gpu_memory',
+        'nodes',
+        'cpus',
+        'gpus',
+        'strategy',
     ]
 
     history_columns = [
@@ -142,7 +148,7 @@ def main():
         'train_kullback_leibler_divergence',
     ]
 
-    columns = info_columns + experiment_columns + history_columns
+    columns = experiment_columns + run_columns + history_columns
 
     column_index_map = {name: i for i, name in enumerate(columns)}
 
@@ -152,14 +158,17 @@ def main():
 
         q = sql.SQL('SELECT ')
         q += sql.SQL(', ').join([
-            sql.SQL('r.{} {}').format(sql.Identifier(c), sql.Identifier(c))
-            for c in columns
+            sql.SQL('e.{col} {col}').format(col=sql.Identifier(c))
+            for c in experiment_columns
+        ] + [
+            sql.SQL('r.{col} {col}').format(col=sql.Identifier(c))
+            for c in (run_columns + history_columns)
         ])
 
-        q += sql.SQL(' FROM run_ r, experiment_ e ')
-        q += sql.SQL(' WHERE r.experiment_id = e.experiment_id')
+        q += sql.SQL(' FROM run_ r INNER JOIN experiment_ e')
+        q += sql.SQL(' ON r.experiment_id = e.experiment_id')
         q += sql.SQL(' ORDER BY r.record_timestamp DESC LIMIT 10')
-        q += sql.SQL(' ;')
+        q += sql.SQL(';')
 
         x = cursor.mogrify(q)
         print(x)
@@ -172,8 +181,8 @@ def main():
 
             src_parameters = {
                 kind: value
-                for kind, value in parameter_map.parameter_from_id(
-                    get_cell('run_parameters'))
+                for kind, value in old_parameter_map.parameter_from_id(
+                    get_cell('run_parameters'), cursor = cursor)
             }
 
             if not src_parameters.get('run_config.shuffle', False):
@@ -197,11 +206,11 @@ def main():
             num_outputs = 1
             if dsinfo['Task'] == 'classification':
                 ml_task = MLTask.classification
-                num_outputs = dsinfo['n_classes']
+                num_outputs = int(dsinfo['n_classes'])
                 if num_outputs == 2:
                     num_outputs = 1
-            dataset_size = dsinfo['n_observations']
-            test_split = src_parameters['test_split']
+            dataset_size = int(dsinfo['n_observations'])
+            test_split = float(src_parameters['test_split'])
             train_size = math.floor(dataset_size * test_split)
 
             optimizer_class = src_parameters.get('optimizer', 'Adam')
@@ -226,7 +235,7 @@ def main():
                     _class = src_parameters.get(prefix, None)
                     if _class is None:
                         return None
-                        
+
                 activity_regularizer = {'class': _class}
                 for k, v in src_parameters.items():
                     if k.startswith(prefix) and not k.endswith('.type'):
@@ -248,8 +257,8 @@ def main():
 
             # input shape, output shape, ml_task
             experiment = TrainingExperiment(
-                seed=get_cell('seed'),
-                batch=src_parameters.get('batch', None),  # type: ignore
+                seed=int(get_cell('seed')),
+                batch=str(src_parameters.get('batch', None)),  # type: ignore
                 dataset=DatasetSpec(
                     name=dataset_name,
                     source=dataset_src,
@@ -268,7 +277,7 @@ def main():
                             src_parameters.get('output_activation', None),
                         },
                     ),
-                    shape=src_parameters['shape'],
+                    shape=str(src_parameters['shape']),
                     size=int(src_parameters['size']),
                     depth=int(src_parameters['depth']),
                     inner=Dense.make(
@@ -280,8 +289,8 @@ def main():
                     ),
                 ),
                 fit={
-                    'batch_size': src_parameters['batch_size'],
-                    'epochs': src_parameters['epochs'],
+                    'batch_size': int(src_parameters['batch_size']),
+                    'epochs': int(src_parameters['epochs']),
                 },
                 optimizer=optimizer,
                 loss=None,
@@ -291,25 +300,37 @@ def main():
                 record_times=False,
             )
 
-            prepared_dataset = PsuedoPreparedDataset(
-                ml_task=ml_task,
-                input_shape=[dsinfo['n_features']],
-                output_shape=[num_outputs],
-                train_size=train_size,
-                test_size=dataset_size - train_size,
-                validation_size=0,
+            # prepared_dataset = PsuedoPreparedDataset(
+            #     ml_task=ml_task,
+            #     # input_shape=[int(dsinfo['n_features'])],
+            #     input_shape=input_shape,
+            #     output_shape=[num_outputs],
+            #     train_size=train_size,
+            #     test_size=dataset_size - train_size,
+            #     validation_size=0,
+            # )
+
+            prepared_dataset = PreparedDataset(
+                experiment.dataset,
+                int(src_parameters['batch_size']),
             )
 
             metrics = experiment._autoconfigure_for_dataset(
                 prepared_dataset, )  # type: ignore
-            metric_names = [m.name for m in metrics]
+            metric_names = [m if isinstance(m, str) else m.name for m in metrics]
+            metric_names.append('loss')
             print(metric_names)
 
             network = experiment._make_network(experiment.model)
-            if network.num_free_parameters != get_cell('parameter_count'):
+            if network.num_free_parameters != get_cell('num_free_parameters'):
                 print(
-                    f'num_free_parameters {network.num_free_parameters} != {get_cell("parameter_count")}'
+                    f'num_free_parameters {network.num_free_parameters} != {get_cell("num_free_parameters")}'
                 )
+                pprint(experiment)
+                pprint(dsinfo)
+                pprint(get_cell('widths'))
+                pprint(get_cell('network_structure'))
+                pprint(marshal.marshal(network))
                 continue
 
             def map_resource_list(src: Optional[str]) -> Optional[List[int]]:
@@ -318,11 +339,14 @@ def main():
                 return [int(i) for i in (src[1:-2].split(',')) if len(i) > 0]
 
             history = {}
-            
+
             for m in metric_names:
                 for p in ['test_', 'train_']:
                     k = p + m
-                    history[k] = get_cell(k)
+                    try:
+                        history[k] = get_cell(k)
+                    except KeyError:
+                        continue
 
             num_epochs = len(history['train_loss'])
             history['epoch'] = list(range(1, num_epochs))
@@ -338,6 +362,7 @@ def main():
                     'gpus': map_resource_list(get_cell('gpus')),
                     'strategy': get_cell('strategy'),
                 },
+                job_id=get_cell('job_id'),
                 dataset=prepared_dataset,  # type: ignore
                 network=network,
                 history=history,
@@ -380,6 +405,8 @@ def main():
             })
 
             pprint(src_parameters)
+
+            pprint(result_record)
 
             print(dsinfo)
             ml_task = MLTask.regression

@@ -1,4 +1,4 @@
-from dmp.layer.layer import Layer, LayerFactory, LayerConfig, register_layer_type, empty_config, empty_inputs
+from dmp.layer.layer import Layer, LayerFactory, LayerConfig, empty_config, empty_inputs
 # from dmp.layer.layer_factory import LayerFactory
 
 from dmp.layer.spatitial_layer import SpatitialLayer

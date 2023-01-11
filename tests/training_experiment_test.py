@@ -20,6 +20,8 @@ from dmp.model.dense_by_size import DenseBySize
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
 from pprint import pprint
 
+from dmp.marshaling import marshal
+
 strategy = dmp.jobqueue_interface.worker.make_strategy(4, 0, 0, 0)
 
 
@@ -69,7 +71,7 @@ def test_simple():
     )
 
     results = experiment(worker)
-    pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=1)
+    pprint(marshal.marshal(results), indent=1)
 
 
 def test_growth_experiment():
@@ -136,7 +138,7 @@ def test_growth_experiment():
     )
 
     results = experiment(worker)
-    pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=1)
+    pprint(marshal.marshal(results), indent=1)
 
 
 def test_from_optimizer():
@@ -228,7 +230,7 @@ def test_from_optimizer():
     )
 
     results = experiment(worker)
-    pprint(jobqueue_interface.jobqueue_marshal.marshal(results), indent=1)
+    pprint(marshal.marshal(results), indent=1)
 
 # test_growth_experiment()
 # test_simple()

@@ -1,5 +1,4 @@
 from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar, Union
-from dmp.layer.layer import register_layer_type
 from dmp.layer.pooling_layer import PoolingLayer
 from dmp.layer.spatitial_layer import SpatitialLayer
 
@@ -22,5 +21,3 @@ class AvgPool(PoolingLayer):
             **kwargs,
         )
 
-
-register_layer_type(AvgPool)

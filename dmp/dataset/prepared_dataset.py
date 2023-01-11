@@ -8,12 +8,13 @@ from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.ml_task import MLTask
 from .dataset_spec import DatasetSpec
-from dmp.dataset.dataset_util import load_dataset
+
 
 
 class PreparedDataset():
 
     def __init__(self, spec: DatasetSpec, batch_size: int) -> None:
+        from dmp.dataset.dataset_util import load_dataset
         dataset: Dataset = load_dataset(spec.source, spec.name)
         split_dataset(spec, dataset)
 
@@ -24,7 +25,7 @@ class PreparedDataset():
         def get_group_size(group) -> int:
             if group is None or group.inputs is None:
                 return 0
-            return group.inputs.shape[0]  # type: ignore
+            return int(group.inputs.shape[0])  # type: ignore
 
         self.train_size: int = get_group_size(dataset.train)
         self.test_size: int = get_group_size(dataset.test)

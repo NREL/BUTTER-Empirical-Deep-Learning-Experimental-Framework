@@ -6,7 +6,7 @@ import argparse
 
 from jobqueue.connect import connect
 from jobqueue.job_queue import JobQueue
-from dmp.jobqueue_interface import jobqueue_marshal
+from dmp.marshaling import marshal
 
 import sys
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     lines = stdin.readlines()
 
     for line in lines:
-        task = jobqueue_marshal.demarshal(line)
+        task = marshal.demarshal(line)
         accumulated.append(task)
         if len(accumulated) > 512:
             job_queue.push(accumulated)

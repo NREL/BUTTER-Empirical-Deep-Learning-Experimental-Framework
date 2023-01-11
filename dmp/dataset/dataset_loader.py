@@ -1,3 +1,4 @@
+import numbers
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from io import BytesIO
@@ -97,51 +98,68 @@ class DatasetLoader(ABC):
         return group
 
     def _prepare_inputs(self, data) -> ndarray:
-        return self.prepare_data(data)
+        return self.prepare_data(data, self.dynamic_value_transform)
 
     def _prepare_outputs(self, data) -> ndarray:
-        return self.prepare_data(data)
+        return self.prepare_data(data, self.dynamic_output_value_transform)
 
-    def prepare_data(self, value) -> ndarray:
+    def prepare_data(self, value, transform) -> ndarray:
         shape = value.shape
         if len(shape) == 1:
-            return self.prepare_value(value, )
+            return self.prepare_value(value, transform) # type: ignore
         elif len(shape) > 1:
-            return self.prepare_matrix(value)
+            return self.prepare_matrix(value, transform) # type: ignore
         raise Exception('Invalid shape {}.'.format(shape))
 
-    def dynamic_value_transform(self, value: ndarray) -> ndarray:
+    @staticmethod
+    def dynamic_value_transform(
+        self,
+        value: ndarray,
+    ) -> Optional[ndarray]:
         # TODO: Normalizer and PCA decorrelation can also help, etc
         # see http://yann.lecun.com/exdb/publis/pdf/lecun-98b.pdf
-        # use one-hot when there are fewer distinct values than 10%
-        # of the number of observations
+        # use one-hot when there are 20 or fewer distinct values, or the
+        # values are not numbers
+
+        num_distinct_values = numpy.unique(value).size
+        print(f'dvt: {num_distinct_values}')
+        if num_distinct_values <= 1:
+            return None  # ignore it
+        if num_distinct_values <= 2:
+            return self.binary(value)
+        if num_distinct_values <= 20 or \
+            not isinstance(value[0][0], numbers.Number):
+            return self.one_hot(value)
+        return self.min_max(value)
+
+    @staticmethod
+    def dynamic_output_value_transform(
+        self,
+        value: ndarray,
+    ) -> Optional[ndarray]:
         if self.ml_task == MLTask.classification:
             num_distinct_values = numpy.unique(value).size
-            preprocessed = None
             if num_distinct_values <= 1:
-                raise NotImplementedError()
+                return np.zeros_like(value)
             if num_distinct_values <= 2:
                 return self.binary(value)
             return self.one_hot(value)
         else:
-            preprocessed = self.min_max(value)
-        return preprocessed
+            return self.min_max(value)
 
     def prepare_value(
         self,
         value: ndarray,
-        value_transform: Callable[['DatasetLoader', ndarray],
-                                  ndarray] = dynamic_value_transform,
-    ) -> ndarray:
+        value_transform: Callable[['DatasetLoader', ndarray], ndarray],
+    ) -> Optional[ndarray]:
         value = numpy.reshape(value, (-1, 1))
         return value_transform(self, value)
 
     def prepare_matrix(
         self,
         values: ndarray,
-        value_transform: Callable[['DatasetLoader', ndarray],
-                                  ndarray] = dynamic_value_transform,
-    ) -> ndarray:
+        value_transform: Callable[['DatasetLoader', ndarray], ndarray],
+    ) -> Optional[ndarray]:
         transformed_list = []
         for i in range(values.shape[1]):
             value = values[:, i]
@@ -153,8 +171,7 @@ class DatasetLoader(ABC):
     def prepare_tensor(
         self,
         values: ndarray,
-        value_transform: Callable[['DatasetLoader', ndarray],
-                                  ndarray] = dynamic_value_transform,
+        value_transform: Callable[['DatasetLoader', ndarray], ndarray],
     ) -> ndarray:
         # apply value_transform to all entries
         return value_transform(self, values)

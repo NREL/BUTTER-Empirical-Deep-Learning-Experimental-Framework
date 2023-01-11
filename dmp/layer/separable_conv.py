@@ -1,6 +1,6 @@
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
 from dmp.layer.convolutional_layer import ConvolutionalLayer
-from dmp.layer.layer import register_layer_type, LayerConfig, Layer, empty_config, empty_inputs
+from dmp.layer.layer import LayerConfig, Layer, empty_config, empty_inputs
 
 
 class SeparableConv(ConvolutionalLayer):
@@ -17,4 +17,3 @@ class SeparableConv(ConvolutionalLayer):
                                         strides, config, input)
 
 
-register_layer_type(SeparableConv)

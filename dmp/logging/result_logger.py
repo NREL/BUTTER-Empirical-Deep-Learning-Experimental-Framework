@@ -18,7 +18,5 @@ class ResultLogger(ABC):
     def log(
         self,
         result: TaskResultRecord,
-        job_id: UUID,
-        worker_id: UUID,
     ) -> None:
         pass

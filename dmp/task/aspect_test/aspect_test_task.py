@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from dmp.task.task import ParameterDict, Task, register_task_type
+from dmp.task.task import ParameterDict, Task
 
 @dataclass
 class AspectTestTask(Task):
@@ -53,5 +53,3 @@ class AspectTestTask(Task):
     #     parameters.pop('run_config.verbose', None)
 
     #     return parameters
-
-register_task_type(AspectTestTask)

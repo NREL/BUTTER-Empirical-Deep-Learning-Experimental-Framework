@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optio
 
 from dmp.layer import *
 
+import dmp.layer.input
 
 _invalid_shape = tuple()
 
@@ -38,7 +39,7 @@ class ComputeLayerShapesVisitor:
         raise NotImplementedError(f'Unsupported Layer of type {type(target)}.')
 
     @_visit.register
-    def _(self, target: Input, config: Dict) -> Tuple:
+    def _(self, target: dmp.layer.input.Input, config: Dict) -> Tuple:
         return config['shape']
 
     @_visit.register
