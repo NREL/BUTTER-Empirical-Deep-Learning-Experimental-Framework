@@ -24,9 +24,14 @@ psycopg2.extensions.register_adapter(dict,
 
 class PostgresCompressedResultLogger(ResultLogger):
     _credentials: Dict[str, Any]
+    _run_table: sql.Identifier
+    _experiment_table: sql.Identifier
+    _experiment_columns: List[Tuple[str, str]]
     _run_columns: List[Tuple[str, str]]
     _log_query_prefix: sql.Composed
     _log_query_suffix: sql.Composed
+    _insert_experiment_prefix: sql.Composed
+    _insert_experiment_suffix: sql.Composed
     _parameter_map: PostgresParameterMap
 
     def __init__(
@@ -36,8 +41,8 @@ class PostgresCompressedResultLogger(ResultLogger):
         super().__init__()
         self._credentials = credentials
 
-        self._run_table: str = 'run'
-        self._experiment_table: str = 'experiment'
+        self._run_table = sql.Identifier('run')
+        self._experiment_table = sql.Identifier('experiment')
 
         self._experiment_columns = [
             ('model_structure', 'bytea'),
@@ -57,9 +62,9 @@ class PostgresCompressedResultLogger(ResultLogger):
             ('run_history', 'bytea'),
         ]
 
-        experiment_columns_sql, cast_experiment_columns_sql = \
+        experiment_columns, cast_experiment_columns = \
             self._make_column_sql(self._experiment_columns)
-        run_columns_sql, cast_run_columns_sql = \
+        run_columns, cast_run_columns = \
             self._make_column_sql(self._run_columns)
 
         self._log_query_prefix = sql.SQL("""
@@ -67,7 +72,7 @@ WITH query_values as (
     SELECT
         (   SELECT experiment_id 
             FROM {experiment_table} e 
-            WHERE e.experiment_parameters = t.experiment_parameters::::integer[]
+            WHERE e.experiment_parameters = t.experiment_parameters::integer[]
             LIMIT 1
         ) experiment_id,
         experiment_parameters::integer[] experiment_parameters,
@@ -77,8 +82,9 @@ WITH query_values as (
         {cast_run_columns}
     FROM
         (VALUES """).format(
-            cast_experiment_columns=cast_experiment_columns_sql,
-            cast_run_columns=cast_run_columns_sql,
+            experiment_table=self._experiment_table,
+            cast_experiment_columns=cast_experiment_columns,
+            cast_run_columns=cast_run_columns,
         )
 
         self._log_query_suffix = sql.SQL(""" ) AS t (
@@ -152,11 +158,41 @@ ON CONFLICT DO NOTHING
 RETURNING 
     experiment_id
 ;""").format(
-            experiment_columns=experiment_columns_sql,
-            run_columns=run_columns_sql,
-            experiment_table=sql.Identifier(self._experiment_table),
-            run_table=sql.Identifier(self._run_table),
+            experiment_columns=experiment_columns,
+            run_columns=run_columns,
+            experiment_table=self._experiment_table,
+            run_table=self._run_table,
         )
+
+        self._insert_experiment_prefix = sql.SQL("""
+INSERT INTO {experiment_table} e (
+    experiment_id,
+    experiment_parameters,
+    experiment_attributes,
+    {experiment_columns}
+)
+SELECT
+    experiment_id::integer,
+    experiment_parameters::integer[] experiment_parameters,
+    experiment_attributes::integer[] experiment_attributes,
+    {cast_experiment_columns}
+FROM
+    (VALUES 
+""").format(
+            experiment_table=self._experiment_table,
+            experiment_columns=experiment_columns,
+            cast_experiment_columns=cast_experiment_columns,
+        )
+
+        self._insert_experiment_suffix = sql.SQL("""
+        ) AS t (
+            experiment_id,
+            experiment_parameters,
+            experiment_attributes,
+            {experiment_columns}
+            )
+ON CONFLICT DO NOTHING
+""").format(experiment_columns=experiment_columns, )
 
         # initialize parameter map
         with CursorManager(self._credentials) as cursor:
@@ -165,6 +201,7 @@ RETURNING
     def log(
         self,
         result: TaskResultRecord,
+        experiment_id: Optional[int] = None,
     ) -> None:
         with CursorManager(self._credentials) as cursor:
 
@@ -182,6 +219,16 @@ RETURNING
 
             run_values = extract_values(result.run_data, self._run_columns)
             run_parameters = get_ids(result.run_data)
+
+            if experiment_id is not None:
+                cursor.execute(self._insert_experiment_prefix +
+                               (sql.SQL(',').join(
+                                   sql.Literal(v) for v in (
+                                       experiment_id,
+                                       experiment_parameters,
+                                       experiment_attributes,
+                                       *experiment_values,
+                                   ))) + self._insert_experiment_suffix)
 
             sql_values = sql.SQL(',').join(
                 sql.Literal(v) for v in (
