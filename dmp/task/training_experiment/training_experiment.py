@@ -42,10 +42,11 @@ class TrainingExperiment(Task):
     optimizer: dict  # contains learning rate (migrate converting to typed config from keras serialization)
     loss: Optional[dict]  # set to None for runtime determination
     early_stopping: Optional[dict]  # direct migration
-    save_every_epochs: int  # migrate with None mapping to -1
 
     record_post_training_metrics: bool  # new default false
     record_times: bool
+    record_model: Optional[Any]
+    record_metrics: Optional[Any]
 
     key_names = TrainingExperimentKeys()
 

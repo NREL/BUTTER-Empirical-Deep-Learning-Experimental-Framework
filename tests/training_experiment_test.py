@@ -1,5 +1,7 @@
 import sys
 
+from jobqueue.job import Job
+
 from dmp import jobqueue_interface
 from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.worker import Worker
@@ -59,10 +61,11 @@ def test_simple():
         },
         loss=None,
         early_stopping=None,
-        save_every_epochs=-1,
         record_post_training_metrics=True,
         record_times=True,
-        )
+        record_model=None,
+        record_metrics=None,
+    )
 
     worker = Worker(
         None,
@@ -71,7 +74,7 @@ def test_simple():
         {},
     )
 
-    results = experiment(worker)
+    results = experiment(worker, Job())
     pprint(marshal.marshal(results), indent=1)
 
 
@@ -109,9 +112,10 @@ def test_growth_experiment():
         },
         loss=None,
         early_stopping=None,
-        save_every_epochs=-1,
         record_post_training_metrics=True,
         record_times=True,
+        record_model=None,
+        record_metrics=None,
         growth_trigger=make_keras_kwcfg(
             'ProportionalStopping',
             restore_best_weights=True,
@@ -139,12 +143,11 @@ def test_growth_experiment():
         {},
     )
 
-    results = experiment(worker)
+    results = experiment(worker, Job())
     pprint(marshal.marshal(results), indent=1)
 
 
 def test_from_optimizer():
-
     '''
 
     
@@ -220,10 +223,11 @@ def test_from_optimizer():
         },
         loss=None,
         early_stopping=None,
-        save_every_epochs=-1,
         record_post_training_metrics=True,
         record_times=True,
-        )
+        record_model=None,
+        record_metrics=None,
+    )
 
     worker = Worker(
         None,
@@ -232,8 +236,9 @@ def test_from_optimizer():
         {},
     )
 
-    results = experiment(worker)
+    results = experiment(worker, Job())
     pprint(marshal.marshal(results), indent=1)
+
 
 # test_growth_experiment()
 # test_simple()

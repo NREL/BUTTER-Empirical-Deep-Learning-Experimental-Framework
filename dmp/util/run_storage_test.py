@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import pandas
 import io
 from itertools import product
@@ -21,6 +21,7 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.layer.dense import Dense
+from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResultLogger
 
 from dmp.logging.postgres_parameter_map import PostgresParameterMap
 import sys
@@ -152,6 +153,8 @@ def main():
 
     column_index_map = {name: i for i, name in enumerate(columns)}
 
+    result_logger = PostgresCompressedResultLogger(credentials)
+
     with CursorManager(credentials, name=str(uuid.uuid1()),
                        autocommit=False) as cursor:
         cursor.itersize = 8
@@ -182,7 +185,7 @@ def main():
             src_parameters = {
                 kind: value
                 for kind, value in old_parameter_map.parameter_from_id(
-                    get_cell('run_parameters'), cursor = cursor)
+                    get_cell('run_parameters'), cursor=cursor)
             }
 
             if not src_parameters.get('run_config.shuffle', False):
@@ -296,12 +299,13 @@ def main():
                 optimizer=optimizer,
                 loss=None,
                 early_stopping=None,
-                save_every_epochs=-1,
                 record_post_training_metrics=False,
                 record_times=False,
+                record_model=None,
+                record_metrics=None,
             )
-            
-            def get_input_shape(target)->List[int]:
+
+            def get_input_shape(target) -> List[int]:
                 if target[''] == 'NInput':
                     return target['shape']
                 return get_input_shape(target['inputs'][0])
@@ -323,12 +327,11 @@ def main():
 
             metrics = experiment._autoconfigure_for_dataset(
                 prepared_dataset, )  # type: ignore
-            metric_names = [m if isinstance(m, str) else m.name for m in metrics]
+            metric_names = [
+                m if isinstance(m, str) else m.name for m in metrics
+            ]
             metric_names.append('loss')
             print(metric_names)
-
-            
-
 
             network = experiment._make_network(experiment.model)
             pprint(get_cell('widths'))
@@ -344,10 +347,11 @@ def main():
                 pprint(marshal.marshal(network))
                 continue
 
-            def map_resource_list(src: Optional[str]) -> Optional[List[int]]:
+            def map_resource_list(src: Optional[str],) ->  Tuple[Optional[List[int]], Optional[int]]:
                 if not isinstance(src, str) or len(src) < 2:
-                    return None
-                return [int(i) for i in (src[1:-2].split(',')) if len(i) > 0]
+                    return None, None
+                l = [int(i) for i in (src[1:-1].split(',')) if len(i) > 0]
+                return l, len(l)
 
             history = {}
             for m in metric_names:
@@ -358,22 +362,26 @@ def main():
                     except KeyError:
                         continue
             num_epochs = max(
-                    (len(h) for h in history.values() if h is not None))
+                (len(h) for h in history.values() if h is not None))
             for h in history.values():
                 h.extend([None] * (num_epochs - len(h)))
-            history['epoch'] = list(range(1, num_epochs+1))
+            history['epoch'] = list(range(1, num_epochs + 1))
+
+
+            worker_info = {
+                'gpu_memory': get_cell('gpu_memory'),
+                'strategy': get_cell('strategy'),
+            }
+
+            for key in ['cpu', 'gpu', 'node']:
+                list_key = key + 's'
+                count_key = 'num_' + key
+                l, num = map_resource_list(get_cell(list_key))
+                worker_info[list_key] = l
+                worker_info[count_key] = num
 
             result_record = experiment._make_result_record(
-                worker_info={
-                    'num_gpus': get_cell('num_gpus'),
-                    'num_nodes': get_cell('num_nodes'),
-                    'num_cpus': get_cell('num_cpus'),
-                    'gpu_memory': get_cell('gpu_memory'),
-                    'nodes': map_resource_list(get_cell('nodes')),
-                    'cpus': map_resource_list(get_cell('cpus')),
-                    'gpus': map_resource_list(get_cell('gpus')),
-                    'strategy': get_cell('strategy'),
-                },
+                worker_info=worker_info,
                 job_id=get_cell('job_id'),
                 dataset=prepared_dataset,  # type: ignore
                 network=network,
@@ -399,9 +407,7 @@ def main():
                 int(src_parameters.get('task_version', 0))
             })
 
-            result_record.experiment_data.update({
-                k: True if get_cell(k) else None
-                for k in [
+            for k in [
                     'primary_sweep',
                     '300_epoch_sweep',
                     '30k_epoch_sweep',
@@ -413,56 +419,62 @@ def main():
                     'learning_rate_batch_size_sweep',
                     'size_adjusted_regularization_sweep',
                     'butter',
-                ]
-            })
+            ]:
+                if get_cell(k):
+                    result_record.experiment_data[k] = True
 
-            pprint(src_parameters)
+            # pprint(src_parameters)
+            # print(dsinfo)
+            # # pprint(marshal.marshal(result_record))
 
-            pprint(result_record)
+            # print('experiment_parameters')
+            # pprint(result_record.experiment_parameters)
 
-            print(dsinfo)
-            ml_task = MLTask.regression
-            if dsinfo['Task'] == 'classification':
-                ml_task = MLTask.classification
-            print(f'ml_task {ml_task}')
+            # print('experiment_data')
+            # pprint(result_record.experiment_data)
 
-            
-            if len(history) > 0:
-                schema, use_byte_stream_split = make_pyarrow_schema(
-                    history.items())
+            # print('run_data')
+            # pprint(result_record.run_data)
 
-                table = pyarrow.Table.from_pydict(history, schema=schema)
+            result_logger.log(result_record,
+                              experiment_id=get_cell('experiment_id'))
 
-                buffer = io.BytesIO()
-                pyarrow_file = pyarrow.PythonFile(buffer)
+            # if len(history) > 0:
+            #     schema, use_byte_stream_split = make_pyarrow_schema(
+            #         history.items())
 
-                parquet.write_table(
-                    table,
-                    pyarrow_file,
-                    # root_path=dataset_path,
-                    # schema=schema,
-                    # partition_cols=partition_cols,
-                    data_page_size=8 * 1024,
-                    # compression='BROTLI',
-                    # compression_level=8,
-                    compression='ZSTD',
-                    compression_level=12,
-                    use_dictionary=False,
-                    use_byte_stream_split=use_byte_stream_split,
-                    version='2.6',
-                    data_page_version='2.0',
-                    # existing_data_behavior='overwrite_or_ignore',
-                    # use_legacy_dataset=False,
-                    write_statistics=False,
-                    # write_batch_size=64,
-                    # dictionary_pagesize_limit=64*1024,
-                )
-                bytes_written = buffer.getbuffer().nbytes
-                # print(
-                #     f'Written {bytes_written} bytes, {uncompressed} uncompressed, ratio {uncompressed/bytes_written}, shrinkage {bytes_written/uncompressed}, max relative error {round(numpy.max(max_relative_error)*100, 6)}%.'
-                # )
-                print(f'Written {bytes_written} bytes.')
-                # shrinkage.append(bytes_written / uncompressed)
+            #     table = pyarrow.Table.from_pydict(history, schema=schema)
+
+            #     buffer = io.BytesIO()
+            #     pyarrow_file = pyarrow.PythonFile(buffer)
+
+            #     parquet.write_table(
+            #         table,
+            #         pyarrow_file,
+            #         # root_path=dataset_path,
+            #         # schema=schema,
+            #         # partition_cols=partition_cols,
+            #         data_page_size=8 * 1024,
+            #         # compression='BROTLI',
+            #         # compression_level=8,
+            #         compression='ZSTD',
+            #         compression_level=12,
+            #         use_dictionary=False,
+            #         use_byte_stream_split=use_byte_stream_split,
+            #         version='2.6',
+            #         data_page_version='2.0',
+            #         # existing_data_behavior='overwrite_or_ignore',
+            #         # use_legacy_dataset=False,
+            #         write_statistics=False,
+            #         # write_batch_size=64,
+            #         # dictionary_pagesize_limit=64*1024,
+            #     )
+            #     bytes_written = buffer.getbuffer().nbytes
+            #     # print(
+            #     #     f'Written {bytes_written} bytes, {uncompressed} uncompressed, ratio {uncompressed/bytes_written}, shrinkage {bytes_written/uncompressed}, max relative error {round(numpy.max(max_relative_error)*100, 6)}%.'
+            #     # )
+            #     print(f'Written {bytes_written} bytes.')
+            #     # shrinkage.append(bytes_written / uncompressed)
             '''
             # TODO: additional run cols
             record_timestamp
