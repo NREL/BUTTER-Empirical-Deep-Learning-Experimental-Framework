@@ -1,4 +1,5 @@
 import os
+from jobqueue.connection_manager import ConnectionManager
 
 from tensorflow.python import traceback
 
@@ -161,19 +162,22 @@ def do_work(args):
 
     credentials = load_credentials('dmp')
     old_parameter_map = None
-    with CursorManager(credentials, binary=True) as cursor:
+    with CursorManager(credentials) as cursor:
         old_parameter_map = PostgresParameterMapV1(cursor)
 
     result_logger = PostgresCompressedResultLogger(credentials)
 
-    worker_id = str(uuid.uuid1())
+    worker_id = str(worker_number) + str(uuid.uuid4())
     total_num_converted = 0
     total_num_excepted = 0
     print(f'Worker {worker_number} : {worker_id} started...')
 
-    while True:
-        with CursorManager(credentials, name=worker_id, binary=True, scrollable=True) as cursor:
-            with cursor.connection.transaction():
+    while True:  #  binary=True, scrollable=True
+        num_converted = 0
+        num_excepted = 0
+
+        with ConnectionManager(credentials) as connection:
+            with connection.transaction():
                 # cursor.itersize = 8
 
                 column_selection = sql.SQL(', ').join([
@@ -202,23 +206,22 @@ FROM
                     column_selection=column_selection,
                     block_size=sql.Literal(block_size),
                 )
+                with connection.cursor(name=worker_id) as cursor:
+                    cursor.execute(q)
 
-                cursor.execute(q)
-
-                num_converted = 0
-                num_excepted = 0
-                eids = set()
-                for row in cursor:
-                    eids.add(row[0])
-                    try:
-                        if convert_run(old_parameter_map, result_logger, row):
-                            num_converted += 1
-                        else:
+                    eids = set()
+                    for row in cursor:
+                        eids.add(row[0])
+                        try:
+                            if convert_run(old_parameter_map, result_logger,
+                                           row):
+                                num_converted += 1
+                            else:
+                                num_excepted += 1
+                        except Exception as e:
                             num_excepted += 1
-                    except Exception as e:
-                        num_excepted += 1
-                        print(f'failed on Exception: {e}')
-                        traceback.print_exc()
+                            print(f'failed on Exception: {e}')
+                            traceback.print_exc()
 
                 eid_values = sql.SQL(',').join(
                     (sql.Literal(v) for v in sorted(eids)))
@@ -228,7 +231,7 @@ UPDATE experiment_migration
 WHERE
     experiment_id IN ({eid_values})
                 ;""").format(eid_values=eid_values)
-                cursor.connection.execute(q)
+                connection.execute(q)
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(

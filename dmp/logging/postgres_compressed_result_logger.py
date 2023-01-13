@@ -3,6 +3,7 @@ from typing import Any, Dict, Iterable, Optional, Tuple, List
 import io
 import uuid
 import hashlib
+from jobqueue.connection_manager import ConnectionManager
 from psycopg import sql
 import simplejson
 import psycopg
@@ -104,11 +105,6 @@ inserted_experiment as (
         experiment_attributes,
         {experiment_columns}
     FROM query_values
-    WHERE NOT EXISTS (
-                SELECT 1 
-                FROM {experiment_table} e 
-                WHERE e.experiment_uid = query_values.experiment_uid
-                )
     ON CONFLICT DO NOTHING
 )
 INSERT INTO {run_table} (
@@ -128,8 +124,8 @@ ON CONFLICT DO NOTHING
         )
 
         # initialize parameter map
-        with CursorManager(self._credentials, binary=True) as cursor:
-            self._parameter_map = PostgresAttributeMap(cursor)
+        with ConnectionManager(self._credentials) as connection:
+            self._parameter_map = PostgresAttributeMap(connection)
 
     @staticmethod
     def make_experiment_uid(experiment_parameters):
@@ -141,10 +137,10 @@ ON CONFLICT DO NOTHING
         self,
         result: TaskResultRecord,
     ) -> None:
-        with CursorManager(self._credentials, binary=True) as cursor:
+        with ConnectionManager(self._credentials) as connection:
 
             experiment_parameters = self._get_ids(result.experiment_parameters,
-                                                  cursor)
+                                                  connection)
             experiment_uid = self.make_experiment_uid(experiment_parameters)
 
             experiment_column_values = PostgresCompressedResultLogger._extract_values(
@@ -153,7 +149,7 @@ ON CONFLICT DO NOTHING
             )
 
             experiment_attributes = self._get_ids(result.experiment_data,
-                                                  cursor)
+                                                  connection)
             experiment_attributes.extend(experiment_parameters)
             experiment_attributes.sort()
 
@@ -181,8 +177,10 @@ ON CONFLICT DO NOTHING
                 ))
 
             query = self._log_query_prefix + sql_values + self._log_query_suffix
-            # print(cursor.mogrify(query).decode('utf-8'))
-            cursor.execute(query)
+            connection.execute(query)
+            # with psycopg.ClientCursor(connection) as cursor:
+            #     print(cursor.mogrify(query))
+            #     cursor.execute(query)
 
     # def _split_data_fields(
     #     self,
@@ -227,11 +225,11 @@ ON CONFLICT DO NOTHING
     def _get_ids(
         self,
         parameter_dict: Dict[str, Any],
-        cursor,
+        connection,
     ) -> List[int]:
         return self._parameter_map.to_sorted_attribute_ids(
             parameter_dict,
-            cursor=cursor,
+            connection=connection,
         )
 
     def _make_column_sql(

@@ -122,7 +122,7 @@ class PostgresAttributeMap:
 
     def __init__(
         self,
-        cursor,
+        connection,
         attribute_table='attr',
     ) -> None:
         super().__init__()
@@ -170,35 +170,36 @@ class PostgresAttributeMap:
              for column_name, column_id, column_type in index_and_value_columns
              ))
 
-        cursor.execute(
-            sql.SQL("SELECT {columns} FROM {attribute_table}").format(
-                columns=sql.SQL(',').join(
-                    (column_id
-                     for column_name, column_id, column_type in all_columns)),
-                attribute_table=self._attribute_table,
-            ))
-
-        for row in cursor.fetchall():
-            value_type = get_attribute_value_type_for_type_code(
-                row[self._type_column])
-            value_column = self._type_to_column_map[value_type]
-            database_value = None if value_column is None else row[value_column]
-            value = self._recover_value_from_database(
-                value_type,
-                database_value,
-            )
-            comparable_value = self._make_comparable_value(value_type, value)
-
-            self._register_attribute(
-                Attribute(
-                    row[self._id_column],
-                    row[self._kind_column],
-                    value_type,
-                    comparable_value,
-                    value,
+        with connection.cursor(binary=True) as cursor:
+            cursor.execute(
+                sql.SQL("SELECT {columns} FROM {attribute_table}").format(
+                    columns=sql.SQL(',').join(
+                        (column_id
+                        for column_name, column_id, column_type in all_columns)),
+                    attribute_table=self._attribute_table,
                 ))
 
-    def to_attribute_id(self, kind: str, value: Any, cursor=None) -> int:
+            for row in cursor.fetchall():
+                value_type = get_attribute_value_type_for_type_code(
+                    row[self._type_column])
+                value_column = self._type_to_column_map[value_type]
+                database_value = None if value_column is None else row[value_column]
+                value = self._recover_value_from_database(
+                    value_type,
+                    database_value,
+                )
+                comparable_value = self._make_comparable_value(value_type, value)
+
+                self._register_attribute(
+                    Attribute(
+                        row[self._id_column],
+                        row[self._kind_column],
+                        value_type,
+                        comparable_value,
+                        value,
+                    ))
+
+    def to_attribute_id(self, kind: str, value: Any, connection=None) -> int:
         value_type = get_attribute_value_type_for_value(value)
         comparable_value = self._make_comparable_value(value_type, value)
 
@@ -206,7 +207,7 @@ class PostgresAttributeMap:
             return self._kind_type_value_map[kind][value_type][
                 comparable_value].id_
         except KeyError:
-            if cursor is None:
+            if connection is None:
                 raise KeyError(
                     f'Unable to translate attribute {kind} : {value}.')
 
@@ -252,21 +253,22 @@ SELECT * from inserted
                                         for v in (value_type.type_code, kind,
                                                   *(typed_values[1:]))), ))
 
-            # print(cursor.mogrify(query))
-            cursor.execute(query)
+            # print(connection.mogrify(query))
+            with connection.cursor() as cursor:
+                cursor.execute(query)
 
-            results = cursor.fetchall()
-            if len(results) >= 1:
-                result = results[0]
-                if result is not None and result[0] is not None:
-                    self._register_attribute(
-                        Attribute(
-                            int(result[0]),
-                            kind,
-                            value_type,
-                            comparable_value,
-                            value,
-                        ))
+                results = cursor.fetchall()
+                if len(results) >= 1:
+                    result = results[0]
+                    if result is not None and result[0] is not None:
+                        self._register_attribute(
+                            Attribute(
+                                int(result[0]),
+                                kind,
+                                value_type,
+                                comparable_value,
+                                value,
+                            ))
             return self.to_attribute_id(kind, value, None)  # retry
 
     def get_all_kinds(self) -> Sequence[str]:
@@ -281,34 +283,34 @@ SELECT * from inserted
     def to_attribute_ids(
         self,
         kvl: Union[Dict[str, Any], Iterable[Tuple[str, Any]]],
-        cursor=None,
+        connection=None,
     ) -> Sequence[int]:
         if isinstance(kvl, dict):
             kvl = kvl.items()  # type: ignore
         return [
-            self.to_attribute_id(kind, value, cursor) for kind, value in kvl
+            self.to_attribute_id(kind, value, connection) for kind, value in kvl
         ]
 
     def to_sorted_attribute_ids(
         self,
         kvl: Union[Dict[str, Any], Iterable[Tuple[str, Any]]],
-        cursor=None,
+        connection=None,
     ) -> List[int]:
-        return sorted(self.to_attribute_ids(kvl, cursor=cursor))
+        return sorted(self.to_attribute_ids(kvl, connection=connection))
 
     def attribute_from_id(
         self,
         id_: int,
-        cursor=None,
+        connection=None,
     ) -> Attribute:
         return self._id_map[id_]
 
     def attribute_from_ids(
         self,
         ids: Iterable[int],
-        cursor=None,
+        connection=None,
     ) -> List[Attribute]:
-        return [self.attribute_from_id(e, cursor) for e in i]
+        return [self.attribute_from_id(e, connection) for e in i]
 
     def _register_attribute(
         self,
