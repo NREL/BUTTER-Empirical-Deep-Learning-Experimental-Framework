@@ -161,7 +161,7 @@ def do_work(args):
 
     credentials = load_credentials('dmp')
     old_parameter_map = None
-    with CursorManager(credentials) as cursor:
+    with CursorManager(credentials, binary=True) as cursor:
         old_parameter_map = PostgresParameterMapV1(cursor)
 
     result_logger = PostgresCompressedResultLogger(credentials)
@@ -172,9 +172,9 @@ def do_work(args):
     print(f'Worker {worker_number} : {worker_id} started...')
 
     while True:
-        with CursorManager(credentials, name=worker_id) as cursor:
+        with CursorManager(credentials, name=worker_id, binary=True, scrollable=True) as cursor:
             with cursor.connection.transaction():
-                cursor.itersize = 8
+                # cursor.itersize = 8
 
                 column_selection = sql.SQL(', ').join([
                     sql.SQL('e.{col} {col}').format(col=sql.Identifier(c))

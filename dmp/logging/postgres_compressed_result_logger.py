@@ -128,7 +128,7 @@ ON CONFLICT DO NOTHING
         )
 
         # initialize parameter map
-        with CursorManager(self._credentials) as cursor:
+        with CursorManager(self._credentials, binary=True) as cursor:
             self._parameter_map = PostgresAttributeMap(cursor)
 
     @staticmethod
@@ -141,7 +141,7 @@ ON CONFLICT DO NOTHING
         self,
         result: TaskResultRecord,
     ) -> None:
-        with CursorManager(self._credentials) as cursor:
+        with CursorManager(self._credentials, binary=True) as cursor:
 
             experiment_parameters = self._get_ids(result.experiment_parameters,
                                                   cursor)

@@ -8,6 +8,7 @@ dependencies:
 - numpy
 - conda-forge::tensorflow >= 2.7
 - simplejson
+- libpq
 - pip:
   - pyarrow >= 10
   - psycopg >= 3
