@@ -2,11 +2,8 @@ name: dmp
 dependencies:
 - python=3.9
 - pandas
-- jupyter
 - matplotlib
 - scikit-learn
-- statsmodels
-- seaborn
 - pip
 - scipy
 - numpy
