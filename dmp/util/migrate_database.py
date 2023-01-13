@@ -338,6 +338,7 @@ def convert_run(old_parameter_map, result_logger, row) -> bool:
     # input shape, output shape, ml_task
     experiment = TrainingExperiment(
         seed=int(get_cell('seed')),
+        precision='float32',
         batch=str(src_parameters.get('batch', None)),  # type: ignore
         dataset=DatasetSpec(
             name=dataset_name,

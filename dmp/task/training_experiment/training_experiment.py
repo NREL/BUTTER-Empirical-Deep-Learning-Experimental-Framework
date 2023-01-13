@@ -36,6 +36,7 @@ from dmp.worker import Worker
 
 @dataclass
 class TrainingExperiment(Task):
+    precision: str  # floating point precision {'float16', 'float32', 'float64'}
     dataset: DatasetSpec  # migrate dataset stuff into here
     model: ModelSpec  # defines network
     fit: dict  # contains batch size, epochs, shuffle (migrate from run_config)
@@ -54,7 +55,8 @@ class TrainingExperiment(Task):
     def version(self) -> int:
         return 10
 
-    def __call__(self, worker : Worker, job:Job, *args, **kwargs) -> TaskResultRecord:
+    def __call__(self, worker: Worker, job: Job, *args,
+                 **kwargs) -> TaskResultRecord:
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
         metrics = self._autoconfigure_for_dataset(dataset)
@@ -147,7 +149,7 @@ class TrainingExperiment(Task):
             else:
                 raise NotImplementedError(
                     f'Unsupported input shape {input_shape}.')
-        
+
         if model.output is None:
             model.output = Dense.make(
                 int(dataset.output_shape[0]),
@@ -182,6 +184,12 @@ class TrainingExperiment(Task):
         return model_spec.make_network()
 
     def _make_model_from_network(self, worker, network: NetworkInfo):
+        if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
+            keras.backend.set_floatx('float32')
+            keras.mixed_precision.set_global_policy(
+                keras.mixed_precision.Policy(self.precision))
+        else:
+            tensorflow.keras.backend.set_floatx(self.precision)
         with worker.strategy.scope() as s:  # type: ignore
             # tensorflow.config.optimizer.set_jit(True)
             return make_keras_model_from_network(network)
@@ -345,15 +353,9 @@ class TrainingExperiment(Task):
 
         run_data.update(worker_info)
 
-        for key in (
-                'seed',
-                'batch',
-                'task_version',
-                'record_post_training_metrics',
-                'record_times',
-                'record_model',
-                'record_metrics'
-        ):
+        for key in ('seed', 'precision', 'batch', 'task_version',
+                    'record_post_training_metrics', 'record_times',
+                    'record_model', 'record_metrics'):
             run_data[key] = experiment_parameters.pop(key, None)
 
         return TaskResultRecord(

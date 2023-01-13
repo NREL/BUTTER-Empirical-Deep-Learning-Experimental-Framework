@@ -71,6 +71,8 @@ if __name__ == "__main__":
 
     gpus = list(range(first_gpu, first_gpu + num_gpus))
 
+    tensorflow.keras.backend.set_floatx('float32')
+
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     print('\n', flush=True)
