@@ -47,7 +47,6 @@ class DatasetLoader(ABC):
         if data is None:
             data = self._prepare_dataset_data(self._fetch_from_source())
             self._write_to_cache(data)
-            self.ml_task = data.ml_task
         return data
 
     def _get_cache_path(self, name):
@@ -106,9 +105,9 @@ class DatasetLoader(ABC):
     def prepare_data(self, value, transform) -> ndarray:
         shape = value.shape
         if len(shape) == 1:
-            return self.prepare_value(value, transform) # type: ignore
+            return self.prepare_value(value, transform)  # type: ignore
         elif len(shape) > 1:
-            return self.prepare_matrix(value, transform) # type: ignore
+            return self.prepare_matrix(value, transform)  # type: ignore
         raise Exception('Invalid shape {}.'.format(shape))
 
     @staticmethod

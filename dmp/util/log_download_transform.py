@@ -25,7 +25,7 @@ del _credentials['table_name']
 from pathos.multiprocessing import Pool
 import math
 
-from psycopg2.extensions import register_adapter, AsIs
+from psycopg.extensions import register_adapter, AsIs
 
 
 def adapt_numpy_float64(numpy_float64):

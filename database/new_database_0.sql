@@ -6,6 +6,8 @@ truncate table run2;
 truncate table experiment2;
 truncate table parameter2;
 
+ALTER SEQUENCE parameter2_parameter_id_seq RESTART WITH 1;
+
 CREATE TABLE parameter2
 (
     value_int bigint,
@@ -18,6 +20,8 @@ CREATE TABLE parameter2
     kind text NOT NULL,
     PRIMARY KEY (parameter_id)
 );
+
+ALTER TABLE parameter2 SET (fillfactor = 100);
 
 ALTER TABLE parameter2
   ADD CONSTRAINT parameter_constrain_proper_type
@@ -88,10 +92,16 @@ CREATE TABLE experiment2
     experiment_parameters integer[] NOT NULL,
     experiment_attributes integer[],
     experiment_data jsonb,
-    model_structure bytea,
+    model_structure jsonb,
     PRIMARY KEY (experiment_id),
     UNIQUE (experiment_parameters)
 );
+
+ALTER TABLE experiment2 SET (fillfactor = 100);
+ALTER TABLE experiment2 SET (parallel_workers = 16);
+
+ALTER TABLE experiment2 ALTER COLUMN experiment_parameters SET storage PLAIN;
+ALTER TABLE experiment2 ALTER COLUMN experiment_attributes SET storage PLAIN;
 
 CREATE INDEX ON experiment2 USING gin (experiment_parameters);
 CREATE INDEX ON experiment2 USING gin (experiment_attributes);
@@ -99,14 +109,13 @@ CREATE INDEX ON experiment2 USING gin (experiment_data);
 
 CREATE TABLE run2
 (
-    experiment_id integer,
+    experiment_id integer NOT NULL,
     
     task_version smallint,
     num_nodes smallint,
 
     record_timestamp timestamp DEFAULT CURRENT_TIMESTAMP,
-    run_attributes integer[] NOT NULL,
-    
+        
     slurm_job_id bigint,
     job_id uuid NOT NULL,
     run_id uuid NOT NULL,
@@ -118,10 +127,17 @@ CREATE TABLE run2
     seed bigint,
     host_name text,
     
+    run_attributes integer[] NOT NULL,
     run_data jsonb,
     run_history bytea,
     PRIMARY KEY (run_id)
 );
+
+ALTER TABLE run2 ALTER COLUMN run_attributes SET storage PLAIN;
+ALTER TABLE run2 ALTER COLUMN run_history SET storage EXTERNAL;
+
+ALTER TABLE run2 SET (fillfactor = 100);
+ALTER TABLE run2 SET (parallel_workers = 16);
 
 CREATE INDEX ON run2 USING btree (experiment_id);
 

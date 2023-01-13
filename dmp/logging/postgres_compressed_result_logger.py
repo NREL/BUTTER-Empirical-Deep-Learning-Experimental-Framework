@@ -1,11 +1,13 @@
 from uuid import UUID
 from typing import Any, Dict, Iterable, Optional, Tuple, List
 import io
-from psycopg2 import sql
+import uuid
+import hashlib
+from psycopg import sql
 import simplejson
-import psycopg2
+import psycopg
 import pyarrow
-from dmp.logging.postgres_parameter_map import PostgresParameterMap
+from dmp.logging.postgres_attribute_map import PostgresAttributeMap
 from dmp.logging.result_logger import ResultLogger
 
 from jobqueue.cursor_manager import CursorManager
@@ -14,13 +16,13 @@ from dmp.parquet_util import make_pyarrow_schema
 
 from dmp.task.task_result_record import TaskResultRecord
 
-psycopg2.extras.register_uuid()
-psycopg2.extras.register_default_json(loads=simplejson.loads,
-                                      globally=True)  # type: ignore
-psycopg2.extras.register_default_jsonb(loads=simplejson.loads,
-                                       globally=True)  # type: ignore
-psycopg2.extensions.register_adapter(dict,
-                                     psycopg2.extras.Json)  # type: ignore
+# psycopg.extras.register_uuid()
+# psycopg.extras.register_default_json(loads=simplejson.loads,
+#                                       globally=True)  # type: ignore
+# psycopg.extras.register_default_jsonb(loads=simplejson.loads,
+#                                        globally=True)  # type: ignore
+# psycopg.extensions.register_adapter(dict,
+#                                      psycopg.extras.Json)  # type: ignore
 
 
 class PostgresCompressedResultLogger(ResultLogger):
@@ -29,24 +31,21 @@ class PostgresCompressedResultLogger(ResultLogger):
     _experiment_table: sql.Identifier
 
     _experiment_columns: List[Tuple[str, str]] = [
-        ('experiment_data', 'jsonb'),
-        ('model_structure', 'bytea'),
+        ('experiment_id', 'integer'),
     ]
 
-    _experiment_data_idx: int = 0
-    _experiment_data_columns: Optional[List[str]] = None
-
     _run_columns: List[Tuple[str, str]] = [
+        ('run_id', 'uuid'),
+        ('job_id', 'uuid'),
+        ('seed', 'bigint'),
+        ('slurm_job_id', 'bigint'),
         ('task_version', 'smallint'),
         ('num_nodes', 'smallint'),
-        ('slurm_job_id', 'bigint'),
-        ('job_id', 'uuid'),
-        ('run_id', 'uuid'),
         ('num_cpus', 'smallint'),
         ('num_gpus', 'smallint'),
         ('gpu_memory', 'integer'),
-        ('seed', 'bigint'),
         ('host_name', 'text'),
+        ('batch', 'text'),
         ('run_data', 'jsonb'),
         ('run_history', 'bytea'),
     ]
@@ -54,13 +53,9 @@ class PostgresCompressedResultLogger(ResultLogger):
     _run_data_column_index: int = -2
     _run_history_column_index: int = -1
 
-    _run_data_columns: Optional[List[str]] = None
-
     _log_query_prefix: sql.Composed
     _log_query_suffix: sql.Composed
-    _insert_experiment_prefix: sql.Composed
-    _insert_experiment_suffix: sql.Composed
-    _parameter_map: PostgresParameterMap
+    _parameter_map: PostgresAttributeMap
 
     def __init__(
         self,
@@ -80,15 +75,9 @@ class PostgresCompressedResultLogger(ResultLogger):
         self._log_query_prefix = sql.SQL("""
 WITH query_values as (
     SELECT
-        (   SELECT experiment_id 
-            FROM {experiment_table} e 
-            WHERE e.experiment_parameters = t.experiment_parameters::integer[]
-            LIMIT 1
-        ) experiment_id,
-        experiment_parameters::integer[] experiment_parameters,
+        experiment_uid::uuid,
         experiment_attributes::integer[] experiment_attributes,
         {cast_experiment_columns},
-        run_attributes::integer[] run_attributes,
         {cast_run_columns}
     FROM
         ( VALUES ( """).format(
@@ -98,74 +87,39 @@ WITH query_values as (
         )
 
         self._log_query_suffix = sql.SQL(""" ) ) AS t (
-            experiment_parameters,
+            experiment_uid,
             experiment_attributes,
             {experiment_columns},
-            run_attributes,
             {run_columns}
             )
 ),
-to_insert as (
+inserted_experiment as (
+    INSERT INTO {experiment_table} AS e (
+        experiment_uid,
+        experiment_attributes,
+        {experiment_columns}
+    )
     SELECT
-        experiment_parameters,
+        experiment_uid,
         experiment_attributes,
         {experiment_columns}
     FROM query_values
-    WHERE experiment_id IS NULL
-),
-inserted as (
-    INSERT INTO {experiment_table} AS e (
-        experiment_parameters,
-        experiment_attributes,
-        {experiment_columns}
-    )
-    SELECT *
-    FROM to_insert
-    ON CONFLICT (experiment_parameters) DO UPDATE
-        SET experiment_id = e.experiment_id WHERE FALSE
-    RETURNING 
-        experiment_id, 
-        experiment_parameters
-),
-retried AS (
-    INSERT INTO {experiment_table} AS e (
-        experiment_parameters,
-        experiment_attributes,
-        {experiment_columns}
-    )
-    SELECT to_insert.*
-    FROM
-        to_insert
-        LEFT JOIN inserted USING (experiment_parameters)
-    WHERE inserted.experiment_id IS NULL
-    ON CONFLICT (experiment_parameters) DO UPDATE
-        SET experiment_id = e.experiment_id WHERE FALSE
-    RETURNING 
-        experiment_id, 
-        experiment_parameters
+    WHERE NOT EXISTS (
+                SELECT 1 
+                FROM {experiment_table} e 
+                WHERE e.experiment_uid = query_values.experiment_uid
+                )
+    ON CONFLICT DO NOTHING
 )
 INSERT INTO {run_table} (
-    experiment_id,
-    run_attributes,
+    experiment_uid,
     {run_columns}
     )
-SELECT
-    COALESCE (
-        query_values.experiment_id,
-        new_experiments.experiment_id
-    ) experiment_id,
-    run_attributes,
+SELECT 
+    experiment_uid,
     {run_columns}
-FROM
-    query_values
-    LEFT JOIN (
-        SELECT * FROM inserted
-        UNION ALL
-        SELECT * FROM retried
-        ) new_experiments USING (experiment_parameters)
+FROM query_values
 ON CONFLICT DO NOTHING
-RETURNING 
-    experiment_id
 ;""").format(
             experiment_columns=experiment_columns,
             run_columns=run_columns,
@@ -173,67 +127,42 @@ RETURNING
             run_table=self._run_table,
         )
 
-        self._insert_experiment_prefix = sql.SQL("""
-INSERT INTO {experiment_table} AS e (
-    experiment_id,
-    experiment_parameters,
-    experiment_attributes,
-    {experiment_columns}
-)
-SELECT
-    experiment_id::integer,
-    experiment_parameters::integer[] experiment_parameters,
-    experiment_attributes::integer[] experiment_attributes,
-    {cast_experiment_columns}
-FROM
-    (VALUES ( 
-""").format(
-            experiment_table=self._experiment_table,
-            experiment_columns=experiment_columns,
-            cast_experiment_columns=cast_experiment_columns,
-        )
-
-        self._insert_experiment_suffix = sql.SQL(""" ) 
-        ) AS t (
-            experiment_id,
-            experiment_parameters,
-            experiment_attributes,
-            {experiment_columns}
-            )
-ON CONFLICT DO NOTHING
-""").format(experiment_columns=experiment_columns, )
-
         # initialize parameter map
         with CursorManager(self._credentials) as cursor:
-            self._parameter_map = PostgresParameterMap(cursor)
+            self._parameter_map = PostgresAttributeMap(cursor)
+
+    @staticmethod
+    def make_experiment_uid(experiment_parameters):
+        uid_string = '{' + ','.join(str(i)
+                                    for i in experiment_parameters) + '}'
+        return uuid.UUID(hashlib.md5(uid_string.encode('utf-8')).hexdigest())
 
     def log(
         self,
         result: TaskResultRecord,
-        experiment_id: Optional[int] = None,
     ) -> None:
         with CursorManager(self._credentials) as cursor:
 
-            experiment_parameters = self._get_ids(
-                cursor,
-                result.experiment_parameters,
-            )
+            experiment_parameters = self._get_ids(result.experiment_parameters,
+                                                  cursor)
+            experiment_uid = self.make_experiment_uid(experiment_parameters)
 
-            experiment_column_data, experiment_attributes = self._split_data_fields(
-                cursor,
+            experiment_column_values = PostgresCompressedResultLogger._extract_values(
                 result.experiment_data,
                 self._experiment_columns,
-                self._experiment_data_columns,
-                self._experiment_data_idx,
             )
 
-            run_column_values, run_attributes = self._split_data_fields(
-                cursor,
-                result.run_data,
-                self._run_columns,
-                self._run_data_columns,
-                self._run_data_column_index,
-            )
+            experiment_attributes = self._get_ids(result.experiment_data,
+                                                  cursor)
+            experiment_attributes.extend(experiment_parameters)
+            experiment_attributes.sort()
+
+            run_column_values = PostgresCompressedResultLogger._extract_values(
+                result.run_data, self._run_columns)
+            run_column_values[self._run_data_column_index] = \
+                psycopg.types.json.Jsonb(result.run_data)
+
+            # print(f'run_column_values {run_column_values}\nrun_attributes {run_attributes}')
 
             with io.BytesIO() as history_buffer:
                 self._make_history_bytes(
@@ -243,23 +172,11 @@ ON CONFLICT DO NOTHING
                 run_column_values[self._run_history_column_index] = \
                     history_buffer.getvalue()
 
-            if experiment_id is not None:
-                q = self._insert_experiment_prefix + (sql.SQL(', ').join(
-                    sql.Literal(v) for v in (
-                        experiment_id,
-                        experiment_parameters,
-                        experiment_attributes,
-                        *experiment_column_data,
-                    ))) + self._insert_experiment_suffix
-                # print(cursor.mogrify(q).decode('utf-8'))
-                cursor.execute(q)
-
             sql_values = sql.SQL(', ').join(
                 sql.Literal(v) for v in (
-                    experiment_parameters,
+                    experiment_uid,
                     experiment_attributes,
-                    *experiment_column_data,
-                    run_attributes,
+                    *experiment_column_values,
                     *run_column_values,
                 ))
 
@@ -267,28 +184,34 @@ ON CONFLICT DO NOTHING
             # print(cursor.mogrify(query).decode('utf-8'))
             cursor.execute(query)
 
-    def _split_data_fields(
-        self,
-        cursor,
-        all_data: Dict[str, Any],
-        data_columns: Iterable[Tuple[str, str]],
-        data_keys: Optional[Iterable[str]],
-        data_index: int,
-    ) -> Tuple[List[Any], List[int]]:
-        column_values = PostgresCompressedResultLogger._extract_values(
-            all_data, data_columns)
-        data_map = PostgresCompressedResultLogger._extract_map(
-            all_data, data_keys)
-        column_values[data_index] = data_map
-        data_attributes = self._get_ids(all_data, cursor)
-        return column_values, data_attributes
+    # def _split_data_fields(
+    #     self,
+    #     cursor,
+    #     all_data: Dict[str, Any],
+    #     data_columns: Iterable[Tuple[str, str]],
+    #     data_keys: Optional[Iterable[str]],
+    #     data_index: int,
+    # ) -> Tuple[List[Any], List[int]]:
+    #     column_values = PostgresCompressedResultLogger._extract_values(
+    #         all_data, data_columns)
+    #     data_map = PostgresCompressedResultLogger._extract_map(
+    #         all_data, data_keys)
+    #     column_values[data_index] = data_map
+    #     data_attributes = self._get_ids(all_data, cursor)
+    #     return column_values, data_attributes
 
     @staticmethod
     def _extract_values(
         target: Dict[str, Any],
         columns: Iterable[Tuple[str, str]],
     ) -> List[Any]:
-        return [target.pop(name, None) for name, type_name in columns]
+        result = []
+        for name, type_name in columns:
+            value = target.pop(name, None)
+            if type_name == 'jsonb' and value is not None:
+                value = psycopg.types.json.Jsonb(value)
+            result.append(value)
+        return result
 
     @staticmethod
     def _extract_map(
@@ -297,16 +220,18 @@ ON CONFLICT DO NOTHING
     ) -> Optional[Dict[str, Any]]:
         if columns is None:
             return None
-        return {name: target.pop(name, None) for name in columns}
+        return psycopg.types.json.Jsonb(
+            {name: target.pop(name, None)
+             for name in columns})
 
     def _get_ids(
         self,
-        cursor,
         parameter_dict: Dict[str, Any],
+        cursor,
     ) -> List[int]:
-        return self._parameter_map.to_sorted_parameter_ids(
+        return self._parameter_map.to_sorted_attribute_ids(
             parameter_dict,
-            cursor,
+            cursor=cursor,
         )
 
     def _make_column_sql(

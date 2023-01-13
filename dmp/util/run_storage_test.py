@@ -9,7 +9,7 @@ from multiprocessing import Pool
 import os
 from pprint import pprint
 import uuid
-from psycopg2 import sql
+from psycopg import sql
 
 import pyarrow
 import pyarrow.parquet as parquet
@@ -23,7 +23,7 @@ from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.layer.dense import Dense
 from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResultLogger
 
-from dmp.logging.postgres_parameter_map import PostgresParameterMap
+from dmp.logging.postgres_attribute_map import PostgresAttributeMap
 import sys
 from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
@@ -64,7 +64,7 @@ def main():
     new_parameter_map = None
     with CursorManager(credentials) as cursor:
         old_parameter_map = PostgresParameterMapV1(cursor)
-        new_parameter_map = PostgresParameterMap(cursor)
+        new_parameter_map = PostgresAttributeMap(cursor)
 
     # columns
     # schema = pyarrow.schema(columns)
@@ -375,10 +375,9 @@ def main():
 
             for key in ['cpu', 'gpu', 'node']:
                 list_key = key + 's'
-                count_key = 'num_' + key
                 l, num = map_resource_list(get_cell(list_key))
                 worker_info[list_key] = l
-                worker_info[count_key] = num
+                worker_info['num_' + key] = num
 
             result_record = experiment._make_result_record(
                 worker_info=worker_info,

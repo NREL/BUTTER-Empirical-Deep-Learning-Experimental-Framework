@@ -1,8 +1,8 @@
 from math import ceil
 import ujson
-from psycopg2 import sql
-import psycopg2.extras as extras
-import psycopg2
+from psycopg import sql
+import psycopg.extras as extras
+import psycopg
 import jobqueue.connect as connect
 from pprint import pprint
 import sys
@@ -10,11 +10,11 @@ from jobqueue.cursor_manager import CursorManager
 
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 
-from dmp.logging.postgres_parameter_map import PostgresParameterMap
+from dmp.logging.postgres_attribute_map import PostgresAttributeMap
 
 sys.path.append("../../")
 
-psycopg2.extras.register_uuid()  # type: ignore
+psycopg.extras.register_uuid()  # type: ignore
 
 class ParameterUpdate:
 
@@ -22,7 +22,7 @@ class ParameterUpdate:
         print('init ParameterUpdate')
         with CursorManager(credentials) as cursor:
             self.cursor = cursor
-            self._parameter_map = PostgresParameterMap(cursor)
+            self._parameter_map = PostgresAttributeMap(cursor)
             self._experiment_table = sql.Identifier("experiment")
             self._run_table = sql.Identifier("run")
             self._run_settings_table = sql.Identifier("run_settings")

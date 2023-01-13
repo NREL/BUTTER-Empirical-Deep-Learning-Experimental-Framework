@@ -1,6 +1,6 @@
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
 
-from psycopg2 import sql
+from psycopg import sql
 
 
 class PostgresParameterMapV1:

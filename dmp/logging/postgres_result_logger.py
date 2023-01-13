@@ -1,29 +1,29 @@
 
 from pprint import pprint
 from uuid import UUID
-from dmp.logging.postgres_parameter_map import PostgresParameterMap
+from dmp.logging.postgres_attribute_map import PostgresAttributeMap
 from dmp.logging.result_logger import ResultLogger
 
 
 from jobqueue.cursor_manager import CursorManager
 
-from psycopg2 import sql
+from psycopg import sql
 
 from typing import Any, Dict, Iterable, Optional, Tuple, List
 
 import simplejson
-import psycopg2
+import psycopg
 
-psycopg2.extras.register_default_json(loads=simplejson.loads, globally=True)  # type: ignore
-psycopg2.extras.register_default_jsonb(loads=simplejson.loads, globally=True)  # type: ignore
-psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)  # type: ignore
+psycopg.extras.register_default_json(loads=simplejson.loads, globally=True)  # type: ignore
+psycopg.extras.register_default_jsonb(loads=simplejson.loads, globally=True)  # type: ignore
+psycopg.extensions.register_adapter(dict, psycopg.extras.Json)  # type: ignore
 
 class PostgresResultLogger(ResultLogger):
     _credentials: Dict[str, Any]
     _run_columns: List[Tuple[str, str]]
     _log_query_prefix: sql.Composed
     _log_query_suffix: sql.Composed
-    _parameter_map: PostgresParameterMap
+    _parameter_map: PostgresAttributeMap
 
     def __init__(self,
                  credentials: Dict[str, Any],
@@ -205,7 +205,7 @@ ON CONFLICT DO NOTHING
 
         # initialize parameter map
         with CursorManager(self._credentials) as cursor:
-            self._parameter_map = PostgresParameterMap(cursor)
+            self._parameter_map = PostgresAttributeMap(cursor)
         pass
 
     def log(

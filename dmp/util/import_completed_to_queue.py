@@ -2,9 +2,9 @@ from math import ceil
 import random
 from jobqueue.job_status import JobStatus
 import ujson
-from psycopg2 import sql
-import psycopg2.extras as extras
-import psycopg2
+from psycopg import sql
+import psycopg.extras as extras
+import psycopg
 import jobqueue.connect as connect
 from pprint import pprint
 import sys
@@ -14,14 +14,14 @@ from dmp.layer.visitor.network_json_deserializer import NetworkJSONDeserializer
 
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 
-from dmp.logging.postgres_parameter_map import PostgresParameterMap
+from dmp.logging.postgres_attribute_map import PostgresAttributeMap
 from dmp.jobqueue_interface import jobqueue_marshal
 
 from jobqueue.job_queue import JobQueue
 
 sys.path.append("../../")
 
-psycopg2.extras.register_uuid()
+psycopg.extras.register_uuid()
 
 
 class SchemaUpdate:
@@ -54,7 +54,7 @@ class SchemaUpdate:
             rows = list(cursor.fetchall())
             values = [self.convert_row(row) for row in rows]
 
-            psycopg2.extras.execute_values(
+            psycopg.extras.execute_values(
                 cursor,
                 sql.SQL("""
 WITH v as (
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     # extras.register_default_jsonb(loads=ujson.loads, globally=True)
     extras.register_default_json(loads=simplejson.loads, globally=True)
     extras.register_default_jsonb(loads=simplejson.loads, globally=True)
-    psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
+    psycopg.extensions.register_adapter(dict, psycopg.extras.Json)
 
     # parameter_map = None
     logger = PostgresResultLogger(credentials)

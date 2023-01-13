@@ -304,7 +304,6 @@ class TrainingExperiment(Task):
         network: NetworkInfo,
         history: Dict[str, Any],
     ) -> TaskResultRecord:
-        from dmp.marshaling import marshal
 
         experiment_parameters = self.get_parameters()
         experiment_parameters.update({
@@ -315,7 +314,7 @@ class TrainingExperiment(Task):
             'num_free_parameters':
             network.num_free_parameters,
             'model_structure':
-            marshal.marshal(network.structure),
+            network.structure,
             'input_shape':
             dataset.input_shape,
             'output_shape':
@@ -332,12 +331,6 @@ class TrainingExperiment(Task):
 
         for k, v in network.description.items():
             experiment_data[f'model_{k}'] = v
-
-        run_parameters = {
-            'python_version': str(platform.python_version()),
-            'platform': str(platform.platform()),
-            'tensorflow_version': str(tensorflow.__version__),
-        }
 
         run_data = {
             'job_id': job_id,
@@ -357,6 +350,9 @@ class TrainingExperiment(Task):
                 'batch',
                 'task_version',
                 'record_post_training_metrics',
+                'record_times',
+                'record_model',
+                'record_metrics'
         ):
             run_data[key] = experiment_parameters.pop(key, None)
 

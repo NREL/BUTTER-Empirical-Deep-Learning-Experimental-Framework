@@ -49,7 +49,7 @@ from experiment_ e,
         group by p.kind, val
     ) pc
 where
-    e.experiment_id = ;
+    e.experiment_id = 2255259;
     
 
 SELECT 

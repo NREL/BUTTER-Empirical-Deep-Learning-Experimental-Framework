@@ -3,7 +3,7 @@ import json
 from multiprocessing import Pool
 import os
 import uuid
-from psycopg2 import sql
+from psycopg import sql
 
 import pyarrow
 import pyarrow.parquet as parquet
@@ -11,7 +11,7 @@ from jobqueue import connect
 from jobqueue.cursor_manager import CursorManager
 import numpy
 
-from dmp.logging.postgres_parameter_map import PostgresParameterMap
+from dmp.logging.postgres_attribute_map import PostgresAttributeMap
 import sys
 
 
@@ -23,7 +23,7 @@ def main():
     credentials = connect.load_credentials('dmp')
     parameter_map = None
     with CursorManager(credentials) as cursor:
-        parameter_map = PostgresParameterMap(cursor)
+        parameter_map = PostgresAttributeMap(cursor)
 
     dataset_path = '../all_repetitions/'
     if sweep is not None and sweep != 'butter':

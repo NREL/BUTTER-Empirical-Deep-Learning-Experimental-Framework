@@ -1,5 +1,5 @@
 
-mamba install python=3.9 pandas jupyter matplotlib scikit-learn statsmodels seaborn pip scipy numpy sqlalchemy psycopg2 pyarrow tensorflow-gpu=2.7 cudnn=8 simplejson --force-reinstall
+mamba install python=3.9 pandas jupyter matplotlib scikit-learn statsmodels seaborn pip scipy numpy sqlalchemy psycopg pyarrow tensorflow-gpu=2.7 cudnn=8 simplejson --force-reinstall
 squeue -o "%.10i %9P %Q %60j %10u %.2t %.10M %.6D %.4C %10R %o" | less
 
 squeue -u ctripp -o "%.10i %9P %Q %60j %10u %.2t %.10M %.6D %.4C %10R %o"

@@ -11,11 +11,12 @@ dependencies:
 - scipy
 - numpy
 - sqlalchemy
-- psycopg2
 - conda-forge::tensorflow >= 2.7
 - simplejson
 - pip:
   - pyarrow >= 10
+  - psycopg >= 3
+  - psycopg_pool >= 3
   - pytest
   - tensorflow_datasets
   - pmlb
