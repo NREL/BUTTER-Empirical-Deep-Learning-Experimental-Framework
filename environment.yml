@@ -6,7 +6,6 @@ dependencies:
 - pip
 - scipy
 - numpy
-- sqlalchemy
 - conda-forge::tensorflow >= 2.7
 - simplejson
 - pip:

@@ -23,7 +23,6 @@ import pyarrow.parquet as parquet
 from jobqueue import load_credentials
 from jobqueue.cursor_manager import CursorManager
 import numpy
-from sqlalchemy import column
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
