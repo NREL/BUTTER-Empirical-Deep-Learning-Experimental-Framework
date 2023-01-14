@@ -226,7 +226,7 @@ FROM
                     UPDATE experiment_migration
                         SET error_message = %s
                     WHERE experiment_id = %s;
-                    """), (eid, e))
+                    """), (e, eid))
 
                 if len(eids) > 0:
                     eid_values = sql.SQL(',').join(
