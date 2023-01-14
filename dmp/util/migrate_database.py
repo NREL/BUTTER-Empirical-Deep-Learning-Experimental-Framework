@@ -421,13 +421,13 @@ def convert_run(old_parameter_map, result_logger, row) -> bool:
     # pprint(get_cell('network_structure'))
     if network.num_free_parameters != get_cell('num_free_parameters'):
         print(
-            f"failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')}"
+            f"failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} computed: {network.description} shape: {src_parameters['shape']}."
         )
-        pprint(experiment)
-        pprint(dsinfo)
-        pprint(get_cell('widths'))
-        pprint(get_cell('network_structure'))
-        pprint(marshal.marshal(network))
+        # pprint(experiment)
+        # pprint(dsinfo)
+        # pprint(get_cell('widths'))
+        # pprint(get_cell('network_structure'))
+        # pprint(marshal.marshal(network))
         return False
 
     def map_resource_list(
