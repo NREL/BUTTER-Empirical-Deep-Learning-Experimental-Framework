@@ -1,46 +1,35 @@
 import os
-from jobqueue.connection_manager import ConnectionManager
-
-from tensorflow.python import traceback
-
-from dmp.layer.convolutional_layer import T
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
+from jobqueue.connection_manager import ConnectionManager
 import argparse
 from dataclasses import dataclass
 import math
 from typing import Any, Dict, List, Optional, Tuple
 import pandas
-import io
-from itertools import product
+import traceback
 import json
-import pathos.multiprocessing as multiprocessing
+
 
 from pprint import pprint
 import uuid
 from psycopg import sql
 
-import pyarrow
-import pyarrow.parquet as parquet
 from jobqueue import load_credentials
 from jobqueue.cursor_manager import CursorManager
-import numpy
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
-from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.layer.dense import Dense
 from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResultLogger
 
-from dmp.logging.postgres_attribute_map import PostgresAttributeMap
-import sys
 from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
 
-from dmp.parquet_util import make_pyarrow_schema
 from dmp.task.training_experiment.training_experiment import TrainingExperiment
 
 from dmp.marshaling import marshal
+
+import pathos.multiprocessing as multiprocessing
 
 pmlb_index_path = os.path.join(
     os.path.realpath(os.path.join(
@@ -290,6 +279,9 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
     if dataset_name == '201_pol':
         ml_task = MLTask.classification
         num_outputs = 11
+    elif dataset_name == '294_satellite_image':
+        ml_task = MLTask.classification
+        num_outputs = 6
     elif dsinfo['Task'] == 'classification':
         ml_task = MLTask.classification
         num_outputs = int(dsinfo['n_classes'])
@@ -390,15 +382,11 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         record_metrics=None,
     )
 
-
-    
-    
-    
     def try_get_input_shape(t):
         if not isinstance(t, dict):
             return None
 
-        if t.get('',None) == 'NInput':
+        if t.get('', None) == 'NInput':
             shape = t.get('shape', None)
             if isinstance(shape, list) or isinstance(shape, tuple):
                 return list(shape)
@@ -411,8 +399,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
                     return shape
 
         return None
-    
-    
+
     prepared_dataset = None
     input_shape = try_get_input_shape(get_cell('network_structure'))
     if input_shape is not None:
@@ -443,10 +430,14 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
     # pprint(get_cell('widths'))
     # pprint(get_cell('network_structure'))
     if network.num_free_parameters != get_cell('num_free_parameters'):
+        network_structure = get_cell('network_structure')
+        
         if not shape.startswith('wide_first'):
             print(
-                f"failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} computed: {network.description} shape: {shape}."
-            )
+                f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
+computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
+src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
+computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""", flush=True)
         # pprint(experiment)
         # pprint(dsinfo)
         # pprint(get_cell('widths'))

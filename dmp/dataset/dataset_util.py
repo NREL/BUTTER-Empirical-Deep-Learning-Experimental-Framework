@@ -73,6 +73,7 @@ def __make_load_pmlb_dataset():
                 lambda loader, data: loader._prepare_image(data),
             ),
             PMLBDatasetLoader('201_pol', MLTask.classification),
+            PMLBDatasetLoader('294_satellite_image.', MLTask.classification),
         ]))  # type: ignore
     return make_dispatcher('pmlb dataset', loaders)
 
