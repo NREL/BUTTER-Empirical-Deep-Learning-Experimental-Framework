@@ -3,10 +3,11 @@ import hashlib
 from typing import Any, Dict, Hashable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type, Union, get_args
 from enum import Enum
 import uuid
+from jobqueue.connection_manager import ConnectionManager
 from jobqueue.cursor_manager import CursorManager
 import simplejson
 import psycopg
-from psycopg import sql
+from psycopg import ClientCursor, sql
 from dmp.marshaling import marshal
 from pprint import pprint
 
@@ -18,6 +19,11 @@ from pprint import pprint
 # psycopg.extensions.register_adapter(dict,
 #                                      psycopg.extras.Json)  # type: ignore
 
+
+def json_dump_function(value):
+    return simplejson.dumps(value, sort_keys=True, separators=(',',':'))
+
+psycopg.types.json.set_json_dumps(json_dump_function)
 
 class AttributeValueType(Enum):
     Null = (0, type(None), None, 'NULL')
@@ -273,9 +279,13 @@ SELECT * from inserted
                 values=sql.SQL(',').join((sql.SQL('%s') for v in values)),
             )
 
-            # print(connection.mogrify(query))
+            with ConnectionManager(self._credentials) as connection:
+                with ClientCursor(connection) as cursor:
+                    print(cursor.mogrify(query, values))
+                    
             with CursorManager(self._credentials, binary=True) as cursor:
                 cursor.execute(query, values, binary=True)
+                
 
                 results = cursor.fetchall()
                 if len(results) >= 1:
@@ -350,7 +360,7 @@ SELECT * from inserted
 
     def _make_json_digest(self, value: Any) -> uuid.UUID:
         return uuid.UUID(
-            hashlib.md5(simplejson.dumps(value).encode('utf-8')).hexdigest())
+            hashlib.md5(json_dump_function(value).encode('utf-8')).hexdigest())
 
     def _make_database_value(
         self,
