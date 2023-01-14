@@ -197,8 +197,9 @@ FROM
                     column_selection=column_selection,
                     block_size=sql.Literal(block_size),
                 )
-                with connection.cursor(binary=True,
-                                       name=str(uuid.uuid4())) as cursor:
+                # with connection.cursor(binary=True,
+                #                        name=str(uuid.uuid4())) as cursor:
+                with connection.cursor(binary=True) as cursor:
                     cursor.execute(q, binary=True)
 
                     eids = set()
