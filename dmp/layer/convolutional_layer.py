@@ -14,7 +14,7 @@ class ConvolutionalLayer(SpatitialLayer, ABC):
         'data_format': None,
         'dilation_rate': (1, 1),
         'groups': 1,
-        'activation': 'ReLu',
+        'activation': 'relu',
         'use_bias': False,
         'kernel_initializer': 'HeUniform',
         'bias_initializer': 'Zeros',

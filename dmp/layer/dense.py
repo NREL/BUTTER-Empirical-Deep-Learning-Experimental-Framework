@@ -6,7 +6,7 @@ from dmp.layer.layer import Layer, LayerConfig, empty_config, empty_inputs
 class Dense(Layer):
 
     _default_config: LayerConfig = {
-        'activation': 'ReLu',
+        'activation': 'relu',
         'use_bias': True,
         'kernel_initializer': 'HeUniform',
         'bias_initializer': 'Zeros',

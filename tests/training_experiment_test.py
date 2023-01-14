@@ -31,6 +31,7 @@ def test_simple():
     experiment = TrainingExperiment(
         seed=0,
         batch='test',
+        precision='float32',
         dataset=DatasetSpec(
             'banana',
             'pmlb',
@@ -82,6 +83,7 @@ def test_growth_experiment():
     experiment = GrowthExperiment(
         seed=0,
         batch='test',
+        precision='float32',
         dataset=DatasetSpec(
             'titanic',
             'pmlb',
@@ -193,6 +195,7 @@ def test_from_optimizer():
     experiment = TrainingExperiment(
         seed=0,
         batch='test',
+        precision='float32',
         dataset=DatasetSpec(
             'banana',
             'pmlb',

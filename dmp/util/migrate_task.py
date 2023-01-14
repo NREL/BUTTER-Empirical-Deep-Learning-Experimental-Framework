@@ -3,6 +3,8 @@ from jobqueue.connection_manager import ConnectionManager
 
 from tensorflow.python import traceback
 
+from dmp.keras_interface.keras_utils import make_keras_config
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import argparse
@@ -158,7 +160,7 @@ FROM
                     for row in cursor:
                         eids.add(row[column_index_map['id']])
                         try:
-                            if convert_task(row):
+                            if convert_task(row, connection):
                                 num_converted += 1
                             else:
                                 num_excepted += 1
@@ -188,272 +190,76 @@ WHERE
     return total_num_converted
 
 
-def convert_task(old_parameter_map, result_logger, row) -> bool:
+def convert_task(row, connection) -> bool:
 
     def get_cell(column: str):
         return row[column_index_map[column]]
 
-    src_parameters = {
-        kind: value
-        for kind, value in old_parameter_map.parameter_from_id(
-            get_cell('run_parameters'))
-    }
+    def get_default(column:str, default):
+        v = get_cell(column)
+        if v is None:
+            v = default
+        return v
 
-    if not src_parameters.get('run_config.shuffle', False):
-        print(
-            f"failed on run_config.shuffle {src_parameters.get('run_config.shuffle', False)}"
-        )
-        return False
+    src = get_cell('command')
 
-    if src_parameters.get('task', None) != 'AspectTestTask':
-        print(f"failed on task {src_parameters.get('task', None)}")
-        return False
 
-    if src_parameters.get('early_stopping', None) is not None:
-        print(
-            f"failed on early_stopping {src_parameters.get('early_stopping', None)}"
-        )
-        return False
+    run_config = src.get('run_config')
 
-    if src_parameters.get('input_activation', 'relu') != 'relu':
-        print(
-            f"failed on input_activation {src_parameters.get('input_activation', 'relu')}"
-        )
-        return False
+    def migrate_keras_config(target):
+        if target is None:
+            return None
+        config = target.copy()
+        keras_type = config.pop('type')
+        return make_keras_config({
+            keras_type, config,
+        }) # type: ignore
 
-    dataset_src = 'pmlb'
-    dataset_name = src_parameters['dataset']
-    dsinfo = dataset_index[dataset_index['Dataset'] == dataset_name].iloc[0]
-
-    ml_task = MLTask.regression
-    num_outputs = 1
-
-    if dataset_name == '201_pol':
-        ml_task = MLTask.classification
-        num_outputs = 11
-    elif dsinfo['Task'] == 'classification':
-        ml_task = MLTask.classification
-        num_outputs = int(dsinfo['n_classes'])
-        if num_outputs == 2:
-            num_outputs = 1
-
-    dataset_size = int(dsinfo['n_observations'])
-    test_split = float(src_parameters['test_split'])
-    train_size = math.floor(dataset_size * test_split)
-
-    optimizer_class = src_parameters.get('optimizer', 'Adam')
-    if optimizer_class == 'adam':
-        optimizer_class = 'Adam'
-    optimizer = {
-        'class': optimizer_class,
-        'learning_rate': float(src_parameters.get('learning_rate', 0.0001))
-    }
-    momentum = src_parameters.get('optimizer.config.momentum', None)
-    if momentum is not None:
-        optimizer['momentum'] = float(momentum)
-    nesterov = src_parameters.get('optimizer.config.nesterov', None)
-    if nesterov is not None:
-        optimizer['nesterov'] = nesterov
-
-    # activity_regularizer
-    def make_keras_config(prefix: str) -> Optional[Dict[str, Any]]:
-        _class = src_parameters.get(prefix + '.type', None)
-        if _class is None:
-            _class = src_parameters.get(prefix, None)
-            if _class is None:
-                return None
-
-        activity_regularizer = {'class': _class}
-        for k, v in src_parameters.items():
-            if k.startswith(prefix) and not k.endswith('.type'):
-                activity_regularizer[k[len(prefix) + 1:]] = v
-        return activity_regularizer
-
-    layer_config: Dict[str, Any] = {
-        'kernel_initializer': 'GlorotUniform',
-    }
-
-    layer_config.update({
-        k: make_keras_config(k)
-        for k in [
-            'kernel_regularizer',
-            'bias_regularizer',
-            'activity_regularizer',
-        ]
-    })
-
-    shape = str(src_parameters['shape'])
-
-    # input shape, output shape, ml_task
+    kernel_regularizer = migrate_keras_config(get_cell('kernel_regularizer'))
+ 
     experiment = TrainingExperiment(
-        seed=int(get_cell('seed')),
+        seed=src['seed'],
+        batch=src['batch'],
         precision='float32',
-        batch=str(src_parameters.get('batch', None)),  # type: ignore
         dataset=DatasetSpec(
-            name=dataset_name,
-            source=dataset_src,
-            method=src_parameters.get('test_split_method',
-                                      'shuffled_train_test_split'),
-            test_split=float(src_parameters.get('test_split', 0.2)),
+            name=src['dataset'],
+            source='pmlb',
+            method=src.get('test_split_method', 'shuffled_train_test_split'),
+            test_split=float(src.get('test_split', 0.2)),
             validation_split=0.0,
-            label_noise=float(src_parameters.get('label_noise', 0.0)),
+            label_noise=float(src.get('label_noise', 0.0)),
         ),
         model=DenseBySize(
             input=None,
-            output=Dense.make(
-                num_outputs,
-                layer_config | {
-                    'activation': src_parameters.get('output_activation',
-                                                     None),
-                },
-            ),
-            shape=shape,
-            size=int(src_parameters['size']),
-            depth=int(src_parameters['depth']),
+            output=None,
+            shape=src.get('shape'),
+            size=src.get('size'),
+            depth=src.get('depth'),
             search_method='integer',
-            inner=Dense.make(
-                -1,
-                layer_config | {
-                    'activation': src_parameters.get('activation', 'relu'),
-                },
-            ),
+            inner=Dense.make(-1, {
+                'activation': src.get('activation', 'relu'),
+                'kernel_initializer': 'GlorotUniform',
+                'kernel_regularizer': migrate_keras_config(src.get('kernel_regularizer', None)),
+                'bias_regularizer': migrate_keras_config(src.get('bias_regularizer', None)),
+                'activity_regularizer': migrate_keras_config(src.get('activity_regularizer', None)),
+            }),
         ),
         fit={
-            'batch_size': int(src_parameters['batch_size']),
-            'epochs': int(src_parameters['epochs']),
+            'batch_size': run_config.get('batch_size'),
+            'epochs': run_config.get('epochs'),
         },
-        optimizer=optimizer,
+        optimizer={
+            'class': 'Adam',
+            'learning_rate': 0.0001
+        },
         loss=None,
         early_stopping=None,
-        record_post_training_metrics=False,
-        record_times=False,
+        record_post_training_metrics=True,
+        record_times=True,
         record_model=None,
         record_metrics=None,
     )
 
-    def get_input_shape(target) -> List[int]:
-        if target[''] == 'NInput':
-            return target['shape']
-        return get_input_shape(target['inputs'][0])
-
-    prepared_dataset = PsuedoPreparedDataset(
-        ml_task=ml_task,
-        # input_shape=[int(dsinfo['n_features'])],
-        input_shape=get_input_shape(get_cell('network_structure')),
-        output_shape=[num_outputs],
-        train_size=train_size,
-        test_size=dataset_size - train_size,
-        validation_size=0,
-    )
-
-    # prepared_dataset = PreparedDataset(
-    #     experiment.dataset,
-    #     int(src_parameters['batch_size']),
-    # )
-
-    metrics = experiment._autoconfigure_for_dataset(
-        prepared_dataset)  # type: ignore
-    metric_names = [m if isinstance(m, str) else m.name for m in metrics]
-    metric_names.append('loss')
-    # print(metric_names)
-
-    try:
-        network = experiment._make_network(experiment.model)
-    except ValueError as e:
-        print(f"failed on {e}")
-        return False
-
-    # pprint(get_cell('widths'))
-    # pprint(get_cell('network_structure'))
-    if network.num_free_parameters != get_cell('num_free_parameters'):
-        if not shape.startswith('wide_first'):
-            print(
-                f"failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} computed: {network.description} shape: {shape}."
-            )
-        # pprint(experiment)
-        # pprint(dsinfo)
-        # pprint(get_cell('widths'))
-        # pprint(get_cell('network_structure'))
-        # pprint(marshal.marshal(network))
-        return False
-
-    def map_resource_list(
-        src: Optional[str], ) -> Tuple[Optional[List[int]], Optional[int]]:
-        if not isinstance(src, str) or len(src) < 2:
-            return None, None
-        l = [int(i) for i in (src[1:-1].split(',')) if len(i) > 0]
-        return l, len(l)
-
-    history = {}
-    for m in metric_names:
-        for p in ['test_', 'train_']:
-            k = p + m
-            try:
-                history[k] = get_cell(k)
-            except KeyError:
-                continue
-
-    num_epochs = max((len(h) for h in history.values() if h is not None))
-    for h in history.values():
-        h.extend([None] * (num_epochs - len(h)))
-    history['epoch'] = list(range(1, num_epochs + 1))
-
-    worker_info = {
-        'gpu_memory': get_cell('gpu_memory'),
-        'strategy': get_cell('strategy'),
-    }
-
-    for key in ['cpus', 'gpus', 'nodes']:
-        l, num = map_resource_list(get_cell(key))
-        worker_info[key] = l
-        worker_info['num_' + key] = num
-
-    result_record = experiment._make_result_record(
-        worker_info=worker_info,
-        job_id=get_cell('job_id'),
-        dataset=prepared_dataset,  # type: ignore
-        network=network,
-        history=history,
-    )
-
-    result_record.experiment_data['experiment_id'] = get_cell('experiment_id')
-
-    result_record.run_data.update({
-        'run_id':
-        get_cell('run_id'),
-        'python_version':
-        src_parameters.get('python_version', None),
-        'platform':
-        get_cell('platform'),
-        'tensorflow_version':
-        src_parameters.get('tensorflow_version', None),
-        'host_name':
-        get_cell('hostname'),
-        'slurm_job_id':
-        get_cell('slurm_job_id'),
-        'git_hash':
-        get_cell('git_hash'),
-        'task_version':
-        int(src_parameters.get('task_version', 0))
-    })
-
-    for k in [
-            'primary_sweep',
-            '300_epoch_sweep',
-            '30k_epoch_sweep',
-            'learning_rate_sweep',
-            'label_noise_sweep',
-            'batch_size_sweep',
-            'regularization_sweep',
-            'optimizer_sweep',
-            'learning_rate_batch_size_sweep',
-            'size_adjusted_regularization_sweep',
-            'butter',
-    ]:
-        if get_cell(k):
-            result_record.experiment_data[k] = True
-
-    result_logger.log(result_record)
     return True
 
 

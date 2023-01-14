@@ -73,55 +73,102 @@ class PostgresCompressedResultLogger(ResultLogger):
         run_columns, cast_run_columns = \
             self._make_column_sql(self._run_columns)
 
+        values_placeholders = sql.SQL(',').join((sql.SQL('%b') for i in range(2 + len(self._experiment_columns) + len(self._run_columns))))
         self._log_query_prefix = sql.SQL("""
-WITH query_values as (
-    SELECT
-        experiment_uid::uuid,
-        experiment_attributes::integer[] experiment_attributes,
-        {cast_experiment_columns},
-        {cast_run_columns}
-    FROM
-        ( VALUES ( """).format(
-            experiment_table=self._experiment_table,
-            cast_experiment_columns=cast_experiment_columns,
-            cast_run_columns=cast_run_columns,
+        WITH query_values as (
+            SELECT
+                experiment_uid::uuid,
+                experiment_attributes::integer[] experiment_attributes,
+                {cast_experiment_columns},
+                {cast_run_columns}
+            FROM
+                ( VALUES ({values_placeholders}) ) AS t (
+                    experiment_uid,
+                    experiment_attributes,
+                    {experiment_columns},
+                    {run_columns}
+                    )
+        ),
+        inserted_experiment as (
+            INSERT INTO {experiment_table} AS e (
+                experiment_uid,
+                experiment_attributes,
+                {experiment_columns}
+            )
+            SELECT
+                experiment_uid,
+                experiment_attributes,
+                {experiment_columns}
+            FROM query_values
+            ON CONFLICT DO NOTHING
         )
-
-        self._log_query_suffix = sql.SQL(""" ) ) AS t (
+        INSERT INTO {run_table} (
             experiment_uid,
-            experiment_attributes,
-            {experiment_columns},
             {run_columns}
             )
-),
-inserted_experiment as (
-    INSERT INTO {experiment_table} AS e (
-        experiment_uid,
-        experiment_attributes,
-        {experiment_columns}
-    )
-    SELECT
-        experiment_uid,
-        experiment_attributes,
-        {experiment_columns}
-    FROM query_values
-    ON CONFLICT DO NOTHING
-)
-INSERT INTO {run_table} (
-    experiment_uid,
-    {run_columns}
-    )
-SELECT 
-    experiment_uid,
-    {run_columns}
-FROM query_values
-ON CONFLICT DO NOTHING
-;""").format(
-            experiment_columns=experiment_columns,
-            run_columns=run_columns,
-            experiment_table=self._experiment_table,
-            run_table=self._run_table,
-        )
+        SELECT 
+            experiment_uid,
+            {run_columns}
+        FROM query_values
+        ON CONFLICT DO NOTHING
+        ;""").format(
+                    experiment_table=self._experiment_table,
+                    cast_experiment_columns=cast_experiment_columns,
+                    cast_run_columns=cast_run_columns,
+                    values_placeholders=values_placeholders,
+                    experiment_columns=experiment_columns,
+                    run_columns=run_columns,
+                    run_table=self._run_table,
+                )
+#         self._log_query_prefix = sql.SQL("""
+# WITH query_values as (
+#     SELECT
+#         experiment_uid::uuid,
+#         experiment_attributes::integer[] experiment_attributes,
+#         {cast_experiment_columns},
+#         {cast_run_columns}
+#     FROM
+#         ( VALUES ( """).format(
+#             experiment_table=self._experiment_table,
+#             cast_experiment_columns=cast_experiment_columns,
+#             cast_run_columns=cast_run_columns,
+#         )
+
+#         self._log_query_suffix = sql.SQL(""" ) ) AS t (
+#             experiment_uid,
+#             experiment_attributes,
+#             {experiment_columns},
+#             {run_columns}
+#             )
+# ),
+# inserted_experiment as (
+#     INSERT INTO {experiment_table} AS e (
+#         experiment_uid,
+#         experiment_attributes,
+#         {experiment_columns}
+#     )
+#     SELECT
+#         experiment_uid,
+#         experiment_attributes,
+#         {experiment_columns}
+#     FROM query_values
+#     ON CONFLICT DO NOTHING
+# )
+# INSERT INTO {run_table} (
+#     experiment_uid,
+#     {run_columns}
+#     )
+# SELECT 
+#     experiment_uid,
+#     {run_columns}
+# FROM query_values
+# ON CONFLICT DO NOTHING
+# ;""").format(
+#             experiment_columns=experiment_columns,
+#             run_columns=run_columns,
+#             experiment_table=self._experiment_table,
+#             run_table=self._run_table,
+#         )
 
         # initialize parameter map
         with ConnectionManager(self._credentials) as connection:
@@ -172,16 +219,21 @@ ON CONFLICT DO NOTHING
             run_column_values[self._run_history_column_index] = \
                 history_buffer.getvalue()
 
-        sql_values = sql.SQL(', ').join(
-            sql.Literal(v) for v in (
+        # sql_values = sql.SQL(', ').join(
+        #     sql.Literal(v) for v in (
+        #         experiment_uid,
+        #         experiment_attributes,
+        #         *experiment_column_values,
+        #         *run_column_values,
+        #     ))
+
+        # query = self._log_query_prefix + sql_values + self._log_query_suffix
+        connection.execute(self._log_query_prefix, (
                 experiment_uid,
                 experiment_attributes,
                 *experiment_column_values,
                 *run_column_values,
-            ))
-
-        query = self._log_query_prefix + sql_values + self._log_query_suffix
-        connection.execute(query)
+            ), binary=True)
         # with psycopg.ClientCursor(connection) as cursor:
         #     print(cursor.mogrify(query))
         #     cursor.execute(query)

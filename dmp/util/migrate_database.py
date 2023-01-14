@@ -207,7 +207,7 @@ FROM
                     block_size=sql.Literal(block_size),
                 )
                 with connection.cursor(binary=True) as cursor:
-                    cursor.execute(q)
+                    cursor.execute(q,binary=True)
 
                     eids = set()
                     for row in cursor:
@@ -231,7 +231,7 @@ UPDATE experiment_migration
 WHERE
     experiment_id IN ({eid_values})
                 ;""").format(eid_values=eid_values)
-                connection.execute(q)
+                connection.execute(q,binary=True)
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(

@@ -1,8 +1,29 @@
+SELECT l.locktype, p.pid as pid , p.datname as database, p.usename as user, p.application_name as application, p.query as query,
+       b.pid as blocking_pid, b.usename as blocking_user, b.application_name as blocking_application, b.query as blocking_query
+  FROM
+       pg_locks l,
+       pg_stat_activity p,
+       pg_locks bl,
+       pg_stat_activity b
+ WHERE
+       p.pid = l.pid AND NOT l.granted AND
+       bl.database = l.database AND bl.relation = l.relation AND bl.granted AND
+       b.pid = bl.pid;
+
 SELECT *
 FROM pg_stat_activity 
 WHERE usename = 'dmpappsops'
 ORDER BY state, query_start desc;
 
+SELECT *
+  FROM information_schema.columns
+ WHERE table_schema = 'public'
+   AND table_name   = 'materialized_experiments_2'
+     ;
+
+SELECT * FROM pg_stat_activity WHERE datname = 'dmpapps'  ORDER BY query;
+
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'dmpapps' and username = 'dmpappsops';
 
 SELECT
    relname  as table_name,
@@ -137,14 +158,14 @@ where
 order by
   batch, dataset, task, optimizer, activation, topology, learning_rate, label_noise, batch_size, validation_split, budget, depth;
 
-create index run3_gin on run using GIN ((array[batch, dataset, task, optimizer, activation, topology, learning_rate, label_noise, batch_size, validation_split, budget, depth]))
-create index run3_brin on run using brin (experiment_id, batch, dataset, task, optimizer, activation, topology, learning_rate, label_noise, batch_size, validation_split, budget, depth);
-CREATE INDEX run3_experiment_id on run (experiment_id);
-create index run3_record_timestamp on run (record_timestamp, experiment_id);
+create index run2_gin on run using GIN ((array[batch, dataset, task, optimizer, activation, topology, learning_rate, label_noise, batch_size, validation_split, budget, depth]))
+create index run2_brin on run using brin (experiment_id, batch, dataset, task, optimizer, activation, topology, learning_rate, label_noise, batch_size, validation_split, budget, depth);
+CREATE INDEX run2_experiment_id on run (experiment_id);
+create index run2_record_timestamp on run (record_timestamp, experiment_id);
 
---- CREATE INDEX run3_properties on run (task, activation, batch_size, optimizer, dataset, validation_split, learning_rate, label_noise, budget, depth, batch, topology, experiment_id);
---- CREATE INDEX run3_properties2 on run (experiment_id, task, activation, batch_size, optimizer, dataset, validation_split, learning_rate, label_noise, budget, depth, batch, topology);
---- create index run3_brin on run using brin (experiment_id, batch, dataset, task, optimizer, activation, topology, learning_rate, label_noise, batch_size, validation_split, budget, depth);
+--- CREATE INDEX run2_properties on run (task, activation, batch_size, optimizer, dataset, validation_split, learning_rate, label_noise, budget, depth, batch, topology, experiment_id);
+--- CREATE INDEX run2_properties2 on run (experiment_id, task, activation, batch_size, optimizer, dataset, validation_split, learning_rate, label_noise, budget, depth, batch, topology);
+--- create index run2_brin on run using brin (experiment_id, batch, dataset, task, optimizer, activation, topology, learning_rate, label_noise, batch_size, validation_split, budget, depth);
 
 vacuum analyze run;
 alter table run set (autovacuum_enabled = 1);
