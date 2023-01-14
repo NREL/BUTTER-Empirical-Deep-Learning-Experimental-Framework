@@ -216,7 +216,7 @@ FROM
                         except Exception as e:
                             num_excepted += 1
                             # print(f'failed on Exception: {e}', flush=True)
-                            traceback.print_exc()
+                            # traceback.print_exc()
                             errors[experiment_id] = e
 
                 error_list = sorted([(eid, str(e))
