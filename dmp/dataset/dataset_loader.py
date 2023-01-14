@@ -14,7 +14,6 @@ from typing import (
     Tuple,
     Any,
 )
-import zstandard
 import numpy
 import numpy as np
 from numpy import ndarray
