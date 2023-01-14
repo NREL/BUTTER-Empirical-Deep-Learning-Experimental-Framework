@@ -58,6 +58,7 @@ def get_attribute_value_type_for_value(value: Any) -> AttributeValueType:
 
 ComparableValue = Union[None, bool, int, float, str]
 
+
 @dataclass
 class Attribute():
     id_: int
@@ -66,10 +67,12 @@ class Attribute():
     comparable_value: ComparableValue
     actual_value: Any
 
+
 def _make_column_identifier_seq(
     source: List[Tuple[str, str]], ) -> List[Tuple[str, sql.Identifier, str]]:
     return [(column_name, sql.Identifier(column_name), column_type)
             for column_name, column_type in source]
+
 
 class PostgresAttributeMap:
 
@@ -175,7 +178,8 @@ class PostgresAttributeMap:
                 sql.SQL("SELECT {columns} FROM {attribute_table}").format(
                     columns=sql.SQL(',').join(
                         (column_id
-                        for column_name, column_id, column_type in all_columns)),
+                         for column_name, column_id, column_type in all_columns
+                         )),
                     attribute_table=self._attribute_table,
                 ))
 
@@ -183,12 +187,14 @@ class PostgresAttributeMap:
                 value_type = get_attribute_value_type_for_type_code(
                     row[self._type_column])
                 value_column = self._type_to_column_map[value_type]
-                database_value = None if value_column is None else row[value_column]
+                database_value = None if value_column is None else row[
+                    value_column]
                 value = self._recover_value_from_database(
                     value_type,
                     database_value,
                 )
-                comparable_value = self._make_comparable_value(value_type, value)
+                comparable_value = self._make_comparable_value(
+                    value_type, value)
 
                 self._register_attribute(
                     Attribute(
@@ -269,7 +275,11 @@ SELECT * from inserted
                                 comparable_value,
                                 value,
                             ))
-            return self.to_attribute_id(kind, value, None)  # retry
+            return self.to_attribute_id(
+                kind,
+                value,
+                connection=connection,
+            )  # retry
 
     def get_all_kinds(self) -> Sequence[str]:
         return tuple(self._kind_type_value_map.keys())
@@ -288,7 +298,8 @@ SELECT * from inserted
         if isinstance(kvl, dict):
             kvl = kvl.items()  # type: ignore
         return [
-            self.to_attribute_id(kind, value, connection) for kind, value in kvl
+            self.to_attribute_id(kind, value, connection)
+            for kind, value in kvl
         ]
 
     def to_sorted_attribute_ids(
