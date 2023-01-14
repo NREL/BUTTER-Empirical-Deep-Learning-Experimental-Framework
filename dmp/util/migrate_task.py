@@ -1,5 +1,6 @@
 import os
 from jobqueue.connection_manager import ConnectionManager
+import psycopg
 
 from tensorflow.python import traceback
 
@@ -215,8 +216,9 @@ def convert_task(row, connection) -> bool:
             keras_type, config,
         }) # type: ignore
 
-    kernel_regularizer = migrate_keras_config(get_cell('kernel_regularizer'))
- 
+    if src.get('early_stopping', None) is not None:
+        return False
+
     experiment = TrainingExperiment(
         seed=src['seed'],
         batch=src['batch'],
@@ -254,11 +256,19 @@ def convert_task(row, connection) -> bool:
         },
         loss=None,
         early_stopping=None,
-        record_post_training_metrics=True,
-        record_times=True,
+        record_post_training_metrics=False,
+        record_times=False,
         record_model=None,
         record_metrics=None,
     )
+
+    new_command = psycopg.types.json.Jsonb(marshal.marshal(experiment))
+
+    connection.execute(sql.SQL("""
+UPDATE job_data d
+    SET command = %b
+WHERE "id" = %b
+    """), (new_command, get_cell('id')),binary=True)
 
     return True
 
