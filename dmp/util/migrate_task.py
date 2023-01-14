@@ -170,15 +170,16 @@ FROM
                             print(f'failed on Exception: {e}')
                             traceback.print_exc()
 
-                eid_values = sql.SQL(',').join(
-                    (sql.Literal(v) for v in sorted(eids)))
-                q = sql.SQL("""
+                if len(eids) > 0:
+                    eid_values = sql.SQL(',').join(
+                        (sql.Literal(v) for v in sorted(eids)))
+                    q = sql.SQL("""
 UPDATE job_status
     SET status = 0
 WHERE
     id IN ({eid_values})
-                ;""").format(eid_values=eid_values)
-                connection.execute(q)
+                    ;""").format(eid_values=eid_values)
+                    connection.execute(q)
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(

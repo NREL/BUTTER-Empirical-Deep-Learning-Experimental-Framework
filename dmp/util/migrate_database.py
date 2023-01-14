@@ -3,6 +3,8 @@ from jobqueue.connection_manager import ConnectionManager
 
 from tensorflow.python import traceback
 
+from dmp.layer.convolutional_layer import T
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import argparse
@@ -207,7 +209,7 @@ FROM
                     block_size=sql.Literal(block_size),
                 )
                 with connection.cursor(binary=True) as cursor:
-                    cursor.execute(q,binary=True)
+                    cursor.execute(q, binary=True)
 
                     eids = set()
                     for row in cursor:
@@ -223,15 +225,16 @@ FROM
                             print(f'failed on Exception: {e}')
                             traceback.print_exc()
 
-                eid_values = sql.SQL(',').join(
-                    (sql.Literal(v) for v in sorted(eids)))
-                q = sql.SQL("""
+                if len(eids) > 0:
+                    eid_values = sql.SQL(',').join(
+                        (sql.Literal(v) for v in sorted(eids)))
+                    q = sql.SQL("""
 UPDATE experiment_migration
     SET migrated = TRUE
 WHERE
     experiment_id IN ({eid_values})
-                ;""").format(eid_values=eid_values)
-                connection.execute(q,binary=True)
+                    ;""").format(eid_values=eid_values)
+                    connection.execute(q, binary=True)
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(
@@ -387,25 +390,43 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         record_metrics=None,
     )
 
-    def get_input_shape(target) -> List[int]:
-        if target[''] == 'NInput':
-            return target['shape']
-        return get_input_shape(target['inputs'][0])
 
-    prepared_dataset = PsuedoPreparedDataset(
-        ml_task=ml_task,
-        # input_shape=[int(dsinfo['n_features'])],
-        input_shape=get_input_shape(get_cell('network_structure')),
-        output_shape=[num_outputs],
-        train_size=train_size,
-        test_size=dataset_size - train_size,
-        validation_size=0,
-    )
+    
+    
+    
+    def try_get_input_shape(t):
+        if not isinstance(t, dict):
+            return None
 
-    # prepared_dataset = PreparedDataset(
-    #     experiment.dataset,
-    #     int(src_parameters['batch_size']),
-    # )
+        if t.get('',None) == 'NInput':
+            shape = t.get('shape', None)
+            if isinstance(shape, list) or isinstance(shape, tuple):
+                return list(shape)
+
+        inputs = t.get('inputs', None)
+        if isinstance(inputs, list):
+            for i in inputs:
+                shape = try_get_input_shape(i)
+                if shape is not None:
+                    return shape
+
+        return None
+    
+    
+    prepared_dataset = None
+    input_shape = try_get_input_shape(get_cell('network_structure'))
+    if input_shape is not None:
+        prepared_dataset = PsuedoPreparedDataset(
+            ml_task=ml_task,
+            # input_shape=[int(dsinfo['n_features'])],
+            input_shape=input_shape,
+            output_shape=[num_outputs],
+            train_size=train_size,
+            test_size=dataset_size - train_size,
+            validation_size=0,
+        )
+    else:
+        prepared_dataset = experiment._load_and_prepare_dataset()
 
     metrics = experiment._autoconfigure_for_dataset(
         prepared_dataset)  # type: ignore
