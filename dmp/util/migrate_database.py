@@ -201,8 +201,10 @@ FROM
                     cursor.execute(q, binary=True)
 
                     eids = set()
+                    errors = {}
                     for row in cursor:
-                        eids.add(row[0])
+                        experiment_id = row[column_index_map['experiment_id']]
+                        eids.add(experiment_id)
                         try:
                             if convert_run(old_parameter_map, result_logger,
                                            row, connection):
@@ -211,8 +213,17 @@ FROM
                                 num_excepted += 1
                         except Exception as e:
                             num_excepted += 1
-                            print(f'failed on Exception: {e}')
+                            print(f'failed on Exception: {e}', flush=True)
                             traceback.print_exc()
+                            errors[experiment_id] = e
+                
+                error_list = sorted([(eid, str(e)) for eid, e in errors.items()])
+                for eid, e in error_list:
+                    connection.execute(sql.SQL("""
+                    UPDATE experiment_migration
+                        SET error_message = %s
+                    WHERE experiment_id = %s;
+                    """), (eid, e))
 
                 if len(eids) > 0:
                     eid_values = sql.SQL(',').join(
@@ -237,6 +248,17 @@ WHERE
 
 
 def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
+    experiment = None
+    network = None
+
+    def fail(message:str):
+        nonlocal experiment, network
+        try:
+            message += f"""\nwith computed: {None if network is None else network.description} shape: {None if experiment is None else experiment.model.shape} depth: {None if experiment is None else experiment.model.depth}, size: {None if experiment is None else experiment.model.size}, dataset: {None if experiment is None else experiment.dataset.name}"""
+        except:
+            pass
+        
+        raise Exception(message)
 
     def get_cell(column: str):
         return row[column_index_map[column]]
@@ -248,26 +270,20 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
     }
 
     if not src_parameters.get('run_config.shuffle', False):
-        print(
-            f"failed on run_config.shuffle {src_parameters.get('run_config.shuffle', False)}"
-        )
-        return False
+        fail(f"failed on run_config.shuffle {src_parameters.get('run_config.shuffle', False)}")
 
     if src_parameters.get('task', None) != 'AspectTestTask':
-        print(f"failed on task {src_parameters.get('task', None)}")
-        return False
+        fail(f"failed on task {src_parameters.get('task', None)}")
 
     if src_parameters.get('early_stopping', None) is not None:
-        print(
+        fail(
             f"failed on early_stopping {src_parameters.get('early_stopping', None)}"
         )
-        return False
 
     if src_parameters.get('input_activation', 'relu') != 'relu':
-        print(
+        fail(
             f"failed on input_activation {src_parameters.get('input_activation', 'relu')}"
         )
-        return False
 
     dataset_src = 'pmlb'
     dataset_name = src_parameters['dataset']
@@ -424,8 +440,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
     try:
         network = experiment._make_network(experiment.model)
     except ValueError as e:
-        print(f"failed on {e}")
-        return False
+        fail(f"failed on {e}")
 
     # pprint(get_cell('widths'))
     # pprint(get_cell('network_structure'))
@@ -433,7 +448,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         network_structure = get_cell('network_structure')
         
         if not shape.startswith('wide_first'):
-            print(
+            fail(
                 f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
 computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
 src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
@@ -443,7 +458,7 @@ computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""",
         # pprint(get_cell('widths'))
         # pprint(get_cell('network_structure'))
         # pprint(marshal.marshal(network))
-        return False
+        # return False
 
     def map_resource_list(
         src: Optional[str], ) -> Tuple[Optional[List[int]], Optional[int]]:
