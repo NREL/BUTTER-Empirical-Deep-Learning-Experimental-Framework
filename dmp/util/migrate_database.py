@@ -251,6 +251,7 @@ WHERE
 
 
 def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
+    message = ''
     experiment = None
     network = None
 
@@ -432,7 +433,8 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
             )
         else:
             # prepared_dataset = experiment._load_and_prepare_dataset()
-            fail(f"could not determine input shape {get_cell('network_structure')}")
+            # fail(f"could not determine input shape {get_cell('network_structure')}")
+            return False
 
         metrics = experiment._autoconfigure_for_dataset(
             prepared_dataset)  # type: ignore
@@ -451,12 +453,13 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
             network_structure = get_cell('network_structure')
 
             if not shape.startswith('wide_first'):
-                fail(
-                    f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
-    computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
-    src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
-    computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""",
-                    flush=True)
+                return False
+    #             fail(
+    #                 f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
+    # computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
+    # src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
+    # computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""",
+    #                 flush=True)
             # pprint(experiment)
             # pprint(dsinfo)
             # pprint(get_cell('widths'))
@@ -546,7 +549,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
     except Exception as e:
         message = str(e)
         message += f"""\nwith computed: {None if network is None else network.description} shape: {None if experiment is None else experiment.model.shape} depth: {None if experiment is None else experiment.model.depth}, size: {None if experiment is None else experiment.model.size}, dataset: {None if experiment is None else experiment.dataset.name}\n experiment {None if experiment is None else experiment}."""
-        raise Exception(message)
+    raise Exception(message)
 
 
 if __name__ == "__main__":
