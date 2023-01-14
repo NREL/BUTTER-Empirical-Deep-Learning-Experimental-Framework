@@ -215,7 +215,7 @@ FROM
                                 num_excepted += 1
                         except Exception as e:
                             num_excepted += 1
-                            print(f'failed on Exception: {e}', flush=True)
+                            # print(f'failed on Exception: {e}', flush=True)
                             traceback.print_exc()
                             errors[experiment_id] = e
 
@@ -434,7 +434,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
             )
         else:
             # prepared_dataset = experiment._load_and_prepare_dataset()
-            # fail(f"could not determine input shape {get_cell('network_structure')}")
+            fail(f"could not determine input shape {get_cell('network_structure')}")
             return False
 
         metrics = experiment._autoconfigure_for_dataset(
@@ -451,6 +451,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         # pprint(get_cell('widths'))
         # pprint(get_cell('network_structure'))
         if network.num_free_parameters != get_cell('num_free_parameters'):
+            fail(f"wrong number of free parameters {network.num_free_parameters} != get_cell('num_free_parameters')")
             # network_structure = get_cell('network_structure')
             return False
 
