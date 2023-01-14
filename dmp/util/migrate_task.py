@@ -196,7 +196,7 @@ def convert_task(row, connection) -> bool:
     def get_cell(column: str):
         return row[column_index_map[column]]
 
-    def get_default(column:str, default):
+    def get_default(column: str, default):
         v = get_cell(column)
         if v is None:
             v = default
@@ -204,17 +204,19 @@ def convert_task(row, connection) -> bool:
 
     src = get_cell('command')
 
-
     run_config = src.get('run_config')
+    if src.get('', None) != 'AspectTestTask':
+        return False
 
     def migrate_keras_config(target):
         if target is None:
             return None
         config = target.copy()
         keras_type = config.pop('type')
-        return make_keras_config({
-            keras_type, config,
-        }) # type: ignore
+        return make_keras_config(
+            keras_type,
+            config,
+        )  # type: ignore
 
     if src.get('early_stopping', None) is not None:
         return False
@@ -238,13 +240,20 @@ def convert_task(row, connection) -> bool:
             size=src.get('size'),
             depth=src.get('depth'),
             search_method='integer',
-            inner=Dense.make(-1, {
-                'activation': src.get('activation', 'relu'),
-                'kernel_initializer': 'GlorotUniform',
-                'kernel_regularizer': migrate_keras_config(src.get('kernel_regularizer', None)),
-                'bias_regularizer': migrate_keras_config(src.get('bias_regularizer', None)),
-                'activity_regularizer': migrate_keras_config(src.get('activity_regularizer', None)),
-            }),
+            inner=Dense.make(
+                -1, {
+                    'activation':
+                    src.get('activation', 'relu'),
+                    'kernel_initializer':
+                    'GlorotUniform',
+                    'kernel_regularizer':
+                    migrate_keras_config(src.get('kernel_regularizer', None)),
+                    'bias_regularizer':
+                    migrate_keras_config(src.get('bias_regularizer', None)),
+                    'activity_regularizer':
+                    migrate_keras_config(src.get('activity_regularizer',
+                                                 None)),
+                }),
         ),
         fit={
             'batch_size': run_config.get('batch_size'),
@@ -268,7 +277,8 @@ def convert_task(row, connection) -> bool:
 UPDATE job_data d
     SET command = %b
 WHERE "id" = %b
-    """), (new_command, get_cell('id')),binary=True)
+    """), (new_command, get_cell('id')),
+                       binary=True)
 
     return True
 
