@@ -450,10 +450,11 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         # pprint(get_cell('widths'))
         # pprint(get_cell('network_structure'))
         if network.num_free_parameters != get_cell('num_free_parameters'):
-            network_structure = get_cell('network_structure')
+            # network_structure = get_cell('network_structure')
+            return False
 
-            if not shape.startswith('wide_first'):
-                return False
+            # if not shape.startswith('wide_first'):
+            
     #             fail(
     #                 f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
     # computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
