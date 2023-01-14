@@ -1,17 +1,14 @@
-from uuid import UUID
 from typing import Any, Dict, Iterable, Optional, Tuple, List
 import io
 import uuid
 import hashlib
 from jobqueue.connection_manager import ConnectionManager
 from psycopg import sql
-import simplejson
 import psycopg
 import pyarrow
+import pyarrow.parquet
 from dmp.logging.postgres_attribute_map import PostgresAttributeMap
 from dmp.logging.result_logger import ResultLogger
-
-from jobqueue.cursor_manager import CursorManager
 
 from dmp.parquet_util import make_pyarrow_schema
 
