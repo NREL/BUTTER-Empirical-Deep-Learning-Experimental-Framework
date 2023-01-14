@@ -1,4 +1,5 @@
 import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 from jobqueue.connection_manager import ConnectionManager
@@ -9,7 +10,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas
 import traceback
 import json
-
 
 from pprint import pprint
 import uuid
@@ -197,7 +197,8 @@ FROM
                     column_selection=column_selection,
                     block_size=sql.Literal(block_size),
                 )
-                with connection.cursor(binary=True, name=str(uuid.uuid4())) as cursor:
+                with connection.cursor(binary=True,
+                                       name=str(uuid.uuid4())) as cursor:
                     cursor.execute(q, binary=True)
 
                     eids = set()
@@ -216,10 +217,12 @@ FROM
                             print(f'failed on Exception: {e}', flush=True)
                             traceback.print_exc()
                             errors[experiment_id] = e
-                
-                error_list = sorted([(eid, str(e)) for eid, e in errors.items()])
+
+                error_list = sorted([(eid, str(e))
+                                     for eid, e in errors.items()])
                 for eid, e in error_list:
-                    connection.execute(sql.SQL("""
+                    connection.execute(
+                        sql.SQL("""
                     UPDATE experiment_migration
                         SET error_message = %s
                     WHERE experiment_id = %s;
@@ -251,293 +254,299 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
     experiment = None
     network = None
 
-    def fail(message:str):
-        nonlocal experiment, network
-        try:
-            message += f"""\nwith computed: {None if network is None else network.description} shape: {None if experiment is None else experiment.model.shape} depth: {None if experiment is None else experiment.model.depth}, size: {None if experiment is None else experiment.model.size}, dataset: {None if experiment is None else experiment.dataset.name}"""
-        except:
-            pass
-        
-        raise Exception(message)
+    try:
 
-    def get_cell(column: str):
-        return row[column_index_map[column]]
+        def fail(message: str):
+            raise Exception(message)
 
-    src_parameters = {
-        kind: value
-        for kind, value in old_parameter_map.parameter_from_id(
-            get_cell('run_parameters'))
-    }
+        def get_cell(column: str):
+            return row[column_index_map[column]]
 
-    if not src_parameters.get('run_config.shuffle', False):
-        fail(f"failed on run_config.shuffle {src_parameters.get('run_config.shuffle', False)}")
+        src_parameters = {
+            kind: value
+            for kind, value in old_parameter_map.parameter_from_id(
+                get_cell('run_parameters'))
+        }
 
-    if src_parameters.get('task', None) != 'AspectTestTask':
-        fail(f"failed on task {src_parameters.get('task', None)}")
+        if not src_parameters.get('run_config.shuffle', False):
+            fail(
+                f"failed on run_config.shuffle {src_parameters.get('run_config.shuffle', False)}"
+            )
 
-    if src_parameters.get('early_stopping', None) is not None:
-        fail(
-            f"failed on early_stopping {src_parameters.get('early_stopping', None)}"
-        )
+        if src_parameters.get('task', None) != 'AspectTestTask':
+            fail(f"failed on task {src_parameters.get('task', None)}")
 
-    if src_parameters.get('input_activation', 'relu') != 'relu':
-        fail(
-            f"failed on input_activation {src_parameters.get('input_activation', 'relu')}"
-        )
+        if src_parameters.get('early_stopping', None) is not None:
+            fail(
+                f"failed on early_stopping {src_parameters.get('early_stopping', None)}"
+            )
 
-    dataset_src = 'pmlb'
-    dataset_name = src_parameters['dataset']
-    dsinfo = dataset_index[dataset_index['Dataset'] == dataset_name].iloc[0]
+        if src_parameters.get('input_activation', 'relu') != 'relu':
+            fail(
+                f"failed on input_activation {src_parameters.get('input_activation', 'relu')}"
+            )
 
-    ml_task = MLTask.regression
-    num_outputs = 1
+        dataset_src = 'pmlb'
+        dataset_name = src_parameters['dataset']
+        dsinfo = dataset_index[dataset_index['Dataset'] ==
+                               dataset_name].iloc[0]
 
-    if dataset_name == '201_pol':
-        ml_task = MLTask.classification
-        num_outputs = 11
-    elif dataset_name == '294_satellite_image':
-        ml_task = MLTask.classification
-        num_outputs = 6
-    elif dsinfo['Task'] == 'classification':
-        ml_task = MLTask.classification
-        num_outputs = int(dsinfo['n_classes'])
-        if num_outputs == 2:
-            num_outputs = 1
+        ml_task = MLTask.regression
+        num_outputs = 1
 
-    dataset_size = int(dsinfo['n_observations'])
-    test_split = float(src_parameters['test_split'])
-    train_size = math.floor(dataset_size * test_split)
+        if dataset_name == '201_pol':
+            ml_task = MLTask.classification
+            num_outputs = 11
+        elif dataset_name == '294_satellite_image':
+            ml_task = MLTask.classification
+            num_outputs = 6
+        elif dsinfo['Task'] == 'classification':
+            ml_task = MLTask.classification
+            num_outputs = int(dsinfo['n_classes'])
+            if num_outputs == 2:
+                num_outputs = 1
 
-    optimizer_class = src_parameters.get('optimizer', 'Adam')
-    if optimizer_class == 'adam':
-        optimizer_class = 'Adam'
-    optimizer = {
-        'class': optimizer_class,
-        'learning_rate': float(src_parameters.get('learning_rate', 0.0001))
-    }
-    momentum = src_parameters.get('optimizer.config.momentum', None)
-    if momentum is not None:
-        optimizer['momentum'] = float(momentum)
-    nesterov = src_parameters.get('optimizer.config.nesterov', None)
-    if nesterov is not None:
-        optimizer['nesterov'] = nesterov
+        dataset_size = int(dsinfo['n_observations'])
+        test_split = float(src_parameters['test_split'])
+        train_size = math.floor(dataset_size * test_split)
 
-    # activity_regularizer
-    def make_keras_config(prefix: str) -> Optional[Dict[str, Any]]:
-        _class = src_parameters.get(prefix + '.type', None)
-        if _class is None:
-            _class = src_parameters.get(prefix, None)
+        optimizer_class = src_parameters.get('optimizer', 'Adam')
+        if optimizer_class == 'adam':
+            optimizer_class = 'Adam'
+        optimizer = {
+            'class': optimizer_class,
+            'learning_rate': float(src_parameters.get('learning_rate', 0.0001))
+        }
+        momentum = src_parameters.get('optimizer.config.momentum', None)
+        if momentum is not None:
+            optimizer['momentum'] = float(momentum)
+        nesterov = src_parameters.get('optimizer.config.nesterov', None)
+        if nesterov is not None:
+            optimizer['nesterov'] = nesterov
+
+        # activity_regularizer
+        def make_keras_config(prefix: str) -> Optional[Dict[str, Any]]:
+            _class = src_parameters.get(prefix + '.type', None)
             if _class is None:
+                _class = src_parameters.get(prefix, None)
+                if _class is None:
+                    return None
+
+            activity_regularizer = {'class': _class}
+            for k, v in src_parameters.items():
+                if k.startswith(prefix) and not k.endswith('.type'):
+                    activity_regularizer[k[len(prefix) + 1:]] = v
+            return activity_regularizer
+
+        layer_config: Dict[str, Any] = {
+            'kernel_initializer': 'GlorotUniform',
+        }
+
+        layer_config.update({
+            k: make_keras_config(k)
+            for k in [
+                'kernel_regularizer',
+                'bias_regularizer',
+                'activity_regularizer',
+            ]
+        })
+
+        shape = str(src_parameters['shape'])
+
+        # input shape, output shape, ml_task
+        experiment = TrainingExperiment(
+            seed=int(get_cell('seed')),
+            precision='float32',
+            batch=str(src_parameters.get('batch', None)),  # type: ignore
+            dataset=DatasetSpec(
+                name=dataset_name,
+                source=dataset_src,
+                method=src_parameters.get('test_split_method',
+                                          'shuffled_train_test_split'),
+                test_split=float(src_parameters.get('test_split', 0.2)),
+                validation_split=0.0,
+                label_noise=float(src_parameters.get('label_noise', 0.0)),
+            ),
+            model=DenseBySize(
+                input=None,
+                output=Dense.make(
+                    num_outputs,
+                    layer_config | {
+                        'activation':
+                        src_parameters.get('output_activation', None),
+                    },
+                ),
+                shape=shape,
+                size=int(src_parameters['size']),
+                depth=int(src_parameters['depth']),
+                search_method='integer',
+                inner=Dense.make(
+                    -1,
+                    layer_config | {
+                        'activation': src_parameters.get('activation', 'relu'),
+                    },
+                ),
+            ),
+            fit={
+                'batch_size': int(src_parameters['batch_size']),
+                'epochs': int(src_parameters['epochs']),
+            },
+            optimizer=optimizer,
+            loss=None,
+            early_stopping=None,
+            record_post_training_metrics=False,
+            record_times=False,
+            record_model=None,
+            record_metrics=None,
+        )
+
+        def try_get_input_shape(t):
+            if not isinstance(t, dict):
                 return None
 
-        activity_regularizer = {'class': _class}
-        for k, v in src_parameters.items():
-            if k.startswith(prefix) and not k.endswith('.type'):
-                activity_regularizer[k[len(prefix) + 1:]] = v
-        return activity_regularizer
+            if t.get('', None) == 'NInput':
+                shape = t.get('shape', None)
+                if isinstance(shape, list) or isinstance(shape, tuple):
+                    return list(shape)
 
-    layer_config: Dict[str, Any] = {
-        'kernel_initializer': 'GlorotUniform',
-    }
+            inputs = t.get('inputs', None)
+            if isinstance(inputs, list):
+                for i in inputs:
+                    shape = try_get_input_shape(i)
+                    if shape is not None:
+                        return shape
 
-    layer_config.update({
-        k: make_keras_config(k)
-        for k in [
-            'kernel_regularizer',
-            'bias_regularizer',
-            'activity_regularizer',
-        ]
-    })
-
-    shape = str(src_parameters['shape'])
-
-    # input shape, output shape, ml_task
-    experiment = TrainingExperiment(
-        seed=int(get_cell('seed')),
-        precision='float32',
-        batch=str(src_parameters.get('batch', None)),  # type: ignore
-        dataset=DatasetSpec(
-            name=dataset_name,
-            source=dataset_src,
-            method=src_parameters.get('test_split_method',
-                                      'shuffled_train_test_split'),
-            test_split=float(src_parameters.get('test_split', 0.2)),
-            validation_split=0.0,
-            label_noise=float(src_parameters.get('label_noise', 0.0)),
-        ),
-        model=DenseBySize(
-            input=None,
-            output=Dense.make(
-                num_outputs,
-                layer_config | {
-                    'activation': src_parameters.get('output_activation',
-                                                     None),
-                },
-            ),
-            shape=shape,
-            size=int(src_parameters['size']),
-            depth=int(src_parameters['depth']),
-            search_method='integer',
-            inner=Dense.make(
-                -1,
-                layer_config | {
-                    'activation': src_parameters.get('activation', 'relu'),
-                },
-            ),
-        ),
-        fit={
-            'batch_size': int(src_parameters['batch_size']),
-            'epochs': int(src_parameters['epochs']),
-        },
-        optimizer=optimizer,
-        loss=None,
-        early_stopping=None,
-        record_post_training_metrics=False,
-        record_times=False,
-        record_model=None,
-        record_metrics=None,
-    )
-
-    def try_get_input_shape(t):
-        if not isinstance(t, dict):
             return None
 
-        if t.get('', None) == 'NInput':
-            shape = t.get('shape', None)
-            if isinstance(shape, list) or isinstance(shape, tuple):
-                return list(shape)
+        prepared_dataset = None
+        input_shape = try_get_input_shape(get_cell('network_structure'))
+        if input_shape is not None:
+            prepared_dataset = PsuedoPreparedDataset(
+                ml_task=ml_task,
+                # input_shape=[int(dsinfo['n_features'])],
+                input_shape=input_shape,
+                output_shape=[num_outputs],
+                train_size=train_size,
+                test_size=dataset_size - train_size,
+                validation_size=0,
+            )
+        else:
+            # prepared_dataset = experiment._load_and_prepare_dataset()
+            fail(f"could not determine input shape {get_cell('network_structure')}")
 
-        inputs = t.get('inputs', None)
-        if isinstance(inputs, list):
-            for i in inputs:
-                shape = try_get_input_shape(i)
-                if shape is not None:
-                    return shape
+        metrics = experiment._autoconfigure_for_dataset(
+            prepared_dataset)  # type: ignore
+        metric_names = [m if isinstance(m, str) else m.name for m in metrics]
+        metric_names.append('loss')
+        # print(metric_names)
 
-        return None
+        try:
+            network = experiment._make_network(experiment.model)
+        except ValueError as e:
+            fail(f"failed on {e}")
 
-    prepared_dataset = None
-    input_shape = try_get_input_shape(get_cell('network_structure'))
-    if input_shape is not None:
-        prepared_dataset = PsuedoPreparedDataset(
-            ml_task=ml_task,
-            # input_shape=[int(dsinfo['n_features'])],
-            input_shape=input_shape,
-            output_shape=[num_outputs],
-            train_size=train_size,
-            test_size=dataset_size - train_size,
-            validation_size=0,
-        )
-    else:
-        prepared_dataset = experiment._load_and_prepare_dataset()
-
-    metrics = experiment._autoconfigure_for_dataset(
-        prepared_dataset)  # type: ignore
-    metric_names = [m if isinstance(m, str) else m.name for m in metrics]
-    metric_names.append('loss')
-    # print(metric_names)
-
-    try:
-        network = experiment._make_network(experiment.model)
-    except ValueError as e:
-        fail(f"failed on {e}")
-
-    # pprint(get_cell('widths'))
-    # pprint(get_cell('network_structure'))
-    if network.num_free_parameters != get_cell('num_free_parameters'):
-        network_structure = get_cell('network_structure')
-        
-        if not shape.startswith('wide_first'):
-            fail(
-                f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
-computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
-src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
-computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""", flush=True)
-        # pprint(experiment)
-        # pprint(dsinfo)
         # pprint(get_cell('widths'))
         # pprint(get_cell('network_structure'))
-        # pprint(marshal.marshal(network))
-        # return False
+        if network.num_free_parameters != get_cell('num_free_parameters'):
+            network_structure = get_cell('network_structure')
 
-    def map_resource_list(
-        src: Optional[str], ) -> Tuple[Optional[List[int]], Optional[int]]:
-        if not isinstance(src, str) or len(src) < 2:
-            return None, None
-        l = [int(i) for i in (src[1:-1].split(',')) if len(i) > 0]
-        return l, len(l)
+            if not shape.startswith('wide_first'):
+                fail(
+                    f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
+    computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
+    src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
+    computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""",
+                    flush=True)
+            # pprint(experiment)
+            # pprint(dsinfo)
+            # pprint(get_cell('widths'))
+            # pprint(get_cell('network_structure'))
+            # pprint(marshal.marshal(network))
+            # return False
 
-    history = {}
-    for m in metric_names:
-        for p in ['test_', 'train_']:
-            k = p + m
-            try:
-                history[k] = get_cell(k)
-            except KeyError:
-                continue
+        def map_resource_list(
+            src: Optional[str], ) -> Tuple[Optional[List[int]], Optional[int]]:
+            if not isinstance(src, str) or len(src) < 2:
+                return None, None
+            l = [int(i) for i in (src[1:-1].split(',')) if len(i) > 0]
+            return l, len(l)
 
-    num_epochs = max((len(h) for h in history.values() if h is not None))
-    for h in history.values():
-        h.extend([None] * (num_epochs - len(h)))
-    history['epoch'] = list(range(1, num_epochs + 1))
+        history = {}
+        for m in metric_names:
+            for p in ['test_', 'train_']:
+                k = p + m
+                try:
+                    history[k] = get_cell(k)
+                except KeyError:
+                    continue
 
-    worker_info = {
-        'gpu_memory': get_cell('gpu_memory'),
-        'strategy': get_cell('strategy'),
-    }
+        num_epochs = max((len(h) for h in history.values() if h is not None))
+        for h in history.values():
+            h.extend([None] * (num_epochs - len(h)))
+        history['epoch'] = list(range(1, num_epochs + 1))
 
-    for key in ['cpus', 'gpus', 'nodes']:
-        l, num = map_resource_list(get_cell(key))
-        worker_info[key] = l
-        worker_info['num_' + key] = num
+        worker_info = {
+            'gpu_memory': get_cell('gpu_memory'),
+            'strategy': get_cell('strategy'),
+        }
 
-    result_record = experiment._make_result_record(
-        worker_info=worker_info,
-        job_id=get_cell('job_id'),
-        dataset=prepared_dataset,  # type: ignore
-        network=network,
-        history=history,
-    )
+        for key in ['cpus', 'gpus', 'nodes']:
+            l, num = map_resource_list(get_cell(key))
+            worker_info[key] = l
+            worker_info['num_' + key] = num
 
-    result_record.experiment_data['experiment_id'] = get_cell('experiment_id')
+        result_record = experiment._make_result_record(
+            worker_info=worker_info,
+            job_id=get_cell('job_id'),
+            dataset=prepared_dataset,  # type: ignore
+            network=network,
+            history=history,
+        )
 
-    result_record.run_data.update({
-        'run_id':
-        get_cell('run_id'),
-        'python_version':
-        src_parameters.get('python_version', None),
-        'platform':
-        get_cell('platform'),
-        'tensorflow_version':
-        src_parameters.get('tensorflow_version', None),
-        'host_name':
-        get_cell('hostname'),
-        'slurm_job_id':
-        get_cell('slurm_job_id'),
-        'git_hash':
-        get_cell('git_hash'),
-        'task_version':
-        int(src_parameters.get('task_version', 0))
-    })
+        result_record.experiment_data['experiment_id'] = get_cell(
+            'experiment_id')
 
-    for k in [
-            'primary_sweep',
-            '300_epoch_sweep',
-            '30k_epoch_sweep',
-            'learning_rate_sweep',
-            'label_noise_sweep',
-            'batch_size_sweep',
-            'regularization_sweep',
-            'optimizer_sweep',
-            'learning_rate_batch_size_sweep',
-            'size_adjusted_regularization_sweep',
-            'butter',
-    ]:
-        if get_cell(k):
-            result_record.experiment_data[k] = True
+        result_record.run_data.update({
+            'run_id':
+            get_cell('run_id'),
+            'python_version':
+            src_parameters.get('python_version', None),
+            'platform':
+            get_cell('platform'),
+            'tensorflow_version':
+            src_parameters.get('tensorflow_version', None),
+            'host_name':
+            get_cell('hostname'),
+            'slurm_job_id':
+            get_cell('slurm_job_id'),
+            'git_hash':
+            get_cell('git_hash'),
+            'task_version':
+            int(src_parameters.get('task_version', 0))
+        })
 
-    result_logger.log(result_record, connection=connection)
-    return True
+        for k in [
+                'primary_sweep',
+                '300_epoch_sweep',
+                '30k_epoch_sweep',
+                'learning_rate_sweep',
+                'label_noise_sweep',
+                'batch_size_sweep',
+                'regularization_sweep',
+                'optimizer_sweep',
+                'learning_rate_batch_size_sweep',
+                'size_adjusted_regularization_sweep',
+                'butter',
+        ]:
+            if get_cell(k):
+                result_record.experiment_data[k] = True
+
+        result_logger.log(result_record, connection=connection)
+        return True
+    except Exception as e:
+        message = str(e)
+        message += f"""\nwith computed: {None if network is None else network.description} shape: {None if experiment is None else experiment.model.shape} depth: {None if experiment is None else experiment.model.depth}, size: {None if experiment is None else experiment.model.size}, dataset: {None if experiment is None else experiment.dataset.name}\n experiment {None if experiment is None else experiment}."""
+        raise Exception(message)
 
 
 if __name__ == "__main__":
