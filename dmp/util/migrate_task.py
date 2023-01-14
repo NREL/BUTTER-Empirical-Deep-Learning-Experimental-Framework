@@ -64,75 +64,24 @@ class PsuedoPreparedDataset():
     validation: Any = None
 
 
-experiment_columns = [
-    'experiment_id',
-    'num_free_parameters',
-    'network_structure',
-    'widths',
-    'size',
-    'relative_size_error',
-    'primary_sweep',
-    '300_epoch_sweep',
-    '30k_epoch_sweep',
-    'learning_rate_sweep',
-    'label_noise_sweep',
-    'batch_size_sweep',
-    'regularization_sweep',
-    'optimizer_sweep',
-    'learning_rate_batch_size_sweep',
-    'size_adjusted_regularization_sweep',
-    'butter',
+status_columns = [
+    'id',
+    'queue',
+    'status',
+    'priority',
+    'start_time',
+    'update_time',
+    'worker',
+    'error_count',
+    'error',
 ]
 
-run_columns = [
-    'run_id',
-    'job_id',
-    'run_parameters',
-    'record_timestamp',
-    'platform',
-    'git_hash',
-    'hostname',
-    'slurm_job_id',
-    'seed',
-    'save_every_epochs',
-    'num_gpus',
-    'num_nodes',
-    'num_cpus',
-    'gpu_memory',
-    'nodes',
-    'cpus',
-    'gpus',
-    'strategy',
+data_columns = [
+    'command',
+    'parent',
 ]
 
-history_columns = [
-    'test_loss',
-    'train_loss',
-    'test_accuracy',
-    'train_accuracy',
-    'test_loss',
-    'train_loss',
-    'test_accuracy',
-    'train_accuracy',
-    'test_mean_squared_error',
-    'train_mean_squared_error',
-    'test_mean_absolute_error',
-    'train_mean_absolute_error',
-    'test_root_mean_squared_error',
-    'train_root_mean_squared_error',
-    'test_mean_squared_logarithmic_error',
-    'train_mean_squared_logarithmic_error',
-    'test_hinge',
-    'train_hinge',
-    'test_squared_hinge',
-    'train_squared_hinge',
-    'test_cosine_similarity',
-    'train_cosine_similarity',
-    'test_kullback_leibler_divergence',
-    'train_kullback_leibler_divergence',
-]
-
-columns = experiment_columns + run_columns + history_columns
+columns = status_columns + data_columns
 
 column_index_map = {name: i for i, name in enumerate(columns)}
 
@@ -161,9 +110,6 @@ def do_work(args):
     worker_number, block_size = args
 
     credentials = load_credentials('dmp')
-    old_parameter_map = None
-    with CursorManager(credentials) as cursor:
-        old_parameter_map = PostgresParameterMapV1(cursor)
 
     result_logger = PostgresCompressedResultLogger(credentials)
 
@@ -181,27 +127,26 @@ def do_work(args):
                 # cursor.itersize = 8
 
                 column_selection = sql.SQL(', ').join([
-                    sql.SQL('e.{col} {col}').format(col=sql.Identifier(c))
-                    for c in experiment_columns
+                    sql.SQL('s.{col} {col}').format(col=sql.Identifier(c))
+                    for c in status_columns
                 ] + [
-                    sql.SQL('r.{col} {col}').format(col=sql.Identifier(c))
-                    for c in (run_columns + history_columns)
+                    sql.SQL('d.{col} {col}').format(col=sql.Identifier(c))
+                    for c in data_columns
                 ])
 
                 q = sql.SQL("""
 SELECT {column_selection}
 FROM 
-    (   SELECT experiment_id
-        FROM experiment_migration
+    (   SELECT *
+        FROM job_status s
         WHERE 
-            NOT migrated AND is_valid
-        ORDER BY experiment_id ASC
+            status = -10
+        ORDER BY priority ASC
         FOR UPDATE
         SKIP LOCKED
         LIMIT {block_size}
-    ) m
-    INNER JOIN experiment_ e USING (experiment_id)
-    INNER JOIN run_ r USING (experiment_id)
+    ) s
+    INNER JOIN job_data d USING (id)
 ;""").format(
                     column_selection=column_selection,
                     block_size=sql.Literal(block_size),
@@ -211,10 +156,9 @@ FROM
 
                     eids = set()
                     for row in cursor:
-                        eids.add(row[0])
+                        eids.add(row[column_index_map['id']])
                         try:
-                            if convert_run(old_parameter_map, result_logger,
-                                           row, connection):
+                            if convert_task(row):
                                 num_converted += 1
                             else:
                                 num_excepted += 1
@@ -226,10 +170,10 @@ FROM
                 eid_values = sql.SQL(',').join(
                     (sql.Literal(v) for v in sorted(eids)))
                 q = sql.SQL("""
-UPDATE experiment_migration
-    SET migrated = TRUE
+UPDATE job_status
+    SET status = 0
 WHERE
-    experiment_id IN ({eid_values})
+    id IN ({eid_values})
                 ;""").format(eid_values=eid_values)
                 connection.execute(q)
         total_num_converted += num_converted
@@ -244,7 +188,7 @@ WHERE
     return total_num_converted
 
 
-def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
+def convert_task(old_parameter_map, result_logger, row) -> bool:
 
     def get_cell(column: str):
         return row[column_index_map[column]]
@@ -509,7 +453,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         if get_cell(k):
             result_record.experiment_data[k] = True
 
-    result_logger.log(result_record, connection=connection)
+    result_logger.log(result_record)
     return True
 
 

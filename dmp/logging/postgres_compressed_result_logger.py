@@ -136,51 +136,55 @@ ON CONFLICT DO NOTHING
     def log(
         self,
         result: TaskResultRecord,
+        connection = None
     ) -> None:
-        with ConnectionManager(self._credentials) as connection:
+        if connection is None:
+            with ConnectionManager(self._credentials) as connection:
+                self.log(result, connection)
+            return
 
-            experiment_parameters = self._get_ids(result.experiment_parameters,
-                                                  connection)
-            experiment_uid = self.make_experiment_uid(experiment_parameters)
+        experiment_parameters = self._get_ids(result.experiment_parameters,
+                                                connection)
+        experiment_uid = self.make_experiment_uid(experiment_parameters)
 
-            experiment_column_values = PostgresCompressedResultLogger._extract_values(
-                result.experiment_data,
-                self._experiment_columns,
+        experiment_column_values = PostgresCompressedResultLogger._extract_values(
+            result.experiment_data,
+            self._experiment_columns,
+        )
+
+        experiment_attributes = self._get_ids(result.experiment_data,
+                                                connection)
+        experiment_attributes.extend(experiment_parameters)
+        experiment_attributes.sort()
+
+        run_column_values = PostgresCompressedResultLogger._extract_values(
+            result.run_data, self._run_columns)
+        run_column_values[self._run_data_column_index] = \
+            psycopg.types.json.Jsonb(result.run_data)
+
+        # print(f'run_column_values {run_column_values}\nrun_attributes {run_attributes}')
+
+        with io.BytesIO() as history_buffer:
+            self._make_history_bytes(
+                result.run_history,  # type: ignore
+                history_buffer,
             )
+            run_column_values[self._run_history_column_index] = \
+                history_buffer.getvalue()
 
-            experiment_attributes = self._get_ids(result.experiment_data,
-                                                  connection)
-            experiment_attributes.extend(experiment_parameters)
-            experiment_attributes.sort()
+        sql_values = sql.SQL(', ').join(
+            sql.Literal(v) for v in (
+                experiment_uid,
+                experiment_attributes,
+                *experiment_column_values,
+                *run_column_values,
+            ))
 
-            run_column_values = PostgresCompressedResultLogger._extract_values(
-                result.run_data, self._run_columns)
-            run_column_values[self._run_data_column_index] = \
-                psycopg.types.json.Jsonb(result.run_data)
-
-            # print(f'run_column_values {run_column_values}\nrun_attributes {run_attributes}')
-
-            with io.BytesIO() as history_buffer:
-                self._make_history_bytes(
-                    result.run_history,  # type: ignore
-                    history_buffer,
-                )
-                run_column_values[self._run_history_column_index] = \
-                    history_buffer.getvalue()
-
-            sql_values = sql.SQL(', ').join(
-                sql.Literal(v) for v in (
-                    experiment_uid,
-                    experiment_attributes,
-                    *experiment_column_values,
-                    *run_column_values,
-                ))
-
-            query = self._log_query_prefix + sql_values + self._log_query_suffix
-            connection.execute(query)
-            # with psycopg.ClientCursor(connection) as cursor:
-            #     print(cursor.mogrify(query))
-            #     cursor.execute(query)
+        query = self._log_query_prefix + sql_values + self._log_query_suffix
+        connection.execute(query)
+        # with psycopg.ClientCursor(connection) as cursor:
+        #     print(cursor.mogrify(query))
+        #     cursor.execute(query)
 
     # def _split_data_fields(
     #     self,
