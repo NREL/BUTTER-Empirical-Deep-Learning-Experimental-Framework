@@ -278,10 +278,6 @@ SELECT * from inserted
                 query_values_key_columns=self._query_values_key_columns,
                 values=sql.SQL(',').join((sql.SQL('%s') for v in values)),
             )
-
-            with ConnectionManager(self._credentials) as connection:
-                with ClientCursor(connection) as cursor:
-                    print(cursor.mogrify(query, values))
                     
             with CursorManager(self._credentials, binary=True) as cursor:
                 cursor.execute(query, values, binary=True)
