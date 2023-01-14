@@ -338,6 +338,8 @@ def convert_run(old_parameter_map, result_logger, row) -> bool:
         ]
     })
 
+    shape = str(src_parameters['shape'])
+
     # input shape, output shape, ml_task
     experiment = TrainingExperiment(
         seed=int(get_cell('seed')),
@@ -361,7 +363,7 @@ def convert_run(old_parameter_map, result_logger, row) -> bool:
                                                      None),
                 },
             ),
-            shape=str(src_parameters['shape']),
+            shape=shape,
             size=int(src_parameters['size']),
             depth=int(src_parameters['depth']),
             search_method='integer',
@@ -420,9 +422,10 @@ def convert_run(old_parameter_map, result_logger, row) -> bool:
     # pprint(get_cell('widths'))
     # pprint(get_cell('network_structure'))
     if network.num_free_parameters != get_cell('num_free_parameters'):
-        print(
-            f"failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} computed: {network.description} shape: {src_parameters['shape']}."
-        )
+        if not shape.startswith('wide_first'):
+            print(
+                f"failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} computed: {network.description} shape: {shape}."
+            )
         # pprint(experiment)
         # pprint(dsinfo)
         # pprint(get_cell('widths'))
