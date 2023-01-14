@@ -206,7 +206,7 @@ FROM
                     column_selection=column_selection,
                     block_size=sql.Literal(block_size),
                 )
-                with connection.cursor(name=worker_id, scrollable=True) as cursor:
+                with connection.cursor(binary=True) as cursor:
                     cursor.execute(q)
 
                     eids = set()
