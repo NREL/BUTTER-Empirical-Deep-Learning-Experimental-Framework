@@ -53,7 +53,7 @@ class PostgresCompressedResultLogger(ResultLogger):
 
     _log_query_prefix: sql.Composed
     _log_query_suffix: sql.Composed
-    _parameter_map: PostgresAttributeMap
+    _attribute_map: PostgresAttributeMap
 
     def __init__(
         self,
@@ -168,8 +168,7 @@ class PostgresCompressedResultLogger(ResultLogger):
 #         )
 
         # initialize parameter map
-        with ConnectionManager(self._credentials) as connection:
-            self._parameter_map = PostgresAttributeMap(connection)
+        self._attribute_map = PostgresAttributeMap(self._credentials)
 
     @staticmethod
     def make_experiment_uid(experiment_parameters):
@@ -280,9 +279,8 @@ class PostgresCompressedResultLogger(ResultLogger):
         parameter_dict: Dict[str, Any],
         connection,
     ) -> List[int]:
-        return self._parameter_map.to_sorted_attribute_ids(
+        return self._attribute_map.to_sorted_attribute_ids(
             parameter_dict,
-            connection=connection,
         )
 
     def _make_column_sql(

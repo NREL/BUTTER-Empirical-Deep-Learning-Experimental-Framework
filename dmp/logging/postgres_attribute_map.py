@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Hashable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type, Union, get_args
 from enum import Enum
+from jobqueue.cursor_manager import CursorManager
 import simplejson
 import psycopg
 from psycopg import sql
@@ -76,6 +77,8 @@ def _make_column_identifier_seq(
 
 class PostgresAttributeMap:
 
+    _credentials: Dict
+
     _attribute_table: sql.Identifier
     _select_attribute: sql.Composed
     _kind_type_value_map: Dict[str, Dict[AttributeValueType, Dict[
@@ -125,11 +128,12 @@ class PostgresAttributeMap:
 
     def __init__(
         self,
-        connection,
+        credentials: Dict,
         attribute_table='attr',
     ) -> None:
         super().__init__()
 
+        self._credentials = credentials
         self._kind_type_value_map = {}
         self._kind_value_map = {}
         self._id_map = {}
@@ -173,7 +177,7 @@ class PostgresAttributeMap:
              for column_name, column_id, column_type in index_and_value_columns
              ))
 
-        with connection.cursor(binary=True) as cursor:
+        with CursorManager(self._credentials, binary=True) as cursor:
             cursor.execute(
                 sql.SQL("SELECT {columns} FROM {attribute_table}").format(
                     columns=sql.SQL(',').join(
@@ -205,7 +209,7 @@ class PostgresAttributeMap:
                         value,
                     ))
 
-    def to_attribute_id(self, kind: str, value: Any, connection=None) -> int:
+    def to_attribute_id(self, kind: str, value: Any, c=None) -> int:
         value_type = get_attribute_value_type_for_value(value)
         comparable_value = self._make_comparable_value(value_type, value)
 
@@ -213,9 +217,9 @@ class PostgresAttributeMap:
             return self._kind_type_value_map[kind][value_type][
                 comparable_value].id_
         except KeyError:
-            if connection is None:
-                raise KeyError(
-                    f'Unable to translate attribute {kind} : {value}.')
+            # if connection is None:
+            #     raise KeyError(
+            #         f'Unable to translate attribute {kind} : {value}.')
 
             typed_values = [None] * len(_attribute_type_code_map)
             typed_values[value_type.type_code] = self._make_database_value(
@@ -260,7 +264,7 @@ SELECT * from inserted
                                                   *(typed_values[1:]))), ))
 
             # print(connection.mogrify(query))
-            with connection.cursor() as cursor:
+            with CursorManager(self._credentials, binary=True) as cursor:
                 cursor.execute(query)
 
                 results = cursor.fetchall()
@@ -278,7 +282,6 @@ SELECT * from inserted
             return self.to_attribute_id(
                 kind,
                 value,
-                connection=connection,
             )  # retry
 
     def get_all_kinds(self) -> Sequence[str]:
@@ -293,35 +296,28 @@ SELECT * from inserted
     def to_attribute_ids(
         self,
         kvl: Union[Dict[str, Any], Iterable[Tuple[str, Any]]],
-        connection=None,
     ) -> Sequence[int]:
         if isinstance(kvl, dict):
             kvl = kvl.items()  # type: ignore
-        return [
-            self.to_attribute_id(kind, value, connection)
-            for kind, value in kvl
-        ]
+        return [self.to_attribute_id(kind, value) for kind, value in kvl]
 
     def to_sorted_attribute_ids(
         self,
         kvl: Union[Dict[str, Any], Iterable[Tuple[str, Any]]],
-        connection=None,
     ) -> List[int]:
-        return sorted(self.to_attribute_ids(kvl, connection=connection))
+        return sorted(self.to_attribute_ids(kvl))
 
     def attribute_from_id(
         self,
         id_: int,
-        connection=None,
     ) -> Attribute:
         return self._id_map[id_]
 
     def attribute_from_ids(
         self,
         ids: Iterable[int],
-        connection=None,
     ) -> List[Attribute]:
-        return [self.attribute_from_id(e, connection) for e in i]
+        return [self.attribute_from_id(e) for e in ids]
 
     def _register_attribute(
         self,
