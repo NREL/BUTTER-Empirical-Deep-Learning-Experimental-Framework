@@ -10,6 +10,7 @@ CREATE TABLE attr
     value_int bigint,
     value_float double precision,
     value_str text,
+    digest uuid,
     value_json jsonb,
     PRIMARY KEY (attribute_id)
 );
@@ -24,6 +25,7 @@ ALTER TABLE attr
         AND value_float IS NULL
         AND value_str IS NULL
         AND value_json IS NULL
+        AND digest IS NULL
     )
     OR
     (value_type = 1
@@ -32,6 +34,7 @@ ALTER TABLE attr
         AND value_float IS NULL
         AND value_str IS NULL
         AND value_json IS NULL
+        AND digest IS NULL
     )
     OR
     (value_type = 2 
@@ -40,6 +43,7 @@ ALTER TABLE attr
         AND value_float IS NULL
         AND value_str IS NULL
         AND value_json IS NULL
+        AND digest IS NULL
     )
     OR
     (value_type = 3
@@ -48,6 +52,7 @@ ALTER TABLE attr
         AND value_float IS NOT NULL
         AND value_str IS NULL
         AND value_json IS NULL
+        AND digest IS NULL
     )
     OR
     (value_type = 4
@@ -56,6 +61,7 @@ ALTER TABLE attr
         AND value_float IS NULL
         AND value_str IS NOT NULL
         AND value_json IS NULL
+        AND digest IS NULL
     )
     OR
     (value_type = 5
@@ -64,6 +70,7 @@ ALTER TABLE attr
         AND value_float IS NULL
         AND value_str IS NULL
         AND value_json IS NOT NULL
+        AND digest IS NOT NULL
     )
   );
   
@@ -72,7 +79,8 @@ CREATE UNIQUE INDEX ON attr USING btree (kind, value_bool) INCLUDE (attribute_id
 CREATE UNIQUE INDEX ON attr USING btree (kind, value_int) INCLUDE (attribute_id) WHERE value_type = 2;
 CREATE UNIQUE INDEX ON attr USING btree (kind, value_float) INCLUDE (attribute_id) WHERE value_type = 3;
 CREATE UNIQUE INDEX ON attr USING btree (kind, value_str) INCLUDE (attribute_id) WHERE value_type = 4;
-CREATE UNIQUE INDEX ON attr USING btree (kind, value_json) WHERE value_type = 5;
+CREATE UNIQUE INDEX ON attr USING btree (kind, digest) WHERE value_type = 5;
+-- CREATE UNIQUE INDEX ON attr USING btree (kind, value_json) WHERE value_type = 5;
 
 CREATE INDEX ON attr USING btree (kind);
 CREATE INDEX ON attr USING gin (value_json) WHERE value_type = 5;

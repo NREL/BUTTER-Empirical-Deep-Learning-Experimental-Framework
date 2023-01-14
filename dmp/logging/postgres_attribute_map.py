@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+import hashlib
 from typing import Any, Dict, Hashable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type, Union, get_args
 from enum import Enum
+import uuid
 from jobqueue.cursor_manager import CursorManager
 import simplejson
 import psycopg
@@ -23,7 +25,9 @@ class AttributeValueType(Enum):
     Integer = (2, int, 'value_int', 'bigint')
     Float = (3, float, 'value_float', 'double precision')
     String = (4, str, 'value_str', 'text')
-    JSON = (5, list, 'value_json', 'jsonb')
+    JSON = (5, list, 'digest', 'uuid')
+
+    # 'value_json', 'jsonb'
 
     def __init__(
         self,
@@ -66,7 +70,7 @@ class Attribute():
     kind: str
     value_type: AttributeValueType
     comparable_value: ComparableValue
-    actual_value: Any
+    # actual_value: Any
 
 
 def _make_column_identifier_seq(
@@ -107,6 +111,10 @@ class PostgresAttributeMap:
                                    ) for attribute_type in AttributeValueType
                                    if attribute_type.sql_column is not None
                                ])
+    _json_columns: List[Tuple[str, sql.Identifier,
+                              str]] = _make_column_identifier_seq([
+                                  ('value_json', 'jsonb'),
+                              ])
 
     # _column_names: List[str]
 
@@ -141,7 +149,8 @@ class PostgresAttributeMap:
         self._attribute_table = sql.Identifier(attribute_table)
 
         index_and_value_columns = self._index_columns + self._value_columns
-        all_columns = self._id_columns + index_and_value_columns
+        all_but_id = index_and_value_columns + self._json_columns
+        all_columns = self._id_columns + all_but_id
 
         self._column_map = {
             column_name: i
@@ -164,26 +173,21 @@ class PostgresAttributeMap:
 
         self._casting_clause = sql.SQL(', ').join(
             (sql.SQL("{}::{}").format(column_id, sql.SQL(column_type))
-             for column_name, column_id, column_type in index_and_value_columns
-             ))
+             for column_name, column_id, column_type in all_but_id))
 
         self._key_columns = sql.SQL(',').join(
-            (column_id
-             for column_name, column_id, column_type in index_and_value_columns
-             ))
+            (column_id for column_name, column_id, column_type in all_but_id))
 
         self._query_values_key_columns = sql.SQL(', ').join(
             (sql.SQL('query_values.{column_id}').format(column_id=column_id, )
-             for column_name, column_id, column_type in index_and_value_columns
-             ))
+             for column_name, column_id, column_type in all_but_id))
 
         with CursorManager(self._credentials, binary=True) as cursor:
             cursor.execute(
                 sql.SQL("SELECT {columns} FROM {attribute_table}").format(
                     columns=sql.SQL(',').join(
-                        (column_id
-                         for column_name, column_id, column_type in all_columns
-                         )),
+                        (column_id for column_name, column_id, column_type in (
+                            self._id_columns + index_and_value_columns))),
                     attribute_table=self._attribute_table,
                 ))
 
@@ -191,14 +195,14 @@ class PostgresAttributeMap:
                 value_type = get_attribute_value_type_for_type_code(
                     row[self._type_column])
                 value_column = self._type_to_column_map[value_type]
-                database_value = None if value_column is None else row[
+                comparable_value = None if value_column is None else row[
                     value_column]
-                value = self._recover_value_from_database(
-                    value_type,
-                    database_value,
-                )
-                comparable_value = self._make_comparable_value(
-                    value_type, value)
+                # value = self._recover_value_from_database(
+                #     value_type,
+                #     database_value,
+                # )
+                # comparable_value = self._make_comparable_value(
+                #     value_type, value)
 
                 self._register_attribute(
                     Attribute(
@@ -206,12 +210,14 @@ class PostgresAttributeMap:
                         row[self._kind_column],
                         value_type,
                         comparable_value,
-                        value,
+                        # value,
                     ))
 
     def to_attribute_id(self, kind: str, value: Any, c=None) -> int:
         value_type = get_attribute_value_type_for_value(value)
-        comparable_value = self._make_comparable_value(value_type, value)
+        database_value = self._make_database_value(value_type, value)
+        comparable_value = self._make_comparable_value(value_type,
+                                                       database_value)
 
         try:
             return self._kind_type_value_map[kind][value_type][
@@ -222,10 +228,14 @@ class PostgresAttributeMap:
             #         f'Unable to translate attribute {kind} : {value}.')
 
             typed_values = [None] * len(_attribute_type_code_map)
-            typed_values[value_type.type_code] = self._make_database_value(
-                value_type,
-                value,
-            )
+            typed_values[value_type.type_code] = comparable_value
+
+            json_value = None
+            if value_type == AttributeValueType.JSON:
+                json_value = psycopg.types.json.Jsonb(database_value)
+
+            values = (value_type.type_code, kind, *(typed_values[1:]),
+                      json_value)
 
             query = sql.SQL("""
 WITH query_values as (
@@ -254,18 +264,18 @@ inserted as (
 SELECT attribute_id, {key_columns} from query_values WHERE attribute_id IS NOT NULL
 UNION ALL
 SELECT * from inserted
-;""").format(attribute_table=self._attribute_table,
-             matching_clause=self._matching_clause,
-             casting_clause=self._casting_clause,
-             key_columns=self._key_columns,
-             query_values_key_columns=self._query_values_key_columns,
-             values=sql.SQL(' ,').join((sql.Literal(v)
-                                        for v in (value_type.type_code, kind,
-                                                  *(typed_values[1:]))), ))
+;""").format(
+                attribute_table=self._attribute_table,
+                matching_clause=self._matching_clause,
+                casting_clause=self._casting_clause,
+                key_columns=self._key_columns,
+                query_values_key_columns=self._query_values_key_columns,
+                values=sql.SQL(',').join((sql.SQL('%s') for v in values)),
+            )
 
             # print(connection.mogrify(query))
             with CursorManager(self._credentials, binary=True) as cursor:
-                cursor.execute(query)
+                cursor.execute(query, values, binary=True)
 
                 results = cursor.fetchall()
                 if len(results) >= 1:
@@ -277,7 +287,7 @@ SELECT * from inserted
                                 kind,
                                 value_type,
                                 comparable_value,
-                                value,
+                                # value,
                             ))
             return self.to_attribute_id(
                 kind,
@@ -332,11 +342,15 @@ SELECT * from inserted
     def _make_comparable_value(
         self,
         value_type: AttributeValueType,
-        value: Any,
+        database_value: Any,
     ) -> Any:
         if value_type == AttributeValueType.JSON:
-            return simplejson.dumps(marshal.marshal(value))
-        return value
+            return self._make_json_digest(database_value)
+        return database_value
+
+    def _make_json_digest(self, value: Any) -> uuid.UUID:
+        return uuid.UUID(
+            hashlib.md5(simplejson.dumps(value).encode('utf-8')).hexdigest())
 
     def _make_database_value(
         self,
@@ -344,7 +358,7 @@ SELECT * from inserted
         value: Any,
     ) -> Any:
         if value_type == AttributeValueType.JSON:
-            return psycopg.types.json.Jsonb(marshal.marshal(value))
+            return marshal.marshal(value)
         return value
 
     def _recover_value_from_database(
