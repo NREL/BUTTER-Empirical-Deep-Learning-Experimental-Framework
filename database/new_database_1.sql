@@ -1,4 +1,21 @@
 
+SELECT l.locktype, p.pid as pid , p.datname as database, p.usename as user, p.application_name as application, p.query as query,
+       b.pid as blocking_pid, b.usename as blocking_user, b.application_name as blocking_application, b.query as blocking_query
+  FROM
+       pg_locks l,
+       pg_stat_activity p,
+       pg_locks bl,
+       pg_stat_activity b
+ WHERE
+       p.pid = l.pid AND NOT l.granted AND
+       bl.database = l.database AND bl.relation = l.relation AND bl.granted AND
+       b.pid = bl.pid;
+
+SELECT *
+FROM pg_stat_activity 
+WHERE usename = 'dmpappsops'
+ORDER BY state, query_start desc;
+
 ---uuid.UUID(hashlib.md5(b'{3,4,5,8,9,10,12,13,18,19,21,34,40,270,670,1377,1378,1387,1402}').hexdigest())
 
 CREATE TABLE attr

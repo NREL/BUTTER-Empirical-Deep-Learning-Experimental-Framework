@@ -7,7 +7,7 @@ from psycopg import sql
 import psycopg
 import pyarrow
 import pyarrow.parquet
-from dmp.logging.postgres_attribute_map import PostgresAttributeMap
+from dmp.logging.postgres_attribute_map import PostgresAttributeMap, json_dump_function
 from dmp.logging.result_logger import ResultLogger
 
 from dmp.parquet_util import make_pyarrow_schema
@@ -171,9 +171,9 @@ class PostgresCompressedResultLogger(ResultLogger):
         self._attribute_map = PostgresAttributeMap(self._credentials)
 
     @staticmethod
-    def make_experiment_uid(experiment_parameters):
+    def make_experiment_uid(experiment_attributes):
         uid_string = '{' + ','.join(str(i)
-                                    for i in experiment_parameters) + '}'
+                                    for i in experiment_attributes) + '}'
         return uuid.UUID(hashlib.md5(uid_string.encode('utf-8')).hexdigest())
 
     def log(
@@ -186,24 +186,20 @@ class PostgresCompressedResultLogger(ResultLogger):
                 self.log(result, connection)
             return
 
-        experiment_parameters = self._get_ids(result.experiment_parameters,
-                                                connection)
-        experiment_uid = self.make_experiment_uid(experiment_parameters)
-
         experiment_column_values = PostgresCompressedResultLogger._extract_values(
-            result.experiment_data,
+            result.experiment_attributes,
             self._experiment_columns,
         )
 
-        experiment_attributes = self._get_ids(result.experiment_data,
-                                                connection)
-        experiment_attributes.extend(experiment_parameters)
-        experiment_attributes.sort()
+        experiment_attributes = self._attribute_map.to_sorted_attribute_ids(
+            result.experiment_attributes)
+        
+        experiment_uid = self.make_experiment_uid(experiment_attributes)
 
         run_column_values = PostgresCompressedResultLogger._extract_values(
             result.run_data, self._run_columns)
         run_column_values[self._run_data_column_index] = \
-            psycopg.types.json.Jsonb(result.run_data)
+            psycopg.types.json.Jsonb(result.run_data, json_dump_function)
 
         # print(f'run_column_values {run_column_values}\nrun_attributes {run_attributes}')
 
@@ -273,15 +269,6 @@ class PostgresCompressedResultLogger(ResultLogger):
         return psycopg.types.json.Jsonb(
             {name: target.pop(name, None)
              for name in columns})
-
-    def _get_ids(
-        self,
-        parameter_dict: Dict[str, Any],
-        connection,
-    ) -> List[int]:
-        return self._attribute_map.to_sorted_attribute_ids(
-            parameter_dict,
-        )
 
     def _make_column_sql(
         self,

@@ -139,20 +139,17 @@ def do_work(args):
 
                 q = sql.SQL("""
 SELECT {column_selection}
-FROM 
-    (   SELECT *
-        FROM job_status s
-        WHERE 
-            status = -10
-        ORDER BY priority ASC
-        FOR UPDATE
-        SKIP LOCKED
-        LIMIT {block_size}
-    ) s
-    INNER JOIN job_data d USING (id)
+FROM job_status s inner join job_data d using (id)
+WHERE 
+    status < 0
+    AND command @> {qp}
+FOR UPDATE
+SKIP LOCKED
+LIMIT {block_size}
 ;""").format(
                     column_selection=column_selection,
                     block_size=sql.Literal(block_size),
+                    qp = sql.Literal(psycopg.types.json.Jsonb({'':'AspectTestTask'}))
                 )
                 with connection.cursor(binary=True) as cursor:
                     cursor.execute(q)
@@ -171,15 +168,15 @@ FROM
                             traceback.print_exc()
 
                 if len(eids) > 0:
-                    eid_values = sql.SQL(',').join(
-                        (sql.Literal(v) for v in sorted(eids)))
+                    eid_placeholders = sql.SQL(',').join(
+                        (sql.SQL('%s') for v in eids))
                     q = sql.SQL("""
 UPDATE job_status
-    SET status = 0
+    SET status = -1 - status 
 WHERE
-    id IN ({eid_values})
-                    ;""").format(eid_values=eid_values)
-                    connection.execute(q)
+    id IN ({eid_placeholders})
+                    ;""").format(eid_placeholders=eid_placeholders)
+                    connection.execute(q, sorted(eids))
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(

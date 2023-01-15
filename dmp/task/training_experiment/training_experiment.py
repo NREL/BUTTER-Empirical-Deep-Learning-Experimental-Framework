@@ -316,9 +316,6 @@ class TrainingExperiment(Task):
         experiment_parameters = self.get_parameters()
         experiment_parameters.update({
             'ml_task': dataset.ml_task.value,
-        })
-
-        experiment_data = {
             'num_free_parameters':
             network.num_free_parameters,
             'model_structure':
@@ -335,10 +332,10 @@ class TrainingExperiment(Task):
             dataset.validation_size,
             'data_set_size':
             dataset.train_size + dataset.test_size + dataset.validation_size
-        }
+        })
 
         for k, v in network.description.items():
-            experiment_data[f'model_{k}'] = v
+            experiment_parameters[f'model_{k}'] = v
 
         run_data = {
             'job_id': job_id,
@@ -360,7 +357,6 @@ class TrainingExperiment(Task):
 
         return TaskResultRecord(
             experiment_parameters,
-            experiment_data,
             run_data,
             history,
         )
