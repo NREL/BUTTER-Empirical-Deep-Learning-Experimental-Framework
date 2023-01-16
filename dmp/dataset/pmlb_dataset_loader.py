@@ -12,6 +12,8 @@ from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset_loader import DatasetLoader, dataset_cache_directory
 
+class Foo:
+    last : Any = ('', None)
 
 @dataclass
 class PMLBDatasetLoader(DatasetLoader):
@@ -22,12 +24,18 @@ class PMLBDatasetLoader(DatasetLoader):
     def _fetch_from_source(self):
         import pmlb
 
+        if Foo.last[0] == self.dataset_name:
+            d = Foo.last[1]
+        else:
+            d = pmlb.fetch_data(
+                            self.dataset_name,
+                            return_X_y=True,
+                            local_cache_dir=dataset_cache_directory,
+                        )
+            Foo.last = (self.dataset_name, d)
+        
         return Dataset(self.ml_task,
-                       DatasetGroup(*pmlb.fetch_data(
-                           self.dataset_name,
-                           return_X_y=True,
-                           local_cache_dir=dataset_cache_directory,
-                       )))  # type: ignore
+                       DatasetGroup(*d))  # type: ignore
 
     # def _get_cache_path(self, name):
     #     return os.path.join(self.dataset_cache_directory, self.dataset_name, name)
