@@ -126,7 +126,8 @@ class Marshal:
 
     def _make_composite_config(self, overrides) -> MarshalConfig:
         if overrides is not None and len(overrides) > 0:
-            c = vars(self._config)
-            c.update(overrides)
-            return MarshalConfig(**c)
+            for s in MarshalConfig.__slots__:
+                if s not in overrides:
+                    overrides[s] = getattr(self._config, s)
+            return MarshalConfig(**overrides)
         return self._config
