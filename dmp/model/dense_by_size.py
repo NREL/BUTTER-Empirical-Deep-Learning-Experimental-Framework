@@ -35,7 +35,7 @@ class DenseBySize(ModelSpec):
     # def num_outputs(self) -> int:
     #     return self.output['units']
 
-    def make_network(self) -> NetworkInfo:
+    def make_network(self, max_error :float = .2) -> NetworkInfo:
         shape = self.shape
 
         #TODO: make it so we don't need this hack?
@@ -79,7 +79,7 @@ class DenseBySize(ModelSpec):
         # reject non-conformant network sizes
         delta = network.num_free_parameters - self.size
         relative_error = delta / self.size
-        if abs(relative_error) > .2:
+        if abs(relative_error) > max_error:
             raise ValueError(
                 f'Could not find conformant network error : {100 * relative_error}%, delta : {delta}, size: {self.size}, actual: {network.num_free_parameters}.'
             )

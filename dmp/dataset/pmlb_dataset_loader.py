@@ -7,22 +7,46 @@ from typing import (
     Any,
 )
 from dataclasses import dataclass
+
 from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset_loader import DatasetLoader
 
-import multiprocess
-__lock = multiprocess.Lock()
-
 @dataclass
 class PMLBDatasetLoader(DatasetLoader):
 
+    def _load_dataset(self):
+        return self._fetch_from_source()
+
     def _fetch_from_source(self):
-        with __lock:
-            import pmlb
-            
-            return Dataset(self.ml_task,
-                        DatasetGroup(*pmlb.fetch_data(
-                            self.dataset_name,
-                            return_X_y=True,
-                        )))  # type: ignore
+        import pmlb
+        
+        return Dataset(self.ml_task,
+                    DatasetGroup(*pmlb.fetch_data(
+                        self.dataset_name,
+                        return_X_y=True,
+                        local_cache_dir= self.dataset_cache_directory,
+                    )))  # type: ignore
+
+    # def _get_cache_path(self, name):
+    #     return os.path.join(self.dataset_cache_directory, self.dataset_name, name)
+
+    # def _try_read_from_cache(self) -> Optional[Dataset]:
+    #     filename = self._get_cache_path('.npy')
+    #     try:
+    #         os.makedirs(self.dataset_cache_directory, exist_ok=True)
+    #         dataset = pandas.read_csv(filename, sep='\t', compression='gzip')
+    #         X = dataset.drop('target', axis=1).values
+    #         y = dataset['target'].values
+    #         return Dataset(self.ml_task, DatasetGroup(X, y))
+    #     except FileNotFoundError:
+    #         return None
+    #     except:
+    #         print(f'Error reading from dataset cache for {self}:')
+    #         traceback.print_exc()
+    #         try:
+    #             os.remove(filename)
+    #         except:
+    #             print(f'Error removing bad cache file for {self}:')
+    #             traceback.print_exc()
+    #     return None

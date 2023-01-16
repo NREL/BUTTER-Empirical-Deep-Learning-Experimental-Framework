@@ -433,9 +433,9 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
                 validation_size=0,
             )
         else:
-            # prepared_dataset = experiment._load_and_prepare_dataset()
-            fail(f"could not determine input shape {get_cell('network_structure')}")
-            return False
+            prepared_dataset = experiment._load_and_prepare_dataset()
+            # fail(f"could not determine input shape {get_cell('network_structure')}")
+            # return False
 
         metrics = experiment._autoconfigure_for_dataset(
             prepared_dataset)  # type: ignore
@@ -444,7 +444,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         # print(metric_names)
 
         try:
-            network = experiment._make_network(experiment.model)
+            network = experiment._make_network(experiment.model, max_error=.5)
         except ValueError as e:
             fail(f"failed on {e}")
 
