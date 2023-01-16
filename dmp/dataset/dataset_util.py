@@ -135,5 +135,12 @@ def get_dataset_loader(source: str, name: str):
     return __source_loaders(source)(name)
 
 
+last = None
+
 def load_dataset(source: str, name: str) -> Dataset:
-    return __source_loaders(source)(name)()  # type: ignore
+    if last is not None and last[0] == (source, name):
+        return last[1]
+    del last
+    result = __source_loaders(source)(name)()  # type: ignore
+    last = ((source, name), result)
+    return result
