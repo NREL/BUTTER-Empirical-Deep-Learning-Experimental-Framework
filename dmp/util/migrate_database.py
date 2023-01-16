@@ -446,7 +446,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         # print(metric_names)
 
         try:
-            network = experiment._make_network(experiment.model, max_error=.5)
+            network = experiment._make_network(experiment.model)
         except ValueError as e:
             fail(f"failed on {e}")
 

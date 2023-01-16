@@ -35,7 +35,7 @@ class DenseBySize(ModelSpec):
     # def num_outputs(self) -> int:
     #     return self.output['units']
 
-    def make_network(self, max_error :float = .2) -> NetworkInfo:
+    def make_network(self) -> NetworkInfo:
         shape = self.shape
 
         #TODO: make it so we don't need this hack?
