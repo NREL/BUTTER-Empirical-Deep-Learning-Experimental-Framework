@@ -20,6 +20,16 @@ from dmp.dataset.tf_image_classification_dataset_loader import TFImageClassifica
 from dmp.dataset.imagenet_dataset_loader import ImageNetDatasetLoader
 from dmp.common import make_dispatcher
 
+class Foo:
+    bar : Any = None
+
+def load_dataset(source: str, name: str) -> Dataset:
+    if Foo.bar is not None and Foo.bar[0] == (source, name):
+        return Foo.bar[1]
+    result = __source_loaders(source)(name)()  # type: ignore
+    Foo.bar = ((source, name), result)
+    return result
+
 
 def _make_loader_map(
     loaders: List[DatasetLoader], ) -> Dict[str, DatasetLoader]:
@@ -133,14 +143,3 @@ __source_loaders = make_dispatcher(
 
 def get_dataset_loader(source: str, name: str):
     return __source_loaders(source)(name)
-
-
-last = None
-
-def load_dataset(source: str, name: str) -> Dataset:
-    if last is not None and last[0] == (source, name):
-        return last[1]
-    del last
-    result = __source_loaders(source)(name)()  # type: ignore
-    last = ((source, name), result)
-    return result
