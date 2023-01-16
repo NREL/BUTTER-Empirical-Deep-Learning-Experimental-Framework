@@ -460,7 +460,12 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
                     shape = 'wide_first_2x'
                     experiment.model.shape = shape
                     continue
-                fail(f"wrong number of free parameters {network.num_free_parameters} != get_cell('num_free_parameters')")
+                network_structure = get_cell('network_structure')
+                # fail(f"wrong number of free parameters {network.num_free_parameters} != {get_cell('num_free_parameters')}")
+                fail(f"""wrong number of free parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
+    # computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
+    # src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
+    # computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""")
             break
             
     #             fail(
