@@ -420,7 +420,7 @@ def main():
                     'butter',
             ]:
                 if get_cell(k):
-                    result_record.experiment_data[k] = True
+                    result_record.experiment_attributes[k] = True
 
             # pprint(src_parameters)
             # print(dsinfo)
