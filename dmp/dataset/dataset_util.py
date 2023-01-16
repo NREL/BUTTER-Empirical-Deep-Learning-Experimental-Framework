@@ -19,18 +19,11 @@ from dmp.dataset.pmlb_dataset_loader import PMLBDatasetLoader
 from dmp.dataset.tf_image_classification_dataset_loader import TFImageClassificationDatasetLoader
 from dmp.dataset.imagenet_dataset_loader import ImageNetDatasetLoader
 from dmp.common import make_dispatcher
-from copy import deepcopy
-
-class Foo:
-    bar : Any = None
 
 
 def load_dataset(source: str, name: str) -> Dataset:
-    if Foo.bar is not None and Foo.bar[0] == source and Foo.bar[1] == name:
-        return Foo.bar[2]
     result = __source_loaders(source)(name)()  # type: ignore
-    Foo.bar = (source, name, result)
-    return deepcopy(result)
+    return result
 
 
 def _make_loader_map(
