@@ -33,6 +33,7 @@ class PMLBDatasetLoader(DatasetLoader):
                             local_cache_dir=dataset_cache_directory,
                         )
             Foo.last = (self.dataset_name, d)
+        d = d.copy()
         
         return Dataset(self.ml_task,
                        DatasetGroup(*d))  # type: ignore
