@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_group import DatasetGroup
-from dmp.dataset.dataset_loader import DatasetLoader
+from dmp.dataset.dataset_loader import DatasetLoader, dataset_cache_directory
 
 
 @dataclass
