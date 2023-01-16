@@ -41,6 +41,22 @@ pmlb_index_path = os.path.join(
 dataset_index = pandas.read_csv(pmlb_index_path)
 dataset_index.set_index('Dataset', inplace=True, drop=False)
 
+dataset_shape_map = {
+    '201_pol': (26, 11),
+    '294_satellite_image': (36, 6),
+    '505_tecator': (124, 1),
+    '529_pollen': (4, 1),
+    '537_houses': (8, 1),
+    'adult': (81, 1),
+    'banana': (2, 1),
+    'connect_4': (126, 3),
+    'mnist': (784, 10),
+    'nursery': (26, 4),
+    'sleep': (141, 5),
+    'splice': (287, 3),
+    'wine_quality_white': (11, 7),
+}
+
 
 @dataclass
 class PsuedoPreparedDataset():
@@ -402,28 +418,13 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
             record_metrics=None,
         )
 
-        def try_get_input_shape(t):
-            if not isinstance(t, dict):
-                return None
-
-            if t.get('', None) == 'NInput':
-                shape = t.get('shape', None)
-                if isinstance(shape, list) or isinstance(shape, tuple):
-                    return list(shape)
-
-            inputs = t.get('inputs', None)
-            if isinstance(inputs, list):
-                for i in inputs:
-                    shape = try_get_input_shape(i)
-                    if shape is not None:
-                        return shape
-
-            return None
-
-        prepared_dataset = None
-        input_shape = try_get_input_shape(get_cell('network_structure'))
-        if input_shape is not None:
-            prepared_dataset = PsuedoPreparedDataset(
+        shapes = dataset_shape_map.get(dataset_name)
+        if shapes is None:
+            fail(f'unknown dataset mapping {dataset_name}.')
+        
+        input_shape = [shapes[0],]
+        # num_outputs = shapes[1]
+        prepared_dataset = PsuedoPreparedDataset(
                 ml_task=ml_task,
                 # input_shape=[int(dsinfo['n_features'])],
                 input_shape=input_shape,
@@ -432,12 +433,43 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
                 test_size=dataset_size - train_size,
                 validation_size=0,
             )
-        else:
-            print(f'loading {dataset_name}...')
-            prepared_dataset = experiment._load_and_prepare_dataset()
-            print(f'loaded {dataset_name}')
-            # fail(f"could not determine input shape {get_cell('network_structure')}")
-            # return False
+
+        # def try_get_input_shape(t):
+        #     if not isinstance(t, dict):
+        #         return None
+
+        #     if t.get('', None) == 'NInput':
+        #         shape = t.get('shape', None)
+        #         if isinstance(shape, list) or isinstance(shape, tuple):
+        #             return list(shape)
+
+        #     inputs = t.get('inputs', None)
+        #     if isinstance(inputs, list):
+        #         for i in inputs:
+        #             shape = try_get_input_shape(i)
+        #             if shape is not None:
+        #                 return shape
+
+        #     return None
+
+        # prepared_dataset = None
+        # input_shape = try_get_input_shape(get_cell('network_structure'))
+        # if input_shape is not None:
+        #     prepared_dataset = PsuedoPreparedDataset(
+        #         ml_task=ml_task,
+        #         # input_shape=[int(dsinfo['n_features'])],
+        #         input_shape=input_shape,
+        #         output_shape=[num_outputs],
+        #         train_size=train_size,
+        #         test_size=dataset_size - train_size,
+        #         validation_size=0,
+        #     )
+        # else:
+        #     print(f'loading {dataset_name}...')
+        #     prepared_dataset = experiment._load_and_prepare_dataset()
+        #     print(f'loaded {dataset_name}')
+        #     # fail(f"could not determine input shape {get_cell('network_structure')}")
+        #     # return False
 
         metrics = experiment._autoconfigure_for_dataset(
             prepared_dataset)  # type: ignore
@@ -449,7 +481,8 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
             try:
                 network = experiment._make_network(experiment.model)
             except ValueError as e:
-                if (shape.startswith('wide_first') and shape != 'wide_first_2x'):
+                if (shape.startswith('wide_first')
+                        and shape != 'wide_first_2x'):
                     shape = 'wide_first_2x'
                     experiment.model.shape = shape
                     continue
@@ -462,24 +495,26 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
                     continue
                 network_structure = get_cell('network_structure')
                 # fail(f"wrong number of free parameters {network.num_free_parameters} != {get_cell('num_free_parameters')}")
-                fail(f"""wrong number of free parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
-    # computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
-    # src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
-    # computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""")
+                fail(
+                    f"""wrong number of free parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
+    computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
+    src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
+    computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}"""
+                )
             break
-            
+
     #             fail(
-    #                 f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 
+    #                 f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')}
     # computed: {network.description} shape: {shape} depth: {experiment.model.depth}, size: {experiment.model.size}, dataset: {experiment.dataset.name}.
     # src structure {'None' if network_structure is None else json.dumps(network_structure, indent=1)}
     # computed_structure {json.dumps(marshal.marshal(network.structure),indent=1)}""",
     #                 flush=True)
-            # pprint(experiment)
-            # pprint(dsinfo)
-            # pprint(get_cell('widths'))
-            # pprint(get_cell('network_structure'))
-            # pprint(marshal.marshal(network))
-            # return False
+    # pprint(experiment)
+    # pprint(dsinfo)
+    # pprint(get_cell('widths'))
+    # pprint(get_cell('network_structure'))
+    # pprint(marshal.marshal(network))
+    # return False
 
         def map_resource_list(
             src: Optional[str], ) -> Tuple[Optional[List[int]], Optional[int]]:

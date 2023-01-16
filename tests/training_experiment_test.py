@@ -1,6 +1,7 @@
 import sys
 
 from jobqueue.job import Job
+from tensorflow.python.framework.ops import re
 
 from dmp import jobqueue_interface
 from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
@@ -243,7 +244,129 @@ def test_from_optimizer():
     pprint(marshal.marshal(results), indent=1)
 
 
+asdf = {
+    '201_pol': (26, 11),
+    '294_satellite_image': (36, 6),
+    '505_tecator': (124, 1),
+    '529_pollen': (4, 1),
+    '537_houses': (8, 1),
+    '537_houses': (784, 1),
+    'adult': (8, 1),
+    'adult': (81, 1),
+    'banana': (2, 1),
+    'connect_4': (126, 3),
+    'mnist': (784, 10),
+    'nursery': (26, 4),
+    'nursery': (784, 4),
+    'poker': (14, 10),
+    'poker': (19, 10),
+    'poker': (85, 10),
+    'poker': (86, 10),
+    'poker': (87, 10),
+    'sleep': (141, 5),
+    'splice': (287, 3),
+    'wine_quality_white': (11, 7),
+}
+x = {'201_pol': ([26], (11,)),
+ '294_satellite_image': ([36], (6,)),
+ '505_tecator': ([124], (1,)),
+ '529_pollen': ([4], (1,)),
+ '537_houses': ([8], (1,)),
+ 'adult': ([81], (1,)),
+ 'banana': ([2], (1,)),
+ 'connect_4': ([126], (3,)),
+ 'mnist': ([784], (10,)),
+ 'nursery': ([26], (4,)),
+ 'sleep': ([141], (5,)),
+ 'splice': ([287], (3,)),
+ 'wine_quality_white': ([11], (7,))}
+
+def test_get_sizes():
+    mapping = {}
+    for dataset_name in [
+            '201_pol',
+            '294_satellite_image',
+            '505_tecator',
+            '529_pollen',
+            '537_houses',
+            'adult',
+            'banana',
+            'connect_4',
+            'mnist',
+            'nursery',
+            # 'poker',
+            'sleep',
+            'splice',
+            'wine_quality_white',
+    ]:
+        experiment = TrainingExperiment(
+            seed=0,
+            batch='test',
+            precision='float32',
+            dataset=DatasetSpec(
+                dataset_name,
+                'pmlb',
+                'shuffled_train_test_split',
+                0.2,
+                0.05,
+                0.0,
+            ),
+            model=DenseBySize(
+                input=None,
+                output=None,
+                shape='rectangle',
+                size=16384,
+                depth=3,
+                search_method='integer',
+                inner=Dense.make(-1, {
+                    'activation': 'relu',
+                    'kernel_initializer': 'GlorotUniform',
+                }),
+            ),
+            fit={
+                'batch_size': 16,
+                'epochs': 1,
+            },
+            optimizer={
+                'class': 'Adam',
+                'learning_rate': 0.0001
+            },
+            loss=None,
+            early_stopping=None,
+            record_post_training_metrics=True,
+            record_times=True,
+            record_model=None,
+            record_metrics=None,
+        )
+
+        worker = Worker(
+            None,
+            None,
+            strategy,
+            {},
+        )
+
+        results = experiment(worker, Job())
+        print(f"dataset {dataset_name}")
+        print(
+            f"experiment.model.input.shape {experiment.model.input['shape']}")
+        print(
+            f"experiment.model.input.computed_shape {experiment.model.input.computed_shape}"
+        )
+        print(
+            f"experiment.model.output.units {experiment.model.output['units']}"
+        )
+        print(
+            f"experiment.model.output.computed_shape {experiment.model.output.computed_shape}"
+        )
+        mapping[dataset_name] = (experiment.model.input['shape'],
+                                 (experiment.model.output['units'], ))
+        # pprint(marshal.marshal(results), indent=1)
+
+    pprint(mapping)
+
+
 # test_growth_experiment()
 # test_simple()
-
-test_from_optimizer()
+# test_from_optimizer()
+test_get_sizes()

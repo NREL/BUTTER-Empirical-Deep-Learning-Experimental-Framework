@@ -1,4 +1,156 @@
 
+SELECT l.locktype, p.pid as pid , p.datname as database, p.usename as user, p.application_name as application, p.query as query,
+       b.pid as blocking_pid, b.usename as blocking_user, b.application_name as blocking_application, b.query as blocking_query
+  FROM
+       pg_locks l,
+       pg_stat_activity p,
+       pg_locks bl,
+       pg_stat_activity b
+ WHERE
+       p.pid = l.pid AND NOT l.granted AND
+       bl.database = l.database AND bl.relation = l.relation AND bl.granted AND
+       b.pid = bl.pid;
+       
+       
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity 
+WHERE usename = 'dmpappsops'
+    AND query_start < (CURRENT_TIMESTAMP - '10s'::interval)
+ORDER BY state, query_start desc;
+
+update experiment_migration m set 
+    is_valid = True,
+    migrated = False,
+    error_message = NULL
+    WHERE EXISTS (select 1 from run_ r where r.experiment_id = m.experiment_id)
+    AND NOT EXISTS (select 1 from experiment2 e where e.experiment_id = m.experiment_id)
+    and error_message NOT LIKE 'failed on Could not find%' 
+    and error_message NOT LIKE 'wrong number%wide_first_%'
+    AND error_message NOT LIKE 'wrong number%poker%';
+    
+select * from attr where kind = 'model_shape';
+alter table attr alter column value_json set storage EXTENDED;
+ALTER TABLE attr SET (toast_tuple_target = 256)
+select count(1) from experiment_migration where not migrated and is_valid;
+
+
+select x.* from 
+    experiment2 e,
+    lateral (
+        select 
+            (   select value_str from unnest(experiment_attributes) ea(attribute_id) inner join attr using(attribute_id)
+                where kind = 'dataset_name' limit 1
+            ) dataset_name,
+            (   select value_json from unnest(experiment_attributes) ea(attribute_id) inner join attr using(attribute_id)
+                where kind = 'model_input_shape' limit 1
+            ) model_input_shape,
+            (   select value_int from unnest(experiment_attributes) ea(attribute_id) inner join attr using(attribute_id)
+                where kind = 'model_output_units' limit 1
+            ) model_output_shape
+    ) x
+where
+    e.experiment_attributes && (
+        select array_agg(attribute_id) from attr
+            where kind = 'dataset_name'
+    )
+group by dataset_name, model_input_shape, model_output_shape;
+
+
+select 
+    dataset_name, model_input_shape, model_output_units,
+    count(distinct experiment_uid) num_exp,
+    count(1) num_run
+FROM (
+select 
+    e.experiment_uid,
+    a_dataset_name.value_str dataset_name,
+    a_model_input_shape.value_json model_input_shape,
+    a_model_output_units.value_int model_output_units
+from
+    experiment2 e,
+    run2 r,
+    attr a_dataset_name,
+    attr a_model_input_shape,
+    attr a_model_output_units
+where
+    e.experiment_attributes && (
+        select array_agg(attribute_id) from attr
+            where kind = 'dataset_name'
+    )
+    and r.experiment_uid = e.experiment_uid
+    and a_dataset_name.kind = 'dataset_name'
+    and e.experiment_attributes @> ARRAY[a_dataset_name.attribute_id]
+    and a_model_input_shape.kind = 'model_input_shape'
+    and ARRAY[a_model_input_shape.attribute_id] <@ e.experiment_attributes 
+    and a_model_output_units.kind = 'model_output_units'
+    and ARRAY[a_model_output_units.attribute_id] <@ e.experiment_attributes
+) x
+group by dataset_name, model_input_shape, model_output_units;
+
+select * from attr where kind like '%regul%';
+
+select count(1) from experiment2 where experiment_attributes @> array[37];
+
+
+select 
+    e.*,
+    x.*,
+    json_object_agg(a.kind, coalesce(a.value_bool, a.value_int, a.value_float, a.value_str, a.value_json)) xattrib,
+    json_object_agg(p.kind, coalesce(p.bool_value, p.int_value, p.real_value, p.string_value)) eattrib
+from
+    experiment_ e,
+    experiment2 x,
+    param p,
+    attr a
+where TRUE
+    and e.experiment_id = x.experiment_id
+    and x.experiment_attributes @> array[37]
+    and x.experiment_attributes @> array[a.attribute_id]
+    and e.experiment_parameters @> array[p.id]
+group by x.*, e.*
+
+
+select 
+    dataset_name, model_input_shape, model_output_units,
+    count(distinct experiment_uid) num_exp,
+    count(1) num_run
+FROM (
+select 
+    e.experiment_uid,
+    a_dataset_name.value_str dataset_name,
+    a_model_input_shape.value_json model_input_shape,
+    a_model_output_units.value_int model_output_units
+from
+    experiment2 e,
+    run2 r,
+    attr a_dataset_name,
+    attr a_model_input_shape,
+    attr a_model_output_units,
+    attr regularization
+where
+    e.experiment_attributes && (
+        select array_agg(attribute_id) from attr
+            where kind = 'dataset_name'
+    )
+    and r.experiment_uid = e.experiment_uid
+    and a_dataset_name.kind = 'dataset_name'
+    and e.experiment_attributes @> ARRAY[a_dataset_name.attribute_id]
+    and a_model_input_shape.kind = 'model_input_shape'
+    and ARRAY[a_model_input_shape.attribute_id] <@ e.experiment_attributes 
+    and a_model_output_units.kind = 'model_output_units'
+    and ARRAY[a_model_output_units.attribute_id] <@ e.experiment_attributes
+) x
+group by dataset_name, model_input_shape, model_output_units;
+
+select * from attr where kind like 'model_output%';
+    
+
+select distinct error_message from experiment_migration m where is_valid and migrated and error_message is not null 
+and error_message NOT LIKE 'failed on Could not find%' and error_message NOT LIKE 'wrong number%wide_first_%' AND error_message NOT LIKE 'wrong number%poker%'
+limit 1000;
+
+
+
 SELECT
    relname  as table_name,
    pg_size_pretty(pg_total_relation_size(relid)) As "Total Size",

@@ -100,8 +100,33 @@ class Marshal:
             lambda demarshaler, source: Demarshaler.demarshal_typed(
             demarshaler, source, demarshaling_factory, demarshaling_initializer)
 
-    def marshal(self, source: Any) -> Any:
-        return Marshaler(self._config, self._marshaler_type_map, source)()
+    def marshal(
+        self,
+        source: Any,
+        **overrides,
+    ) -> Any:
+        config = self._make_composite_config(overrides)
+        return Marshaler(
+            config,
+            self._marshaler_type_map,
+            source,
+        )()
 
-    def demarshal(self, source: Any) -> Any:
-        return Demarshaler(self._config, self._demarshaler_type_map, source)()
+    def demarshal(
+        self,
+        source: Any,
+        **overrides,
+    ) -> Any:
+        config = self._make_composite_config(overrides)
+        return Demarshaler(
+            config,
+            self._demarshaler_type_map,
+            source,
+        )()
+
+    def _make_composite_config(self, overrides) -> MarshalConfig:
+        if overrides is not None and len(overrides) > 0:
+            c = vars(self._config)
+            c.update(overrides)
+            return MarshalConfig(**c)
+        return self._config

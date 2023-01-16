@@ -14,7 +14,6 @@ ParameterDict = Dict[str, 'Parameter']
 Parameter = Union[ParameterValue, ParameterDict]
 FlatParameterDict = Dict[str, ParameterValue]
 
-
 # # register task types here
 # # task_types: List['Task'] = []
 # def register_task_type(type: Type) -> None:
@@ -30,7 +29,7 @@ class Task(ABC):
     batch: str
 
     @abstractmethod
-    def __call__(self, worker : Worker, job:Job) -> TaskResultRecord:
+    def __call__(self, worker: Worker, job: Job) -> TaskResultRecord:
         pass
 
     @property
@@ -50,7 +49,7 @@ class Task(ABC):
     def extract_parameters(self) -> ParameterDict:
         from dmp.marshaling import marshal
         separator = '_'
-        marshaled = marshal.marshal(self)
+        marshaled = marshal.marshal(self, circular_references_only=True)
         parameters = {}
 
         def get_parameters(key, target):
