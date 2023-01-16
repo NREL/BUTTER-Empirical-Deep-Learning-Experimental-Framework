@@ -79,7 +79,7 @@ class DenseBySize(ModelSpec):
         # reject non-conformant network sizes
         delta = network.num_free_parameters - self.size
         relative_error = delta / self.size
-        if abs(relative_error) > max_error:
+        if abs(relative_error) >= .5:
             raise ValueError(
                 f'Could not find conformant network error : {100 * relative_error}%, delta : {delta}, size: {self.size}, actual: {network.num_free_parameters}.'
             )
