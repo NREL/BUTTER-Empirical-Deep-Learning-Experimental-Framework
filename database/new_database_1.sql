@@ -1,4 +1,24 @@
 
+SELECT
+   relname  as table_name,
+   pg_size_pretty(pg_total_relation_size(relid)) As "Total Size",
+   pg_size_pretty(pg_relation_size(relid)) as "Core",
+   pg_size_pretty(pg_indexes_size(relid)) as "Index",
+   pg_size_pretty(pg_table_size(relid) - pg_relation_size(relid) - pg_relation_size(relid, 'vm') - pg_relation_size(relid, 'fsm')) as "TOAST",
+   pg_size_pretty(pg_relation_size(relid, 'vm')) as "Visibility Map",
+   pg_size_pretty(pg_relation_size(relid, 'fsm')) as "Free Space Map",
+   (pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid)) as "Tuples",
+   pg_stat_get_live_tuples(relid) as "Live Tuples",
+   pg_stat_get_dead_tuples(relid) as "Dead Tuples",
+   pg_size_pretty(pg_total_relation_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Per Tuple",
+   pg_size_pretty(pg_relation_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Core Per Tuple",
+   pg_size_pretty(pg_indexes_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Index Per Tuple",
+   pg_size_pretty((pg_table_size(relid) - pg_relation_size(relid) - pg_relation_size(relid, 'vm') - pg_relation_size(relid, 'fsm')) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "TOAST Per Tuple"
+   FROM pg_catalog.pg_statio_user_tables 
+ORDER BY pg_total_relation_size(relid) DESC;
+
+
+
 SELECT l.locktype, p.pid as pid , p.datname as database, p.usename as user, p.application_name as application, p.query as query,
        b.pid as blocking_pid, b.usename as blocking_user, b.application_name as blocking_application, b.query as blocking_query
   FROM

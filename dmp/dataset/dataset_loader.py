@@ -28,7 +28,7 @@ from dmp.dataset.ml_task import MLTask
 from dmp.parquet_util import make_pyarrow_schema
 
 
-
+dataset_cache_directory = os.path.join(os.getcwd(), '.dataset_cache')
 
 @dataclass
 class DatasetLoader(ABC):
@@ -36,7 +36,7 @@ class DatasetLoader(ABC):
     dataset_name: str
     ml_task: MLTask
 
-    dataset_cache_directory = os.path.join(os.getcwd(), '.dataset_cache')
+    
 
     def __call__(self) -> Dataset:
         # check cache first for raw inputs and outputs in the working directory
@@ -57,12 +57,12 @@ class DatasetLoader(ABC):
 
     def _get_cache_path(self, name):
         filename = self.dataset_name + f'_{name}'
-        return os.path.join(self.dataset_cache_directory, filename)
+        return os.path.join(dataset_cache_directory, filename)
 
     def _try_read_from_cache(self) -> Optional[Dataset]:
         filename = self._get_cache_path('.pkl')
         try:
-            os.makedirs(self.dataset_cache_directory, exist_ok=True)
+            os.makedirs(dataset_cache_directory, exist_ok=True)
             with open(filename, 'rb') as file_handle:
                 return pickle.load(file_handle)
 
