@@ -433,7 +433,9 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
                 validation_size=0,
             )
         else:
+            print(f'loading {dataset_name}...')
             prepared_dataset = experiment._load_and_prepare_dataset()
+            print(f'loaded {dataset_name}')
             # fail(f"could not determine input shape {get_cell('network_structure')}")
             # return False
 
