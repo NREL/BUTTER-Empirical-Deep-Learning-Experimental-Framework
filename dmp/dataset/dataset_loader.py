@@ -127,7 +127,6 @@ class DatasetLoader(ABC):
         # values are not numbers
 
         num_distinct_values = numpy.unique(value).size
-        print(f'dvt: {num_distinct_values}')
         if num_distinct_values <= 1:
             return None  # ignore it
         if num_distinct_values <= 2:
