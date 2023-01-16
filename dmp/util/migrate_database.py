@@ -445,19 +445,23 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
         metric_names.append('loss')
         # print(metric_names)
 
-        try:
-            network = experiment._make_network(experiment.model)
-        except ValueError as e:
-            fail(f"failed on {e}")
+        while True:
+            try:
+                network = experiment._make_network(experiment.model)
+            except ValueError as e:
+                if (shape.startswith('wide_first') and shape != 'wide_first_2x'):
+                    shape = 'wide_first_2x'
+                    experiment.model.shape = shape
+                    continue
+                fail(f"failed on {e}")
 
-        # pprint(get_cell('widths'))
-        # pprint(get_cell('network_structure'))
-        if network.num_free_parameters != get_cell('num_free_parameters'):
-            fail(f"wrong number of free parameters {network.num_free_parameters} != get_cell('num_free_parameters')")
-            # network_structure = get_cell('network_structure')
-            return False
-
-            # if not shape.startswith('wide_first'):
+            if network.num_free_parameters != get_cell('num_free_parameters'):
+                if shape.startswith('wide_first') and shape != 'wide_first_2x':
+                    shape = 'wide_first_2x'
+                    experiment.model.shape = shape
+                    continue
+                fail(f"wrong number of free parameters {network.num_free_parameters} != get_cell('num_free_parameters')")
+            break
             
     #             fail(
     #                 f"""failed on num_free_parameters {network.num_free_parameters} != {get_cell('num_free_parameters')} source widths: {get_cell('widths')} 

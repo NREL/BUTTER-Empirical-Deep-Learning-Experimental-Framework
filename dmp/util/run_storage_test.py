@@ -17,6 +17,7 @@ from jobqueue import load_credentials
 from jobqueue.cursor_manager import CursorManager
 import numpy
 from sqlalchemy import column
+from tensorflow import shape
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
@@ -258,6 +259,8 @@ def main():
                 ]
             })
 
+            shape = str(src_parameters['shape'])
+
             # input shape, output shape, ml_task
             experiment = TrainingExperiment(
                 seed=int(get_cell('seed')),
@@ -280,7 +283,7 @@ def main():
                             src_parameters.get('output_activation', None),
                         },
                     ),
-                    shape=str(src_parameters['shape']),
+                    shape=shape,
                     size=int(src_parameters['size']),
                     depth=int(src_parameters['depth']),
                     search_method='integer',
@@ -337,6 +340,9 @@ def main():
             pprint(get_cell('widths'))
             pprint(get_cell('network_structure'))
             if network.num_free_parameters != get_cell('num_free_parameters'):
+                if shape.startswith('wide_first') and shape != :
+                    # rety with wide first 2x
+                    
                 print(
                     f'num_free_parameters {network.num_free_parameters} != {get_cell("num_free_parameters")}'
                 )
