@@ -12,6 +12,8 @@ from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset_loader import DatasetLoader, dataset_cache_directory
 
+import copy 
+
 class Foo:
     last : Any = ('', None)
 
@@ -33,7 +35,7 @@ class PMLBDatasetLoader(DatasetLoader):
                             local_cache_dir=dataset_cache_directory,
                         )
             Foo.last = (self.dataset_name, d)
-        d = d.copy()
+        d = copy.deepcopy(d)
         
         return Dataset(self.ml_task,
                        DatasetGroup(*d))  # type: ignore
