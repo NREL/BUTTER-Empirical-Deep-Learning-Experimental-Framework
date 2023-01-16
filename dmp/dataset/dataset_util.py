@@ -23,11 +23,12 @@ from dmp.common import make_dispatcher
 class Foo:
     bar : Any = None
 
+
 def load_dataset(source: str, name: str) -> Dataset:
-    if Foo.bar is not None and Foo.bar[0] == (source, name):
-        return Foo.bar[1]
+    if Foo.bar is not None and Foo.bar[0] == source and Foo.bar[1] == name:
+        return Foo.bar[2]
     result = __source_loaders(source)(name)()  # type: ignore
-    Foo.bar = ((source, name), result)
+    Foo.bar = (source, name, result)
     return result
 
 
