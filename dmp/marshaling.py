@@ -5,17 +5,29 @@ from dmp.common import marshal_type_key
 from lmarshal.src.marshal import Marshal
 from lmarshal.src.marshal_config import MarshalConfig
 
-marshal: Marshal = Marshal(
-    MarshalConfig(type_key=marshal_type_key,
-                  label_key='label',
-                  reference_prefix='*',
-                  escape_prefix='\\',
-                  flat_dict_key=':',
-                  enum_value_key='value',
-                  label_all=False,
-                  label_referenced=True,
-                  circular_references_only=False,
-                  reference_strings=False))
+marshal_settings = {
+    'type_key':marshal_type_key,
+    'label_key':'label',
+    'reference_prefix':'*',
+    'escape_prefix':'\\',
+    'flat_dict_key':':',
+    'enum_value_key':'value',
+    'label_all':False,
+    'label_referenced':True,
+    'circular_references_only':False,
+    'reference_strings':False
+}
+
+marshal_config = MarshalConfig(**marshal_settings)
+
+flat_marshal_settings = marshal_settings.copy()
+flat_marshal_settings.update({
+    'circular_references_only':True,
+})
+
+flat_marshal_config = MarshalConfig(**flat_marshal_settings)
+
+marshal: Marshal = Marshal(marshal_config)
 
 
 def register_types(target_types: Iterable[Type], ) -> None:

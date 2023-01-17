@@ -32,7 +32,7 @@ with ConnectionManager(credentials) as connection:
         with connection.cursor(binary=True) as cursor:
             cursor.execute(
                 sql.SQL("""
-            SELECT attribute_id, value_json FROM attr WHERE value_json IS NOT NULL AND digest IS NULL AND value_type = 5 LIMIT 8192;
+            SELECT attr_id, value_json FROM attr WHERE value_json IS NOT NULL AND digest IS NULL AND value_type = 5 LIMIT 8192;
             """))
 
             vals = [(i, _make_json_digest(v),
@@ -54,7 +54,7 @@ with ConnectionManager(credentials) as connection:
             connection.execute(sql.SQL("""
 UPDATE attr 
     SET digest = v.digest, value_json = v.value_json
-FROM (VALUES {}) AS v (attribute_id, digest, value_json)
-WHERE attr.attribute_id = v.attribute_id;""").format(value_placeholders),
+FROM (VALUES {}) AS v (attr_id, digest, value_json)
+WHERE attr.attr_id = v.attr_id;""").format(value_placeholders),
                                values,
                                binary=True)

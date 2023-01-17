@@ -47,9 +47,9 @@ class Task(ABC):
     #     return jobqueue_marshal.marshal(self)
 
     def extract_parameters(self) -> ParameterDict:
-        from dmp.marshaling import marshal
+        from dmp.marshaling import marshal, flat_marshal_config
         separator = '_'
-        marshaled = marshal.marshal(self, circular_references_only=True)
+        marshaled = marshal.marshal(self, flat_marshal_config)
         parameters = {}
 
         def get_parameters(key, target):

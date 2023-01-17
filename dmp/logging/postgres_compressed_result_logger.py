@@ -191,7 +191,7 @@ class PostgresCompressedResultLogger(ResultLogger):
             self._experiment_columns,
         )
 
-        experiment_attributes = self._attribute_map.to_sorted_attribute_ids(
+        experiment_attributes = self._attribute_map.to_sorted_attr_ids(
             result.experiment_attributes)
         
         experiment_uid = self.make_experiment_uid(experiment_attributes)

@@ -318,8 +318,8 @@ class TrainingExperiment(Task):
             'ml_task': dataset.ml_task.value,
             'num_free_parameters':
             network.num_free_parameters,
-            'model_structure':
-            network.structure,
+            # 'model_structure':
+            # network.structure,
             'input_shape':
             dataset.input_shape,
             'output_shape':

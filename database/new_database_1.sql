@@ -38,19 +38,19 @@ select x.* from
     experiment2 e,
     lateral (
         select 
-            (   select value_str from unnest(experiment_attributes) ea(attribute_id) inner join attr using(attribute_id)
+            (   select value_str from unnest(experiment_attributes) ea(attr_id) inner join attr using(attr_id)
                 where kind = 'dataset_name' limit 1
             ) dataset_name,
-            (   select value_json from unnest(experiment_attributes) ea(attribute_id) inner join attr using(attribute_id)
+            (   select value_json from unnest(experiment_attributes) ea(attr_id) inner join attr using(attr_id)
                 where kind = 'model_input_shape' limit 1
             ) model_input_shape,
-            (   select value_int from unnest(experiment_attributes) ea(attribute_id) inner join attr using(attribute_id)
+            (   select value_int from unnest(experiment_attributes) ea(attr_id) inner join attr using(attr_id)
                 where kind = 'model_output_units' limit 1
             ) model_output_shape
     ) x
 where
     e.experiment_attributes && (
-        select array_agg(attribute_id) from attr
+        select array_agg(attr_id) from attr
             where kind = 'dataset_name'
     )
 group by dataset_name, model_input_shape, model_output_shape;
@@ -74,16 +74,16 @@ from
     attr a_model_output_units
 where
     e.experiment_attributes && (
-        select array_agg(attribute_id) from attr
+        select array_agg(attr_id) from attr
             where kind = 'dataset_name'
     )
     and r.experiment_uid = e.experiment_uid
     and a_dataset_name.kind = 'dataset_name'
-    and e.experiment_attributes @> ARRAY[a_dataset_name.attribute_id]
+    and e.experiment_attributes @> ARRAY[a_dataset_name.attr_id]
     and a_model_input_shape.kind = 'model_input_shape'
-    and ARRAY[a_model_input_shape.attribute_id] <@ e.experiment_attributes 
+    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attributes 
     and a_model_output_units.kind = 'model_output_units'
-    and ARRAY[a_model_output_units.attribute_id] <@ e.experiment_attributes
+    and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attributes
 ) x
 group by dataset_name, model_input_shape, model_output_units;
 
@@ -105,7 +105,7 @@ from
 where TRUE
     and e.experiment_id = x.experiment_id
     and x.experiment_attributes @> array[37]
-    and x.experiment_attributes @> array[a.attribute_id]
+    and x.experiment_attributes @> array[a.attr_id]
     and e.experiment_parameters @> array[p.id]
 group by x.*, e.*
 
@@ -129,16 +129,16 @@ from
     attr regularization
 where
     e.experiment_attributes && (
-        select array_agg(attribute_id) from attr
+        select array_agg(attr_id) from attr
             where kind = 'dataset_name'
     )
     and r.experiment_uid = e.experiment_uid
     and a_dataset_name.kind = 'dataset_name'
-    and e.experiment_attributes @> ARRAY[a_dataset_name.attribute_id]
+    and e.experiment_attributes @> ARRAY[a_dataset_name.attr_id]
     and a_model_input_shape.kind = 'model_input_shape'
-    and ARRAY[a_model_input_shape.attribute_id] <@ e.experiment_attributes 
+    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attributes 
     and a_model_output_units.kind = 'model_output_units'
-    and ARRAY[a_model_output_units.attribute_id] <@ e.experiment_attributes
+    and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attributes
 ) x
 group by dataset_name, model_input_shape, model_output_units;
 
@@ -192,7 +192,7 @@ ORDER BY state, query_start desc;
 
 CREATE TABLE attr
 (
-    attribute_id serial NOT NULL,
+    attr_id serial NOT NULL,
     value_type smallint NOT NULL,
     kind text NOT NULL,
     value_bool boolean,
@@ -201,7 +201,7 @@ CREATE TABLE attr
     value_str text,
     digest uuid,
     value_json jsonb,
-    PRIMARY KEY (attribute_id)
+    PRIMARY KEY (attr_id)
 );
 ALTER TABLE attr SET (fillfactor = 100);
 
@@ -263,11 +263,11 @@ ALTER TABLE attr
     )
   );
   
-CREATE UNIQUE INDEX ON attr USING btree (kind) INCLUDE (attribute_id) WHERE value_type = 0;
-CREATE UNIQUE INDEX ON attr USING btree (kind, value_bool) INCLUDE (attribute_id) WHERE value_type = 1;
-CREATE UNIQUE INDEX ON attr USING btree (kind, value_int) INCLUDE (attribute_id) WHERE value_type = 2;
-CREATE UNIQUE INDEX ON attr USING btree (kind, value_float) INCLUDE (attribute_id) WHERE value_type = 3;
-CREATE UNIQUE INDEX ON attr USING btree (kind, value_str) INCLUDE (attribute_id) WHERE value_type = 4;
+CREATE UNIQUE INDEX ON attr USING btree (kind) INCLUDE (attr_id) WHERE value_type = 0;
+CREATE UNIQUE INDEX ON attr USING btree (kind, value_bool) INCLUDE (attr_id) WHERE value_type = 1;
+CREATE UNIQUE INDEX ON attr USING btree (kind, value_int) INCLUDE (attr_id) WHERE value_type = 2;
+CREATE UNIQUE INDEX ON attr USING btree (kind, value_float) INCLUDE (attr_id) WHERE value_type = 3;
+CREATE UNIQUE INDEX ON attr USING btree (kind, value_str) INCLUDE (attr_id) WHERE value_type = 4;
 CREATE UNIQUE INDEX ON attr USING btree (kind, digest) WHERE value_type = 5;
 -- CREATE UNIQUE INDEX ON attr USING btree (kind, value_json) WHERE value_type = 5;
 

@@ -100,7 +100,7 @@ class PostgresAttributeMap:
 
     _id_columns: List[Tuple[str, sql.Identifier,
                             str]] = _make_column_identifier_seq([
-                                ('attribute_id', 'integer'),
+                                ('attr_id', 'integer'),
                             ])
 
     _index_columns: List[Tuple[str, sql.Identifier,
@@ -219,7 +219,7 @@ class PostgresAttributeMap:
                         # value,
                     ))
 
-    def to_attribute_id(self, kind: str, value: Any, c=None) -> int:
+    def to_attr_id(self, kind: str, value: Any, c=None) -> int:
         value_type = get_attribute_value_type_for_value(value)
         database_value = self._make_database_value(value_type, value)
         comparable_value = self._make_comparable_value(value_type,
@@ -246,11 +246,11 @@ class PostgresAttributeMap:
             query = sql.SQL("""
 WITH query_values as (
     SELECT 
-        (   SELECT attribute_id
+        (   SELECT attr_id
             FROM {attribute_table}
             WHERE {matching_clause}
             LIMIT 1
-        ) attribute_id,
+        ) attr_id,
         *
     FROM
     (   SELECT {casting_clause}
@@ -261,13 +261,13 @@ inserted as (
     INSERT INTO {attribute_table} AS p ({key_columns})
     SELECT {key_columns}
     FROM query_values
-    WHERE attribute_id IS NULL
+    WHERE attr_id IS NULL
     ON CONFLICT DO NOTHING
     RETURNING
-        attribute_id, 
+        attr_id, 
         {key_columns}
 )
-SELECT attribute_id, {key_columns} from query_values WHERE attribute_id IS NOT NULL
+SELECT attr_id, {key_columns} from query_values WHERE attr_id IS NOT NULL
 UNION ALL
 SELECT * from inserted
 ;""").format(
@@ -295,7 +295,7 @@ SELECT * from inserted
                                 comparable_value,
                                 # value,
                             ))
-            return self.to_attribute_id(
+            return self.to_attr_id(
                 kind,
                 value,
             )  # retry
@@ -309,19 +309,19 @@ SELECT * from inserted
     # def get_all_ids_for_kind(self, kind) -> Sequence[int]:
     #     return tuple(self._attribute_to_id_map[kind].values())
 
-    def to_attribute_ids(
+    def to_attr_ids(
         self,
         kvl: Union[Dict[str, Any], Iterable[Tuple[str, Any]]],
     ) -> Sequence[int]:
         if isinstance(kvl, dict):
             kvl = kvl.items()  # type: ignore
-        return [self.to_attribute_id(kind, value) for kind, value in kvl]
+        return [self.to_attr_id(kind, value) for kind, value in kvl]
 
-    def to_sorted_attribute_ids(
+    def to_sorted_attr_ids(
         self,
         kvl: Union[Dict[str, Any], Iterable[Tuple[str, Any]]],
     ) -> List[int]:
-        return sorted(self.to_attribute_ids(kvl))
+        return sorted(self.to_attr_ids(kvl))
 
     def attribute_from_id(
         self,

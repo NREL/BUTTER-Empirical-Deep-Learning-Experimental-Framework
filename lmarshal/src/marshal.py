@@ -103,9 +103,9 @@ class Marshal:
     def marshal(
         self,
         source: Any,
-        **overrides,
+        config: Optional[MarshalConfig] = None,
     ) -> Any:
-        config = self._make_composite_config(overrides)
+        config = self._config if config is None else config
         return Marshaler(
             config,
             self._marshaler_type_map,
@@ -115,19 +115,11 @@ class Marshal:
     def demarshal(
         self,
         source: Any,
-        **overrides,
+        config: Optional[MarshalConfig] = None,
     ) -> Any:
-        config = self._make_composite_config(overrides)
+        config = self._config if config is None else config
         return Demarshaler(
             config,
             self._demarshaler_type_map,
             source,
         )()
-
-    def _make_composite_config(self, overrides) -> MarshalConfig:
-        if overrides is not None and len(overrides) > 0:
-            for s in MarshalConfig.__slots__:
-                if s not in overrides:
-                    overrides[s] = getattr(self._config, s)
-            return MarshalConfig(**overrides)
-        return self._config
