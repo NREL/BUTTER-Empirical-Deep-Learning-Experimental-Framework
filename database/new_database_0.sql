@@ -90,7 +90,7 @@ CREATE TABLE experiment2
 (
     experiment_id serial NOT NULL,
     experiment_parameters integer[] NOT NULL,
-    experiment_attributes integer[],
+    experiment_attrs integer[],
     experiment_data jsonb,
     model_structure jsonb,
     PRIMARY KEY (experiment_id),
@@ -101,10 +101,10 @@ ALTER TABLE experiment2 SET (fillfactor = 100);
 ALTER TABLE experiment2 SET (parallel_workers = 16);
 
 ALTER TABLE experiment2 ALTER COLUMN experiment_parameters SET storage PLAIN;
-ALTER TABLE experiment2 ALTER COLUMN experiment_attributes SET storage PLAIN;
+ALTER TABLE experiment2 ALTER COLUMN experiment_attrs SET storage PLAIN;
 
 CREATE INDEX ON experiment2 USING gin (experiment_parameters);
-CREATE INDEX ON experiment2 USING gin (experiment_attributes);
+CREATE INDEX ON experiment2 USING gin (experiment_attrs);
 CREATE INDEX ON experiment2 USING gin (experiment_data);
 
 CREATE TABLE run2

@@ -38,18 +38,18 @@ select x.* from
     experiment2 e,
     lateral (
         select 
-            (   select value_str from unnest(experiment_attributes) ea(attr_id) inner join attr using(attr_id)
+            (   select value_str from unnest(experiment_attrs) ea(attr_id) inner join attr using(attr_id)
                 where kind = 'dataset_name' limit 1
             ) dataset_name,
-            (   select value_json from unnest(experiment_attributes) ea(attr_id) inner join attr using(attr_id)
+            (   select value_json from unnest(experiment_attrs) ea(attr_id) inner join attr using(attr_id)
                 where kind = 'model_input_shape' limit 1
             ) model_input_shape,
-            (   select value_int from unnest(experiment_attributes) ea(attr_id) inner join attr using(attr_id)
+            (   select value_int from unnest(experiment_attrs) ea(attr_id) inner join attr using(attr_id)
                 where kind = 'model_output_units' limit 1
             ) model_output_shape
     ) x
 where
-    e.experiment_attributes && (
+    e.experiment_attrs && (
         select array_agg(attr_id) from attr
             where kind = 'dataset_name'
     )
@@ -73,23 +73,23 @@ from
     attr a_model_input_shape,
     attr a_model_output_units
 where
-    e.experiment_attributes && (
+    e.experiment_attrs && (
         select array_agg(attr_id) from attr
             where kind = 'dataset_name'
     )
     and r.experiment_uid = e.experiment_uid
     and a_dataset_name.kind = 'dataset_name'
-    and e.experiment_attributes @> ARRAY[a_dataset_name.attr_id]
+    and e.experiment_attrs @> ARRAY[a_dataset_name.attr_id]
     and a_model_input_shape.kind = 'model_input_shape'
-    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attributes 
+    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attrs 
     and a_model_output_units.kind = 'model_output_units'
-    and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attributes
+    and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attrs
 ) x
 group by dataset_name, model_input_shape, model_output_units;
 
 select * from attr where kind like '%regul%';
 
-select count(1) from experiment2 where experiment_attributes @> array[37];
+select count(1) from experiment2 where experiment_attrs @> array[37];
 
 
 select 
@@ -104,8 +104,8 @@ from
     attr a
 where TRUE
     and e.experiment_id = x.experiment_id
-    and x.experiment_attributes @> array[37]
-    and x.experiment_attributes @> array[a.attr_id]
+    and x.experiment_attrs @> array[37]
+    and x.experiment_attrs @> array[a.attr_id]
     and e.experiment_parameters @> array[p.id]
 group by x.*, e.*
 
@@ -128,17 +128,17 @@ from
     attr a_model_output_units,
     attr regularization
 where
-    e.experiment_attributes && (
+    e.experiment_attrs && (
         select array_agg(attr_id) from attr
             where kind = 'dataset_name'
     )
     and r.experiment_uid = e.experiment_uid
     and a_dataset_name.kind = 'dataset_name'
-    and e.experiment_attributes @> ARRAY[a_dataset_name.attr_id]
+    and e.experiment_attrs @> ARRAY[a_dataset_name.attr_id]
     and a_model_input_shape.kind = 'model_input_shape'
-    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attributes 
+    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attrs 
     and a_model_output_units.kind = 'model_output_units'
-    and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attributes
+    and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attrs
 ) x
 group by dataset_name, model_input_shape, model_output_units;
 
@@ -278,16 +278,16 @@ CREATE TABLE experiment2
 (
     experiment_uid uuid NOT NULL,
     experiment_id integer,
-    experiment_attributes integer[] NOT NULL,
+    experiment_attrs integer[] NOT NULL,
     PRIMARY KEY (experiment_uid)
 );
 
 ALTER TABLE experiment2 SET (fillfactor = 100);
 ALTER TABLE experiment2 SET (parallel_workers = 16);
-ALTER TABLE experiment2 ALTER COLUMN experiment_attributes SET storage PLAIN;
+ALTER TABLE experiment2 ALTER COLUMN experiment_attrs SET storage PLAIN;
 
 CREATE INDEX on experiment2 USING btree (experiment_id) WHERE experiment_id IS NOT NULL;
-CREATE INDEX ON experiment2 USING gin (experiment_attributes);
+CREATE INDEX ON experiment2 USING gin (experiment_attrs);
 
 CREATE TABLE run2
 (

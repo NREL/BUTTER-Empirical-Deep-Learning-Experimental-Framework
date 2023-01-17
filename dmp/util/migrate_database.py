@@ -555,7 +555,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
             history=history,
         )
 
-        result_record.experiment_attributes['experiment_id'] = get_cell(
+        result_record.experiment_attrs['experiment_id'] = get_cell(
             'experiment_id')
 
         result_record.run_data.update({
@@ -591,7 +591,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
                 'butter',
         ]:
             if get_cell(k):
-                result_record.experiment_attributes[k] = True
+                result_record.experiment_attrs[k] = True
 
         result_logger.log(result_record, connection=connection)
         return True

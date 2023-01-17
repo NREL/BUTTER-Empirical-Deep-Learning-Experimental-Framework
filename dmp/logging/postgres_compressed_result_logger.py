@@ -75,13 +75,13 @@ class PostgresCompressedResultLogger(ResultLogger):
         WITH query_values as (
             SELECT
                 experiment_uid::uuid,
-                experiment_attributes::integer[] experiment_attributes,
+                experiment_attrs::integer[] experiment_attrs,
                 {cast_experiment_columns},
                 {cast_run_columns}
             FROM
                 ( VALUES ({values_placeholders}) ) AS t (
                     experiment_uid,
-                    experiment_attributes,
+                    experiment_attrs,
                     {experiment_columns},
                     {run_columns}
                     )
@@ -89,12 +89,12 @@ class PostgresCompressedResultLogger(ResultLogger):
         inserted_experiment as (
             INSERT INTO {experiment_table} AS e (
                 experiment_uid,
-                experiment_attributes,
+                experiment_attrs,
                 {experiment_columns}
             )
             SELECT
                 experiment_uid,
-                experiment_attributes,
+                experiment_attrs,
                 {experiment_columns}
             FROM query_values
             ON CONFLICT DO NOTHING
@@ -121,7 +121,7 @@ class PostgresCompressedResultLogger(ResultLogger):
 # WITH query_values as (
 #     SELECT
 #         experiment_uid::uuid,
-#         experiment_attributes::integer[] experiment_attributes,
+#         experiment_attrs::integer[] experiment_attrs,
 #         {cast_experiment_columns},
 #         {cast_run_columns}
 #     FROM
@@ -133,7 +133,7 @@ class PostgresCompressedResultLogger(ResultLogger):
 
 #         self._log_query_suffix = sql.SQL(""" ) ) AS t (
 #             experiment_uid,
-#             experiment_attributes,
+#             experiment_attrs,
 #             {experiment_columns},
 #             {run_columns}
 #             )
@@ -141,12 +141,12 @@ class PostgresCompressedResultLogger(ResultLogger):
 # inserted_experiment as (
 #     INSERT INTO {experiment_table} AS e (
 #         experiment_uid,
-#         experiment_attributes,
+#         experiment_attrs,
 #         {experiment_columns}
 #     )
 #     SELECT
 #         experiment_uid,
-#         experiment_attributes,
+#         experiment_attrs,
 #         {experiment_columns}
 #     FROM query_values
 #     ON CONFLICT DO NOTHING
@@ -171,9 +171,9 @@ class PostgresCompressedResultLogger(ResultLogger):
         self._attribute_map = PostgresAttributeMap(self._credentials)
 
     @staticmethod
-    def make_experiment_uid(experiment_attributes):
+    def make_experiment_uid(experiment_attrs):
         uid_string = '{' + ','.join(str(i)
-                                    for i in experiment_attributes) + '}'
+                                    for i in experiment_attrs) + '}'
         return uuid.UUID(hashlib.md5(uid_string.encode('utf-8')).hexdigest())
 
     def log(
@@ -187,14 +187,14 @@ class PostgresCompressedResultLogger(ResultLogger):
             return
 
         experiment_column_values = PostgresCompressedResultLogger._extract_values(
-            result.experiment_attributes,
+            result.experiment_attrs,
             self._experiment_columns,
         )
 
-        experiment_attributes = self._attribute_map.to_sorted_attr_ids(
-            result.experiment_attributes)
+        experiment_attrs = self._attribute_map.to_sorted_attr_ids(
+            result.experiment_attrs)
         
-        experiment_uid = self.make_experiment_uid(experiment_attributes)
+        experiment_uid = self.make_experiment_uid(experiment_attrs)
 
         run_column_values = PostgresCompressedResultLogger._extract_values(
             result.run_data, self._run_columns)
@@ -214,7 +214,7 @@ class PostgresCompressedResultLogger(ResultLogger):
         # sql_values = sql.SQL(', ').join(
         #     sql.Literal(v) for v in (
         #         experiment_uid,
-        #         experiment_attributes,
+        #         experiment_attrs,
         #         *experiment_column_values,
         #         *run_column_values,
         #     ))
@@ -222,7 +222,7 @@ class PostgresCompressedResultLogger(ResultLogger):
         # query = self._log_query_prefix + sql_values + self._log_query_suffix
         connection.execute(self._log_query_prefix, (
                 experiment_uid,
-                experiment_attributes,
+                experiment_attrs,
                 *experiment_column_values,
                 *run_column_values,
             ), binary=True)
