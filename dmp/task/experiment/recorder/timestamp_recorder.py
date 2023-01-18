@@ -2,10 +2,10 @@ from abc import ABC
 from typing import Any, List
 import tensorflow.keras as keras
 import time
-from dmp.task.recorder.recorder import Recorder
+from dmp.task.experiment.recorder.recorder import Recorder
 
-from dmp.task.training_experiment.test_set_info import TestSetInfo
-from dmp.task.training_experiment.training_experiment_keys import TrainingExperimentKeys
+from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
+from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
 
 
 class TimestampRecorder(Recorder):

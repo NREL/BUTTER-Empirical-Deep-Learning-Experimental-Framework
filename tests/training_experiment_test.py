@@ -4,11 +4,11 @@ from jobqueue.job import Job
 from tensorflow.python.framework.ops import re
 
 from dmp import jobqueue_interface
-from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
+from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
-from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
+from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
+from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
 
 sys.path.insert(0, './')
 
@@ -20,7 +20,7 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.layer.dense import Dense
 from dmp.model.dense_by_size import DenseBySize
 
-from dmp.task.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 from pprint import pprint
 
 from dmp.marshaling import marshal

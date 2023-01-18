@@ -1,4 +1,4 @@
-from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
+from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.worker import Worker
 import pandas as pd
 import tensorflow as tf

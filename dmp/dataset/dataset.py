@@ -3,7 +3,7 @@ from typing import List, Dict, Tuple, Optional, Any, Sequence
 
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.ml_task import MLTask
-from dmp.task.training_experiment.training_experiment_keys import TrainingExperimentKeys
+from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
 
 
 @dataclass

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import random
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 import os
 import platform
 import subprocess
@@ -17,25 +17,24 @@ from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_config
 from dmp.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
-from dmp.task.recorder.timestamp_recorder import TimestampRecorder
-from dmp.task.task_result_record import TaskResultRecord
-from dmp.task.recorder.test_set_history_recorder import TestSetHistoryRecorder
-from dmp.task.task_util import *
-from dmp.task.training_experiment.test_set_info import TestSetInfo
-from dmp.task.recorder.test_set_recorder import TestSetRecorder
+from dmp.task.experiment.experiment_task import ExperimentTask
+from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
+from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
+from dmp.task.experiment.recorder.test_set_history_recorder import TestSetHistoryRecorder
+from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
+from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 from dmp.model.network_info import NetworkInfo
 from dmp.model.model_info import ModelInfo
-from dmp.task.recorder.zero_epoch_recorder import ZeroEpochRecorder
+from dmp.task.experiment.recorder.zero_epoch_recorder import ZeroEpochRecorder
 
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
-from dmp.task.task import Task
-from dmp.task.training_experiment.training_experiment_keys import TrainingExperimentKeys
+from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
 from dmp.worker import Worker
 
 
 @dataclass
-class TrainingExperiment(Task):
+class TrainingExperiment(ExperimentTask):
     precision: str  # floating point precision {'float16', 'float32', 'float64'}
     dataset: DatasetSpec  # migrate dataset stuff into here
     model: ModelSpec  # defines network
@@ -56,7 +55,7 @@ class TrainingExperiment(Task):
         return 10
 
     def __call__(self, worker: Worker, job: Job, *args,
-                 **kwargs) -> TaskResultRecord:
+                 **kwargs) -> ExperimentResultRecord:
         self._set_random_seeds()
         dataset = self._load_and_prepare_dataset()
         metrics = self._autoconfigure_for_dataset(dataset)
@@ -247,7 +246,7 @@ class TrainingExperiment(Task):
         )  # type: ignore
 
         # convert keras History dictionary and epoch list to our standard
-        remap_key_prefixes(
+        self.remap_key_prefixes(
             history.history,
             [
                 ('val_', self.key_names.validation + '_', True),
@@ -258,7 +257,7 @@ class TrainingExperiment(Task):
 
         if self.record_post_training_metrics:
             # copy zero epoch recorder's train_ metrics to trained_ metrics
-            remap_key_prefixes(zero_epoch_recorder.history, [
+            self.remap_key_prefixes(zero_epoch_recorder.history, [
                 (self.key_names.train + '_', self.key_names.trained + '_',
                  False),
             ])
@@ -311,7 +310,7 @@ class TrainingExperiment(Task):
         dataset: PreparedDataset,
         network: NetworkInfo,
         history: Dict[str, Any],
-    ) -> TaskResultRecord:
+    ) -> ExperimentResultRecord:
 
         experiment_parameters = self.get_parameters()
         experiment_parameters.update({
@@ -355,7 +354,7 @@ class TrainingExperiment(Task):
                     'record_model', 'record_metrics'):
             run_data[key] = experiment_parameters.pop(key, None)
 
-        return TaskResultRecord(
+        return ExperimentResultRecord(
             experiment_parameters,
             run_data,
             history,
@@ -391,19 +390,6 @@ class TrainingExperiment(Task):
 
         experiment_data.group_by(group).aggregate(aggregation_ops)
 
-    # def _map_history(
-    #     self,
-    #     dataset: PreparedDataset,
-    #     history: Dict[str, Any],
-    # ) -> Dict[str, Any]:
-    #     return remap_key_prefixes(
-    #         history,
-    #         [
-    #             ('val_', validation_key + '_'),
-    #             # (test_history_key + '_', 'test_'),
-    #             ('', train_key + '_'),
-    #         ])  # type: ignore
-
     def _get_slurm_id(self) -> Optional[int]:
         try:
             return int(os.getenv("SLURM_JOB_ID"))  # type: ignore
@@ -417,48 +403,3 @@ class TrainingExperiment(Task):
                 cwd=os.path.dirname(__file__)).strip().decode()
         except:
             return None
-
-
-'''
-    + what if attributes are more free-form?
-        + could define experiment with a more minimal set of parameters
-            + and compute other attributes at runtime (and/or some simple pass-through)
-            
-    + optimizer : optimizer config (same) # contains learning rate
-    + dataset : str (same)
-    + test_split : float (same)
-    + split_method : str (renamed from test_split_method)
-    + run_config : dict (same) # contains batch size, epochs, shuffle
-    + label_noise : (same)
-    + early_stopping : (same)
-    + save_every_epochs : (same) (TODO: make sure not part of experiment table)
-
-    + network : NetworkSpecification -> defines and creates network
-        + input_shape : Sequence[int] (migrate from runtime)
-        + output_activation ??
-        + XXX loss (migrate from runtime calculation)
-            XXX output_activation, loss = get_output_activation_and_loss_for_ml_task(
-            XXX dataset.output_shape[1], dataset.ml_task)
-        + DenseBySizeAndShape
-            + shape (migrate)
-            + size (migrate)
-            + depth (migrate)
-            + layer : dict
-                + activation (migrate)
-                + kernel_regularizer (migrate)
-                + bias_regularizer (migrate)
-                + activity_regularizer (migrate)
-            + output_layer : dict 
-                + activation (migrate from runtime compute of output_activation)
-                + units/shape (migrate from runtime)
-        + CNNStackAndDownsample
-            + num_stacks
-            + cells_per_stack
-            + stem : dict
-            + cell_operations: List[List[str]] (and/or preset operations name?)
-            + cell_conv : dict
-            + cell_pooling : dict
-            + downsample_conv : dict
-            + downsample_pooling : dict
-            + output : dict
-'''

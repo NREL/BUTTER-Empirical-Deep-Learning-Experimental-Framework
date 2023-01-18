@@ -4,7 +4,7 @@ from math import ceil
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 
 from dmp.layer import *
-from dmp.task.growth_experiment.scaling_method.scaling_method import ScalingMethod
+from dmp.task.experiment.growth_experiment.scaling_method.scaling_method import ScalingMethod
 
 
 class WidthScaler(ScalingMethod):

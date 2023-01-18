@@ -57,22 +57,5 @@ def find_closest_network_to_target_size_int(
     )
 
 
-def remap_key_prefixes(
-    target: Dict[str, Any],
-    prefix_mapping: Iterable[Tuple[str, str, bool]],
-) -> dict:
-    plan = []
-    for k, v in target.items():
-        for src_prefix, dst_prefix, rename in prefix_mapping:
-            if k.startswith(src_prefix):
-                plan.append((k, v, dst_prefix + k[len(src_prefix):], rename))
-                break
 
-    for src_key, v, dst_key, rename in plan:
-        if rename:
-            del target[src_key]
-
-    for src_key, v, dst_key, rename in plan:
-        target[dst_key] = v
-    return target
 

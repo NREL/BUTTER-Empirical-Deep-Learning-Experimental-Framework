@@ -93,8 +93,8 @@ register_types([
 
 # Tasks:
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
-from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
+from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 
 register_types([
     AspectTestTask,
@@ -114,29 +114,29 @@ register_types((
 ))
 
 # stopping methods and growth triggers
-from dmp.task.growth_experiment.growth_trigger.proportional_stopping import ProportionalStopping
+from dmp.task.experiment.growth_experiment.growth_trigger.proportional_stopping import ProportionalStopping
 
 register_custom_keras_type('ProportionalStopping', ProportionalStopping)
 
 # scaling methods
-from dmp.task.growth_experiment.scaling_method.width_scaler import WidthScaler
+from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
 
 register_types((WidthScaler, ))
 
 # transfer methods
-from dmp.task.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
+from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
 
 register_types((OverlayTransfer, ))
 
 # Other types:
-from dmp.task.task_result_record import TaskResultRecord
-from dmp.task.recorder.test_set_history_recorder import TestSetHistoryRecorder
+from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
+from dmp.task.experiment.recorder.test_set_history_recorder import TestSetHistoryRecorder
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.model.network_info import NetworkInfo
 
 register_types((
-    TaskResultRecord,
+    ExperimentResultRecord,
     TestSetHistoryRecorder,
     DatasetSpec,
     MLTask,

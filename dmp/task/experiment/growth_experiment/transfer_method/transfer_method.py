@@ -4,7 +4,7 @@ from typing import Dict, List
 from dmp.layer.layer import Layer
 
 from dmp.model.model_info import ModelInfo
-from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
+from dmp.task.experiment.growth_experiment.layer_growth_info import LayerGrowthInfo
 
 
 class TransferMethod(ABC):

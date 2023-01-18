@@ -25,7 +25,7 @@ from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResu
 from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
 
-from dmp.task.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 
 from dmp.marshaling import marshal
 

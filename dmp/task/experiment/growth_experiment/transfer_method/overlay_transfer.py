@@ -8,8 +8,8 @@ from dmp.layer import *
 from dmp.keras_interface.layer_to_keras import KerasLayer
 from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.model.model_info import ModelInfo
-from dmp.task.growth_experiment.transfer_method.transfer_method import TransferMethod
-from dmp.task.growth_experiment.layer_growth_info import LayerGrowthInfo
+from dmp.task.experiment.growth_experiment.transfer_method.transfer_method import TransferMethod
+from dmp.task.experiment.growth_experiment.layer_growth_info import LayerGrowthInfo
 
 T = TypeVar('T')
 

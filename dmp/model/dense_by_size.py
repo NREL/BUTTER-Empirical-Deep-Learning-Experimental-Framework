@@ -4,7 +4,7 @@ from typing import Any, Callable, List, Tuple, Dict
 from dmp.common import make_dispatcher
 from dmp.model.model_spec import ModelSpec
 from dmp.model.network_info import NetworkInfo
-from dmp.task.task_util import find_closest_network_to_target_size_float, find_closest_network_to_target_size_int
+from dmp.model.model_util import find_closest_network_to_target_size_float, find_closest_network_to_target_size_int
 from dmp.layer import *
 
 

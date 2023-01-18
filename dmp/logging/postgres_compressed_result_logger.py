@@ -12,7 +12,7 @@ from dmp.logging.result_logger import ResultLogger
 
 from dmp.parquet_util import make_pyarrow_schema
 
-from dmp.task.task_result_record import TaskResultRecord
+from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 # psycopg.extras.register_uuid()
 # psycopg.extras.register_default_json(loads=simplejson.loads,
@@ -178,7 +178,7 @@ class PostgresCompressedResultLogger(ResultLogger):
 
     def log(
         self,
-        result: TaskResultRecord,
+        result: ExperimentResultRecord,
         connection = None
     ) -> None:
         if connection is None:

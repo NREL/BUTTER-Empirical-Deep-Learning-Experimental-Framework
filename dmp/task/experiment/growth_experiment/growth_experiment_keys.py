@@ -1,4 +1,4 @@
-from dmp.task.training_experiment.training_experiment_keys import TrainingExperimentKeys
+from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
 
 
 class GrowthExperimentKeys(TrainingExperimentKeys):

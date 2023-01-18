@@ -39,7 +39,7 @@ from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
 
 from dmp.parquet_util import make_pyarrow_schema
-from dmp.task.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 
 from dmp.marshaling import marshal
 

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple
 from uuid import UUID
 
-from dmp.task.task_result_record import TaskResultRecord
+from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 
 class ResultLogger(ABC):
@@ -17,6 +17,6 @@ class ResultLogger(ABC):
     @abstractmethod
     def log(
         self,
-        result: TaskResultRecord,
+        result: ExperimentResultRecord,
     ) -> None:
         pass

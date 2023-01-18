@@ -19,7 +19,7 @@ from dmp.jobqueue_interface import jobqueue_marshal
 
 import sys
 
-from dmp.task.growth_experiment.growth_experiment import GrowthExperiment
+from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 
 
 

@@ -1,4 +1,5 @@
 
+
 SELECT l.locktype, p.pid as pid , p.datname as database, p.usename as user, p.application_name as application, p.query as query,
        b.pid as blocking_pid, b.usename as blocking_user, b.application_name as blocking_application, b.query as blocking_query
   FROM
@@ -33,6 +34,20 @@ alter table attr alter column value_json set storage EXTENDED;
 ALTER TABLE attr SET (toast_tuple_target = 256)
 select count(1) from experiment_migration where not migrated and is_valid;
 
+
+    select
+        *,
+        (total-migrated) remaining,
+        migrated::real / total pct_migrated,
+        errored::real / migrated pct_errored
+from
+(
+    select 
+        count(1) total, 
+        sum(migrated::integer) migrated,
+        sum((migrated and error_message is not NULL)::integer) errored
+    from experiment_migration where is_valid
+    ) x;
 
 select x.* from 
     experiment2 e,
@@ -86,6 +101,41 @@ where
     and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attrs
 ) x
 group by dataset_name, model_input_shape, model_output_units;
+
+select
+    *
+from
+(
+    select 
+        sum(n) / count(1) compression_ratio,
+        kind,
+        value_type,
+        mode() within group (order by v) mode_value,
+        count(1) num_vals,
+        avg(n) avg_num,
+        min(n),
+        percentile_cont(array[.1,.25,.5,.75,.9]) WITHIN GROUP (ORDER BY n),
+        max(n)
+    from
+    (
+        select 
+            kind, 
+            value_type,
+            coalesce(
+                to_jsonb(value_bool), 
+                to_jsonb(value_int), 
+                to_jsonb(value_float), 
+                to_jsonb(value_str),
+                to_jsonb(digest)
+            ) v,
+            count(1) n
+        from attr left join experiment2 on (experiment_attributes @> array[attribute_id])
+        group by kind, value_type, v
+    ) ac
+    group by kind, value_type
+    order by kind, value_type
+) x
+order by compression_ratio asc;
 
 select * from attr where kind like '%regul%';
 
@@ -324,19 +374,31 @@ ALTER TABLE run2 SET (parallel_workers = 16);
 
 CREATE INDEX ON run2 USING btree (experiment_uid);
 
-CREATE INDEX ON run2 USING btree (record_timestamp) INCLUDE (experiment_uid);
-CREATE INDEX ON run2 USING btree (experiment_uid, record_timestamp);
+CREATE INDEX ON run2 USING btree (run_timestamp) INCLUDE (experiment_uid);
+CREATE INDEX ON run2 USING btree (experiment_uid, run_timestamp);
 
-CREATE INDEX ON run2 USING btree (job_id);
-CREATE INDEX ON run2 USING btree (slurm_job_id);
-CREATE INDEX ON run2 USING btree (task_version);
-CREATE INDEX ON run2 USING btree (num_nodes);
-CREATE INDEX ON run2 USING btree (num_cpus);
-CREATE INDEX ON run2 USING btree (num_gpus);
-CREATE INDEX ON run2 USING btree (host_name);
-CREATE INDEX ON run2 USING btree (batch);
+CREATE INDEX ON run2 USING btree (job_id) WHERE job_id IS NOT NULL;
+CREATE INDEX ON run2 USING btree (slurm_job_id) WHERE slurm_job_id IS NOT NULL;
+CREATE INDEX ON run2 USING btree (task_version) WHERE task_version IS NOT NULL;
+CREATE INDEX ON run2 USING btree (num_nodes) WHERE num_nodes IS NOT NULL;
+CREATE INDEX ON run2 USING btree (num_cpus) WHERE num_cpus IS NOT NULL;
+CREATE INDEX ON run2 USING btree (num_gpus) WHERE num_gpus IS NOT NULL;
+CREATE INDEX ON run2 USING btree (host_name) WHERE host_name IS NOT NULL;
+CREATE INDEX ON run2 USING btree (batch) WHERE batch IS NOT NULL;
 
 CREATE INDEX ON run2 USING gin (run_data);
+CREATE INDEX ON run2 USING hash (experiment_uid);
 
+CREATE TABLE experiment_summary
+(
+    experiment_uid uuid,
+    last_updated timestamp DEFAULT CURRENT_TIMESTAMP,
+    core_data bytea,
+    extended_data bytea,
+    PRIMARY KEY (experiment_uid)
+);
 
+CREATE INDEX ON experiment_summary USING btree (experiment_uid) INCLUDE (last_updated);
+CREATE INDEX ON experiment_summary USING btree (last_updated);
+CREATE INDEX ON experiment_summary USING hash (last_updated);
 

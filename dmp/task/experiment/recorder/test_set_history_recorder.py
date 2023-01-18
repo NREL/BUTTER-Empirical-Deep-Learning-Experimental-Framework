@@ -1,9 +1,9 @@
 from typing import Any, List, Optional
 import tensorflow.keras as keras
-from dmp.task.recorder.timestamp_recorder import TimestampRecorder
+from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
 
-from dmp.task.training_experiment.test_set_info import TestSetInfo
-from dmp.task.recorder.test_set_recorder import TestSetRecorder
+from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
+from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 
 
 class TestSetHistoryRecorder(TestSetRecorder):
