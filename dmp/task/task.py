@@ -13,7 +13,7 @@ from dmp.worker import Worker
 class Task(ABC):
     
     @abstractmethod
-    def __call__(self, worker: Worker, job: Job) -> ExperimentResultRecord:
+    def __call__(self, worker: Worker, job: Job) -> TaskResult:
         pass
 
     @property

@@ -400,5 +400,11 @@ CREATE TABLE experiment_summary
 
 CREATE INDEX ON experiment_summary USING btree (experiment_uid) INCLUDE (last_updated);
 CREATE INDEX ON experiment_summary USING btree (last_updated);
+CREATE INDEX ON experiment_summary USING btree (last_updated, experiment_uid);
 CREATE INDEX ON experiment_summary USING hash (last_updated);
 
+
+CREATE TABLE experiment_summary_progress
+(
+    last_updated timestamp
+);

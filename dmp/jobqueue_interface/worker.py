@@ -3,7 +3,7 @@ import uuid
 
 import jobqueue.connect as connect
 from jobqueue.job_queue import JobQueue
-from dmp.logging.postgres_result_logger import PostgresResultLogger
+from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResultLogger
 from dmp.worker import Worker
 
 import tensorflow
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     print(f'Worker id {worker_id} create job queue...\n', flush=True)
     job_queue = JobQueue(credentials, int(queue_id), check_table=False)
     print(f'Worker id {worker_id} create result logger..\n', flush=True)
-    result_logger = PostgresResultLogger(credentials)
+    result_logger = PostgresCompressedResultLogger(credentials)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
 
     strategy = make_strategy(

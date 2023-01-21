@@ -33,7 +33,7 @@ from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.layer.dense import Dense
 from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResultLogger
 
-from dmp.logging.postgres_attribute_map import PostgresAttributeMap
+from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 import sys
 from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize

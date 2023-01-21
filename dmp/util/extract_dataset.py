@@ -6,14 +6,14 @@ from jobqueue import connect
 from jobqueue.cursor_manager import CursorManager
 import numpy
 
-from dmp.logging.postgres_attribute_map import PostgresAttributeMap
+from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 
 
 def main():
     credentials = connect.load_credentials('dmp')
     parameter_map = None
     with CursorManager(credentials) as cursor:
-        parameter_map = PostgresAttributeMap(cursor)
+        parameter_map = PostgresAttrMap(cursor)
 
     # base_path = '/projects/dmpapps/jperrsau/datasets/2022_05_20_fixed_3k_1/'
     # base_path = '/home/ctripp/scratch/'

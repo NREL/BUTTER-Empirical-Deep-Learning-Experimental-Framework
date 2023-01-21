@@ -11,7 +11,7 @@ from jobqueue import connect
 from jobqueue.cursor_manager import CursorManager
 import numpy
 
-from dmp.logging.postgres_attribute_map import PostgresAttributeMap
+from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 import sys
 
 
@@ -26,7 +26,7 @@ def main():
     credentials = connect.load_credentials('dmp')
     parameter_map = None
     with CursorManager(credentials) as cursor:
-        parameter_map = PostgresAttributeMap(cursor)
+        parameter_map = PostgresAttrMap(cursor)
 
     if simple:
         dataset_path = '../complete_executive_summary/'

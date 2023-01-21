@@ -14,7 +14,7 @@ from dmp.layer.visitor.network_json_deserializer import NetworkJSONDeserializer
 
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 
-from dmp.logging.postgres_attribute_map import PostgresAttributeMap
+from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 from dmp.jobqueue_interface import jobqueue_marshal
 
 from jobqueue.job_queue import JobQueue

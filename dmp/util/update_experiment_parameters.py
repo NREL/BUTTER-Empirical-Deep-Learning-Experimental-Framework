@@ -10,7 +10,7 @@ from jobqueue.cursor_manager import CursorManager
 
 from dmp.task.aspect_test.aspect_test_task import AspectTestTask
 
-from dmp.logging.postgres_attribute_map import PostgresAttributeMap
+from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 
 sys.path.append("../../")
 
@@ -22,7 +22,7 @@ class ParameterUpdate:
         print('init ParameterUpdate')
         with CursorManager(credentials) as cursor:
             self.cursor = cursor
-            self._parameter_map = PostgresAttributeMap(cursor)
+            self._parameter_map = PostgresAttrMap(cursor)
             self._experiment_table = sql.Identifier("experiment")
             self._run_table = sql.Identifier("run")
             self._run_settings_table = sql.Identifier("run_settings")
