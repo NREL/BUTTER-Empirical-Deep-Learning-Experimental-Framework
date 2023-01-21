@@ -1,7 +1,7 @@
 from typing import Any, Dict, Iterable, Optional, Tuple, List
 import io
 from jobqueue.connection_manager import ConnectionManager
-from psycopg.sql import SQL, Composed
+from psycopg.sql import SQL, Composed, Identifier
 from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap, json_dump_function
 from dmp.logging.experiment_result_logger import ExperimentResultLogger
 from dmp.parquet_util import make_pyarrow_schema
@@ -38,8 +38,10 @@ class PostgresCompressedResultLogger(ExperimentResultLogger):
 
         values_groups = experiment_groups + run_groups
 
+        input_table = Identifier('_input')
+        inserted_experiment_table = Identifier('_inserted')
         self._log_result_record_query = SQL("""
-WITH query_values as (
+WITH {input_table} as (
     SELECT
         {casting_clause}
     FROM
@@ -48,13 +50,13 @@ WITH query_values as (
             {run_value_columns}
             )
 ),
-inserted_experiment as (
+{inserted_experiment_table} as (
     INSERT INTO {experiment_table} AS e (
         {experiment_columns}
     )
     SELECT
         {experiment_columns}
-    FROM query_values
+    FROM {input_table}
     ON CONFLICT DO NOTHING
 )
 INSERT INTO {run_table} (
@@ -64,13 +66,15 @@ INSERT INTO {run_table} (
 SELECT 
     {run_experiment_uid},
     {run_value_columns}
-FROM query_values
+FROM {input_table}
 ON CONFLICT DO NOTHING
 ;""").format(
+            input_table=input_table,
             casting_clause=experiment_groups.casting_sql,
             values_placeholders=values_groups.placeholders,
             experiment_columns=experiment_groups.columns_sql,
             run_value_columns=run_groups.columns_sql,
+            inserted_experiment_table=inserted_experiment_table,
             experiment_table=experiment.name_sql,
             run_table=run.name_sql,
             run_experiment_uid=run['experiment'].columns_sql,

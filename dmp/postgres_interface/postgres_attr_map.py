@@ -63,8 +63,8 @@ class PostgresAttrMap:
                      column_id=column_id,
                  ) for column_id in value_group.column_identifiers))
 
-        input_table = Identifier('input_table')
-        inserted_table = Identifier('inserted_table')
+        input_table = Identifier('_input')
+        inserted_table = Identifier('_inserted')
 
         self._get_or_create_attr_query = SQL("""
 WITH {input_table} as (
