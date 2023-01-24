@@ -5,7 +5,7 @@ from jobqueue.connect import load_credentials
 from jobqueue.connection_manager import ConnectionManager
 
 from jobqueue.job import Job
-from psycopg.sql import SQL, Identifier, Literal
+from psycopg.sql import SQL, Composed, Identifier, Literal
 from dmp.postgres_interface.column_group import ColumnGroup
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
@@ -82,7 +82,7 @@ FROM
                                 FROM {experiment_summary_progress_table} 
                                 LIMIT 1
                                 )
-                        ORDER BY {run_timestamp}, {run_experiment_uid}
+                        ORDER BY {run_timestamp} ASC, {run_experiment_uid}
                         LIMIT {experiment_scan_limit}
                     ) {selection_table}
                 GROUP BY {run_experiment_uid}
@@ -132,26 +132,24 @@ WHERE
         def make_update_progress_query(num_summaries: int) -> Composed:
             return SQL("""
 WITH {inserted} AS (
-    INSERT INTO {experiment_summary_table}
+    SELECT MAX({last_updated}) {last_updated}
+    FROM
     (
-        {last_updated},
-        {summary_columns}
-    )
-    (
-        SELECT
-            CURRENT_TIMESTAMP() {last_updated},
-            *
-        FROM
-            (VALUES ({summary_column_placeholders})) v ({summary_columns})
-    ) {values_table}
-    ON CONFLICT ({experiment_uid}) DO UPDATE SET
-        {last_updated} = CURRENT_TIMESTAMP(),
-        {update_clause}
-    )
+        INSERT INTO {experiment_summary_table}
+        (
+            {summary_columns}
+        )
+        VALUES {summary_column_placeholders}
+        ON CONFLICT ({experiment_uid}) DO UPDATE SET
+            {update_clause}
+        )
+        RETURNING {last_updated}
+    ) {inserted}
 )
-UPDATE {experiment_summary_progress_table}
-    SET {last_updated_progress} = CURRENT_TIMESTAMP()
-WHERE {last_updated_progress} < CURRENT_TIMESTAMP()
+UPDATE {experiment_summary_progress_table} SET 
+    {last_updated_progress} = (SELECT {last_updated} FROM {inserted} LIMIT 1)
+WHERE 
+    {last_updated_progress} < (SELECT {last_updated} FROM {inserted} LIMIT 1)
 ;""").format(
                 inserted=Identifier('_inserted'),
                 experiment_summary_table=experiment_summary_table.name_sql,
@@ -223,6 +221,10 @@ WHERE {last_updated_progress} < CURRENT_TIMESTAMP()
                             row[1],
                         ))
 
+                    num_experiments = len(experiments)
+                    if num_experiments <= 0:
+                        return TaskResult()
+
                     # compute summaries
                     summaries: List[ExperimentSummaryRecord] = []
                     for experiment_uid, experiment_attr_ids in experiments:
@@ -257,12 +259,16 @@ WHERE {last_updated_progress} < CURRENT_TIMESTAMP()
 
                     # write summaries to database
                     cursor.execute(
-                        make_update_progress_query(len(summaries)),
-                        list(flatten((
-                            s.experiment_uid,
-                            s.core_data,
-                            s.extended_data,
-                        ) for s in summaries)),
+                        make_update_progress_query(num_experiments),
+                        list(
+                            flatten(
+                                ((
+                                    s.experiment_uid,
+                                    s.core_data,
+                                    s.extended_data,
+                                ) for s in summaries),
+                                levels=1,
+                            )),
                     )
 
         return TaskResult()
