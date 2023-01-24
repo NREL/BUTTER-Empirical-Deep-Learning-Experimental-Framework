@@ -17,6 +17,7 @@ from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_config
 from dmp.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
+from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.experiment.experiment_task import ExperimentTask
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
@@ -314,7 +315,8 @@ class TrainingExperiment(ExperimentTask):
 
         experiment_parameters = self.get_parameters()
         experiment_parameters.update({
-            'ml_task': dataset.ml_task.value,
+            'ml_task':
+            dataset.ml_task.value,
             'num_free_parameters':
             network.num_free_parameters,
             # 'model_structure':
@@ -361,7 +363,9 @@ class TrainingExperiment(ExperimentTask):
         )
 
     @staticmethod
-    def make_summary_record(experiment_data: pyarrow.Table):
+    def summarize(
+            results: Iterable[ExperimentResultRecord]
+    ) -> ExperimentSummaryRecord:
         # median and iqr of various stats
         pass
 

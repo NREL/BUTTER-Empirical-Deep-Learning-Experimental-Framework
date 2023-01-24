@@ -3,7 +3,8 @@ import uuid
 
 import jobqueue.connect as connect
 from jobqueue.job_queue import JobQueue
-from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResultLogger
+from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
+from dmp.postgres_interface.postgres_schema import PostgresSchema
 from dmp.worker import Worker
 
 import tensorflow
@@ -82,6 +83,8 @@ if __name__ == "__main__":
 
     print(f'Worker id {worker_id} load credentials...\n', flush=True)
     credentials = connect.load_credentials(database)
+    print(f'Worker id {worker_id} initialize database schema...\n', flush=True)
+    schema = PostgresSchema(credentials)
     print(f'Worker id {worker_id} create job queue...\n', flush=True)
     job_queue = JobQueue(credentials, int(queue_id), check_table=False)
     print(f'Worker id {worker_id} create result logger..\n', flush=True)
@@ -97,6 +100,7 @@ if __name__ == "__main__":
         
     worker = Worker(
         job_queue,
+        schema,
         result_logger,
         strategy,
         {

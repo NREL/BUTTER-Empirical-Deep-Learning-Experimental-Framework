@@ -20,7 +20,7 @@ from jobqueue.cursor_manager import CursorManager
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.layer.dense import Dense
-from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResultLogger
+from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
 
 from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize

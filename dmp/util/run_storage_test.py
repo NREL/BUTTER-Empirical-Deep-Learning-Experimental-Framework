@@ -22,7 +22,7 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.layer.dense import Dense
-from dmp.logging.postgres_compressed_result_logger import PostgresCompressedResultLogger
+from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
 
 from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 import sys

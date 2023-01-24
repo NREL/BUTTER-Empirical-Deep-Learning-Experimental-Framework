@@ -92,7 +92,7 @@ register_types([
 ])
 
 # Tasks:
-from dmp.task.experiment.experiment_summary_updater import ExperimentSummaryUpdater
+from dmp.postgres_interface.experiment_summary_updater import ExperimentSummaryUpdater
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 

@@ -1,139 +1,22 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 
-import itertools
 import io
 import uuid
 import hashlib
 
 # import psycopg
 from psycopg.sql import Identifier, SQL, Composed, Literal
-from psycopg.types.json import Jsonb, Json, set_json_dumps
+from psycopg.types.json import Jsonb, Json
 import pyarrow
 import pyarrow.parquet
-import simplejson
 
 from dmp.parquet_util import make_pyarrow_schema
-from dmp.postgres_interface.attr import Attr
 from dmp.postgres_interface.attribute_value_type import AttributeValueType
-from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 
-
-def json_dump_function(value: Any) -> str:
-    return simplejson.dumps(value, sort_keys=True, separators=(',', ':'))
-
-
-set_json_dumps(json_dump_function)
-
-comma_sql = SQL(',')  # sql comma delimiter
-placeholder_sql = SQL('%s')  # sql placeholders / references
-
-class ColumnGroup():
-    _columns: Sequence[str]
-    _types: Sequence[str]
-    _index: Dict[str, int]
-
-    def __init__(self, columns_and_types: Iterable[Tuple[str, str]]) -> None:
-        self._columns = tuple((name for name, type in columns_and_types))
-        self._types = tuple((type for name, type in columns_and_types))
-        self._index = {name: i for i, name in enumerate(self._columns)}
-
-    def __getitem__(self, key: Union[str, int]) -> Union[str, int]:
-        if isinstance(key, str):
-            return self._index[key]
-        return self._columns[key]
-            
-
-    @staticmethod
-    def concatenate(groups: Iterable['ColumnGroup']) -> 'ColumnGroup':
-        return ColumnGroup(
-            tuple(
-                itertools.chain(*(group.columns_and_types
-                                  for group in groups))))
-
-    def __add__(self, other: 'ColumnGroup') -> 'ColumnGroup':
-        return self.concatenate((self, other))
-
-   
-    @property
-    def columns(self) -> Sequence[str]:
-        return self._columns
-
-    @property
-    def types(self) -> Sequence[str]:
-        return self._types
-
-    @property
-    def columns_and_types(self) -> Iterable[Tuple[str, str]]:
-        return zip(self._columns, self._types)
-
-    @property
-    def column_identifiers(self)->Sequence[Identifier]:
-        return tuple((Identifier(name) for name in self._columns))
-
-    @property
-    def columns_sql(self) -> Composed:
-        return comma_sql.join(self.column_identifiers)
-
-    @property
-    def casting_sql(self) -> Composed:
-        return comma_sql.join((
-            SQL('{}::{}').format(Identifier(name), SQL(type))  # type: ignore
-            for name, type in self.columns_and_types
-        ))
-
-    @property
-    def placeholders(self) -> Composed:
-        return comma_sql.join([placeholder_sql] * len(self._columns))
-
-    def columns_from(self, table_name:Identifier)->Composed:
-        return comma_sql.join((
-            SQL('{}.{}').format(table_name, column)  # type: ignore
-            for column in self.column_identifiers
-        ))
-
-    def extract_column_values(
-        self,
-        source: Dict[str, Any],
-    ) -> List[Any]:
-        result = []
-        for name, type_name in self.columns_and_types:
-            value = source.pop(name, None)
-            if type_name == 'jsonb' and value is not None:
-                value = Jsonb(value)
-            elif type_name == 'json' and value is not None:
-                value = Json(value)
-            else:
-                pass
-            result.append(value)
-        return result
-
-    
-
-
-
-class TableData():
-    _name: str
-    _groups: Dict[str, ColumnGroup]
-
-    def __init__(
-        self,
-        name: str,
-        column_groups: Dict[str, ColumnGroup],
-    ) -> None:
-        self._name = name
-        self._groups = column_groups
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def name_sql(self) -> Identifier:
-        return Identifier(self._name)
-
-    def __getitem__(self, group_name: str) -> ColumnGroup:
-        return self._groups[group_name]
+from dmp.postgres_interface.column_group import ColumnGroup
+from dmp.postgres_interface.postgres_interface_common import json_dump_function
+from dmp.postgres_interface.table_data import TableData
 
 
 class PostgresSchema:
@@ -142,6 +25,8 @@ class PostgresSchema:
     attr: TableData
     experiment: TableData
     run: TableData
+    experiment_summary_progress: TableData
+    experiment_summary: TableData
 
     log_result_record_query: Composed
     log_query_suffix: Composed
@@ -180,13 +65,13 @@ class PostgresSchema:
 
         self.experiment = TableData(
             'experiment2', {
-                'id': ColumnGroup([
+                'uid': ColumnGroup([
                     ('experiment_uid', 'uuid'),
                 ]),
-                'attr': ColumnGroup([
+                'attrs': ColumnGroup([
                     ('experiment_attrs', 'integer[]'),
                 ]),
-                'value': ColumnGroup([
+                'values': ColumnGroup([
                     ('experiment_id', 'integer'),
                 ]),
             })
@@ -194,11 +79,11 @@ class PostgresSchema:
         self.run = Identifier(
             'run2',
             {
-                'experiment':
+                'experiment_uid':
                 ColumnGroup([('experiment_uid', 'uuid')]),
-                'time':
+                'timestamp':
                 ColumnGroup([('run_timestamp', 'timestamp')]),
-                'value':
+                'values':
                 ColumnGroup([
                     ('run_id', 'uuid'),
                     ('job_id', 'uuid'),
@@ -220,11 +105,30 @@ class PostgresSchema:
 
         self.experiment_summary_progress = TableData(
             'experiment_summary_progress',
-            [],
+            {'last_updated': ColumnGroup([
+                ('last_updated', 'timestamp'),
+            ])},
+        )
+
+        self.experiment_summary = TableData(
+            'experiment_summary_progress',
+            {
+                'experiment_uid':
+                ColumnGroup([('experiment_uid', 'uuid')]),
+                'last_updated':
+                ColumnGroup([
+                    ('last_updated', 'timestamp'),
+                ]),
+                'data':
+                ColumnGroup([
+                    ('core_data', 'bytea'),
+                    ('extended_data', 'bytea'),
+                ])
+            },
         )
 
         # initialize parameter map
-        from dmp.postgres_interface.postgres_schema import PostgresAttrMap
+        from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
         self.attribute_map = PostgresAttrMap(self)
 
     def str_to_uuid(self, target: str) -> uuid.UUID:
@@ -264,4 +168,4 @@ class PostgresSchema:
         )
 
 
-from dmp.postgres_interface.postgres_schema import PostgresAttrMap
+from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap

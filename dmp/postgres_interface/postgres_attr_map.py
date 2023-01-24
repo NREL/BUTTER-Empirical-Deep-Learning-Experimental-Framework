@@ -1,15 +1,13 @@
-from dataclasses import dataclass
-import hashlib
 from typing import Any, Dict, Hashable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type, Union, get_args
 
 import uuid
 from jobqueue.cursor_manager import CursorManager
 from dmp.marshaling import marshal
-from pprint import pprint
 from dmp.postgres_interface.attr import Attr, ComparableValue
 from dmp.postgres_interface.attribute_value_type import AttributeValueType, get_attribute_value_type_for_type_code, get_attribute_value_type_for_value
 
-from dmp.postgres_interface.postgres_schema import ColumnGroup, PostgresSchema, json_dump_function
+from dmp.postgres_interface.column_group import ColumnGroup
+from dmp.postgres_interface.postgres_schema import PostgresSchema
 
 from psycopg.sql import Composable, Identifier, SQL, Composed, Literal
 from psycopg.types.json import Jsonb
@@ -188,11 +186,14 @@ SELECT * from {inserted_table}
     ) -> Attr:
         return self._id_map[id_]
 
-    def attribute_from_ids(
+    def attribute_map_from_ids(
         self,
         ids: Iterable[int],
-    ) -> List[Attr]:
-        return [self.attribute_from_id(e) for e in ids]
+    ) -> Dict[str, Any]:
+        return {
+            attr.kind: attr.comparable_value
+            for attr in (self.attribute_from_id(e) for e in ids)
+        }
 
     def _load_all_attributes(self) -> None:
         attr_table = self._schema.attr

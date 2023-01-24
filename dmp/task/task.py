@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Type, Union
 
 from jobqueue.job import Job
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
+from dmp.task.task_result import TaskResult
 from dmp.worker import Worker
 
 

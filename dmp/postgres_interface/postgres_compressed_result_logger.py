@@ -1,14 +1,13 @@
 from typing import Any, Dict, Iterable, Optional, Tuple, List
 import io
-from jobqueue.connection_manager import ConnectionManager
 from psycopg.sql import SQL, Composed, Identifier
-from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap, json_dump_function
-from dmp.logging.experiment_result_logger import ExperimentResultLogger
-from dmp.parquet_util import make_pyarrow_schema
-from dmp.postgres_interface.postgres_schema import ColumnGroup, PostgresSchema, TableData, comma_sql
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from psycopg.types.json import Jsonb
-
+from jobqueue.connection_manager import ConnectionManager
+from dmp.logging.experiment_result_logger import ExperimentResultLogger
+from dmp.postgres_interface.column_group import ColumnGroup
+from dmp.postgres_interface.table_data import TableData
+from dmp.postgres_interface.postgres_schema import PostgresSchema
+from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 class PostgresCompressedResultLogger(ExperimentResultLogger):
     _schema: PostgresSchema
@@ -25,13 +24,13 @@ class PostgresCompressedResultLogger(ExperimentResultLogger):
         run: TableData = self._schema.run
 
         experiment_groups = ColumnGroup.concatenate((
-            experiment['id'],
-            experiment['attr'],
-            experiment['value'],
+            experiment['uid'],
+            experiment['attrs'],
+            experiment['values'],
         ))
 
         run_groups = ColumnGroup.concatenate((
-            run['value'],
+            run['values'],
             run['data'],
             run['history'],
         ))
@@ -77,7 +76,7 @@ ON CONFLICT DO NOTHING
             inserted_experiment_table=inserted_experiment_table,
             experiment_table=experiment.name_sql,
             run_table=run.name_sql,
-            run_experiment_uid=run['experiment'].columns_sql,
+            run_experiment_uid=run['experiment_uid'].columns_sql,
         )
 
     def log(self, record: ExperimentResultRecord, connection=None) -> None:

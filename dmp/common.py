@@ -71,13 +71,14 @@ def binary_search_float(
     return candidate, False
 
 
-def flatten(items):
+def flatten(items, levels: int = -1):
     '''
     Generator that recursively flattens nested Iterables
     '''
     for x in items:
-        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
-            yield from flatten(x)
+        if levels != 0 and isinstance(
+                x, Iterable) and not isinstance(x, (str, bytes)):
+            yield from flatten(x, levels=levels - 1)
         else:
             yield x
 
