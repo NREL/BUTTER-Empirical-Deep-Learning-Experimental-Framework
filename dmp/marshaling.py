@@ -92,18 +92,18 @@ register_types([
 ])
 
 # Tasks:
-from dmp.postgres_interface.experiment_summary_updater import ExperimentSummaryUpdater
+from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 
 register_types([
-    ExperimentSummaryUpdater,
+    UpdateExperimentSummary,
     TrainingExperiment,
     GrowthExperiment,
 ])
 
 # register summarization types
-ExperimentSummaryUpdater.register_types([
+UpdateExperimentSummary.register_types([
     TrainingExperiment,
     GrowthExperiment,
 ])

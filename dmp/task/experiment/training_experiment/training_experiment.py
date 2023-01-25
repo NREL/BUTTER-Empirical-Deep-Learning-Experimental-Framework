@@ -366,7 +366,8 @@ class TrainingExperiment(ExperimentTask):
     def summarize(
             results: Iterable[ExperimentResultRecord]
     ) -> ExperimentSummaryRecord:
-        # median and iqr of various stats
+        # core: start-to-miniumm val-loss percentile-based summary
+        # extended: median and iqr of various stats
         pass
 
     @staticmethod

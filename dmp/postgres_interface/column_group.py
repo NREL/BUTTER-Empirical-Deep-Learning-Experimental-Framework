@@ -2,7 +2,8 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 import itertools
 from psycopg.sql import Identifier, SQL, Composed, Literal
 from psycopg.types.json import Jsonb, Json
-from dmp.postgres_interface.postgres_interface_common import comma_sql, placeholder_sql
+from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
+
 
 class ColumnGroup():
     _columns: Sequence[str]
@@ -18,7 +19,6 @@ class ColumnGroup():
         if isinstance(key, str):
             return self._index[key]
         return self._columns[key]
-            
 
     @staticmethod
     def concatenate(groups: Iterable['ColumnGroup']) -> 'ColumnGroup':
@@ -30,10 +30,17 @@ class ColumnGroup():
     def __add__(self, other: 'ColumnGroup') -> 'ColumnGroup':
         return self.concatenate((self, other))
 
-   
     @property
     def columns(self) -> Sequence[str]:
         return self._columns
+
+    @property
+    def column(self) -> str:
+        if len(self._columns) != 1:
+            raise ValueError(
+                f'Called column property on ColumnGroup with {len(self._columns)} columns.'
+            )
+        return self._columns[0]
 
     @property
     def types(self) -> Sequence[str]:
@@ -44,29 +51,31 @@ class ColumnGroup():
         return zip(self._columns, self._types)
 
     @property
-    def column_identifiers(self)->Sequence[Identifier]:
+    def identifiers(self) -> Sequence[Identifier]:
         return tuple((Identifier(name) for name in self._columns))
 
     @property
+    def identifier(self) -> Identifier:
+        return Identifier(self.column)
+
+    @property
     def columns_sql(self) -> Composed:
-        return comma_sql.join(self.column_identifiers)
+        return sql_comma.join(self.identifiers)
 
     @property
     def casting_sql(self) -> Composed:
-        return comma_sql.join((
+        return sql_comma.join((
             SQL('{}::{}').format(Identifier(name), SQL(type))  # type: ignore
-            for name, type in self.columns_and_types
-        ))
+            for name, type in self.columns_and_types))
 
     @property
     def placeholders(self) -> Composed:
-        return comma_sql.join([placeholder_sql] * len(self._columns))
+        return sql_comma.join([sql_placeholder] * len(self._columns))
 
-    def columns_from(self, table_name:Identifier)->Composed:
-        return comma_sql.join((
+    def of(self, table_name: Identifier) -> Composed:
+        return sql_comma.join((
             SQL('{}.{}').format(table_name, column)  # type: ignore
-            for column in self.column_identifiers
-        ))
+            for column in self.identifiers))
 
     def extract_column_values(
         self,
@@ -83,5 +92,3 @@ class ColumnGroup():
                 pass
             result.append(value)
         return result
-
-    

@@ -19,7 +19,7 @@ class TableData():
         return self._name
 
     @property
-    def name_sql(self) -> Identifier:
+    def identifier(self) -> Identifier:
         return Identifier(self._name)
 
     def __getitem__(self, group_name: str) -> ColumnGroup:

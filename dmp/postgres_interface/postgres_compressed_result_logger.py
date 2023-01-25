@@ -74,9 +74,9 @@ ON CONFLICT DO NOTHING
             experiment_columns=experiment_groups.columns_sql,
             run_value_columns=run_groups.columns_sql,
             inserted_experiment_table=inserted_experiment_table,
-            experiment_table=experiment.name_sql,
-            run_table=run.name_sql,
-            run_experiment_uid=run['experiment_uid'].columns_sql,
+            experiment_table=experiment.identifier,
+            run_table=run.identifier,
+            run_experiment_uid=schema.experiment_uid_group.identifier,
         )
 
     def log(self, record: ExperimentResultRecord, connection=None) -> None:
@@ -86,7 +86,7 @@ ON CONFLICT DO NOTHING
             return
 
         experiment_column_values = self._schema.experiment[
-            'value'].extract_column_values(record.experiment_attrs)
+            'values'].extract_column_values(record.experiment_attrs)
 
         experiment_attrs = \
             self._schema.attribute_map.to_sorted_attr_ids(
@@ -94,7 +94,7 @@ ON CONFLICT DO NOTHING
 
         experiment_uid = self._schema.make_experiment_uid(experiment_attrs)
 
-        run_column_values = self._schema.run['value'].extract_column_values(
+        run_column_values = self._schema.run['values'].extract_column_values(
             record.run_data)
 
         run_history_bytes = None

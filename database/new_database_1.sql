@@ -392,19 +392,18 @@ CREATE INDEX ON run2 USING hash (experiment_uid);
 CREATE TABLE experiment_summary
 (
     experiment_uid uuid,
-    last_updated timestamp DEFAULT CURRENT_TIMESTAMP,
+    last_run_timestamp timestamp,
+    run_update_limit timestamp,
     core_data bytea,
     extended_data bytea,
     PRIMARY KEY (experiment_uid)
 );
 
-CREATE INDEX ON experiment_summary USING btree (experiment_uid) INCLUDE (last_updated);
-CREATE INDEX ON experiment_summary USING btree (last_updated);
-CREATE INDEX ON experiment_summary USING btree (last_updated, experiment_uid);
-CREATE INDEX ON experiment_summary USING hash (last_updated);
+-- CREATE INDEX ON experiment_summary USING btree (experiment_uid) INCLUDE (update_limit);
+-- CREATE INDEX ON experiment_summary USING btree (update_limit);
+CREATE INDEX ON experiment_summary USING btree (run_update_limit);
+CREATE INDEX ON experiment_summary USING btree (experiment_uid, last_run_timestamp);
+CREATE INDEX ON experiment_summary USING btree (last_run_timestamp, experiment_uid);
 
+-- CREATE INDEX ON experiment_summary USING hash (last_updated);
 
-CREATE TABLE experiment_summary_progress
-(
-    last_updated timestamp
-);

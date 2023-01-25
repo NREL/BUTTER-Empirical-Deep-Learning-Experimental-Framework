@@ -22,10 +22,11 @@ from dmp.postgres_interface.table_data import TableData
 class PostgresSchema:
     credentials: Dict[str, Any]
 
+    experiment_uid_column: str
+
     attr: TableData
     experiment: TableData
     run: TableData
-    experiment_summary_progress: TableData
     experiment_summary: TableData
 
     log_result_record_query: Composed
@@ -39,6 +40,10 @@ class PostgresSchema:
         super().__init__()
 
         self.credentials = credentials
+
+        self.experiment_uid_column = 'experiment_uid'
+        self.experiment_uid_group = ColumnGroup([(self.experiment_uid_column,
+                                                  'uuid')])
 
         self.attr = TableData(
             'attr', {
@@ -65,9 +70,7 @@ class PostgresSchema:
 
         self.experiment = TableData(
             'experiment2', {
-                'uid': ColumnGroup([
-                    ('experiment_uid', 'uuid'),
-                ]),
+                'uid': self.experiment_uid_group,
                 'attrs': ColumnGroup([
                     ('experiment_attrs', 'integer[]'),
                 ]),
@@ -76,11 +79,11 @@ class PostgresSchema:
                 ]),
             })
 
-        self.run = Identifier(
+        self.run = TableData(
             'run2',
             {
-                'experiment_uid':
-                ColumnGroup([('experiment_uid', 'uuid')]),
+                self.experiment_uid_column:
+                self.experiment_uid_group,
                 'timestamp':
                 ColumnGroup([('run_timestamp', 'timestamp')]),
                 'values':
@@ -103,21 +106,18 @@ class PostgresSchema:
                 ColumnGroup([('run_history', 'bytea')]),
             })
 
-        self.experiment_summary_progress = TableData(
-            'experiment_summary_progress',
-            {'last_updated': ColumnGroup([
-                ('last_updated', 'timestamp'),
-            ])},
-        )
-
         self.experiment_summary = TableData(
-            'experiment_summary_progress',
+            'experiment_summary',
             {
-                'experiment_uid':
-                ColumnGroup([('experiment_uid', 'uuid')]),
-                'last_updated':
+                self.experiment_uid_column:
+                self.experiment_uid_group,
+                'last_run_timestamp':
                 ColumnGroup([
-                    ('last_updated', 'timestamp'),
+                    ('last_run_timestamp', 'timestamp'),
+                ]),
+                'run_update_limit':
+                ColumnGroup([
+                    ('run_update_limit', 'timestamp'),
                 ]),
                 'data':
                 ColumnGroup([

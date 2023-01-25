@@ -57,9 +57,9 @@ class PostgresAttrMap:
         matching_clause = SQL(' and ').join(
             (SQL("{attr_table}.{column_id} IS NOT DISTINCT FROM t.{column_id}"
                  ).format(
-                     attr_table=attr_table.name_sql,
+                     attr_table=attr_table.identifier,
                      column_id=column_id,
-                 ) for column_id in value_group.column_identifiers))
+                 ) for column_id in value_group.identifiers))
 
         input_table = Identifier('_input')
         inserted_table = Identifier('_inserted')
@@ -94,13 +94,13 @@ SELECT * from {inserted_table}
 ;""").format(
             input_table=input_table,
             attr_id=id_group.columns_sql,
-            attr_table=attr_table.name_sql,
+            attr_table=attr_table.identifier,
             matching_clause=matching_clause,
             casting_clause=all_but_id_group.casting_sql,
             values=all_but_id_group.placeholders,
             key_columns=all_but_id_group.columns_sql,
             inserted_table=inserted_table,
-            query_values_key_columns=all_but_id_group.columns_from(
+            query_values_key_columns=all_but_id_group.of(
                 input_table),
         )
 
@@ -219,7 +219,7 @@ SELECT * from {inserted_table}
             cursor.execute(
                 SQL("SELECT {columns} FROM {attr_table}").format(
                     columns=columns.columns_sql,
-                    attr_table=attr_table.name_sql,
+                    attr_table=attr_table.identifier,
                 ))
 
             for row in cursor.fetchall():
