@@ -1,5 +1,4 @@
 import os
-from itertools import chain
 
 from dmp.postgres_interface.postgres_schema import PostgresSchema
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
@@ -17,7 +16,7 @@ import json
 
 from pprint import pprint
 import uuid
-from psycopg.sql import SQL, Identifier, Literal
+from psycopg import sql
 
 from jobqueue import load_credentials
 from jobqueue.cursor_manager import CursorManager
@@ -25,7 +24,6 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.layer.dense import Dense
 from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
-from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
 
 from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
@@ -151,7 +149,6 @@ column_index_map = {name: i for i, name in enumerate(columns)}
 # credentials = None
 # schema = None
 
-
 def main():
     # global schema, credentials
 
@@ -163,6 +160,7 @@ def main():
     num_workers = args.num_workers
     block_size = args.block_size
 
+    
     pool = multiprocessing.ProcessPool(num_workers)
     results = pool.uimap(do_work,
                          ((i, block_size) for i in range(num_workers)))
@@ -192,16 +190,23 @@ def do_work(args):
     total_num_excepted = 0
     print(f'Worker {worker_number} : {worker_id} started...')
 
-    column_selection = SQL(', ').join([
-        SQL('e.{col} {col}').format(col=Identifier(c))
-        for c in experiment_columns
-    ] + [
-        SQL('r.{col} {col}').format(col=Identifier(c))
-        for c in (run_columns + history_columns)
-    ])
+    while True:  #  binary=True, scrollable=True
+        num_converted = 0
+        num_excepted = 0
 
-    get_runs_query = SQL("""
-WITH result AS (
+        with ConnectionManager(credentials) as connection:
+            with connection.transaction():
+                # cursor.itersize = 8
+
+                column_selection = sql.SQL(', ').join([
+                    sql.SQL('e.{col} {col}').format(col=sql.Identifier(c))
+                    for c in experiment_columns
+                ] + [
+                    sql.SQL('r.{col} {col}').format(col=sql.Identifier(c))
+                    for c in (run_columns + history_columns)
+                ])
+
+                q = sql.SQL("""
 SELECT {column_selection}
 FROM 
     (   SELECT experiment_id
@@ -215,69 +220,53 @@ FROM
     ) m
     INNER JOIN experiment_ e USING (experiment_id)
     INNER JOIN run_ r USING (experiment_id)
-), 
-updated AS (
+;""").format(
+                    column_selection=column_selection,
+                    block_size=sql.Literal(block_size),
+                )
+                # with connection.cursor(binary=True,
+                #                        name=str(uuid.uuid4())) as cursor:
+                with connection.cursor(binary=True) as cursor:
+                    cursor.execute(q, binary=True)
+
+                    eids = set()
+                    errors = {}
+                    records = []
+                    for row in cursor:
+                        old_experiment_id = row[column_index_map['experiment_id']]
+                        eids.add(old_experiment_id)
+                        try:
+                            records.append(convert_run(old_parameter_map, result_logger,
+                                           row, connection))
+                        except Exception as e:
+                            num_excepted += 1
+                            # print(f'failed on Exception: {e}', flush=True)
+                            # traceback.print_exc()
+                            errors[old_experiment_id] = e
+
+                    result_logger.log(records, connection)
+                    num_converted += len(records)
+
+                    error_list = sorted([(eid, str(e))
+                                        for eid, e in errors.items()])
+                    for eid, e in error_list:
+                        connection.execute(
+                            sql.SQL("""
+                        UPDATE experiment_migration
+                            SET error_message = %s
+                        WHERE experiment_id = %s;
+                        """), (e, eid))
+
+                    if len(eids) > 0:
+                        eid_values = sql.SQL(',').join(
+                            (sql.Literal(v) for v in sorted(eids)))
+                        q = sql.SQL("""
     UPDATE experiment_migration
         SET migrated = TRUE
     WHERE
-        experiment_id IN (SELECT experiment_id from result)
-)
-SELECT * from result
-;""").format(
-        column_selection=column_selection,
-        block_size=Literal(block_size),
-    )
-
-    while True:  #  binary=True, scrollable=True
-        num_converted = 0
-        num_excepted = 0
-
-        source_records = []
-        with ConnectionManager(credentials) as connection:
-            with connection.cursor(binary=True) as cursor:
-                cursor.execute(get_runs_query, binary=True)
-                source_records = list(cursor.fetchall())
-
-        result_records = []
-        eids = set()
-        errors = {}
-        for row in source_records:
-            old_experiment_id = row[column_index_map['experiment_id']]
-            eids.add(old_experiment_id)
-            try:
-                result_records.append(
-                    convert_run(old_parameter_map, result_logger, row,
-                                connection))
-            except Exception as e:
-                num_excepted += 1
-                # print(f'failed on Exception: {e}', flush=True)
-                # traceback.print_exc()
-                errors[old_experiment_id] = e
-
-        
-        num_converted += len(result_records)
-
-        error_list = sorted([(eid, str(e))
-                                for eid, e in errors.items()])
-        with ConnectionManager(credentials) as connection:
-            result_logger.log(result_records, connection)
-
-            if len(error_list) > 0:
-                connection.execute(
-                    SQL("""
-                    UPDATE experiment_migration
-                        SET error_message = v.error_message
-                    FROM
-                    ( VALUES {placeholders} ) AS v (
-                        experiment_id,
-                        error_message
-                        )
-                    WHERE experiment_id = v.experiment_id;
-                    """).format(
-                        placeholders = sql_comma.join([SQL('(%s,%s)')] * len(error_list))
-                    ), 
-                        list(chain(*list(error_list)))
-                    )
+        experiment_id IN ({eid_values})
+                        ;""").format(eid_values=eid_values)
+                        connection.execute(q, binary=True)
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(
@@ -290,8 +279,7 @@ SELECT * from result
     return total_num_converted
 
 
-def convert_run(old_parameter_map, result_logger, row,
-                connection) -> ExperimentResultRecord:
+def convert_run(old_parameter_map, result_logger, row, connection) -> ExperimentResultRecord:
     message = ''
     experiment = None
     network = None
@@ -445,20 +433,18 @@ def convert_run(old_parameter_map, result_logger, row,
         shapes = dataset_shape_map.get(dataset_name)
         if shapes is None:
             fail(f'unknown dataset mapping {dataset_name}.')
-
-        input_shape = [
-            shapes[0],
-        ]
+        
+        input_shape = [shapes[0],]
         # num_outputs = shapes[1]
         prepared_dataset = PsuedoPreparedDataset(
-            ml_task=ml_task,
-            # input_shape=[int(dsinfo['n_features'])],
-            input_shape=input_shape,
-            output_shape=[num_outputs],
-            train_size=train_size,
-            test_size=dataset_size - train_size,
-            validation_size=0,
-        )
+                ml_task=ml_task,
+                # input_shape=[int(dsinfo['n_features'])],
+                input_shape=input_shape,
+                output_shape=[num_outputs],
+                train_size=train_size,
+                test_size=dataset_size - train_size,
+                validation_size=0,
+            )
 
         # def try_get_input_shape(t):
         #     if not isinstance(t, dict):
