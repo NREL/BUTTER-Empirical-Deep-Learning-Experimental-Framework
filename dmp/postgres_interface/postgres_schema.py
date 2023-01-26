@@ -145,27 +145,36 @@ class PostgresSchema:
 
     def make_history_bytes(
         self,
-        history: dict,
-        buffer: io.BytesIO,
-    ) -> None:
+        history: Dict[str, Any],
+    ) -> bytes:
+        
         schema, use_byte_stream_split = make_pyarrow_schema(history.items())
 
         table = pyarrow.Table.from_pydict(history, schema=schema)
 
-        pyarrow_file = pyarrow.PythonFile(buffer)
+        with io.BytesIO() as buffer:
+            pyarrow_file = pyarrow.PythonFile(buffer)
+            pyarrow.parquet.write_table(
+                table,
+                pyarrow_file,
+                data_page_size=8 * 1024,
+                compression='ZSTD',
+                compression_level=12,
+                use_dictionary=False,
+                use_byte_stream_split=use_byte_stream_split,  # type: ignore
+                version='2.6',
+                data_page_version='2.0',
+                write_statistics=False,
+            )
+            return buffer.getvalue()
 
-        pyarrow.parquet.write_table(
-            table,
-            pyarrow_file,
-            data_page_size=8 * 1024,
-            compression='ZSTD',
-            compression_level=12,
-            use_dictionary=False,
-            use_byte_stream_split=use_byte_stream_split,  # type: ignore
-            version='2.6',
-            data_page_version='2.0',
-            write_statistics=False,
-        )
+    def load_history_from_bytes(self,data:bytes)->pyarrow.Table:
+        with io.BytesIO(data) as b:
+            pyarrow_file = pyarrow.PythonFile(b, mode='r')
+            return pyarrow.parquet.read_table(
+                pyarrow_file,
+            )
+
 
 
 from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap

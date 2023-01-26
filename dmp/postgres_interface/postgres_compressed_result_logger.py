@@ -9,6 +9,7 @@ from dmp.postgres_interface.table_data import TableData
 from dmp.postgres_interface.postgres_schema import PostgresSchema
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
+
 class PostgresCompressedResultLogger(ExperimentResultLogger):
     _schema: PostgresSchema
     _log_result_record_query: Composed
@@ -97,13 +98,7 @@ ON CONFLICT DO NOTHING
         run_column_values = self._schema.run['values'].extract_column_values(
             record.run_data)
 
-        run_history_bytes = None
-        with io.BytesIO() as history_buffer:
-            self._schema.make_history_bytes(
-                record.run_history,  # type: ignore
-                history_buffer,
-            )
-            run_history_bytes = history_buffer.getvalue()
+        run_history_bytes = self._schema.make_history_bytes(record.run_history)
 
         connection.execute(
             self._schema.log_result_record_query,

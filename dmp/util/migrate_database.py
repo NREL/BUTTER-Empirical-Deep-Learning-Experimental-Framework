@@ -1,5 +1,7 @@
 import os
 
+from dmp.postgres_interface.postgres_schema import PostgresSchema
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 from jobqueue.connection_manager import ConnectionManager
@@ -143,8 +145,11 @@ columns = experiment_columns + run_columns + history_columns
 
 column_index_map = {name: i for i, name in enumerate(columns)}
 
+# credentials = None
+# schema = None
 
 def main():
+    # global schema, credentials
 
     parser = argparse.ArgumentParser()
     parser.add_argument('num_workers', type=int)
@@ -154,6 +159,7 @@ def main():
     num_workers = args.num_workers
     block_size = args.block_size
 
+    
     pool = multiprocessing.ProcessPool(num_workers)
     results = pool.uimap(do_work,
                          ((i, block_size) for i in range(num_workers)))
@@ -165,14 +171,18 @@ def main():
 
 
 def do_work(args):
+    global schema, credentials
+
     worker_number, block_size = args
 
     credentials = load_credentials('dmp')
+    schema = PostgresSchema(credentials)
+
     old_parameter_map = None
-    with CursorManager(credentials) as cursor:
+    with CursorManager(schema.credentials) as cursor:
         old_parameter_map = PostgresParameterMapV1(cursor)
 
-    result_logger = PostgresCompressedResultLogger(credentials)
+    result_logger = PostgresCompressedResultLogger(schema)
 
     worker_id = str(worker_number) + str(uuid.uuid4())
     total_num_converted = 0

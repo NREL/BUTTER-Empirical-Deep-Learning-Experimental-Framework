@@ -205,7 +205,7 @@ SELECT * from {inserted_table}
             # attr_table['json'],
         ))
 
-        id_column_index = columns['id']
+        id_column_index = columns['attr_id']
         kind_column_index = columns['kind']
         type_column_index = columns['value_type']
 

@@ -1,5 +1,6 @@
 from collections import Callable
 from dataclasses import dataclass
+import io
 from typing import Dict, Iterable, List, Type
 from jobqueue.connect import load_credentials
 from jobqueue.connection_manager import ConnectionManager
@@ -25,7 +26,7 @@ class UpdateExperimentSummary(Task):
     def __call__(self, worker: Worker, job: Job) -> TaskResult:
         schema = worker._schema
 
-        experiment_limit = 16
+        experiment_limit = 64
 
         experiment_table = schema.experiment
         experiment_attrs_group = experiment_table['attrs']
@@ -170,7 +171,7 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                             runs.clear()
                             experiment_attrs = schema.attribute_map.attribute_map_from_ids(
                                 row[result_columns[
-                                    experiment_table['uid'].column]])
+                                    experiment_table['attrs'].column]])
                             last_updated = row[result_columns['run_timestamp']]
 
                         last_updated = max(
@@ -178,10 +179,12 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                             row[result_columns['run_timestamp']],
                         )
                         run_data = row[result_columns['run_data']]
-                        for c in run_table['value'].columns:
+                        for c in run_table['values'].columns:
                             run_data[c] = row[result_columns[c]]
 
-                        run_history = row[result_columns['run_history']]
+                        run_history = schema.load_history_from_bytes(
+                            row[result_columns['run_history']]
+                            )
 
                         runs.append(
                             ExperimentResultRecord(
@@ -194,22 +197,22 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                         summaries.append(
                             (last_updated, self._compute_summary(runs)))
 
-                    num_summaries = len(summaries)
-                    if num_summaries > 0:
-                        # write summaries to database
-                        cursor.execute(
-                            make_update_progress_query(num_summaries),
-                            list(
-                                flatten(
-                                    ((
-                                        last_updated,
-                                        summary.experiment_uid,
-                                        summary.core_data,
-                                        summary.extended_data,
-                                    ) for last_updated, summary in summaries),
-                                    levels=1,
-                                )),
-                        )
+                    # num_summaries = len(summaries)
+                    # if num_summaries > 0:
+                    #     # write summaries to database
+                    #     cursor.execute(
+                    #         make_update_progress_query(num_summaries),
+                    #         list(
+                    #             flatten(
+                    #                 ((
+                    #                     last_updated,
+                    #                     summary.experiment_uid,
+                    #                     summary.core_data,
+                    #                     summary.extended_data,
+                    #                 ) for last_updated, summary in summaries),
+                    #                 levels=1,
+                    #             )),
+                    #     )
 
         return TaskResult()
 
