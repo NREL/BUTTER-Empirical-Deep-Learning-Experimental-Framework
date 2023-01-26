@@ -231,8 +231,8 @@ FROM
                     eids = set()
                     errors = {}
                     for row in cursor:
-                        experiment_id = row[column_index_map['experiment_id']]
-                        eids.add(experiment_id)
+                        old_experiment_id = row[column_index_map['experiment_id']]
+                        eids.add(old_experiment_id)
                         try:
                             if convert_run(old_parameter_map, result_logger,
                                            row, connection):
@@ -243,7 +243,7 @@ FROM
                             num_excepted += 1
                             # print(f'failed on Exception: {e}', flush=True)
                             # traceback.print_exc()
-                            errors[experiment_id] = e
+                            errors[old_experiment_id] = e
 
                 error_list = sorted([(eid, str(e))
                                      for eid, e in errors.items()])
@@ -565,7 +565,7 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
             history=history,
         )
 
-        result_record.experiment_attrs['experiment_id'] = get_cell(
+        result_record.experiment_attrs['old_experiment_id'] = get_cell(
             'experiment_id')
 
         result_record.run_data.update({

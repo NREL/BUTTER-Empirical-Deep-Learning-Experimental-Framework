@@ -34,6 +34,7 @@ class PostgresCompressedResultLogger(ExperimentResultLogger):
             run['values'],
             run['data'],
             run['history'],
+            run['extended_history'],
         ))
 
         values_groups = experiment_groups + run_groups
@@ -77,7 +78,7 @@ ON CONFLICT DO NOTHING
             inserted_experiment_table=inserted_experiment_table,
             experiment_table=experiment.identifier,
             run_table=run.identifier,
-            run_experiment_uid=schema.experiment_uid_group.identifier,
+            run_experiment_uid=schema.experiment_id_group.identifier,
         )
 
     def log(self, record: ExperimentResultRecord, connection=None) -> None:
@@ -98,7 +99,8 @@ ON CONFLICT DO NOTHING
         run_column_values = self._schema.run['values'].extract_column_values(
             record.run_data)
 
-        run_history_bytes = self._schema.make_history_bytes(record.run_history)
+        run_history = self._schema.make_history_bytes(record.run_history)
+        run_extended_history = self._schema.make_history_bytes(record.run_extended_history)
 
         connection.execute(
             self._schema.log_result_record_query,
@@ -108,7 +110,8 @@ ON CONFLICT DO NOTHING
                 *experiment_column_values,
                 *run_column_values,
                 Jsonb(record.run_data),
-                run_history_bytes,
+                run_history,
+                run_extended_history,
             ),
             binary=True,
         )

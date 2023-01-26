@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 import io
 import uuid
 import hashlib
+import pandas
 
 # import psycopg
 from psycopg.sql import Identifier, SQL, Composed, Literal
@@ -11,7 +12,7 @@ from psycopg.types.json import Jsonb, Json
 import pyarrow
 import pyarrow.parquet
 
-from dmp.parquet_util import make_pyarrow_schema
+from dmp.parquet_util import make_pyarrow_schema_from_panads
 from dmp.postgres_interface.attribute_value_type import AttributeValueType
 
 from dmp.postgres_interface.column_group import ColumnGroup
@@ -22,7 +23,7 @@ from dmp.postgres_interface.table_data import TableData
 class PostgresSchema:
     credentials: Dict[str, Any]
 
-    experiment_uid_column: str
+    experiment_id_column: str
 
     attr: TableData
     experiment: TableData
@@ -41,8 +42,8 @@ class PostgresSchema:
 
         self.credentials = credentials
 
-        self.experiment_uid_column = 'experiment_uid'
-        self.experiment_uid_group = ColumnGroup([(self.experiment_uid_column,
+        self.experiment_id_column = 'experiment_id'
+        self.experiment_id_group = ColumnGroup([(self.experiment_id_column,
                                                   'uuid')])
 
         self.attr = TableData(
@@ -70,20 +71,20 @@ class PostgresSchema:
 
         self.experiment = TableData(
             'experiment2', {
-                'uid': self.experiment_uid_group,
+                'uid': self.experiment_id_group,
                 'attrs': ColumnGroup([
                     ('experiment_attrs', 'integer[]'),
                 ]),
                 'values': ColumnGroup([
-                    ('experiment_id', 'integer'),
+                    ('old_experiment_id', 'integer'),
                 ]),
             })
 
         self.run = TableData(
             'run2',
             {
-                self.experiment_uid_column:
-                self.experiment_uid_group,
+                self.experiment_id_column:
+                self.experiment_id_group,
                 'timestamp':
                 ColumnGroup([('run_timestamp', 'timestamp')]),
                 'values':
@@ -104,13 +105,15 @@ class PostgresSchema:
                 ColumnGroup([('run_data', 'jsonb')]),
                 'history':
                 ColumnGroup([('run_history', 'bytea')]),
+                'extended_history':
+                ColumnGroup([('run_extended_history', 'bytea')]),
             })
 
         self.experiment_summary = TableData(
             'experiment_summary',
             {
-                self.experiment_uid_column:
-                self.experiment_uid_group,
+                self.experiment_id_column:
+                self.experiment_id_group,
                 'last_run_timestamp':
                 ColumnGroup([
                     ('last_run_timestamp', 'timestamp'),
@@ -145,12 +148,17 @@ class PostgresSchema:
 
     def make_history_bytes(
         self,
-        history: Dict[str, Any],
+        history: pandas.DataFrame,
     ) -> bytes:
-        
-        schema, use_byte_stream_split = make_pyarrow_schema(history.items())
 
-        table = pyarrow.Table.from_pydict(history, schema=schema)
+        schema, use_byte_stream_split = make_pyarrow_schema_from_panads(
+            history)
+
+        table = pyarrow.Table.from_pandas(
+            history,
+            schema=schema,
+            preserve_index=False,
+        )
 
         with io.BytesIO() as buffer:
             pyarrow_file = pyarrow.PythonFile(buffer)
@@ -168,13 +176,11 @@ class PostgresSchema:
             )
             return buffer.getvalue()
 
-    def load_history_from_bytes(self,data:bytes)->pyarrow.Table:
+    def load_history_from_bytes(self, data: bytes) -> pandas.DataFrame:
         with io.BytesIO(data) as b:
             pyarrow_file = pyarrow.PythonFile(b, mode='r')
-            return pyarrow.parquet.read_table(
-                pyarrow_file,
-            )
-
+            parquet_table = pyarrow.parquet.read_table(pyarrow_file, )
+            return parquet_table.to_pandas()
 
 
 from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap

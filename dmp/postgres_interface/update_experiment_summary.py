@@ -1,7 +1,7 @@
 from collections import Callable
 from dataclasses import dataclass
 import io
-from typing import Dict, Iterable, List, Type
+from typing import Dict, Iterable, List, Sequence, Type
 from jobqueue.connect import load_credentials
 from jobqueue.connection_manager import ConnectionManager
 
@@ -16,7 +16,7 @@ from dmp.worker import Worker
 from dmp.postgres_interface.postgres_interface_common import sql_comma
 from dmp.common import flatten, marshal_type_key
 
-_summarizer_map: Dict[str, Callable[[Iterable[ExperimentResultRecord]],
+_summarizer_map: Dict[str, Callable[[Sequence[ExperimentResultRecord]],
                                     ExperimentSummaryRecord]] = {}
 
 
@@ -34,7 +34,7 @@ class UpdateExperimentSummary(Task):
         run_table = schema.run
         experiment_summary_table = schema.experiment_summary
 
-        experiment_uid = schema.experiment_uid_group
+        experiment_uid = schema.experiment_id_group
 
         # run_timestamp = run_table['timestamp']
         last_run_timestamp_group = experiment_summary_table[
@@ -161,7 +161,7 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                     cursor.execute(lock_and_get_query, binary=True)
                     for row in cursor.fetchall():
                         row_uid = row[result_columns[
-                            schema.experiment_uid_column]]
+                            schema.experiment_id_column]]
                         if row_uid != experiment_uid:
                             if len(runs) > 0:
                                 summaries.append((last_updated,

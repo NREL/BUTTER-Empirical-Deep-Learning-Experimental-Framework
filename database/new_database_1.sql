@@ -362,6 +362,7 @@ CREATE TABLE run2
     
     run_data jsonb,
     run_history bytea,
+    run_extended_history bytea,
     
     PRIMARY KEY (run_id)
 );

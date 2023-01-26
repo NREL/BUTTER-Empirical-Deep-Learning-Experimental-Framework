@@ -357,64 +357,122 @@ class TrainingExperiment(ExperimentTask):
                     'record_model', 'record_metrics'):
             run_data[key] = experiment_parameters.pop(key, None)
 
+        extended_history = self._extract_extended_history(history)
+
         return ExperimentResultRecord(
             experiment_parameters,
             run_data,
-            history,
+            pandas.DataFrame(history),
+            pandas.DataFrame(extended_history),
         )
+
+    def _extract_extended_history(
+        self,
+        history: Dict[str, Union[List, numpy.ndarray]],
+    ) -> Dict[str, Union[List, numpy.ndarray]]:
+        extended_history = {}
+        for k in self.key_names.extended_history_columns:
+            v = history.pop(k, None)
+            if v is not None:
+                extended_history[k] = v
+        return extended_history
 
     @staticmethod
     def summarize(
-            results: Iterable[ExperimentResultRecord]
+            results: Sequence[ExperimentResultRecord]
     ) -> ExperimentSummaryRecord:
 
+        # loss_name_map = {
+        #     'CategoricalCrossentropy' : 'categorical_crossentropy',
+        #     'MeanSquaredError' : 'mean_squared_error',
+        #     'BinaryCrossentropy': 'binary_crossentropy',
+        # }
+
+        discard = {
+            'cosine_similarity',
+            'kullback_leibler_divergence',
+            'root_mean_squared_error',
+            'mean_absolute_error',
+            'mean_squared_logarithmic_error',
+            'hinge',
+            'squared_hinge',
+            'categorical_hinge',
+        }
+        # discard.update(loss_name_map.values())
+
+        prefixes = [p + '_' for p in [
+            'test',
+            'train',
+            'validation',
+        ]]
+
+        # raw_loss =
+
+        experiment_attrs = results[0].experiment_attrs
+        loss_method = loss_name_map[experiment_attrs['loss']]
 
         sources = []
         for i, r in enumerate(results):
             history = r.run_history.to_pandas()
+
+            for prefix in prefixes:
+                loss_column = prefix + loss_method
+                if loss_column not in history:
+                    kl_divergence = 'kullback_leibler_divergence'
+                    test_kl_divergence = 'test_' + kl_divergence
+                    if loss_method == 'categorical_crossentropy':
+                        if test_kl_divergence in history:
+                            history[test_loss_column] = history[
+                                test_kl_divergence]
+
+            history['cumulative_min_test_loss'] = history['test_loss'].cummin()
             history['run'] = i
             sources.append(history)
+            print(history)
         del results
         history = pandas.concat(sources, ignore_index=True, axis=0)
         del sources
+
+        epoch_groups = history.groupby('epoch')
+
         # history.set_index('run', 'epoch'], inplace=True)
-        history.sort_values(['run', 'epoch'], inplace=True)
+        # history.sort_values(['run', 'epoch'], inplace=True)
 
-        run_groups = history.groupby('run')
+        # run_groups = history.groupby('run')
 
-        progress_resolution = 20 - 1
+        # progress_resolution = 20 - 1
         # progress_proportions = numpy.linspace(0, 1, 100)
         # progress_proportions = numpy.power(0.1, numpy.linspace(0, 1, 100)).tolist() + [0.0]
 
         # print(progress_proportions)
 
-        progress_source = 'test_loss'
-        progress_col = 'log_' + progress_source
-        history[progress_col] = numpy.log(history[progress_source])
+        # progress_source = 'test_loss'
+        # progress_col = 'log_' + progress_source
+        # history[progress_col] = numpy.log(history[progress_source])
 
-        progress_start = history.loc[history.groupby('run')['epoch'].idxmin()].groupby(
-            'run')[progress_col].max()
-        progress_end_group = history.loc[run_groups[progress_col].idxmin()].groupby('run')
-        progress_end = progress_end_group[progress_col].min()
-        progress_end_epoch = progress_end_group['epoch'].min()
-        progress_delta = progress_start - progress_end
-        run = history['run']
-        progress_end = run.apply(lambda r : progress_end[r])
-        progress_delta = run.apply(lambda r : progress_delta[r])
-        progress_end_epoch = run.apply(lambda r : progress_end_epoch[r])
-        progress = (history[progress_col] - progress_end) / progress_delta
-        history['progress'] =  1 - progress
-        
-        pq_index = history['epoch'] > progress_end_epoch
-        history['progress'][pq_index] += 1
+        # progress_start = history.loc[history.groupby('run')['epoch'].idxmin()].groupby(
+        #     'run')[progress_col].max()
+        # progress_end_group = history.loc[run_groups[progress_col].idxmin()].groupby('run')
+        # progress_end = progress_end_group[progress_col].min()
+        # progress_end_epoch = progress_end_group['epoch'].min()
+        # progress_delta = progress_start - progress_end
+        # run = history['run']
+        # progress_end = run.apply(lambda r : progress_end[r])
+        # progress_delta = run.apply(lambda r : progress_delta[r])
+        # progress_end_epoch = run.apply(lambda r : progress_end_epoch[r])
+        # progress = (history[progress_col] - progress_end) / progress_delta
+        # history['progress'] =  1 - progress
 
-        progress_quant = progress_resolution - numpy.clip(numpy.ceil(progress * progress_resolution).astype(numpy.int32), 0, progress_resolution)
-        progress_quant[pq_index] = progress_resolution + (progress_resolution - progress_quant[pq_index]) - 1
-        history['quantized_progress'] = progress_quant
-        
-        print(history)
-        hp = history.drop_duplicates(['run', 'quantized_progress'])
-        print('hp\n', hp[hp['run']==0])
+        # pq_index = history['epoch'] > progress_end_epoch
+        # history['progress'][pq_index] += 1
+
+        # progress_quant = progress_resolution - numpy.clip(numpy.ceil(progress * progress_resolution).astype(numpy.int32), 0, progress_resolution)
+        # progress_quant[pq_index] = progress_resolution + (progress_resolution - progress_quant[pq_index]) - 1
+        # history['quantized_progress'] = progress_quant
+
+        # print(history)
+        # hp = history.drop_duplicates(['run', 'quantized_progress'])
+        # print('hp\n', hp[hp['run']==0])
 
         pass
 

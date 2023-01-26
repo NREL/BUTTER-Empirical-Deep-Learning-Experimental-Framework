@@ -47,8 +47,19 @@ class ColumnGroup():
         return self._types
 
     @property
-    def columns_and_types(self) -> Iterable[Tuple[str, str]]:
-        return zip(self._columns, self._types)
+    def columns_and_types(self) -> Sequence[Tuple[str, str]]:
+        return tuple(zip(self._columns, self._types))
+
+    def column_as_group(self, key: Union[str, int]) -> 'ColumnGroup':
+        index = None
+        if isinstance(key, int):
+            index = key
+        else:
+            index = self._index[key]
+
+        return ColumnGroup([
+            (self._columns[index], self._types[index]),
+        ])
 
     @property
     def identifiers(self) -> Sequence[Identifier]:

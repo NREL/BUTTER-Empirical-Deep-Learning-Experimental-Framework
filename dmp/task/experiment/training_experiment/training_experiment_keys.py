@@ -1,3 +1,6 @@
+from typing import Sequence
+
+
 class TrainingExperimentKeys():
 
     epoch: str = 'epoch'
@@ -16,4 +19,14 @@ class TrainingExperimentKeys():
     epoch_end_key: str = 'relative_test_start_time'
     epoch_end_key: str = 'relative_test_time'
 
+    extended_history_columns: Sequence[str] = (
+        'cosine_similarity',
+        'kullback_leibler_divergence',
+        'root_mean_squared_error',
+        'mean_absolute_error',
+        'mean_squared_logarithmic_error',
+        'hinge',
+        'squared_hinge',
+        'categorical_hinge',
+    )
     

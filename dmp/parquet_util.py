@@ -1,10 +1,18 @@
 from typing import Dict, Iterable, Sequence, Tuple, Type, Union, List
+import pandas
 import pyarrow
 from numpy import ndarray
 import numpy
 
 
-def make_pyarrow_schema(
+def make_pyarrow_schema_from_panads(
+    dataframe: pandas.DataFrame, ) -> Tuple[pyarrow.Schema, List[str]]:
+    return make_pyarrow_schema_from_dict([(str(column),
+                                           dataframe[column].to_numpy())
+                                          for column in dataframe.columns])
+
+
+def make_pyarrow_schema_from_dict(
     columns: Iterable[Tuple[str, Union[list, ndarray]]],
 ) -> Tuple[pyarrow.Schema, List[str]]:
 
@@ -15,6 +23,7 @@ def make_pyarrow_schema(
         pyarrow_type = get_pyarrow_type_mapping(values)
         if pyarrow_type is None:
             continue
+
         if pyarrow_type == pyarrow.float16()\
             or pyarrow_type == pyarrow.float32()\
             or pyarrow_type == pyarrow.float64():
@@ -24,8 +33,13 @@ def make_pyarrow_schema(
     return pyarrow.schema(fields), use_byte_stream_split
 
 
+def _check_type(t, x):
+    return (isinstance(t, Type) and issubclass(t, x))
+
+
 def get_pyarrow_type_mapping(
     values: Union[list, ndarray], ) -> pyarrow.DataType:
+
     t = None
     if isinstance(values, ndarray):
         t = values.dtype
@@ -34,12 +48,9 @@ def get_pyarrow_type_mapping(
             return None
         t = type(values[0])
 
-    def check_type(t, x):
-        return (isinstance(t, Type) and issubclass(t, x))
-
-    if check_type(t, bool) or numpy.issubdtype(t, bool):
+    if _check_type(t, bool) or numpy.issubdtype(t, bool):
         return pyarrow.bool_()
-    elif check_type(t, int) or numpy.issubdtype(t, numpy.integer):
+    elif _check_type(t, int) or numpy.issubdtype(t, numpy.integer):
         hi = numpy.max(values)
         lo = numpy.min(values)
         if hi <= (2**7 - 1) and lo >= (-2**7):
@@ -49,13 +60,13 @@ def get_pyarrow_type_mapping(
         if hi <= (2**31 - 1) and lo >= (-2**31):
             return pyarrow.int32()
         return pyarrow.int64()
-    elif check_type(t, float) or numpy.issubdtype(t, numpy.floating):
+    elif _check_type(t, float) or numpy.issubdtype(t, numpy.floating):
         return pyarrow.float32()
-    elif check_type(t, str)\
+    elif _check_type(t, str)\
         or numpy.issubdtype(t, numpy.string_)\
         or numpy.issubdtype(t, numpy.str_):
         return pyarrow.string
-    elif check_type(t, list):
+    elif _check_type(t, list):
         element_type = next((et for et in (get_pyarrow_type_mapping(v)
                                            for v in values) if et is not None),
                             None)
