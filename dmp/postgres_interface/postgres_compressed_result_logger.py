@@ -103,7 +103,7 @@ ON CONFLICT DO NOTHING
         run_extended_history = self._schema.make_history_bytes(record.run_extended_history)
 
         connection.execute(
-            self._schema.log_result_record_query,
+            self._log_result_record_query,
             (
                 experiment_uid,
                 experiment_attrs,

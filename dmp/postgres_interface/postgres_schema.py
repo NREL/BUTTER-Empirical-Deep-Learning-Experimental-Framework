@@ -31,7 +31,6 @@ class PostgresSchema:
     run: TableData
     experiment_summary: TableData
 
-    log_result_record_query: Composed
     log_query_suffix: Composed
     attribute_map: 'PostgresAttrMap'
 
