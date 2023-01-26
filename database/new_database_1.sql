@@ -37,6 +37,8 @@ FROM
     experiment_ e
 WHERE EXISTS (select 1 from run_ r where r.experiment_id = e.experiment_id);
 
+UPDATE experiment_migration set migrated = FALSE, error_message =NULL WHERE migrated and error_message IS NOT NULL;
+
 update experiment_migration m set 
     is_valid = True,
     migrated = False,

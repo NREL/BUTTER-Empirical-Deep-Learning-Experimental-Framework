@@ -71,7 +71,7 @@ FROM {input_table}
 ON CONFLICT DO NOTHING
 ;""").format(
             input_table=input_table,
-            casting_clause=experiment_groups.casting_sql,
+            casting_clause=values_groups.casting_sql,
             values_placeholders=values_groups.placeholders,
             experiment_columns=experiment_groups.columns_sql,
             run_value_columns=run_groups.columns_sql,
