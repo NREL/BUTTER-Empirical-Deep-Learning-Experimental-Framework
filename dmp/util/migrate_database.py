@@ -1,6 +1,7 @@
 import os
 
 from dmp.postgres_interface.postgres_schema import PostgresSchema
+from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -230,41 +231,42 @@ FROM
 
                     eids = set()
                     errors = {}
+                    records = []
                     for row in cursor:
                         old_experiment_id = row[column_index_map['experiment_id']]
                         eids.add(old_experiment_id)
                         try:
-                            if convert_run(old_parameter_map, result_logger,
-                                           row, connection):
-                                num_converted += 1
-                            else:
-                                num_excepted += 1
+                            records.append(convert_run(old_parameter_map, result_logger,
+                                           row, connection))
                         except Exception as e:
                             num_excepted += 1
                             # print(f'failed on Exception: {e}', flush=True)
                             # traceback.print_exc()
                             errors[old_experiment_id] = e
 
-                error_list = sorted([(eid, str(e))
-                                     for eid, e in errors.items()])
-                for eid, e in error_list:
-                    connection.execute(
-                        sql.SQL("""
-                    UPDATE experiment_migration
-                        SET error_message = %s
-                    WHERE experiment_id = %s;
-                    """), (e, eid))
+                    result_logger.log(records, connection)
+                    num_converted += len(records)
 
-                if len(eids) > 0:
-                    eid_values = sql.SQL(',').join(
-                        (sql.Literal(v) for v in sorted(eids)))
-                    q = sql.SQL("""
-UPDATE experiment_migration
-    SET migrated = TRUE
-WHERE
-    experiment_id IN ({eid_values})
-                    ;""").format(eid_values=eid_values)
-                    connection.execute(q, binary=True)
+                    error_list = sorted([(eid, str(e))
+                                        for eid, e in errors.items()])
+                    for eid, e in error_list:
+                        connection.execute(
+                            sql.SQL("""
+                        UPDATE experiment_migration
+                            SET error_message = %s
+                        WHERE experiment_id = %s;
+                        """), (e, eid))
+
+                    if len(eids) > 0:
+                        eid_values = sql.SQL(',').join(
+                            (sql.Literal(v) for v in sorted(eids)))
+                        q = sql.SQL("""
+    UPDATE experiment_migration
+        SET migrated = TRUE
+    WHERE
+        experiment_id IN ({eid_values})
+                        ;""").format(eid_values=eid_values)
+                        connection.execute(q, binary=True)
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(
@@ -277,7 +279,7 @@ WHERE
     return total_num_converted
 
 
-def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
+def convert_run(old_parameter_map, result_logger, row, connection) -> ExperimentResultRecord:
     message = ''
     experiment = None
     network = None
@@ -603,8 +605,9 @@ def convert_run(old_parameter_map, result_logger, row, connection) -> bool:
             if get_cell(k):
                 result_record.experiment_attrs[k] = True
 
-        result_logger.log(result_record, connection=connection)
-        return True
+        # result_logger.log(result_record, connection=connection)
+
+        return result_record
     except Exception as e:
         message = str(e)
         message += f"""\nwith computed: {None if network is None else network.description} shape: {None if experiment is None else experiment.model.shape} depth: {None if experiment is None else experiment.model.depth}, size: {None if experiment is None else experiment.model.size}, dataset: {None if experiment is None else experiment.dataset.name}\n experiment {None if experiment is None else experiment}."""
