@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 import io
 import uuid
 import hashlib
+import numpy
 import pandas
 
 # import psycopg
@@ -153,6 +154,13 @@ class PostgresSchema:
 
         schema, use_byte_stream_split = make_pyarrow_schema_from_panads(
             history)
+        
+        # Must do this to avoid a bug in pyarrow reading nulls in
+        # byte stream split columns.
+        # see https://github.com/apache/arrow/issues/28737
+        # and https://issues.apache.org/jira/browse/ARROW-13024
+        for c in use_byte_stream_split:
+            history[c].fillna(value=numpy.nan, inplace=True)
 
         table = pyarrow.Table.from_pandas(
             history,

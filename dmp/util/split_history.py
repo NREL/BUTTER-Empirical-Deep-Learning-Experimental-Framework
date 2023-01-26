@@ -2,6 +2,7 @@ from itertools import chain
 import os
 
 from psycopg import ClientCursor
+import pyarrow
 from dmp.common import flatten
 from dmp.postgres_interface.column_group import ColumnGroup
 
@@ -89,8 +90,10 @@ def do_work(args):
             history_column,
             extended_history_column,
         ))
+        
         get_and_lock_query = SQL("""
-SELECT {columns}
+SELECT 
+    {columns}
 FROM 
     {run}
 WHERE 
@@ -113,6 +116,8 @@ LIMIT {block_size}
             'validation',
         ]]
 
+        print(f'pyarrow version: {pyarrow.__version__}')
+
         extended_columns = list(chain(*[[
                 p + c for c in TrainingExperimentKeys.extended_history_columns]
                               for p in prefixes]))
@@ -122,11 +127,15 @@ LIMIT {block_size}
                 with connection.cursor(binary=True) as cursor:
 
                     cursor.execute(get_and_lock_query, binary=True)
-                    for row in cursor:
+                    rows = list(cursor.fetchall())
+                    for row in rows:
                         try:
                             run_id = row[columns['run_id']]
-                            source_history = schema.load_history_from_bytes(
-                                row[columns['run_history']])
+                            try:
+                                source_history = schema.load_history_from_bytes(
+                                    row[columns['run_history']])
+                            except Exception e:
+
 
                             extended_history = None
 

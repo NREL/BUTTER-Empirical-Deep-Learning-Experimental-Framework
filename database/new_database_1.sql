@@ -19,6 +19,24 @@ WHERE usename = 'dmpappsops'
     AND query_start < (CURRENT_TIMESTAMP - '10s'::interval)
 ORDER BY state, query_start desc;
 
+CREATE TABLE experiment_migration (
+    experiment_id integer,
+    migrated boolean,
+    is_valid boolean,
+    PRIMARY KEY (experiment_id)
+);
+
+CREATE INDEX ON experiment_migration USING btree(experiment_id) WHERE NOT migrated AND is_valid;
+
+INSERT INTO experiment_migration (experiment_id, migrated, is_valid)
+SELECT
+    experiment_id,
+    FALSE,
+    TRUE
+FROM
+    experiment_ e
+WHERE EXISTS (select 1 from run_ r where r.experiment_id = e.experiment_id);
+
 update experiment_migration m set 
     is_valid = True,
     migrated = False,
