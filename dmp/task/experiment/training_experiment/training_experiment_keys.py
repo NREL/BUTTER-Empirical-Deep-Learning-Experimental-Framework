@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import List, Sequence
 
 
 class TrainingExperimentKeys():
@@ -8,6 +8,12 @@ class TrainingExperimentKeys():
     train: str = 'train'
     trained: str = 'trained'
     validation: str = 'validation'
+
+    data_set_prefixes : List[str] = [p + '_' for p in [
+            'test',
+            'train',
+            'validation',
+        ]]
 
     train_start_timestamp: str = 'train_start_timestamp'
     

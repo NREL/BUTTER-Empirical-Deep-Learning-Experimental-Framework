@@ -1,4 +1,25 @@
+SELECT
+   relname  as table_name,
+   pg_size_pretty(pg_total_relation_size(relid)) As "Total Size",
+   pg_size_pretty(pg_relation_size(relid)) as "Core",
+   pg_size_pretty(pg_indexes_size(relid)) as "Index",
+   pg_size_pretty(pg_table_size(relid) - pg_relation_size(relid) - pg_relation_size(relid, 'vm') - pg_relation_size(relid, 'fsm')) as "TOAST",
+   pg_size_pretty(pg_relation_size(relid, 'vm')) as "Visibility Map",
+   pg_size_pretty(pg_relation_size(relid, 'fsm')) as "Free Space Map",
+   (pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid)) as "Tuples",
+   pg_stat_get_live_tuples(relid) as "Live Tuples",
+   pg_stat_get_dead_tuples(relid) as "Dead Tuples",
+   pg_size_pretty(pg_total_relation_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Per Tuple",
+   pg_size_pretty(pg_relation_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Core Per Tuple",
+   pg_size_pretty(pg_indexes_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Index Per Tuple",
+   pg_size_pretty((pg_table_size(relid) - pg_relation_size(relid) - pg_relation_size(relid, 'vm') - pg_relation_size(relid, 'fsm')) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "TOAST Per Tuple"
+   FROM pg_catalog.pg_statio_user_tables 
+ORDER BY pg_total_relation_size(relid) DESC;
 
+SELECT *
+FROM pg_stat_activity 
+WHERE usename = 'dmpappsops'
+ORDER BY state, query_start desc;
 
 SELECT l.locktype, p.pid as pid , p.datname as database, p.usename as user, p.application_name as application, p.query as query,
        b.pid as blocking_pid, b.usename as blocking_user, b.application_name as blocking_application, b.query as blocking_query
@@ -48,7 +69,19 @@ update experiment_migration m set
     and error_message NOT LIKE 'failed on Could not find%' 
     and error_message NOT LIKE 'wrong number%wide_first_%'
     AND error_message NOT LIKE 'wrong number%poker%';
-    
+
+update experiment_migration m
+    set migrated = FALSE
+WHERE 
+    migrated
+    AND error_message is null 
+    AND (
+        select count(1) from run2 r, experiment2 e 
+        where e.old_experiment_id = m.experiment_id 
+        and r.experiment_id = e.experiment_id) <> 
+        (select count(1) from run_ r where r.experiment_id = m.experiment_id);
+
+
 select * from attr where kind = 'model_shape';
 alter table attr alter column value_json set storage EXTENDED;
 ALTER TABLE attr SET (toast_tuple_target = 256)
@@ -93,11 +126,11 @@ group by dataset_name, model_input_shape, model_output_shape;
 
 select 
     dataset_name, model_input_shape, model_output_units,
-    count(distinct experiment_uid) num_exp,
+    count(distinct experiment_id) num_exp,
     count(1) num_run
 FROM (
 select 
-    e.experiment_uid,
+    e.experiment_id,
     a_dataset_name.value_str dataset_name,
     a_model_input_shape.value_json model_input_shape,
     a_model_output_units.value_int model_output_units
@@ -112,7 +145,7 @@ where
         select array_agg(attr_id) from attr
             where kind = 'dataset_name'
     )
-    and r.experiment_uid = e.experiment_uid
+    and r.experiment_id = e.experiment_id
     and a_dataset_name.kind = 'dataset_name'
     and e.experiment_attrs @> ARRAY[a_dataset_name.attr_id]
     and a_model_input_shape.kind = 'model_input_shape'
@@ -182,11 +215,11 @@ group by x.*, e.*
 
 select 
     dataset_name, model_input_shape, model_output_units,
-    count(distinct experiment_uid) num_exp,
+    count(distinct experiment_id) num_exp,
     count(1) num_run
 FROM (
 select 
-    e.experiment_uid,
+    e.experiment_id,
     a_dataset_name.value_str dataset_name,
     a_model_input_shape.value_json model_input_shape,
     a_model_output_units.value_int model_output_units
@@ -202,7 +235,7 @@ where
         select array_agg(attr_id) from attr
             where kind = 'dataset_name'
     )
-    and r.experiment_uid = e.experiment_uid
+    and r.experiment_id = e.experiment_id
     and a_dataset_name.kind = 'dataset_name'
     and e.experiment_attrs @> ARRAY[a_dataset_name.attr_id]
     and a_model_input_shape.kind = 'model_input_shape'
@@ -221,42 +254,7 @@ limit 1000;
 
 
 
-SELECT
-   relname  as table_name,
-   pg_size_pretty(pg_total_relation_size(relid)) As "Total Size",
-   pg_size_pretty(pg_relation_size(relid)) as "Core",
-   pg_size_pretty(pg_indexes_size(relid)) as "Index",
-   pg_size_pretty(pg_table_size(relid) - pg_relation_size(relid) - pg_relation_size(relid, 'vm') - pg_relation_size(relid, 'fsm')) as "TOAST",
-   pg_size_pretty(pg_relation_size(relid, 'vm')) as "Visibility Map",
-   pg_size_pretty(pg_relation_size(relid, 'fsm')) as "Free Space Map",
-   (pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid)) as "Tuples",
-   pg_stat_get_live_tuples(relid) as "Live Tuples",
-   pg_stat_get_dead_tuples(relid) as "Dead Tuples",
-   pg_size_pretty(pg_total_relation_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Per Tuple",
-   pg_size_pretty(pg_relation_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Core Per Tuple",
-   pg_size_pretty(pg_indexes_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Index Per Tuple",
-   pg_size_pretty((pg_table_size(relid) - pg_relation_size(relid) - pg_relation_size(relid, 'vm') - pg_relation_size(relid, 'fsm')) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "TOAST Per Tuple"
-   FROM pg_catalog.pg_statio_user_tables 
-ORDER BY pg_total_relation_size(relid) DESC;
 
-
-
-SELECT l.locktype, p.pid as pid , p.datname as database, p.usename as user, p.application_name as application, p.query as query,
-       b.pid as blocking_pid, b.usename as blocking_user, b.application_name as blocking_application, b.query as blocking_query
-  FROM
-       pg_locks l,
-       pg_stat_activity p,
-       pg_locks bl,
-       pg_stat_activity b
- WHERE
-       p.pid = l.pid AND NOT l.granted AND
-       bl.database = l.database AND bl.relation = l.relation AND bl.granted AND
-       b.pid = bl.pid;
-
-SELECT *
-FROM pg_stat_activity 
-WHERE usename = 'dmpappsops'
-ORDER BY state, query_start desc;
 
 ---uuid.UUID(hashlib.md5(b'{3,4,5,8,9,10,12,13,18,19,21,34,40,270,670,1377,1378,1387,1402}').hexdigest())
 
@@ -346,10 +344,10 @@ CREATE INDEX ON attr USING gin (value_json) WHERE value_type = 5;
 
 CREATE TABLE experiment2
 (
-    experiment_uid uuid NOT NULL,
-    experiment_id integer,
+    experiment_id uuid NOT NULL,
+    old_experiment_id integer,
     experiment_attrs integer[] NOT NULL,
-    PRIMARY KEY (experiment_uid)
+    PRIMARY KEY (experiment_id)
 );
 
 ALTER TABLE experiment2 SET (fillfactor = 100);
@@ -358,10 +356,11 @@ ALTER TABLE experiment2 ALTER COLUMN experiment_attrs SET storage PLAIN;
 
 CREATE INDEX on experiment2 USING btree (experiment_id) WHERE experiment_id IS NOT NULL;
 CREATE INDEX ON experiment2 USING gin (experiment_attrs);
+CREATE INDEX ON experiment2 USING btree (old_experiment_id) INCLUDE (experiment_id) WHERE old_experiment_id IS NOT NULL;
 
 CREATE TABLE run2
 (
-    experiment_uid uuid,
+    experiment_id uuid,
 
     run_timestamp timestamp DEFAULT CURRENT_TIMESTAMP,
     
@@ -387,16 +386,18 @@ CREATE TABLE run2
     PRIMARY KEY (run_id)
 );
 
+ALTER TABLE run2 SET (toast_tuple_target = 256)
 
 ALTER TABLE run2 ALTER COLUMN run_history SET storage EXTERNAL;
+ALTER TABLE run2 ALTER COLUMN run_extended_history SET storage EXTERNAL;
 
 ALTER TABLE run2 SET (fillfactor = 100);
 ALTER TABLE run2 SET (parallel_workers = 16);
 
-CREATE INDEX ON run2 USING btree (experiment_uid);
+CREATE INDEX ON run2 USING btree (experiment_id);
 
-CREATE INDEX ON run2 USING btree (run_timestamp) INCLUDE (experiment_uid);
-CREATE INDEX ON run2 USING btree (experiment_uid, run_timestamp);
+CREATE INDEX ON run2 USING btree (run_timestamp) INCLUDE (experiment_id);
+CREATE INDEX ON run2 USING btree (experiment_id, run_timestamp);
 
 CREATE INDEX ON run2 USING btree (job_id) WHERE job_id IS NOT NULL;
 CREATE INDEX ON run2 USING btree (slurm_job_id) WHERE slurm_job_id IS NOT NULL;
@@ -408,23 +409,22 @@ CREATE INDEX ON run2 USING btree (host_name) WHERE host_name IS NOT NULL;
 CREATE INDEX ON run2 USING btree (batch) WHERE batch IS NOT NULL;
 
 CREATE INDEX ON run2 USING gin (run_data);
-CREATE INDEX ON run2 USING hash (experiment_uid);
 
 CREATE TABLE experiment_summary
 (
-    experiment_uid uuid,
+    experiment_id uuid,
     last_run_timestamp timestamp,
     run_update_limit timestamp,
     core_data bytea,
     extended_data bytea,
-    PRIMARY KEY (experiment_uid)
+    PRIMARY KEY (experiment_id)
 );
 
--- CREATE INDEX ON experiment_summary USING btree (experiment_uid) INCLUDE (update_limit);
+-- CREATE INDEX ON experiment_summary USING btree (experiment_id) INCLUDE (update_limit);
 -- CREATE INDEX ON experiment_summary USING btree (update_limit);
 CREATE INDEX ON experiment_summary USING btree (run_update_limit);
-CREATE INDEX ON experiment_summary USING btree (experiment_uid, last_run_timestamp);
-CREATE INDEX ON experiment_summary USING btree (last_run_timestamp, experiment_uid);
+CREATE INDEX ON experiment_summary USING btree (experiment_id, last_run_timestamp);
+CREATE INDEX ON experiment_summary USING btree (last_run_timestamp, experiment_id);
 
 -- CREATE INDEX ON experiment_summary USING hash (last_updated);
 

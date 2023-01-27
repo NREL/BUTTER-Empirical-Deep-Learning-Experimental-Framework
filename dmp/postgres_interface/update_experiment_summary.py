@@ -190,7 +190,8 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                             ExperimentResultRecord(
                                 experiment_attrs,
                                 run_data,
-                                run_history,
+                                run_history, # type: ignore
+                                None,
                             ))
 
                     if len(runs) > 0:

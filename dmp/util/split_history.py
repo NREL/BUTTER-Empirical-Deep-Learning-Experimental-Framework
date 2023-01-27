@@ -90,7 +90,7 @@ def do_work(args):
             history_column,
             extended_history_column,
         ))
-        
+
         get_and_lock_query = SQL("""
 SELECT 
     {columns}
@@ -110,13 +110,7 @@ LIMIT {block_size}
             block_size=Literal(block_size),
         )
 
-        prefixes = [p + '_' for p in [
-            'test',
-            'train',
-            'validation',
-        ]]
-
-        print(f'pyarrow version: {pyarrow.__version__}')
+        prefixes = TrainingExperimentKeys.data_set_prefixes
 
         extended_columns = list(chain(*[[
                 p + c for c in TrainingExperimentKeys.extended_history_columns]

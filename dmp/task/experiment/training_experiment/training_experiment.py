@@ -372,9 +372,11 @@ class TrainingExperiment(ExperimentTask):
     ) -> Dict[str, Union[List, numpy.ndarray]]:
         extended_history = {}
         for k in self.key_names.extended_history_columns:
-            v = history.pop(k, None)
-            if v is not None:
-                extended_history[k] = v
+            for p in self.key_names.data_set_prefixes:
+                column = p + k
+                v = history.pop(column, None)
+                if v is not None:
+                    extended_history[column] = v
         return extended_history
 
     @staticmethod
@@ -388,43 +390,28 @@ class TrainingExperiment(ExperimentTask):
         #     'BinaryCrossentropy': 'binary_crossentropy',
         # }
 
-        discard = {
-            'cosine_similarity',
-            'kullback_leibler_divergence',
-            'root_mean_squared_error',
-            'mean_absolute_error',
-            'mean_squared_logarithmic_error',
-            'hinge',
-            'squared_hinge',
-            'categorical_hinge',
-        }
+        # discard = {
+        #     'cosine_similarity',
+        #     'kullback_leibler_divergence',
+        #     'root_mean_squared_error',
+        #     'mean_absolute_error',
+        #     'mean_squared_logarithmic_error',
+        #     'hinge',
+        #     'squared_hinge',
+        #     'categorical_hinge',
+        # }
         # discard.update(loss_name_map.values())
 
-        prefixes = [p + '_' for p in [
-            'test',
-            'train',
-            'validation',
-        ]]
+        
 
         # raw_loss =
 
         experiment_attrs = results[0].experiment_attrs
-        loss_method = loss_name_map[experiment_attrs['loss']]
+        # loss_method = loss_name_map[experiment_attrs['loss']]
 
         sources = []
         for i, r in enumerate(results):
-            history = r.run_history.to_pandas()
-
-            for prefix in prefixes:
-                loss_column = prefix + loss_method
-                if loss_column not in history:
-                    kl_divergence = 'kullback_leibler_divergence'
-                    test_kl_divergence = 'test_' + kl_divergence
-                    if loss_method == 'categorical_crossentropy':
-                        if test_kl_divergence in history:
-                            history[test_loss_column] = history[
-                                test_kl_divergence]
-
+            history = r.run_history
             history['cumulative_min_test_loss'] = history['test_loss'].cummin()
             history['run'] = i
             sources.append(history)
@@ -433,7 +420,8 @@ class TrainingExperiment(ExperimentTask):
         history = pandas.concat(sources, ignore_index=True, axis=0)
         del sources
 
-        epoch_groups = history.groupby('epoch')
+        print(history)
+        # epoch_groups = history.groupby('epoch')
 
         # history.set_index('run', 'epoch'], inplace=True)
         # history.sort_values(['run', 'epoch'], inplace=True)

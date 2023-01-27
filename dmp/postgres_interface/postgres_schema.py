@@ -44,7 +44,7 @@ class PostgresSchema:
 
         self.experiment_id_column = 'experiment_id'
         self.experiment_id_group = ColumnGroup([(self.experiment_id_column,
-                                                  'uuid')])
+                                                 'uuid')])
 
         self.attr = TableData(
             'attr', {
@@ -148,12 +148,14 @@ class PostgresSchema:
 
     def make_history_bytes(
         self,
-        history: pandas.DataFrame,
-    ) -> bytes:
+        history: Optional[pandas.DataFrame],
+    ) -> Optional[bytes]:
+        if history is None:
+            return None
 
         schema, use_byte_stream_split = make_pyarrow_schema_from_panads(
             history)
-        
+
         # Must do this to avoid a bug in pyarrow reading nulls in
         # byte stream split columns.
         # see https://github.com/apache/arrow/issues/28737
@@ -183,7 +185,13 @@ class PostgresSchema:
             )
             return buffer.getvalue()
 
-    def load_history_from_bytes(self, data: bytes) -> pandas.DataFrame:
+    def load_history_from_bytes(
+        self,
+        data: Optional[bytes],
+    ) -> Optional[pandas.DataFrame]:
+        if data is None:
+            return None
+
         with io.BytesIO(data) as b:
             pyarrow_file = pyarrow.PythonFile(b, mode='r')
             parquet_table = pyarrow.parquet.read_table(pyarrow_file, )
