@@ -363,7 +363,7 @@ class TrainingExperiment(ExperimentTask):
             experiment_parameters,
             run_data,
             pandas.DataFrame(history),
-            pandas.DataFrame(extended_history),
+            None if len(extended_history) == 0 else pandas.DataFrame(extended_history),
         )
 
     def _extract_extended_history(
