@@ -265,14 +265,14 @@ SELECT * from result
             if len(error_list) > 0:
                 connection.execute(
                     SQL("""
-                    UPDATE experiment_migration
+                    UPDATE experiment_migration m
                         SET error_message = v.error_message
                     FROM
                     ( VALUES {placeholders} ) AS v (
                         experiment_id,
                         error_message
                         )
-                    WHERE experiment_id = v.experiment_id;
+                    WHERE m.experiment_id = v.experiment_id;
                     """).format(
                         placeholders = sql_comma.join([SQL('(%s,%s)')] * len(error_list))
                     ), 
