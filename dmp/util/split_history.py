@@ -194,7 +194,7 @@ WHERE
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(
-            f'Worker {worker_number} : {worker_id} comitted {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}.'
+            f'Worker {worker_number} : {worker_id} committed {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}.'
         )
 
         if num_converted <= 0 and num_excepted <= 0:

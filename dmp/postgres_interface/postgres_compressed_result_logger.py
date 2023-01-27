@@ -13,6 +13,7 @@ from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
 
+
 class PostgresCompressedResultLogger(ExperimentResultLogger):
     _schema: PostgresSchema
     _log_result_record_query: Composed
@@ -138,20 +139,23 @@ ON CONFLICT DO NOTHING
             run_experiment_uid=schema.experiment_id_group.identifier,
         )
 
-    def log(self, records: Union[Sequence[ExperimentResultRecord], ExperimentResultRecord], connection=None) -> None:
+    def log(self,
+            records: Union[Sequence[ExperimentResultRecord],
+                           ExperimentResultRecord],
+            connection=None) -> None:
         if connection is None:
             with ConnectionManager(self._schema.credentials) as connection:
                 return self.log(records, connection)
 
         if isinstance(records, ExperimentResultRecord):
-            return self.log((records,), connection)
+            return self.log((records, ), connection)
 
         if not isinstance(records, Sequence):
             raise ValueError(f'Invalid record type {type(records)}.')
 
         if len(records) <= 0:
             return
-            
+
         run_data = []
         for record in records:
             experiment_column_values = self._schema.experiment[
@@ -163,11 +167,12 @@ ON CONFLICT DO NOTHING
 
             experiment_uid = self._schema.make_experiment_uid(experiment_attrs)
 
-            run_column_values = self._schema.run['values'].extract_column_values(
-                record.run_data)
+            run_column_values = self._schema.run[
+                'values'].extract_column_values(record.run_data)
 
             run_history = self._schema.make_history_bytes(record.run_history)
-            run_extended_history = self._schema.make_history_bytes(record.run_extended_history)
+            run_extended_history = self._schema.make_history_bytes(
+                record.run_extended_history)
             run_data.append((
                 experiment_uid,
                 experiment_attrs,
@@ -179,10 +184,14 @@ ON CONFLICT DO NOTHING
             ))
 
         placeholders = sql_comma.join(
-                                    [SQL('({})').format(self._values_groups.placeholders)
-                                     ] * len(run_data))
+            [SQL('({})').format(self._values_groups.placeholders)] *
+            len(run_data))
 
-        query = SQL("""{}{}{}""").format(self._log_multiple_query_prefix, placeholders, self._log_multiple_query_suffix,)
+        query = SQL("""{}{}{}""").format(
+            self._log_multiple_query_prefix,
+            placeholders,
+            self._log_multiple_query_suffix,
+        )
 
         connection.execute(
             query,
