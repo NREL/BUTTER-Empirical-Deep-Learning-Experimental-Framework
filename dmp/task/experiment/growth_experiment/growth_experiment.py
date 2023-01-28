@@ -6,6 +6,7 @@ from jobqueue.job import Job
 from dmp.layer.layer import Layer
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 from dmp.model.network_info import NetworkInfo
+from dmp.task.experiment.growth_experiment import growth_experiment_keys
 
 from dmp.task.experiment.growth_experiment.layer_growth_info import LayerGrowthInfo
 from dmp.task.experiment.growth_experiment.scaling_method.scaling_method import ScalingMethod
@@ -49,7 +50,7 @@ class GrowthExperiment(TrainingExperiment):
     max_epochs_per_stage: int = 3000
     max_equivalent_epoch_budget: int = 3000
 
-    key_names = GrowthExperimentKeys()
+    keys = growth_experiment_keys.keys
 
     @property
     def version(self) -> int:
@@ -63,7 +64,7 @@ class GrowthExperiment(TrainingExperiment):
 
         goal_network: NetworkInfo = self._make_network(self.model)
         # goal_network.description[self.key_names.scale_key] = 1.0
-        goal_network.description[self.key_names.layer_map_key] = {
+        goal_network.description[self.keys.layer_map_key] = {
             l: l
             for l in goal_network.structure.all_descendants
         }
@@ -112,7 +113,7 @@ class GrowthExperiment(TrainingExperiment):
                     )
                     description = goal_network.description.copy()
                     # description[self.key_names.scale_key] = scale
-                    description[self.key_names.layer_map_key] = layer_map
+                    description[self.keys.layer_map_key] = layer_map
                     return NetworkInfo(scaled, description)
 
                 delta, network = find_closest_network_to_target_size_float(
@@ -162,19 +163,19 @@ class GrowthExperiment(TrainingExperiment):
             )
 
             # add additional history columns
-            model_history_length = len(model_history[self.key_names.train +
+            model_history_length = len(model_history[self.keys.train +
                                                      '_loss'])
 
             # model number
-            model_history[self.key_names.model_number] = \
+            model_history[self.keys.model_number] = \
                 [model_number] * model_history_length
 
             # model epoch
-            model_history[self.key_names.model_epoch] = \
-                model_history.pop(self.key_names.epoch)
+            model_history[self.keys.model_epoch] = \
+                model_history.pop(self.keys.epoch)
 
             # free parameter count history
-            model_history[self.key_names.free_parameter_count_key] = \
+            model_history[self.keys.free_parameter_count_key] = \
                 [network.num_free_parameters] * model_history_length
 
             last_retained_epoch = model_history_length
@@ -185,7 +186,7 @@ class GrowthExperiment(TrainingExperiment):
             retained = [False] * model_history_length
             for i in range(last_retained_epoch):
                 retained[i] = True
-            model_history[self.key_names.retained] = retained
+            model_history[self.keys.retained] = retained
 
             # model_history[self.key_names.epoch] = [
             #     e + epoch_count for e in model_history[self.key_names.epoch]
@@ -236,7 +237,7 @@ class GrowthExperiment(TrainingExperiment):
         model: ModelInfo,
     ) -> Tuple[Dict[Layer, Layer], Dict[Layer, KerasLayerInfo]]:
         return (
-            model.network.description[self.key_names.layer_map_key],
+            model.network.description[self.keys.layer_map_key],
             model.keras_network.layer_to_keras_map,
         )
         '''

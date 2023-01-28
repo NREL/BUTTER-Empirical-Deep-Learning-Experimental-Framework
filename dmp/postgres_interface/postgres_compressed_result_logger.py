@@ -31,6 +31,7 @@ class PostgresCompressedResultLogger(ExperimentResultLogger):
         experiment_groups = ColumnGroup.concatenate((
             experiment['uid'],
             experiment['attrs'],
+            experiment['properties'],
             experiment['values'],
         ))
 
@@ -46,46 +47,7 @@ class PostgresCompressedResultLogger(ExperimentResultLogger):
 
         input_table = Identifier('_input')
         inserted_experiment_table = Identifier('_inserted')
-        self._log_result_record_query = SQL("""
-WITH {input_table} as (
-    SELECT
-        {casting_clause}
-    FROM
-        ( VALUES ({values_placeholders}) ) AS t (
-            {experiment_columns},
-            {run_value_columns}
-            )
-),
-{inserted_experiment_table} as (
-    INSERT INTO {experiment_table} AS e (
-        {experiment_columns}
-    )
-    SELECT
-        {experiment_columns}
-    FROM {input_table}
-    ON CONFLICT DO NOTHING
-)
-INSERT INTO {run_table} (
-    {run_experiment_uid},
-    {run_value_columns}
-    )
-SELECT 
-    {run_experiment_uid},
-    {run_value_columns}
-FROM {input_table}
-ON CONFLICT DO NOTHING
-;""").format(
-            input_table=input_table,
-            casting_clause=values_groups.casting_sql,
-            values_placeholders=values_groups.placeholders,
-            experiment_columns=experiment_groups.columns_sql,
-            run_value_columns=run_groups.columns_sql,
-            inserted_experiment_table=inserted_experiment_table,
-            experiment_table=experiment.identifier,
-            run_table=run.identifier,
-            run_experiment_uid=schema.experiment_id_group.identifier,
-        )
-
+        
         self._log_multiple_query_prefix = SQL("""
 WITH {input_table} as (
     SELECT
@@ -160,10 +122,15 @@ ON CONFLICT DO NOTHING
         for record in records:
             experiment_column_values = self._schema.experiment[
                 'values'].extract_column_values(record.experiment_attrs)
+            
+            experiment_column_values = self._schema.experiment[
+                'values'].extract_column_values(record.experiment_properties)
 
             experiment_attrs = \
                 self._schema.attribute_map.to_sorted_attr_ids(
                     record.experiment_attrs)
+            experiment_properties = self._schema.attribute_map.to_sorted_attr_ids(
+                    record.experiment_properties)
 
             experiment_uid = self._schema.make_experiment_uid(experiment_attrs)
 
@@ -176,6 +143,7 @@ ON CONFLICT DO NOTHING
             run_data.append((
                 experiment_uid,
                 experiment_attrs,
+                experiment_properties,
                 *experiment_column_values,
                 *run_column_values,
                 Jsonb(record.run_data),

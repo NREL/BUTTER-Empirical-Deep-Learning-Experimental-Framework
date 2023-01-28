@@ -7,6 +7,7 @@ from dmp.common import flatten
 from dmp.postgres_interface.column_group import ColumnGroup
 
 from dmp.postgres_interface.postgres_schema import PostgresSchema
+from dmp.task.experiment.training_experiment import training_experiment_keys
 from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -110,10 +111,10 @@ LIMIT {block_size}
             block_size=Literal(block_size),
         )
 
-        prefixes = TrainingExperimentKeys.data_set_prefixes
+        prefixes = training_experiment_keys.keys.data_set_prefixes
 
         extended_columns = list(chain(*[[
-                p + c for c in TrainingExperimentKeys.extended_history_columns]
+                p + c for c in training_experiment_keys.keys.extended_history_columns]
                               for p in prefixes]))
         with ConnectionManager(credentials) as connection:
             with connection.transaction():

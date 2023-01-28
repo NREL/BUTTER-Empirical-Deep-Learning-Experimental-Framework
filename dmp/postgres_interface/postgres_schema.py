@@ -75,6 +75,9 @@ class PostgresSchema:
                 'attrs': ColumnGroup([
                     ('experiment_attrs', 'integer[]'),
                 ]),
+                'properties': ColumnGroup([
+                    ('experiment_properties', 'integer[]'),
+                ]),
                 'values': ColumnGroup([
                     ('old_experiment_id', 'integer'),
                 ]),

@@ -347,6 +347,7 @@ CREATE TABLE experiment2
     experiment_id uuid NOT NULL,
     old_experiment_id integer,
     experiment_attrs integer[] NOT NULL,
+    experiment_properties integer[],
     PRIMARY KEY (experiment_id)
 );
 
@@ -355,7 +356,7 @@ ALTER TABLE experiment2 SET (parallel_workers = 16);
 ALTER TABLE experiment2 ALTER COLUMN experiment_attrs SET storage PLAIN;
 
 CREATE INDEX on experiment2 USING btree (experiment_id) WHERE experiment_id IS NOT NULL;
-CREATE INDEX ON experiment2 USING gin (experiment_attrs);
+CREATE INDEX ON experiment2 USING gin (experiment_attrs, experiment_properties);
 CREATE INDEX ON experiment2 USING btree (old_experiment_id) INCLUDE (experiment_id) WHERE old_experiment_id IS NOT NULL;
 
 CREATE TABLE run2
@@ -391,7 +392,7 @@ ALTER TABLE run2 SET (toast_tuple_target = 256)
 ALTER TABLE run2 ALTER COLUMN run_history SET storage EXTERNAL;
 ALTER TABLE run2 ALTER COLUMN run_extended_history SET storage EXTERNAL;
 
-ALTER TABLE run2 SET (fillfactor = 100);
+ALTER TABLE run2 SET (fillfactor = 95);
 ALTER TABLE run2 SET (parallel_workers = 16);
 
 CREATE INDEX ON run2 USING btree (experiment_id);
@@ -421,11 +422,119 @@ CREATE TABLE experiment_summary
     PRIMARY KEY (experiment_id)
 );
 
--- CREATE INDEX ON experiment_summary USING btree (experiment_id) INCLUDE (update_limit);
--- CREATE INDEX ON experiment_summary USING btree (update_limit);
+ALTER TABLE experiment_summary ALTER COLUMN by_epoch SET STORAGE EXTERNAL;
+ALTER TABLE experiment_summary ALTER COLUMN by_loss SET STORAGE EXTERNAL;
+ALTER TABLE experiment_summary ALTER COLUMN by_progress SET STORAGE EXTERNAL;
+
 CREATE INDEX ON experiment_summary USING btree (run_update_limit);
-CREATE INDEX ON experiment_summary USING btree (experiment_id) last_run_timestamp);
+CREATE INDEX ON experiment_summary USING btree (experiment_id, last_run_timestamp);
 CREATE INDEX ON experiment_summary USING btree (last_run_timestamp, experiment_id);
 
 -- CREATE INDEX ON experiment_summary USING hash (last_updated);
 
+
+
+--- TO MOVE attrs to properties
+
+WITH property_attrs as (
+    select attr_id
+    from attr where kind like '%sweep%' or kind = 'butter'
+),
+exp_target as (
+    select 
+        e.experiment_id src_id,  
+        (md5(x.experiment_attrs::text))::uuid dst_id, 
+        x.experiment_attrs,
+        y.experiment_properties,
+        old_experiment_id
+    from 
+        experiment2 e,
+        lateral (select array_agg(attr_id) experiment_attrs from (
+            select attr_id
+            from
+                unnest(e.experiment_attrs) a(attr_id)
+            where attr_id not in (select attr_id from property_attrs)
+            order by attr_id) x
+        ) x,
+        lateral (
+            select array_agg(attr_id) experiment_properties from (
+            select attr_id
+            from
+                unnest(e.experiment_attrs) a(attr_id)
+            where attr_id in (select attr_id from property_attrs)
+            order by attr_id) x
+        ) y
+    WHERE e.experiment_attrs && (select array_agg(attr_id) from property_attrs)
+    order by dst_id
+        
+),
+dst_map as (
+    select distinct on (dst_id) *
+    FROM
+    (
+    SELECT
+        dst_id,
+        experiment_attrs,
+        first_value(experiment_properties) over (partition by dst_id ORDER BY greatest(array_length(experiment_properties, 1)) DESC) experiment_properties,
+        first_value(old_experiment_id) over (partition by dst_id ORDER BY old_experiment_id ASC) old_experiment_id
+     FROM (
+         SELECT 
+            dst_id,
+            experiment_attrs,
+            experiment_properties,
+            old_experiment_id
+         FROM exp_target
+         UNION ALL
+         (
+             SELECT 
+                experiment_id dst_id,
+                experiment_attrs,
+                experiment_properties,
+                old_experiment_id
+             FROM
+                experiment2 e
+             WHERE
+                e.experiment_id in (SELECT dst_id from exp_target)
+         )
+     ) x
+    ) x
+    ORDER BY dst_id
+),
+exp_map as (
+    select 
+        src_id,
+        dst_map.*
+    from
+        dst_map inner join exp_target using (dst_id)
+    order by src_id
+),
+exp_delete as (
+    DELETE FROM experiment2 e
+    USING exp_map m
+    WHERE m.src_id = e.experiment_id
+),
+exp_update as (
+    INSERT INTO experiment2 (
+        experiment_id,
+        experiment_attrs,
+        experiment_properties,
+        old_experiment_id
+        )
+    SELECT 
+        dst_id experiment_id,
+        experiment_attrs,
+        experiment_properties,
+        old_experiment_id
+    FROM
+        dst_map m
+    ON CONFLICT (experiment_id) DO UPDATE SET
+        experiment_properties = EXCLUDED.experiment_properties,
+        old_experiment_id = EXCLUDED.old_experiment_id
+)
+update run2 r set
+    experiment_id = m.dst_id
+from 
+    exp_map m
+where
+    r.experiment_id = m.src_id
+;

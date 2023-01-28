@@ -617,7 +617,7 @@ def convert_run(old_parameter_map, result_logger, row,
                 'butter',
         ]:
             if get_cell(k):
-                result_record.experiment_attrs[k] = True
+                result_record.experiment_properties[k] = True
 
         # result_logger.log(result_record, connection=connection)
 

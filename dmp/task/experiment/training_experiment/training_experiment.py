@@ -1,6 +1,7 @@
+from numbers import Number
 from dataclasses import dataclass
 import random
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Type
 import os
 import platform
 import subprocess
@@ -23,6 +24,7 @@ from dmp.task.experiment.experiment_task import ExperimentTask
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.recorder.test_set_history_recorder import TestSetHistoryRecorder
+from dmp.task.experiment.training_experiment import training_experiment_keys
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
 from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 from dmp.model.network_info import NetworkInfo
@@ -31,8 +33,11 @@ from dmp.task.experiment.recorder.zero_epoch_recorder import ZeroEpochRecorder
 
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
-from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
+
 from dmp.worker import Worker
+
+pandas.set_option('display.max_rows', 500, 'display.min_rows', 40,
+                  'display.max_columns', None, 'display.width', 240)
 
 
 @dataclass
@@ -50,7 +55,7 @@ class TrainingExperiment(ExperimentTask):
     record_model: Optional[Any]
     record_metrics: Optional[Any]
 
-    key_names = TrainingExperimentKeys()
+    keys = training_experiment_keys.keys
 
     @property
     def version(self) -> int:
@@ -219,10 +224,10 @@ class TrainingExperiment(ExperimentTask):
         fit_config['x'] = dataset.train
         fit_config['validation_data'] = dataset.validation
 
-        test_set_info = TestSetInfo(self.key_names.test, dataset.test)
-        validation_set_info = TestSetInfo(self.key_names.validation,
+        test_set_info = TestSetInfo(self.keys.test, dataset.test)
+        validation_set_info = TestSetInfo(self.keys.validation,
                                           dataset.validation)
-        train_set_info = TestSetInfo(self.key_names.train, dataset.train)
+        train_set_info = TestSetInfo(self.keys.train, dataset.train)
 
         timestamp_recorder = TimestampRecorder() if self.record_times else None
         zero_epoch_recorder = ZeroEpochRecorder(
@@ -231,7 +236,7 @@ class TrainingExperiment(ExperimentTask):
         additional_test_sets = [test_set_info]
         if self.record_post_training_metrics:
             additional_test_sets.append(
-                TestSetInfo(self.key_names.trained, dataset.train))
+                TestSetInfo(self.keys.trained, dataset.train))
 
         history_callbacks = [
             timestamp_recorder,
@@ -251,17 +256,16 @@ class TrainingExperiment(ExperimentTask):
         self.remap_key_prefixes(
             history.history,
             [
-                ('val_', self.key_names.validation + '_', True),
+                ('val_', self.keys.validation + '_', True),
                 # (test_history_key + '_', 'test_'),
-                ('', self.key_names.train + '_', True),
+                ('', self.keys.train + '_', True),
             ])
         history_callbacks.append(history)
 
         if self.record_post_training_metrics:
             # copy zero epoch recorder's train_ metrics to trained_ metrics
             self.remap_key_prefixes(zero_epoch_recorder.history, [
-                (self.key_names.train + '_', self.key_names.trained + '_',
-                 False),
+                (self.keys.train + '_', self.keys.trained + '_', False),
             ])
 
         # Add test set history into history dict.
@@ -290,7 +294,7 @@ class TrainingExperiment(ExperimentTask):
 
         # offset epoch numbers by 1 (untrained network becomes the 0th epoch)
         epochs = sorted(epoch_set)
-        merged_history = {self.key_names.epoch: epochs}
+        merged_history = {self.keys.epoch: epochs}
         for metric, epoch_map in metric_map.items():
             merged_history[metric] = [
                 epoch_map.get(epoch, None) for epoch in epochs
@@ -361,9 +365,11 @@ class TrainingExperiment(ExperimentTask):
 
         return ExperimentResultRecord(
             experiment_parameters,
+            {},
             run_data,
             pandas.DataFrame(history),
-            None if len(extended_history) == 0 else pandas.DataFrame(extended_history),
+            None if len(extended_history) == 0 else
+            pandas.DataFrame(extended_history),
         )
 
     def _extract_extended_history(
@@ -371,18 +377,19 @@ class TrainingExperiment(ExperimentTask):
         history: Dict[str, Union[List, numpy.ndarray]],
     ) -> Dict[str, Union[List, numpy.ndarray]]:
         extended_history = {}
-        for k in self.key_names.extended_history_columns:
-            for p in self.key_names.data_set_prefixes:
+        for k in self.keys.extended_history_columns:
+            for p in self.keys.data_set_prefixes:
                 column = p + k
                 v = history.pop(column, None)
                 if v is not None:
                     extended_history[column] = v
         return extended_history
 
-    @staticmethod
+    @classmethod
     def summarize(
-            results: Sequence[ExperimentResultRecord]
+            cls: Type, results: Sequence[ExperimentResultRecord]
     ) -> ExperimentSummaryRecord:
+        keys: training_experiment_keys.TrainingExperimentKeys = cls.keys
 
         # loss_name_map = {
         #     'CategoricalCrossentropy' : 'categorical_crossentropy',
@@ -402,8 +409,6 @@ class TrainingExperiment(ExperimentTask):
         # }
         # discard.update(loss_name_map.values())
 
-        
-
         # raw_loss =
 
         experiment_attrs = results[0].experiment_attrs
@@ -412,21 +417,128 @@ class TrainingExperiment(ExperimentTask):
         sources = []
         for i, r in enumerate(results):
             history = r.run_history
-            history['cumulative_min_test_loss'] = history['test_loss'].cummin()
-            history['run'] = i
+            history[keys.run] = i
+
+            for metric in keys.loss_metrics:
+                if metric in history:
+                    history[metric + '_cmin'] = history[metric].cummin()
+
+            for metric in ('test_accuracy', 'validation_accuracy'):
+                if metric in history:
+                    history[metric + '_cmax'] = history[metric].cummax()
+
             sources.append(history)
-            print(history)
         del results
         history = pandas.concat(sources, ignore_index=True, axis=0)
         del sources
 
-        print(history)
-        # epoch_groups = history.groupby('epoch')
+        if keys.epoch_start_time_ms in history:
+            del history[keys.epoch_start_time_ms]
 
-        # history.set_index('run', 'epoch'], inplace=True)
-        # history.sort_values(['run', 'epoch'], inplace=True)
+        # with pandas.option_context('display.max_rows', 1000, 'display.min_rows', 1000, 'display.max_columns', None, 'display.width', 240):  # more options can be specified also
+        #     print(history)
 
-        # run_groups = history.groupby('run')
+        # per epoch
+
+        # by_epoch = pandas.concat([quantiles, epochs['epoch'].min()], axis=1)
+        epochs = history[keys.epoch]
+        min_pt = epochs.min()  # type: ignore
+        max_pt = epochs.max()  # type: ignore
+
+        switch_point = 128
+        resolution = numpy.log(3000.0 / 128.0) / 128
+
+        epoch_selections = []
+        if min_pt < switch_point:
+            epoch_selections.append(
+                numpy.arange(min_pt, min(switch_point, max_pt), 1))
+        if max_pt >= switch_point:
+            epoch_selections.append(
+                numpy.unique(
+                    numpy.exp(
+                        numpy.arange(
+                            numpy.log(switch_point),
+                            numpy.log(max_pt + 1),
+                            resolution,
+                        )).round().astype(numpy.int32)), )
+
+        epoch_selection = numpy.concatenate(epoch_selections)
+
+        # print(quantiles[0:10])
+
+        epochs_df = history.loc[history[keys.epoch].isin(epoch_selection)]
+        print(epochs_df[['epoch', 'test_loss_cmin']])
+        # rq = by_epoch.loc[by_epoch['epoch'].isin(epoch_selection)]
+        epoch_groups = epochs_df.groupby(keys.epoch)
+
+        by_epoch = pandas.DataFrame({
+            keys.epoch:
+            epoch_groups[keys.epoch].min().astype(numpy.int32),
+            keys.count:
+            epoch_groups[keys.epoch].count(),
+        })
+        for key in keys.simple_summarize_keys:
+            if key in epoch_groups:
+                by_epoch[key + '_quantile_50'] = epoch_groups[key].median()
+
+        quantile_points = [0, .25, .5, .75, 1]
+        quantile_metrics = [
+            metric for metric in epochs_df.columns if metric not in by_epoch
+            and metric not in keys.simple_summarize_keys and metric != keys.run
+        ]
+        quantiles = epoch_groups[quantile_metrics].quantile(
+            quantile_points).unstack()
+        quantiles.columns = [
+            f'{metric}_quantile_{int(quantile * 100)}'
+            for metric, quantile in quantiles.columns.to_flat_index().values
+        ]
+        by_epoch = pandas.concat(
+            (
+                by_epoch,
+                quantiles,
+            ),
+            axis=1,
+        )
+
+        # pts = numpy.exp(numpy.linspace(min_pt, max_pt, 256)).round().astype(numpy.int32)
+        # print(by_epoch)
+        # print(history.describe())
+        # print(by_epoch.describe())
+        # numpy.set_printoptions(threshold=10000)
+        # print(by_epoch)
+        # print(rq.shape)
+        # print(by_epoch['test_loss_cmin_quantile_50'])
+
+        epsilon = 1e-9
+        resolution = numpy.log(1.0 / .1) / 200
+
+        # loss = history['test_loss_cmin']
+        run_groups = history.groupby(keys.run)
+        min_pt = run_groups['test_loss_cmin'].min().median()
+        max_pt = run_groups['test_loss_cmin'].max().median()
+
+        loss_levels = numpy.exp(
+            numpy.arange(
+                numpy.log(min_pt + epsilon),
+                numpy.log(max_pt + epsilon),
+                resolution,
+            )) - epsilon
+
+        # print(f'min {min_pt} max {max_pt}')
+
+        # find first epoch of each run that hits each loss level
+        
+        print(loss_levels)
+        print(loss_levels.shape)
+
+        # epoch_points = numpy.concatenate(numpy.arange(0, 100, 1), numpy.linspace(0, max_epoch_pt, 256))
+        # by_epoch = quantiles[]
+        # print(by_epoch)
+
+        # history.set_index(self.keys.run, 'epoch'], inplace=True)
+        # history.sort_values([self.keys.run, 'epoch'], inplace=True)
+
+        # run_groups = history.groupby(self.keys.run)
 
         # progress_resolution = 20 - 1
         # progress_proportions = numpy.linspace(0, 1, 100)
@@ -438,13 +550,13 @@ class TrainingExperiment(ExperimentTask):
         # progress_col = 'log_' + progress_source
         # history[progress_col] = numpy.log(history[progress_source])
 
-        # progress_start = history.loc[history.groupby('run')['epoch'].idxmin()].groupby(
-        #     'run')[progress_col].max()
-        # progress_end_group = history.loc[run_groups[progress_col].idxmin()].groupby('run')
+        # progress_start = history.loc[history.groupby(self.keys.run)['epoch'].idxmin()].groupby(
+        #     self.keys.run)[progress_col].max()
+        # progress_end_group = history.loc[run_groups[progress_col].idxmin()].groupby(self.keys.run)
         # progress_end = progress_end_group[progress_col].min()
         # progress_end_epoch = progress_end_group['epoch'].min()
         # progress_delta = progress_start - progress_end
-        # run = history['run']
+        # run = history[self.keys.run]
         # progress_end = run.apply(lambda r : progress_end[r])
         # progress_delta = run.apply(lambda r : progress_delta[r])
         # progress_end_epoch = run.apply(lambda r : progress_end_epoch[r])
@@ -459,8 +571,8 @@ class TrainingExperiment(ExperimentTask):
         # history['quantized_progress'] = progress_quant
 
         # print(history)
-        # hp = history.drop_duplicates(['run', 'quantized_progress'])
-        # print('hp\n', hp[hp['run']==0])
+        # hp = history.drop_duplicates([self.keys.run, 'quantized_progress'])
+        # print('hp\n', hp[hp[self.keys.run]==0])
 
         pass
 

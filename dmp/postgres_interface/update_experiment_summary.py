@@ -30,6 +30,7 @@ class UpdateExperimentSummary(Task):
 
         experiment_table = schema.experiment
         experiment_attrs_group = experiment_table['attrs']
+        experiment_properties_group = experiment_table['properties']
 
         run_table = schema.run
         experiment_summary_table = schema.experiment_summary
@@ -51,6 +52,7 @@ class UpdateExperimentSummary(Task):
         result_columns = ColumnGroup.concatenate((
             last_run_timestamp_group,
             experiment_attrs_group,
+            experiment_properties_group,
             run_columns,
         ))
 
@@ -66,19 +68,22 @@ class UpdateExperimentSummary(Task):
 SELECT
     {selection_table}.{last_run_timestamp},
     {selection_table}.{experiment_attrs},
+    {selection_table}.{experiment_properties},
     {run_columns}
 FROM
     (
         SELECT DISTINCT ON({experiment_uid})
             {experiment_uid},
             {experiment_attrs},
+            {experiment_properties},
             MAX({run_timestamp}) OVER (PARTITION BY {experiment_uid}) {last_run_timestamp}
         FROM
             (
                 SELECT 
                     {run_table}.{run_timestamp}, 
                     {experiment_table}.{experiment_uid},
-                    {experiment_table}.{experiment_attrs}
+                    {experiment_table}.{experiment_attrs},
+                    {experiment_table}.{experiment_properties}
                 FROM 
                     {run_table} LEFT JOIN {experiment_summary_table} ON (
                         {run_table}.{experiment_uid} = {experiment_summary_table}.{experiment_uid}
@@ -86,11 +91,13 @@ FROM
                     CROSS JOIN LATERAL (
                         SELECT
                             {experiment_table}.{experiment_uid},
-                            {experiment_table}.{experiment_attrs}
+                            {experiment_table}.{experiment_attrs},
+                            {experiment_table}.{experiment_properties}
                         FROM
                             {experiment_table}
                         WHERE
                             {experiment_table}.{experiment_uid} = {run_table}.{experiment_uid}
+                            AND experiment_properties @> array[2568] and experiment_attrs @> array[75, 224]
                         FOR UPDATE SKIP LOCKED
                     ) {experiment_table}
                 WHERE 
@@ -115,6 +122,7 @@ FROM
             selection_table=selection_table,
             last_run_timestamp=last_run_timestamp_group.identifier,
             experiment_attrs=experiment_attrs_group.identifier,
+            experiment_properties=experiment_properties_group.identifier,
             run_columns=run_columns.of(run_table.identifier),
             experiment_uid=experiment_uid.identifier,
             run_timestamp=run_table['timestamp'].identifier,
@@ -157,6 +165,7 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                     runs = []
                     last_updated = None
                     experiment_attrs = {}
+                    experiment_properties = {}
 
                     cursor.execute(lock_and_get_query, binary=True)
                     for row in cursor.fetchall():
@@ -171,7 +180,10 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                             runs.clear()
                             experiment_attrs = schema.attribute_map.attribute_map_from_ids(
                                 row[result_columns[
-                                    experiment_table['attrs'].column]])
+                                    experiment_attrs_group.column]])
+                            experiment_properties = schema.attribute_map.attribute_map_from_ids(
+                                row[result_columns[
+                                    experiment_properties_group.column]])
                             last_updated = row[result_columns['run_timestamp']]
 
                         last_updated = max(
@@ -189,6 +201,7 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                         runs.append(
                             ExperimentResultRecord(
                                 experiment_attrs,
+                                experiment_properties,
                                 run_data,
                                 run_history, # type: ignore
                                 None,

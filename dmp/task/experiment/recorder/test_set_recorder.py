@@ -6,7 +6,7 @@ from dmp.task.experiment.recorder.recorder import Recorder
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
 
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
-from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
+from dmp.task.experiment.training_experiment import training_experiment_keys
 
 
 class TestSetRecorder(Recorder, ABC):
@@ -33,7 +33,7 @@ class TestSetRecorder(Recorder, ABC):
             if self.timestamp_recorder is not None:
                 self.timestamp_recorder.record_interval(
                     test_set.history_key +
-                    TrainingExperimentKeys.interval_suffix,
+                    training_experiment_keys.keys.interval_suffix,
                     end_time - start_time)
             for metric, result in zip(model.metrics_names, results):
                 self._accumulate_test_set_metric(test_set, metric, result)
