@@ -6,11 +6,22 @@ class TrainingExperimentKeys():
     def __init__(self) -> None:
         self.run: str = 'run'
         self.epoch: str = 'epoch'
-        self.count:str = 'count'
+        self.count: str = 'count'
+        self.test_loss_cmin: str = 'test_loss_cmin'
+
         self.test: str = 'test'
         self.train: str = 'train'
         self.trained: str = 'trained'
         self.validation: str = 'validation'
+
+        self.loss = 'loss'
+        self.cmin = 'cmin'
+
+        self.test_loss = self.test + '_' + self.loss
+        self.test_loss_cmin = self.test_loss + '_' + self.cmin
+
+        self.validation_loss = self.validation + '_' + self.loss
+        self.validation_loss_cmin = self.validation_loss + '_' + self.cmin
 
         self.data_set_prefixes: Set[str] = {
             p + '_'

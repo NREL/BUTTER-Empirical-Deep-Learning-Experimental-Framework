@@ -193,7 +193,7 @@ class GrowthExperiment(TrainingExperiment):
             # ]
 
             # Extend histories dictionary
-            self._append_history_dicts(history, model_history)
+            self._concatenate_histories(history, model_history)
 
             src_model = model
             model_number += 1

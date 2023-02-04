@@ -1,6 +1,6 @@
 
 from dataclasses import dataclass
-from typing import Sequence, Type, Union, get_args
+from typing import Any, Sequence, Type, Union, get_args
 
 from dmp.postgres_interface.attribute_value_type import AttributeValueType
 
@@ -8,10 +8,10 @@ from dmp.postgres_interface.attribute_value_type import AttributeValueType
 ComparableValue = Union[None, bool, int, float, str]
 value_types: Sequence[Type] = get_args(ComparableValue) + (dict, )
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Attr():
-    id_: int
+    attr_id: int
     kind: str
     value_type: AttributeValueType
     comparable_value: ComparableValue
-    # actual_value: Any
+    value: Any

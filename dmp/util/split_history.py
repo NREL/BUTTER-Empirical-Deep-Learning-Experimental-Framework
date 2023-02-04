@@ -4,9 +4,9 @@ import os
 from psycopg import ClientCursor
 import pyarrow
 from dmp.common import flatten
-from dmp.postgres_interface.column_group import ColumnGroup
+from dmp.postgres_interface.schema.column_group import ColumnGroup
 
-from dmp.postgres_interface.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.training_experiment import training_experiment_keys
 from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
 
@@ -83,7 +83,7 @@ def do_work(args):
 
         run = schema.run
 
-        run_id_column = run['values'].column_as_group('run_id')
+        run_id_column = run['values'].column('run_id')
         history_column = run['history']
         extended_history_column = run['extended_history']
         columns = ColumnGroup.concatenate((
@@ -127,7 +127,7 @@ LIMIT {block_size}
                         try:
                             run_id = row[columns['run_id']]
                             try:
-                                source_history = schema.load_history_from_bytes(
+                                source_history = schema.convert_bytes_to_dataframe(
                                     row[columns['run_history']])
                             except Exception e:
 
@@ -154,8 +154,8 @@ LIMIT {block_size}
 
                             run_data.append((
                                 run_id,
-                                schema.make_history_bytes(history),
-                                schema.make_history_bytes(extended_history),
+                                schema.convert_dataframe_to_bytes(history),
+                                schema.convert_dataframe_to_bytes(extended_history),
                             ))
                         except Exception as e:
                             num_excepted += 1

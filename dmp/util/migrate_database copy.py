@@ -1,6 +1,6 @@
 import os
 
-from dmp.postgres_interface.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"

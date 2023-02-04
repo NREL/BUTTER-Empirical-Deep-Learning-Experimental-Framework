@@ -151,7 +151,7 @@ insert into run select
     train_kullback_leibler_divergence,
     log_id
 from 
-  run2 r,
+  run r,
   experiment e
 where
   r.experiment_id = e.experiment_id

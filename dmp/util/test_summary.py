@@ -1,7 +1,7 @@
 import os
 
 from jobqueue.job import Job
-from dmp.postgres_interface.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
 
 from dmp.worker import Worker

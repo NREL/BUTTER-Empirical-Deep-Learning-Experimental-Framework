@@ -1,13 +1,15 @@
 from collections import Callable
 from dataclasses import dataclass
 import io
-from typing import Dict, Iterable, List, Sequence, Type
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Type
 from jobqueue.connect import load_credentials
 from jobqueue.connection_manager import ConnectionManager
 
 from jobqueue.job import Job
 from psycopg.sql import SQL, Composed, Identifier, Literal
-from dmp.postgres_interface.column_group import ColumnGroup
+from dmp.postgres_interface.element.column import Column
+from dmp.postgres_interface.element.column_group import ColumnGroup
+from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.task import Task
@@ -23,114 +25,105 @@ _summarizer_map: Dict[str, Callable[[Sequence[ExperimentResultRecord]],
 @dataclass
 class UpdateExperimentSummary(Task):
 
-    def __call__(self, worker: Worker, job: Job) -> TaskResult:
-        schema = worker._schema
+    @staticmethod
+    def register_types(types: Iterable[Type]) -> None:
+        for target_type in types:
+            UpdateExperimentSummary.register_type(target_type)
 
+    @staticmethod
+    def register_type(target_type: Type) -> None:
+        type_code = target_type.__name__
+        _summarizer_map[type_code] = target_type.summarize
+
+    def __call__(self, worker: Worker, job: Job) -> TaskResult:
         experiment_limit = 64
 
-        experiment_table = schema.experiment
-        experiment_attrs_group = experiment_table['attrs']
-        experiment_properties_group = experiment_table['properties']
+        schema = worker._schema
+        experiment = schema.experiment
+        run = schema.run
+        summary = schema.experiment_summary
 
-        run_table = schema.run
-        experiment_summary_table = schema.experiment_summary
+        run_columns = ColumnGroup(
+            run.experiment_id,
+            run.run_timestamp,
+            run.values,
+            run.run_data,
+            run.run_history,
+        )
 
-        experiment_uid = schema.experiment_id_group
+        experiment_summary_columns = ColumnGroup(
+            summary.experiment_id,
+            summary.last_run_timestamp,
+            summary.data,
+        )
 
-        # run_timestamp = run_table['timestamp']
-        last_run_timestamp_group = experiment_summary_table[
-            'last_run_timestamp']
-
-        run_columns = ColumnGroup.concatenate((
-            experiment_uid,
-            run_table['timestamp'],
-            run_table['values'],
-            run_table['data'],
-            run_table['history'],
-        ))
-
-        result_columns = ColumnGroup.concatenate((
-            last_run_timestamp_group,
-            experiment_attrs_group,
-            experiment_properties_group,
-            run_columns,
-        ))
-
-        experiment_summary_columns = ColumnGroup.concatenate((
-            last_run_timestamp_group,
-            experiment_uid,
-            experiment_summary_table['data'],
-        ))
-
-        selection_table = Identifier('_selection')
-
+        #                             AND experiment_properties @> array[2568] and experiment_attrs @> array[75, 224]
         lock_and_get_query = SQL("""
 SELECT
-    {selection_table}.{last_run_timestamp},
-    {selection_table}.{experiment_attrs},
-    {selection_table}.{experiment_properties},
+    {selection}.{last_run_timestamp},
+    {selection}.{experiment_attrs},
+    {selection}.{experiment_properties},
     {run_columns}
 FROM
     (
-        SELECT DISTINCT ON({experiment_uid})
-            {experiment_uid},
-            {experiment_attrs},
-            {experiment_properties},
-            MAX({run_timestamp}) OVER (PARTITION BY {experiment_uid}) {last_run_timestamp}
+        SELECT DISTINCT ON({experiment_id})
+            {selection}.{experiment_id},
+            {selection}.{experiment_attrs},
+            {selection}.{experiment_properties},
+            MAX({run_timestamp}) OVER (PARTITION BY {experiment_id}) {last_run_timestamp}
         FROM
             (
                 SELECT 
-                    {run_table}.{run_timestamp}, 
-                    {experiment_table}.{experiment_uid},
-                    {experiment_table}.{experiment_attrs},
-                    {experiment_table}.{experiment_properties}
+                    {run}.{run_schematimestamp}, 
+                    {selection}.{experiment_id},
+                    {selection}.{experiment_attrs},
+                    {selection}.{experiment_properties}
                 FROM 
-                    {run_table} LEFT JOIN {experiment_summary_table} ON (
-                        {run_table}.{experiment_uid} = {experiment_summary_table}.{experiment_uid}
+                    {run} LEFT JOIN {experiment_summary_table} ON (
+                        {run}.{experiment_id} = {experiment_summary_table}.{experiment_id}
                         AND {experiment_summary_table}.{last_run_timestamp} > {run_timestamp})
                     CROSS JOIN LATERAL (
                         SELECT
-                            {experiment_table}.{experiment_uid},
-                            {experiment_table}.{experiment_attrs},
-                            {experiment_table}.{experiment_properties}
+                            {experiment}.{experiment_id},
+                            {experiment}.{experiment_attrs},
+                            {experiment}.{experiment_properties}
                         FROM
-                            {experiment_table}
+                            {experiment}
                         WHERE
-                            {experiment_table}.{experiment_uid} = {run_table}.{experiment_uid}
-                            AND experiment_properties @> array[2568] and experiment_attrs @> array[75, 224]
+                            {experiment}.{experiment_id} = {run}.{experiment_id}
                         FOR UPDATE SKIP LOCKED
-                    ) {experiment_table}
+                    ) {selection}
                 WHERE 
                     {run_timestamp} > (
                         SELECT COALESCE(MAX({experiment_summary_table}.{run_update_limit}), '1960-01-01'::timestamp)
                         FROM {experiment_summary_table}
                         )
-                    AND {experiment_summary_table}.{experiment_uid} IS NULL
-                ORDER BY {run_table}.{run_timestamp} ASC
+                    AND {experiment_summary_table}.{experiment_id} IS NULL
+                ORDER BY {run}.{run_timestamp} ASC
                 LIMIT {experiment_limit}
-            ) {selection_table}
-    ) {selection_table}
+            ) {selection}
+    ) {selection}
     CROSS JOIN LATERAL (
         SELECT
             {run_columns}
         FROM 
-            {run_table} 
+            {run} 
         WHERE 
-            {run_table}.{experiment_uid} = {selection_table}.{experiment_uid}
-    ) {run_table}
+            {run}.{run_experiment_id} = {selection}.{experiment_id}
+    ) {run}
 ;""").format(
-            selection_table=selection_table,
-            last_run_timestamp=last_run_timestamp_group.identifier,
-            experiment_attrs=experiment_attrs_group.identifier,
-            experiment_properties=experiment_properties_group.identifier,
-            run_columns=run_columns.of(run_table.identifier),
-            experiment_uid=experiment_uid.identifier,
-            run_timestamp=run_table['timestamp'].identifier,
-            run_table=run_table.identifier,
-            experiment_summary_table=experiment_summary_table.identifier,
-            experiment_table=experiment_table.identifier,
-            run_update_limit=experiment_summary_table['run_update_limit'].
-            identifier,
+            selection=Identifier('_selection'),
+            last_run_timestamp=summary.last_run_timestamp.identifier,
+            experiment_attrs=experiment.experiment_attrs.identifier,
+            experiment_properties=experiment.experiment_properties.identifier,
+            run_columns=run_columns.of(run.identifier),
+            experiment_id=experiment.experiment_id.identifier,
+            run_experiment_id=run.experiment_id.identifier,
+            run_timestamp=run.run_timestamp.identifier,
+            run=run.identifier,
+            experiment_summary_table=summary.identifier,
+            experiment=experiment.identifier,
+            run_update_limit=summary.run_update_limit.identifier,
             experiment_limit=Literal(experiment_limit),
         )
 
@@ -141,27 +134,34 @@ INSERT INTO {experiment_summary_table}
     {summary_columns}
 )
 VALUES {summary_column_placeholders}
-ON CONFLICT ({experiment_uid}) DO UPDATE SET
+ON CONFLICT ({experiment_id}) DO UPDATE SET
     {update_clause}
 ;""").format(
-                experiment_summary_table=experiment_summary_table.identifier,
+                experiment_summary_table=summary.identifier,
                 summary_columns=experiment_summary_columns.identifiers,
                 summary_column_placeholders=sql_comma.join([
                     SQL('({})').format(experiment_summary_columns.placeholders)
                 ] * num_summaries),
-                experiment_uid=experiment_uid,
+                experiment_id=experiment_id,
                 update_clause=sql_comma.join(
                     (SQL('{c}=EXCLUDED.{c}').format(c=c)
                      for c in experiment_summary_columns.identifiers)),
             )
+
+        result_columns = ColumnGroup(
+            summary.last_run_timestamp,
+            experiment.experiment_attrs,
+            experiment.experiment_properties,
+            run_columns,
+        )
 
         with ConnectionManager(schema.credentials) as connection:
             with connection.transaction():
                 with connection.cursor(binary=True) as cursor:
 
                     # lock experiments and get runs to summarize
-                    summaries = []
-                    experiment_uid = None
+                    summary_rows = []
+                    experiment_id = None
                     runs = []
                     last_updated = None
                     experiment_attrs = {}
@@ -169,47 +169,52 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
 
                     cursor.execute(lock_and_get_query, binary=True)
                     for row in cursor.fetchall():
-                        row_uid = row[result_columns[
-                            schema.experiment_id_column]]
-                        if row_uid != experiment_uid:
-                            if len(runs) > 0:
-                                summaries.append((last_updated,
-                                                  self._compute_summary(runs)))
 
-                            experiment_uid = row_uid
+                        def value_of(column: Column) -> Any:
+                            return row[result_columns[column]]
+
+                        row_uid = value_of(run.experiment_id)
+                        if row_uid != experiment_id:
+                            if len(runs) > 0:
+                                summary_rows.append(
+                                    (last_updated,
+                                     self._compute_summary(runs)))
+
+                            experiment_id = row_uid
                             runs.clear()
                             experiment_attrs = schema.attribute_map.attribute_map_from_ids(
-                                row[result_columns[
-                                    experiment_attrs_group.column]])
+                                value_of(experiment.experiment_attrs))
                             experiment_properties = schema.attribute_map.attribute_map_from_ids(
-                                row[result_columns[
-                                    experiment_properties_group.column]])
-                            last_updated = row[result_columns['run_timestamp']]
+                                value_of(experiment.experiment_properties))
+                            last_updated = value_of(run.run_timestamp)
 
                         last_updated = max(
                             last_updated,  # type: ignore
-                            row[result_columns['run_timestamp']],
+                            value_of(run.run_timestamp),
                         )
-                        run_data = row[result_columns['run_data']]
-                        for c in run_table['values'].columns:
-                            run_data[c] = row[result_columns[c]]
+                        run_data = value_of(run.run_data)
+                        for c in run.values:
+                            run_data[c] = value_of(c)
 
-                        run_history = schema.load_history_from_bytes(
-                            row[result_columns['run_history']]
-                            )
+                        run_history = schema.convert_bytes_to_dataframe(
+                            value_of(run.run_history))
 
                         runs.append(
                             ExperimentResultRecord(
                                 experiment_attrs,
                                 experiment_properties,
                                 run_data,
-                                run_history, # type: ignore
+                                run_history,  # type: ignore
                                 None,
                             ))
 
                     if len(runs) > 0:
-                        summaries.append(
-                            (last_updated, self._compute_summary(runs)))
+                        summary_rows.append((
+                            experiment_id,
+                            last_updated,
+                            *self._summary_to_bytes(
+                                schema, self._compute_summary(runs)),
+                        ))
 
                     # num_summaries = len(summaries)
                     # if num_summaries > 0:
@@ -220,7 +225,7 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
                     #             flatten(
                     #                 ((
                     #                     last_updated,
-                    #                     summary.experiment_uid,
+                    #                     summary.experiment_id,
                     #                     summary.core_data,
                     #                     summary.extended_data,
                     #                 ) for last_updated, summary in summaries),
@@ -234,12 +239,16 @@ ON CONFLICT ({experiment_uid}) DO UPDATE SET
         experiment_type_code = runs[0].experiment_attrs[marshal_type_key]
         return _summarizer_map[experiment_type_code](runs)
 
-    @staticmethod
-    def register_types(types: Iterable[Type]) -> None:
-        for target_type in types:
-            UpdateExperimentSummary.register_type(target_type)
-
-    @staticmethod
-    def register_type(target_type: Type) -> None:
-        type_code = target_type.__name__
-        _summarizer_map[type_code] = target_type.summarize
+    def _summary_to_bytes(
+        self,
+        schema: PostgresSchema,
+        summary: ExperimentSummaryRecord,
+    ) -> Sequence[Optional[bytes]]:
+        return [
+            schema.convert_dataframe_to_bytes(df) for df in (
+                summary.by_epoch,
+                summary.by_loss,
+                summary.by_progress,
+                summary.epoch_subset,
+            )
+        ]

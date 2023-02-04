@@ -65,7 +65,7 @@ update experiment_migration m set
     migrated = False,
     error_message = NULL
     WHERE EXISTS (select 1 from run_ r where r.experiment_id = m.experiment_id)
-    AND NOT EXISTS (select 1 from experiment2 e where e.experiment_id = m.experiment_id)
+    AND NOT EXISTS (select 1 from experiment e where e.experiment_id = m.experiment_id)
     and error_message NOT LIKE 'failed on Could not find%' 
     and error_message NOT LIKE 'wrong number%wide_first_%'
     AND error_message NOT LIKE 'wrong number%poker%';
@@ -76,7 +76,7 @@ WHERE
     migrated
     AND error_message is null 
     AND (
-        select count(1) from run2 r, experiment2 e 
+        select count(1) from run r, experiment e 
         where e.old_experiment_id = m.experiment_id 
         and r.experiment_id = e.experiment_id) <> 
         (select count(1) from run_ r where r.experiment_id = m.experiment_id);
@@ -103,7 +103,7 @@ from
     ) x;
 
 select x.* from 
-    experiment2 e,
+    experiment e,
     lateral (
         select 
             (   select value_str from unnest(experiment_attrs) ea(attr_id) inner join attr using(attr_id)
@@ -135,8 +135,8 @@ select
     a_model_input_shape.value_json model_input_shape,
     a_model_output_units.value_int model_output_units
 from
-    experiment2 e,
-    run2 r,
+    experiment e,
+    run r,
     attr a_dataset_name,
     attr a_model_input_shape,
     attr a_model_output_units
@@ -182,7 +182,7 @@ from
                 to_jsonb(digest)
             ) v,
             count(1) n
-        from attr left join experiment2 on (experiment_attributes @> array[attribute_id])
+        from attr left join experiment on (experiment_attributes @> array[attribute_id])
         group by kind, value_type, v
     ) ac
     group by kind, value_type
@@ -192,7 +192,7 @@ order by compression_ratio asc;
 
 select * from attr where kind like '%regul%';
 
-select count(1) from experiment2 where experiment_attrs @> array[37];
+select count(1) from experiment where experiment_attrs @> array[37];
 
 
 select 
@@ -202,7 +202,7 @@ select
     json_object_agg(p.kind, coalesce(p.bool_value, p.int_value, p.real_value, p.string_value)) eattrib
 from
     experiment_ e,
-    experiment2 x,
+    experiment x,
     param p,
     attr a
 where TRUE
@@ -224,8 +224,8 @@ select
     a_model_input_shape.value_json model_input_shape,
     a_model_output_units.value_int model_output_units
 from
-    experiment2 e,
-    run2 r,
+    experiment e,
+    run r,
     attr a_dataset_name,
     attr a_model_input_shape,
     attr a_model_output_units,
@@ -342,7 +342,7 @@ CREATE UNIQUE INDEX ON attr USING btree (kind, digest) WHERE value_type = 5;
 CREATE INDEX ON attr USING btree (kind);
 CREATE INDEX ON attr USING gin (value_json) WHERE value_type = 5;
 
-CREATE TABLE experiment2
+CREATE TABLE experiment
 (
     experiment_id uuid NOT NULL,
     old_experiment_id integer,
@@ -351,15 +351,15 @@ CREATE TABLE experiment2
     PRIMARY KEY (experiment_id)
 );
 
-ALTER TABLE experiment2 SET (fillfactor = 100);
-ALTER TABLE experiment2 SET (parallel_workers = 16);
-ALTER TABLE experiment2 ALTER COLUMN experiment_attrs SET storage PLAIN;
+ALTER TABLE experiment SET (fillfactor = 100);
+ALTER TABLE experiment SET (parallel_workers = 16);
+ALTER TABLE experiment ALTER COLUMN experiment_attrs SET storage PLAIN;
 
-CREATE INDEX on experiment2 USING btree (experiment_id) WHERE experiment_id IS NOT NULL;
-CREATE INDEX ON experiment2 USING gin (experiment_attrs, experiment_properties);
-CREATE INDEX ON experiment2 USING btree (old_experiment_id) INCLUDE (experiment_id) WHERE old_experiment_id IS NOT NULL;
+CREATE INDEX on experiment USING btree (experiment_id) WHERE experiment_id IS NOT NULL;
+CREATE INDEX ON experiment USING gin (experiment_attrs, experiment_properties);
+CREATE INDEX ON experiment USING btree (old_experiment_id) INCLUDE (experiment_id) WHERE old_experiment_id IS NOT NULL;
 
-CREATE TABLE run2
+CREATE TABLE run
 (
     experiment_id uuid,
 
@@ -387,29 +387,29 @@ CREATE TABLE run2
     PRIMARY KEY (run_id)
 );
 
-ALTER TABLE run2 SET (toast_tuple_target = 256)
+ALTER TABLE run SET (toast_tuple_target = 256)
 
-ALTER TABLE run2 ALTER COLUMN run_history SET storage EXTERNAL;
-ALTER TABLE run2 ALTER COLUMN run_extended_history SET storage EXTERNAL;
+ALTER TABLE run ALTER COLUMN run_history SET storage EXTERNAL;
+ALTER TABLE run ALTER COLUMN run_extended_history SET storage EXTERNAL;
 
-ALTER TABLE run2 SET (fillfactor = 95);
-ALTER TABLE run2 SET (parallel_workers = 16);
+ALTER TABLE run SET (fillfactor = 95);
+ALTER TABLE run SET (parallel_workers = 16);
 
-CREATE INDEX ON run2 USING btree (experiment_id);
+CREATE INDEX ON run USING btree (experiment_id);
 
-CREATE INDEX ON run2 USING btree (run_timestamp) INCLUDE (experiment_id);
-CREATE INDEX ON run2 USING btree (experiment_id, run_timestamp);
+CREATE INDEX ON run USING btree (run_timestamp) INCLUDE (experiment_id);
+CREATE INDEX ON run USING btree (experiment_id, run_timestamp);
 
-CREATE INDEX ON run2 USING btree (job_id) WHERE job_id IS NOT NULL;
-CREATE INDEX ON run2 USING btree (slurm_job_id) WHERE slurm_job_id IS NOT NULL;
-CREATE INDEX ON run2 USING btree (task_version) WHERE task_version IS NOT NULL;
-CREATE INDEX ON run2 USING btree (num_nodes) WHERE num_nodes IS NOT NULL;
-CREATE INDEX ON run2 USING btree (num_cpus) WHERE num_cpus IS NOT NULL;
-CREATE INDEX ON run2 USING btree (num_gpus) WHERE num_gpus IS NOT NULL;
-CREATE INDEX ON run2 USING btree (host_name) WHERE host_name IS NOT NULL;
-CREATE INDEX ON run2 USING btree (batch) WHERE batch IS NOT NULL;
+CREATE INDEX ON run USING btree (job_id) WHERE job_id IS NOT NULL;
+CREATE INDEX ON run USING btree (slurm_job_id) WHERE slurm_job_id IS NOT NULL;
+CREATE INDEX ON run USING btree (task_version) WHERE task_version IS NOT NULL;
+CREATE INDEX ON run USING btree (num_nodes) WHERE num_nodes IS NOT NULL;
+CREATE INDEX ON run USING btree (num_cpus) WHERE num_cpus IS NOT NULL;
+CREATE INDEX ON run USING btree (num_gpus) WHERE num_gpus IS NOT NULL;
+CREATE INDEX ON run USING btree (host_name) WHERE host_name IS NOT NULL;
+CREATE INDEX ON run USING btree (batch) WHERE batch IS NOT NULL;
 
-CREATE INDEX ON run2 USING gin (run_data);
+CREATE INDEX ON run USING gin (run_data);
 
 CREATE TABLE experiment_summary
 (
@@ -448,7 +448,7 @@ exp_target as (
         y.experiment_properties,
         old_experiment_id
     from 
-        experiment2 e,
+        experiment e,
         lateral (select array_agg(attr_id) experiment_attrs from (
             select attr_id
             from
@@ -492,7 +492,7 @@ dst_map as (
                 experiment_properties,
                 old_experiment_id
              FROM
-                experiment2 e
+                experiment e
              WHERE
                 e.experiment_id in (SELECT dst_id from exp_target)
          )
@@ -509,12 +509,12 @@ exp_map as (
     order by src_id
 ),
 exp_delete as (
-    DELETE FROM experiment2 e
+    DELETE FROM experiment e
     USING exp_map m
     WHERE m.src_id = e.experiment_id
 ),
 exp_update as (
-    INSERT INTO experiment2 (
+    INSERT INTO experiment (
         experiment_id,
         experiment_attrs,
         experiment_properties,
@@ -531,7 +531,7 @@ exp_update as (
         experiment_properties = EXCLUDED.experiment_properties,
         old_experiment_id = EXCLUDED.old_experiment_id
 )
-update run2 r set
+update run r set
     experiment_id = m.dst_id
 from 
     exp_map m

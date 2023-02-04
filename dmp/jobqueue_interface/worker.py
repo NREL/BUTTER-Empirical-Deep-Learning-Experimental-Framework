@@ -4,7 +4,7 @@ import uuid
 import jobqueue.connect as connect
 from jobqueue.job_queue import JobQueue
 from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
-from dmp.postgres_interface.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.worker import Worker
 
 import tensorflow

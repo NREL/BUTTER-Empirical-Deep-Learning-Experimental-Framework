@@ -1,13 +1,16 @@
+import itertools
 from numbers import Number
 from dataclasses import dataclass
+from operator import index
 import random
-from typing import Any, Dict, Iterable, Optional, Type
+from typing import Any, Dict, Iterable, Optional, Set, Type
 import os
 import platform
 import subprocess
 import uuid
 from jobqueue.job import Job
 import pandas
+import pandas.core.groupby.groupby
 import tensorflow
 import tensorflow.keras as keras
 import numpy
@@ -24,7 +27,7 @@ from dmp.task.experiment.experiment_task import ExperimentTask
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.recorder.test_set_history_recorder import TestSetHistoryRecorder
-from dmp.task.experiment.training_experiment import training_experiment_keys
+from dmp.task.experiment.training_experiment import training_experiment_keys, training_experiment_summarizer
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
 from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 from dmp.model.network_info import NetworkInfo
@@ -36,8 +39,13 @@ from dmp.model.model_spec import ModelSpec
 
 from dmp.worker import Worker
 
-pandas.set_option('display.max_rows', 500, 'display.min_rows', 40,
-                  'display.max_columns', None, 'display.width', 240)
+for k, v in {
+        'display.max_rows': 9000,
+        'display.min_rows': 40,
+        'display.max_columns': None,
+        'display.width': 240,
+}.items():
+    pandas.set_option(k, v)
 
 
 @dataclass
@@ -56,6 +64,7 @@ class TrainingExperiment(ExperimentTask):
     record_metrics: Optional[Any]
 
     keys = training_experiment_keys.keys
+    summarizer = training_experiment_summarizer.summarizer
 
     @property
     def version(self) -> int:
@@ -81,6 +90,13 @@ class TrainingExperiment(ExperimentTask):
             model.network,
             history,
         )
+
+    @classmethod
+    def summarize(
+        cls: Type['TrainingExperiment'],
+        results: Sequence[ExperimentResultRecord],
+    ) -> ExperimentSummaryRecord:
+        return cls.summarizer.summarize(cls, results)
 
     def _set_random_seeds(self) -> None:
         seed: int = self.seed
@@ -301,7 +317,7 @@ class TrainingExperiment(ExperimentTask):
             ]
         return merged_history
 
-    def _append_history_dicts(
+    def _concatenate_histories(
         self,
         target: Dict[str, Any],
         source: Dict[str, Any],
@@ -384,222 +400,6 @@ class TrainingExperiment(ExperimentTask):
                 if v is not None:
                     extended_history[column] = v
         return extended_history
-
-    @classmethod
-    def summarize(
-            cls: Type, results: Sequence[ExperimentResultRecord]
-    ) -> ExperimentSummaryRecord:
-        keys: training_experiment_keys.TrainingExperimentKeys = cls.keys
-
-        # loss_name_map = {
-        #     'CategoricalCrossentropy' : 'categorical_crossentropy',
-        #     'MeanSquaredError' : 'mean_squared_error',
-        #     'BinaryCrossentropy': 'binary_crossentropy',
-        # }
-
-        # discard = {
-        #     'cosine_similarity',
-        #     'kullback_leibler_divergence',
-        #     'root_mean_squared_error',
-        #     'mean_absolute_error',
-        #     'mean_squared_logarithmic_error',
-        #     'hinge',
-        #     'squared_hinge',
-        #     'categorical_hinge',
-        # }
-        # discard.update(loss_name_map.values())
-
-        # raw_loss =
-
-        experiment_attrs = results[0].experiment_attrs
-        # loss_method = loss_name_map[experiment_attrs['loss']]
-
-        sources = []
-        for i, r in enumerate(results):
-            history = r.run_history
-            history[keys.run] = i
-
-            for metric in keys.loss_metrics:
-                if metric in history:
-                    history[metric + '_cmin'] = history[metric].cummin()
-
-            for metric in ('test_accuracy', 'validation_accuracy'):
-                if metric in history:
-                    history[metric + '_cmax'] = history[metric].cummax()
-
-            sources.append(history)
-        del results
-        history = pandas.concat(sources, ignore_index=True, axis=0)
-        del sources
-
-        if keys.epoch_start_time_ms in history:
-            del history[keys.epoch_start_time_ms]
-
-        # with pandas.option_context('display.max_rows', 1000, 'display.min_rows', 1000, 'display.max_columns', None, 'display.width', 240):  # more options can be specified also
-        #     print(history)
-
-        # per epoch
-
-        # by_epoch = pandas.concat([quantiles, epochs['epoch'].min()], axis=1)
-        epochs = history[keys.epoch]
-        min_pt = epochs.min()  # type: ignore
-        max_pt = epochs.max()  # type: ignore
-
-        switch_point = 128
-        resolution = numpy.log(3000.0 / 128.0) / 128
-
-        epoch_selections = []
-        if min_pt < switch_point:
-            epoch_selections.append(
-                numpy.arange(min_pt, min(switch_point, max_pt), 1))
-        if max_pt >= switch_point:
-            epoch_selections.append(
-                numpy.unique(
-                    numpy.exp(
-                        numpy.arange(
-                            numpy.log(switch_point),
-                            numpy.log(max_pt + 1),
-                            resolution,
-                        )).round().astype(numpy.int32)), )
-
-        epoch_selection = numpy.concatenate(epoch_selections)
-
-        # print(quantiles[0:10])
-
-        epochs_df = history.loc[history[keys.epoch].isin(epoch_selection)]
-        print(epochs_df[['epoch', 'test_loss_cmin']])
-        # rq = by_epoch.loc[by_epoch['epoch'].isin(epoch_selection)]
-        epoch_groups = epochs_df.groupby(keys.epoch)
-
-        by_epoch = pandas.DataFrame({
-            keys.epoch:
-            epoch_groups[keys.epoch].min().astype(numpy.int32),
-            keys.count:
-            epoch_groups[keys.epoch].count(),
-        })
-        for key in keys.simple_summarize_keys:
-            if key in epoch_groups:
-                by_epoch[key + '_quantile_50'] = epoch_groups[key].median()
-
-        quantile_points = [0, .25, .5, .75, 1]
-        quantile_metrics = [
-            metric for metric in epochs_df.columns if metric not in by_epoch
-            and metric not in keys.simple_summarize_keys and metric != keys.run
-        ]
-        quantiles = epoch_groups[quantile_metrics].quantile(
-            quantile_points).unstack()
-        quantiles.columns = [
-            f'{metric}_quantile_{int(quantile * 100)}'
-            for metric, quantile in quantiles.columns.to_flat_index().values
-        ]
-        by_epoch = pandas.concat(
-            (
-                by_epoch,
-                quantiles,
-            ),
-            axis=1,
-        )
-
-        # pts = numpy.exp(numpy.linspace(min_pt, max_pt, 256)).round().astype(numpy.int32)
-        # print(by_epoch)
-        # print(history.describe())
-        # print(by_epoch.describe())
-        # numpy.set_printoptions(threshold=10000)
-        # print(by_epoch)
-        # print(rq.shape)
-        # print(by_epoch['test_loss_cmin_quantile_50'])
-
-        epsilon = 1e-9
-        resolution = numpy.log(1.0 / .1) / 200
-
-        # loss = history['test_loss_cmin']
-        run_groups = history.groupby(keys.run)
-        min_pt = run_groups['test_loss_cmin'].min().median()
-        max_pt = run_groups['test_loss_cmin'].max().median()
-
-        loss_levels = numpy.exp(
-            numpy.arange(
-                numpy.log(min_pt + epsilon),
-                numpy.log(max_pt + epsilon),
-                resolution,
-            )) - epsilon
-
-        # print(f'min {min_pt} max {max_pt}')
-
-        # find first epoch of each run that hits each loss level
-        
-        print(loss_levels)
-        print(loss_levels.shape)
-
-        # epoch_points = numpy.concatenate(numpy.arange(0, 100, 1), numpy.linspace(0, max_epoch_pt, 256))
-        # by_epoch = quantiles[]
-        # print(by_epoch)
-
-        # history.set_index(self.keys.run, 'epoch'], inplace=True)
-        # history.sort_values([self.keys.run, 'epoch'], inplace=True)
-
-        # run_groups = history.groupby(self.keys.run)
-
-        # progress_resolution = 20 - 1
-        # progress_proportions = numpy.linspace(0, 1, 100)
-        # progress_proportions = numpy.power(0.1, numpy.linspace(0, 1, 100)).tolist() + [0.0]
-
-        # print(progress_proportions)
-
-        # progress_source = 'test_loss'
-        # progress_col = 'log_' + progress_source
-        # history[progress_col] = numpy.log(history[progress_source])
-
-        # progress_start = history.loc[history.groupby(self.keys.run)['epoch'].idxmin()].groupby(
-        #     self.keys.run)[progress_col].max()
-        # progress_end_group = history.loc[run_groups[progress_col].idxmin()].groupby(self.keys.run)
-        # progress_end = progress_end_group[progress_col].min()
-        # progress_end_epoch = progress_end_group['epoch'].min()
-        # progress_delta = progress_start - progress_end
-        # run = history[self.keys.run]
-        # progress_end = run.apply(lambda r : progress_end[r])
-        # progress_delta = run.apply(lambda r : progress_delta[r])
-        # progress_end_epoch = run.apply(lambda r : progress_end_epoch[r])
-        # progress = (history[progress_col] - progress_end) / progress_delta
-        # history['progress'] =  1 - progress
-
-        # pq_index = history['epoch'] > progress_end_epoch
-        # history['progress'][pq_index] += 1
-
-        # progress_quant = progress_resolution - numpy.clip(numpy.ceil(progress * progress_resolution).astype(numpy.int32), 0, progress_resolution)
-        # progress_quant[pq_index] = progress_resolution + (progress_resolution - progress_quant[pq_index]) - 1
-        # history['quantized_progress'] = progress_quant
-
-        # print(history)
-        # hp = history.drop_duplicates([self.keys.run, 'quantized_progress'])
-        # print('hp\n', hp[hp[self.keys.run]==0])
-
-        pass
-
-    @staticmethod
-    def get_per_epoch_statistics(
-        experiment_data: pyarrow.Table,
-        group: str,
-        columns: List[str],
-    ):
-
-        quantiles = [0, .25, .5, .75, 1]
-        quantile_options = pyarrow.compute.QuantileOptions(quantiles)
-
-        aggregation_ops = []
-        aggregation_ops.append((
-            columns[0],
-            'count',
-            pyarrow.compute.CountOptions(mode='all'),
-        ))
-
-        for column in columns:
-            aggregation_ops.append((column, 'count'))
-            aggregation_ops.append((column, 'mean'))
-            aggregation_ops.append((column, 'stddev'))
-            aggregation_ops.append((column, 'quantile', quantile_options))
-
-        experiment_data.group_by(group).aggregate(aggregation_ops)
 
     def _get_slurm_id(self) -> Optional[int]:
         try:

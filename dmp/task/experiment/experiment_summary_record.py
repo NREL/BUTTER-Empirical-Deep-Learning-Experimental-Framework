@@ -1,9 +1,11 @@
 from dataclasses import dataclass
-import uuid
+from typing import Optional
+import pandas
 
 
 @dataclass
 class ExperimentSummaryRecord():
-    experiment_uid: uuid.UUID
-    core_data: bytes
-    extended_data: bytes
+    by_epoch: Optional[pandas.DataFrame]
+    by_loss: Optional[pandas.DataFrame]
+    by_progress: Optional[pandas.DataFrame]
+    epoch_subset: Optional[pandas.DataFrame]

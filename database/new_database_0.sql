@@ -1,9 +1,9 @@
-drop table run2;
-drop table experiment2;
+drop table run;
+drop table experiment;
 drop table parameter2;
 
-truncate table run2;
-truncate table experiment2;
+truncate table run;
+truncate table experiment;
 truncate table parameter2;
 
 ALTER SEQUENCE parameter2_parameter_id_seq RESTART WITH 1;
@@ -86,7 +86,7 @@ CREATE INDEX ON parameter2 USING btree (kind);
 CREATE INDEX ON parameter2 USING gin (value_json) WHERE value_type = 5;
 
 
-CREATE TABLE experiment2
+CREATE TABLE experiment
 (
     experiment_id serial NOT NULL,
     experiment_parameters integer[] NOT NULL,
@@ -97,17 +97,17 @@ CREATE TABLE experiment2
     UNIQUE (experiment_parameters)
 );
 
-ALTER TABLE experiment2 SET (fillfactor = 100);
-ALTER TABLE experiment2 SET (parallel_workers = 16);
+ALTER TABLE experiment SET (fillfactor = 100);
+ALTER TABLE experiment SET (parallel_workers = 16);
 
-ALTER TABLE experiment2 ALTER COLUMN experiment_parameters SET storage PLAIN;
-ALTER TABLE experiment2 ALTER COLUMN experiment_attrs SET storage PLAIN;
+ALTER TABLE experiment ALTER COLUMN experiment_parameters SET storage PLAIN;
+ALTER TABLE experiment ALTER COLUMN experiment_attrs SET storage PLAIN;
 
-CREATE INDEX ON experiment2 USING gin (experiment_parameters);
-CREATE INDEX ON experiment2 USING gin (experiment_attrs);
-CREATE INDEX ON experiment2 USING gin (experiment_data);
+CREATE INDEX ON experiment USING gin (experiment_parameters);
+CREATE INDEX ON experiment USING gin (experiment_attrs);
+CREATE INDEX ON experiment USING gin (experiment_data);
 
-CREATE TABLE run2
+CREATE TABLE run
 (
     experiment_id integer NOT NULL,
     
@@ -133,22 +133,22 @@ CREATE TABLE run2
     PRIMARY KEY (run_id)
 );
 
-ALTER TABLE run2 ALTER COLUMN run_attributes SET storage PLAIN;
-ALTER TABLE run2 ALTER COLUMN run_history SET storage EXTERNAL;
+ALTER TABLE run ALTER COLUMN run_attributes SET storage PLAIN;
+ALTER TABLE run ALTER COLUMN run_history SET storage EXTERNAL;
 
-ALTER TABLE run2 SET (fillfactor = 100);
-ALTER TABLE run2 SET (parallel_workers = 16);
+ALTER TABLE run SET (fillfactor = 100);
+ALTER TABLE run SET (parallel_workers = 16);
 
-CREATE INDEX ON run2 USING btree (experiment_id);
+CREATE INDEX ON run USING btree (experiment_id);
 
-CREATE INDEX ON run2 USING btree (record_timestamp) INCLUDE (experiment_id);
-CREATE INDEX ON run2 USING btree (experiment_id, record_timestamp);
+CREATE INDEX ON run USING btree (record_timestamp) INCLUDE (experiment_id);
+CREATE INDEX ON run USING btree (experiment_id, record_timestamp);
 
-CREATE INDEX ON run2 USING btree (job_id);
-CREATE INDEX ON run2 USING btree (slurm_job_id);
+CREATE INDEX ON run USING btree (job_id);
+CREATE INDEX ON run USING btree (slurm_job_id);
 
-CREATE INDEX ON run2 USING gin (run_parameters);
-CREATE INDEX ON run2 USING gin (run_data);
+CREATE INDEX ON run USING gin (run_parameters);
+CREATE INDEX ON run USING gin (run_data);
 
 
 
