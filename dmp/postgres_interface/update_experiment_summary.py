@@ -236,9 +236,9 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                                 chain(*((
                                     last_run_timestamp,
                                     experiment_id,
-                                    last_updated,
+                                    most_recent_run,
                                     *self._summary_to_bytes(schema, summary),
-                                ) for experiment_id, last_updated, summary in
+                                ) for experiment_id, most_recent_run, summary in
                                         summary_rows))),
                         )
 
