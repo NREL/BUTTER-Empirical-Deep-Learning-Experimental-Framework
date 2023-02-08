@@ -4,9 +4,7 @@ import uuid
 import tensorflow
 from jobqueue.job import Job
 from jobqueue.job_queue import JobQueue
-
-
-
+from dmp import common
 
 
 @dataclass
@@ -31,10 +29,16 @@ class Worker:
         return self._schema
 
     def __call__(self):
+        git_hash = common.get_git_hash()
         self._job_queue.work_loop(
-            lambda worker_id, job: self._handler(worker_id, job))
+            lambda worker_id, job: self._handler(worker_id, job, git_hash))
 
-    def _handler(self, worker_id: uuid.UUID, job: Job) -> bool:
+    def _handler(
+        self,
+        worker_id: uuid.UUID,
+        job: Job,
+        git_hash: Optional[str],
+    ) -> bool:
         from dmp.marshaling import marshal
         from dmp.task.task import Task
 
@@ -54,7 +58,7 @@ class Worker:
             return True
 
         self._max_jobs -= 1
-        return self._max_jobs > 0
+        return self._max_jobs > 0 and common.get_git_hash() == git_hash
 
 
 from dmp.logging.experiment_result_logger import ExperimentResultLogger

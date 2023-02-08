@@ -3,6 +3,7 @@ import uuid
 
 import jobqueue.connect as connect
 from jobqueue.job_queue import JobQueue
+from dmp import common
 from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.worker import Worker
@@ -77,6 +78,7 @@ if __name__ == "__main__":
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     print('\n', flush=True)
+    
 
     if not isinstance(queue_id, int):
         queue_id = 1

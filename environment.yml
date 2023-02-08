@@ -16,7 +16,6 @@ dependencies:
   - pytest
   - tensorflow_datasets
   - pmlb
-  - connectorx
   - pathos
 
 
