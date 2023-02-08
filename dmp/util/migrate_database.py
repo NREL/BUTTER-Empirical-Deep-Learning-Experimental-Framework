@@ -162,7 +162,8 @@ def main():
     args = parser.parse_args()
 
     num_workers = args.num_workers
-    block_size = args.block_size
+    # block_size = args.block_size
+    block_size = 4
 
     pool = multiprocessing.ProcessPool(num_workers)
     results = pool.uimap(do_work,
