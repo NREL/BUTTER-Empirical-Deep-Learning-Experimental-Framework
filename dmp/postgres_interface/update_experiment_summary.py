@@ -93,7 +93,14 @@ FROM
                             SELECT COALESCE(MAX({summary}.{last_run_timestamp}), '1960-01-01'::timestamp)
                             FROM {summary}
                         )
-                        ORDER BY {run}.{run_timestamp} ASC
+                        AND NOT EXISTS (
+                            SELECT 1 
+                            FROM {summary} 
+                            WHERE 
+                                {summary}.{experiment_id} = {run}.{experiment_id} 
+                                AND {summary}.{last_run_timestamp} >= {run}.{run_timestamp}
+                            )
+                        ORDER BY {run}.{run_timestamp} ASC, {run}.{experiment_id} ASC
                     ) {run}
                     CROSS JOIN LATERAL (
                         SELECT
@@ -106,7 +113,7 @@ FROM
                     ) {selection}
                 WHERE
                     {selection}.{experiment_id} IS NOT NULL
-                ORDER BY {run}.{run_timestamp} ASC
+                ORDER BY {run}.{run_timestamp} ASC, {run}.{experiment_id} ASC
                 LIMIT {experiment_limit}
             ) {selection}
     ) {selection}
