@@ -183,7 +183,7 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                     experiment_properties = {}
 
                     def make_summary():
-                        nonlocal most_recent_run, experiment_id
+                        nonlocal most_recent_run, experiment_id, runs, summary_rows
                         if len(runs) > 0:
                             summary_rows.append((
                                 experiment_id,
@@ -195,8 +195,6 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                     # print(ClientCursor(connection).mogrify(lock_and_get_query))
                     cursor.execute(lock_and_get_query, binary=True)
                     for row in cursor.fetchall():
-
-                        
                         def value_of(column: Column) -> Any:
                             return row[result_columns[column]]
 
