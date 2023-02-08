@@ -53,8 +53,9 @@ class UpdateExperimentSummary(Task):
         )
 
         summary_columns = ColumnGroup(
-            summary.experiment_id,
             summary.last_run_timestamp,
+            summary.experiment_id,
+            summary.most_recent_run,
             summary.by_epoch,
             summary.by_loss,
             summary.by_progress,
@@ -71,6 +72,7 @@ class UpdateExperimentSummary(Task):
         selection_table = Identifier('_selection')
         lock_and_get_query = SQL("""
 SELECT
+    {selection}.{last_run_timestamp},
     {selection_columns},
     {run_columns}
 FROM
@@ -126,7 +128,6 @@ FROM
             run=run.identifier,
             summary=summary.identifier,
             experiment=experiment.identifier,
-            run_update_limit=summary.run_update_limit.identifier,
             experiment_limit=Literal(experiment_limit),
         )
 
@@ -153,28 +154,30 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
 
         result_columns = ColumnGroup(
             summary.last_run_timestamp,
-            experiment.experiment_attrs,
-            experiment.experiment_properties,
+            selection_columns,
             run_columns,
         )
 
         with ConnectionManager(schema.credentials) as connection:
             with connection.transaction():
-                with connection.cursor(binary=True) as cursor:
 
+                with connection.cursor(binary=True) as cursor:
                     # lock experiments and get runs to summarize
+
                     summary_rows = []
                     experiment_id = None
                     runs = []
-                    last_updated = None
+                    last_run_timestamp = None
+                    most_recent_run = None
                     experiment_attrs = {}
                     experiment_properties = {}
 
                     def make_summary():
-                        nonlocal last_updated, experiment_id
+                        nonlocal most_recent_run, experiment_id
                         if len(runs) > 0:
-                            summary_rows.append((experiment_id, last_updated,
-                                                 self._compute_summary(runs)))
+                            summary_rows.append(
+                                (experiment_id, most_recent_run,
+                                 self._compute_summary(runs)))
                             runs.clear()
 
                     cursor.execute(lock_and_get_query, binary=True)
@@ -182,6 +185,14 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
 
                         def value_of(column: Column) -> Any:
                             return row[result_columns[column]]
+
+                        if last_run_timestamp is None:
+                            last_run_timestamp = value_of(
+                                summary.last_run_timestamp)
+                        else:
+                            last_run_timestamp = max(
+                                last_run_timestamp,
+                                value_of(summary.last_run_timestamp))
 
                         row_uid = value_of(run.experiment_id)
                         if row_uid != experiment_id:
@@ -191,10 +202,10 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                                 value_of(experiment.experiment_attrs))
                             experiment_properties = schema.attribute_map.attribute_map_from_ids(
                                 value_of(experiment.experiment_properties))
-                            last_updated = value_of(run.run_timestamp)
+                            most_recent_run = value_of(run.run_timestamp)
 
-                        last_updated = max(
-                            last_updated,  # type: ignore
+                        most_recent_run = max(
+                            most_recent_run,  # type: ignore
                             value_of(run.run_timestamp),
                         )
                         run_data = value_of(run.run_data)
@@ -222,10 +233,12 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                             make_update_progress_query(num_summaries),
                             list(
                                 chain(*((
-                                    experiment_id, last_updated,
-                                    *self._summary_to_bytes(schema, summary))
-                                        for experiment_id, last_updated,
-                                        summary in summary_rows))),
+                                    last_run_timestamp,
+                                    experiment_id,
+                                    last_updated,
+                                    *self._summary_to_bytes(schema, summary),
+                                ) for experiment_id, last_updated, summary in
+                                        summary_rows))),
                         )
 
         return UpdateExperimentSummaryResult(num_summaries)

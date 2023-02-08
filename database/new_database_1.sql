@@ -415,6 +415,7 @@ CREATE TABLE experiment_summary
 (
     experiment_id uuid,
     last_run_timestamp timestamp,
+    most_recent_run timestamp,
     by_epoch bytea,
     by_loss bytea,
     by_progress bytea,
@@ -425,8 +426,9 @@ ALTER TABLE experiment_summary ALTER COLUMN by_epoch SET STORAGE EXTERNAL;
 ALTER TABLE experiment_summary ALTER COLUMN by_loss SET STORAGE EXTERNAL;
 ALTER TABLE experiment_summary ALTER COLUMN by_progress SET STORAGE EXTERNAL;
 
-CREATE INDEX ON experiment_summary USING btree (experiment_id, last_run_timestamp);
-CREATE INDEX ON experiment_summary USING btree (last_run_timestamp, experiment_id);
+CREATE INDEX ON experiment_summary USING btree (experiment_id, most_recent_run);
+CREATE INDEX ON experiment_summary USING btree (most_recent_run, experiment_id);
+CREATE INDEX ON experiment_summary USING btree (last_run_timestamp DESC);
 
 -- CREATE INDEX ON experiment_summary USING hash (last_updated);
 

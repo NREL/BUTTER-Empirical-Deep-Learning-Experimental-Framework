@@ -10,7 +10,7 @@ class ExperimentSummaryTable(Table):
     name: str = 'experiment_summary'
     experiment_id: Column = Column('experiment_id', 'uuid')
     last_run_timestamp: Column = Column('last_run_timestamp', 'timestamp')
-    run_update_limit: Column = Column('run_update_limit', 'timestamp')
+    most_recent_run: Column = Column('most_recent_run', 'timestamp')
     by_epoch: Column = Column('by_epoch', 'bytea')
     by_loss: Column = Column('by_loss', 'bytea')
     by_progress: Column = Column('by_progress', 'bytea')
