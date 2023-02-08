@@ -98,7 +98,7 @@ FROM
                             FROM {summary} 
                             WHERE 
                                 {summary}.{experiment_id} = {run}.{experiment_id} 
-                                AND {summary}.{last_run_timestamp} >= {run}.{run_timestamp}
+                                AND {summary}.{most_recent_run} >= {run}.{run_timestamp}
                             )
                         ORDER BY {run}.{run_timestamp} ASC, {run}.{experiment_id} ASC
                     ) {run}
@@ -137,6 +137,7 @@ FROM
             summary=summary.identifier,
             experiment=experiment.identifier,
             experiment_limit=Literal(experiment_limit),
+            most_recent_run=summary.most_recent_run.identifier,
         )
 
         def make_update_progress_query(num_summaries: int) -> Composed:
