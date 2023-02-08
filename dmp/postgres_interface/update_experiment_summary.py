@@ -105,6 +105,8 @@ FROM
                             {selection}.{experiment_id} = {run}.{experiment_id}
                         FOR UPDATE SKIP LOCKED
                     ) {selection}
+                WHERE
+                    {selection}.{experiment_id} IS NOT NULL
                 ORDER BY {run}.{run_timestamp} ASC
                 LIMIT {experiment_limit}
             ) {selection}

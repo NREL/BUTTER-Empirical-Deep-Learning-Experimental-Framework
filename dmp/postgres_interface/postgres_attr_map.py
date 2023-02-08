@@ -176,8 +176,12 @@ SELECT * from {inserted}
 
     def attribute_map_from_ids(
         self,
-        ids: Iterable[int],
+        ids: Optional[Iterable[int]],
     ) -> Dict[str, Any]:
+        # special case
+        if ids is None:
+            return {}
+
         return {
             attr.kind: attr.comparable_value
             for attr in (self.attribute_from_id(e) for e in ids)
