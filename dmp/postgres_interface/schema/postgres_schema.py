@@ -67,23 +67,23 @@ class PostgresSchema:
 
     def convert_dataframe_to_bytes(
         self,
-        history: Optional[pandas.DataFrame],
+        dataframe: Optional[pandas.DataFrame],
     ) -> Optional[bytes]:
-        if history is None:
+        if dataframe is None:
             return None
-
+        dataframe = dataframe.reset_index()
         schema, use_byte_stream_split = make_pyarrow_schema_from_panads(
-            history)
+            dataframe)
 
         # Must do this to avoid a bug in pyarrow reading nulls in
         # byte stream split columns.
         # see https://github.com/apache/arrow/issues/28737
         # and https://issues.apache.org/jira/browse/ARROW-13024
         for c in use_byte_stream_split:
-            history[c].fillna(value=numpy.nan, inplace=True)
+            dataframe[c].fillna(value=numpy.nan, inplace=True)
 
         table = pyarrow.Table.from_pandas(
-            history,
+            dataframe,
             schema=schema,
             preserve_index=False,
         )
