@@ -76,13 +76,13 @@ class UpdateExperimentSummary(Task):
         )
 
         result_columns = ColumnGroup(
-            bound_columns,
+            # bound_columns,
             experiment_columns,
             run_columns,
         )
 
         summary_columns = ColumnGroup(
-            summary.last_run_timestamp,
+            # summary.last_run_timestamp,
             summary.experiment_id,
             summary.most_recent_run,
             summary.by_epoch,
@@ -105,7 +105,7 @@ class UpdateExperimentSummary(Task):
             experiment_summary=summary.identifier,
             run_backselect=run_backselect,
             run_id=run.run_id.identifier,
-            selection=selection_table,
+            _selection=selection_table,
             summary_columns=summary_columns.columns_sql,
             update_clause=sql_comma.join(
                 (SQL('{c}=EXCLUDED.{c}').format(c=c)
@@ -116,43 +116,26 @@ class UpdateExperimentSummary(Task):
 
         lock_and_get_query = SQL("""
 SELECT
-    {bound_selection},
     {experiment_selection},
     {run_selection}
 FROM
     (
-        SELECT 
-            {bound}.*,
-            {experiment}.*
-        FROM 
+        SELECT DISTINCT ON({experiment_id}) {experiment_selection}
+        FROM
+        (
+            SELECT {experiment}.*
+            FROM
             (
-                SELECT {run_timestamp} {last_run_timestamp}, {experiment_id} {last_experiment_id}
-                FROM {run} 
-                WHERE {run_timestamp} >= 
+                SELECT {run}.{experiment_id}, {run}.{run_timestamp} FROM 
+                {run}
+                WHERE NOT EXISTS 
                 (
-                    SELECT COALESCE(MAX({last_run_timestamp}), '1960-01-01'::timestamp) 
-                    FROM {experiment_summary}
+                    SELECT 1 FROM {experiment_summary}
+                    WHERE
+                        {experiment_summary}.{most_recent_run} >= {run}.{run_timestamp} 
+                        AND {experiment_summary}.{experiment_id} = {run}.{experiment_id}
                 )
-                AND {summary_not_up_to_date}
-                {lock_order}
-                LIMIT 1
-            ) {bound}
-            INNER JOIN {run} ON 
-            (
-                {run}.{run_timestamp} >= {bound}.{last_run_timestamp} 
-                AND {run}.{experiment_id} >= {bound}.{last_experiment_id} 
-                AND {summary_not_up_to_date}
-                AND NOT EXISTS 
-                (
-                    SELECT 1 
-                    FROM {run} {run_backselect}
-                    WHERE 
-                        {run_backselect}.{experiment_id} = {run}.{experiment_id} 
-                        AND {run_backselect}.{run_timestamp} <= {run}.{run_timestamp} 
-                        AND {run_backselect}.{run_timestamp} >= {bound}.{last_run_timestamp} 
-                        AND {run_backselect}.{run_id} < {run}.{run_id}
-                )
-            )
+            ) {_selection}
             CROSS JOIN LATERAL 
             (
                 SELECT
@@ -160,30 +143,15 @@ FROM
                 FROM
                     {experiment}
                 WHERE
-                    {experiment}.{experiment_id} = {run}.{experiment_id}
+                    {experiment}.{experiment_id} = {_selection}.{experiment_id}
                 FOR UPDATE SKIP LOCKED
-                LIMIT 1
             ) {experiment}
-        WHERE {experiment}.{experiment_id} IS NOT NULL
-        {lock_order}
-        LIMIT {experiment_limit}
-    ) {selection}
-    LEFT JOIN {run} ON ({run}.{experiment_id} = {selection}.{experiment_id})
-    ORDER BY {selection}.{experiment_id};""").format(
-            summary_not_up_to_date=SQL("""
-NOT EXISTS
-(
-    SELECT 1 
-    FROM {experiment_summary}
-    WHERE 
-        {experiment_summary}.{experiment_id} = {run}.{experiment_id}
-        AND {experiment_summary}.{most_recent_run} >= {run}.{run_timestamp}
-)""").format(**format_args),
-            lock_order=SQL("""
-ORDER BY {run_timestamp} ASC, {experiment_id} ASC, {run_id} ASC""").format(
-                **format_args),
-            **format_args,
-        )
+            WHERE {experiment}.{experiment_id} IS NOT NULL
+            LIMIT {experiment_limit}
+        ) {_selection}
+    ) {_selection}
+    CROSS JOIN LATERAL (SELECT * FROM {run} WHERE {run}.{experiment_id} = {_selection}.{experiment_id}) {run}
+;""").format(**format_args)
 
         def make_update_progress_query(num_summaries: int) -> Composed:
             return SQL("""
@@ -209,7 +177,7 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                     summary_rows = []
                     experiment_id = None
                     runs = []
-                    last_run_timestamp = None
+                    # last_run_timestamp = None
                     most_recent_run = None
                     experiment_attrs = {}
                     experiment_properties = {}
@@ -224,16 +192,17 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                                     schema, self._compute_summary(runs)),
                             ))
                             runs.clear()
-
+                    # print(ClientCursor(connection).mogrify(lock_and_get_query))
                     cursor.execute(lock_and_get_query, binary=True)
                     for row in cursor.fetchall():
 
+                        
                         def value_of(column: Column) -> Any:
                             return row[result_columns[column]]
 
-                        if last_run_timestamp is None:
-                            last_run_timestamp = value_of(
-                                summary.last_run_timestamp)
+                        # if last_run_timestamp is None:
+                        #     last_run_timestamp = value_of(
+                        #         summary.last_run_timestamp)
 
                         row_uid = value_of(run.experiment_id)
                         if row_uid != experiment_id:
@@ -276,7 +245,7 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                             make_update_progress_query(num_summaries),
                             list(
                                 chain(*((
-                                    last_run_timestamp,
+                                    # last_run_timestamp,
                                     *summary_cols,
                                 ) for summary_cols in summary_rows))))
 
@@ -299,3 +268,119 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                 summary.epoch_subset,
             )
         ]
+
+
+'''
+SELECT
+    *
+FROM
+    (
+        SELECT DISTINCT experiment_id
+        FROM
+        (
+            SELECT experiment.experiment_id
+            FROM
+            (
+                SELECT run.experiment_id, run.run_timestamp FROM 
+                run
+                WHERE NOT EXISTS 
+                (
+                    SELECT (1) FROM "experiment_summary" 
+                    WHERE
+                        "experiment_summary"."most_recent_run" >= "run"."run_timestamp" 
+                        AND "experiment_summary"."experiment_id" = "run"."experiment_id"
+                )
+            ) "selection"
+            CROSS JOIN LATERAL 
+            (
+                SELECT
+                    *
+                FROM
+                    "experiment"
+                WHERE
+                    "experiment"."experiment_id" = "selection"."experiment_id"
+                FOR UPDATE SKIP LOCKED
+            ) "experiment"
+            WHERE "experiment".experiment_id IS NOT NULL
+            LIMIT 64
+        ) "_selection"
+    ) "_selection"
+    CROSS JOIN LATERAL (SELECT * FROM "run" WHERE "run"."experiment_id" = "_selection"."experiment_id") run
+    ;
+'''
+
+'''
+SELECT
+    "_selection"."last_run_timestamp","_selection"."last_experiment_id",
+    "_selection"."experiment_id","_selection"."experiment_attrs","_selection"."experiment_properties",
+    "run"."run_timestamp","run"."run_id","run"."job_id","run"."seed","run"."slurm_job_id","run"."task_version","run"."num_nodes","run"."num_cpus","run"."num_gpus","run"."gpu_memory","run"."host_name","run"."batch","run"."run_data","run"."run_history"
+FROM
+    (
+        SELECT 
+            "_bound".*,
+            "experiment".*
+        FROM 
+            (
+                SELECT "run_timestamp" "last_run_timestamp", "experiment_id" "last_experiment_id"
+                FROM "run" 
+                WHERE "run_timestamp" >= 
+                (
+                    SELECT COALESCE(MAX("last_run_timestamp"), '1960-01-01'::timestamp) 
+                    FROM "experiment_summary"
+                )
+                AND 
+NOT EXISTS
+(
+    SELECT 1 
+    FROM "experiment_summary"
+    WHERE 
+        "experiment_summary"."experiment_id" = "run"."experiment_id"
+        AND "experiment_summary"."most_recent_run" >= "run"."run_timestamp"
+)
+                
+ORDER BY "run_timestamp" ASC, "experiment_id" ASC, "run_id" ASC
+                LIMIT 1
+            ) "_bound"
+            INNER JOIN "run" ON 
+            (
+                "run"."run_timestamp" >= "_bound"."last_run_timestamp" 
+                AND "run"."experiment_id" >= "_bound"."last_experiment_id" 
+                AND 
+NOT EXISTS
+(
+    SELECT 1 
+    FROM "experiment_summary"
+    WHERE 
+        "experiment_summary"."experiment_id" = "run"."experiment_id"
+        AND "experiment_summary"."most_recent_run" >= "run"."run_timestamp"
+)
+                AND NOT EXISTS 
+                (
+                    SELECT 1 
+                    FROM "run" "_run_backselect"
+                    WHERE 
+                        "_run_backselect"."experiment_id" = "run"."experiment_id" 
+                        AND "_run_backselect"."run_timestamp" <= "run"."run_timestamp" 
+                        AND "_run_backselect"."run_timestamp" >= "_bound"."last_run_timestamp" 
+                        AND "_run_backselect"."run_id" < "run"."run_id"
+                )
+            )
+            CROSS JOIN LATERAL 
+            (
+                SELECT
+                    *
+                FROM
+                    "experiment"
+                WHERE
+                    "experiment"."experiment_id" = "run"."experiment_id"
+                FOR UPDATE SKIP LOCKED
+                LIMIT 1
+            ) "experiment"
+        WHERE "experiment"."experiment_id" IS NOT NULL
+        
+ORDER BY "run_timestamp" ASC, "experiment_id" ASC, "run_id" ASC
+        LIMIT 4
+    ) "_selection"
+    LEFT JOIN "run" ON ("run"."experiment_id" = "_selection"."experiment_id")
+    ORDER BY "_selection"."experiment_id";
+'''
