@@ -9,6 +9,7 @@ from psycopg.sql import SQL, Composed, Identifier, Literal
 from dmp.postgres_interface.element.column import Column
 from dmp.postgres_interface.element.column_group import ColumnGroup
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.update_experiment_summary_result import UpdateExperimentSummaryResult
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.task import Task
@@ -35,6 +36,7 @@ class UpdateExperimentSummary(Task):
         _summarizer_map[type_code] = target_type.summarize
 
     def __call__(self, worker: Worker, job: Job) -> TaskResult:
+        num_summaries = 0
         experiment_limit = 64
 
         schema = worker._schema
@@ -226,7 +228,7 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET
                                         summary in summary_rows))),
                         )
 
-        return TaskResult()
+        return UpdateExperimentSummaryResult(num_summaries)
 
     def _compute_summary(self, runs: List[ExperimentResultRecord]):
         experiment_type_code = runs[0].experiment_attrs[marshal_type_key]

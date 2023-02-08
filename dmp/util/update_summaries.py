@@ -3,6 +3,7 @@ import os
 from jobqueue.job import Job
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
+from dmp.postgres_interface.update_experiment_summary_result import UpdateExperimentSummaryResult
 
 from dmp.worker import Worker
 
@@ -35,35 +36,34 @@ from dmp.task.experiment.training_experiment.training_experiment import Training
 
 from dmp.marshaling import marshal
 
-# import pathos.multiprocessing as multiprocessing
+import pathos.multiprocessing as multiprocessing
 
 
 def main():
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('num_workers', type=int)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('num_workers', type=int)
     # parser.add_argument('block_size', type=int)
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
-    # num_workers = args.num_workers
+    num_workers = args.num_workers
     # block_size = args.block_size
 
-    # pool = multiprocessing.ProcessPool(num_workers)
-    # results = pool.uimap(do_work,
-    #                      ((i, block_size) for i in range(num_workers)))
-    # total_num_converted = sum(results)
-    # print(f'Done. Converted {total_num_converted} runs.')
-    # pool.close()
-    # pool.join()
-    # print('Complete.')
+    pool = multiprocessing.ProcessPool(num_workers)
+    results = pool.uimap(do_work, ((i, ) for i in range(num_workers)))
+    total_updated = sum(results)
+    print(f'Done. Summarized {total_updated} experiments.')
+    pool.close()
+    pool.join()
+    print('Complete.')
     do_work((0, 0))
 
 
 def do_work(args):
-    worker_number, block_size = args
+    worker_number = args[0]
 
     credentials = load_credentials('dmp')
-    
+
     worker = Worker(
         None,
         PostgresSchema(credentials),
@@ -71,12 +71,22 @@ def do_work(args):
         None,
         {},
     )
-    job = Job()
 
-    task = UpdateExperimentSummary()
+    total_updated = 0
+    while True:
+        job = Job()
 
-    task(worker, job)
+        task = UpdateExperimentSummary()
 
+        result: UpdateExperimentSummaryResult = task(worker,
+                                                     job)  # type: ignore
+        num_updated = result.num_experiments_updated
+        total_updated += num_updated
+        print(f'Updated {num_updated}.')
+        if num_updated == 0:
+            break
+
+    return total_updated
 
 
 if __name__ == "__main__":
