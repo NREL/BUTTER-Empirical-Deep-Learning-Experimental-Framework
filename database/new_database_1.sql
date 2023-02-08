@@ -397,8 +397,8 @@ ALTER TABLE run SET (parallel_workers = 16);
 
 CREATE INDEX ON run USING btree (experiment_id);
 
-CREATE INDEX ON run (run_timestamp ASC, experiment_id ASC);
-CREATE INDEX ON run USING btree (experiment_id, run_timestamp);
+create index on run using btree (run_timestamp ASC, experiment_id ASC, run_id ASC);
+create index on run using btree (experiment_id ASC, run_timestamp ASC, run_id ASC);
 
 CREATE INDEX ON run USING btree (job_id) WHERE job_id IS NOT NULL;
 CREATE INDEX ON run USING btree (slurm_job_id) WHERE slurm_job_id IS NOT NULL;
