@@ -17,8 +17,8 @@ class TestSetRecorder(Recorder, ABC):
         timestamp_recorder: Optional[TimestampRecorder],
     ):
         super().__init__()
-        self.test_sets: List[TestSetInfo] = test_sets
-        self.timestamp_recorder: Optional[
+        self._test_sets: List[TestSetInfo] = test_sets
+        self._timestamp_recorder: Optional[
             TimestampRecorder] = timestamp_recorder
 
     def accumulate_metrics(self, epoch: int) -> None:
@@ -26,15 +26,13 @@ class TestSetRecorder(Recorder, ABC):
         model: keras.Model = self.model  # type: ignore
 
         # evaluate on the additional test sets
-        for test_set in self.test_sets:
+        for test_set in self._test_sets:
             start_time = time.time()
             results = self._evaluate_set(test_set)
             end_time = time.time()
-            if self.timestamp_recorder is not None:
-                self.timestamp_recorder.record_interval(
-                    test_set.history_key +
-                    training_experiment_keys.keys.interval_suffix,
-                    end_time - start_time)
+            if self._timestamp_recorder is not None:
+                self._timestamp_recorder.record_time(
+                    test_set.history_key, end_time - start_time)
             for metric, result in zip(model.metrics_names, results):
                 self._accumulate_test_set_metric(test_set, metric, result)
 
@@ -44,7 +42,7 @@ class TestSetRecorder(Recorder, ABC):
             x=test_set.test_data,
             y=test_set.test_targets,
             sample_weight=test_set.sample_weights,
-            verbose=0, # type: ignore
+            verbose=0,  # type: ignore
         )
 
     def _accumulate_test_set_metric(

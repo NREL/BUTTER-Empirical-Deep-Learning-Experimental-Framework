@@ -1,6 +1,4 @@
-from collections import Iterable
-from typing import Any, List, Optional
-import tensorflow.keras as keras
+from typing import Any, List, Optional, Iterable
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
 
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo

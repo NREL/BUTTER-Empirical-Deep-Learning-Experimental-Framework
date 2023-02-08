@@ -1,5 +1,6 @@
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
-import math
+import os
+import subprocess
 
 tensorflow_type_key: str = 'class_name'
 tensorflow_config_key: str = 'config'
@@ -96,3 +97,17 @@ def flatten_dict(items: Mapping, connector: str):
             yield (prefix, target)
 
     yield from do_flatten('', items)
+
+def get_slurm_job_id() -> Optional[int]:
+        try:
+            return int(os.getenv("SLURM_JOB_ID"))  # type: ignore
+        except:
+            return None
+
+def get_git_hash() -> Optional[str]:
+    try:
+        return subprocess.check_output(
+            ["git", "describe", "--always"],
+            cwd=os.path.dirname(__file__)).strip().decode()
+    except:
+        return None

@@ -44,12 +44,11 @@ class PostgresAttrMap:
 
         attr = self._schema.attr
 
-        matching_clause = SQL(' and ').join(
-            (SQL("{attr}.{column_id} IS NOT DISTINCT FROM t.{column_id}"
-                 ).format(
-                     attr=attr.identifier,
-                     column_id=column_id,
-                 ) for column_id in attr.value.identifiers))
+        matching_clause = SQL(' and ').join((SQL(
+            "{attr}.{column_id} IS NOT DISTINCT FROM t.{column_id}").format(
+                attr=attr.identifier,
+                column_id=column_id,
+            ) for column_id in attr.value.identifiers))
 
         input_table = Identifier('_input')
         all_except_id = attr.all_except_id
@@ -68,7 +67,7 @@ WITH {input_table} as (
         FROM (VALUES ( {values} ) ) AS t ({key_columns})
     ) t
 ),
-{inserted_table} as (
+{inserted} as (
     INSERT INTO {attr} AS p ({key_columns})
     SELECT {key_columns}
     FROM {input_table}
@@ -80,7 +79,7 @@ WITH {input_table} as (
 )
 SELECT {attr_id}, {key_columns} from {input_table} WHERE {attr_id} IS NOT NULL
 UNION ALL
-SELECT * from {inserted_table}
+SELECT * from {inserted}
 ;""").format(
             input_table=input_table,
             attr_id=attr.attr_id.columns_sql,
@@ -194,7 +193,10 @@ SELECT * from {inserted_table}
         type_column_index = columns[attr.value_type]
         digest_column_index = columns[attr.digest]
 
-        value_type_to_column_map = attr.attribute_value_type_map
+        value_type_to_index_map = {
+            t: columns[column]
+            for t, column in attr.attribute_value_type_map.items()
+        }
 
         with CursorManager(self._schema.credentials, binary=True) as cursor:
             cursor.execute(
@@ -210,11 +212,13 @@ SELECT * from {inserted_table}
                 comparable_value = None
                 value = None
                 if value_type is not AttributeValueType.Null:
-                    value_column = value_type_to_column_map[value_type]
+                    value = self._recover_value_from_database(
+                        value_type,
+                        row[value_type_to_index_map[value_type]],
+                    )
+                    comparable_value = value
                     if value_type is AttributeValueType.JSON:
                         comparable_value = row[digest_column_index]
-                    else:
-                        comparable_value = value_column
 
                 self._register_attribute(
                     Attr(
@@ -231,8 +235,8 @@ SELECT * from {inserted_table}
     ) -> None:
         self._kind_type_value_map.setdefault(attr.kind, {}).setdefault(
             attr.value_type, {})[attr.comparable_value] = attr
-        self._kind_value_map.setdefault(
-            attr.kind, {})[attr.comparable_value] = attr
+        self._kind_value_map.setdefault(attr.kind,
+                                        {})[attr.comparable_value] = attr
         self._id_map[attr.attr_id] = attr
 
     def _make_comparable_value(

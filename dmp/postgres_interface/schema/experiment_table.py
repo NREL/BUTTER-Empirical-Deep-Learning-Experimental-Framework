@@ -7,7 +7,7 @@ from dmp.postgres_interface.element.table import Table
 
 @dataclass(frozen=True)
 class ExperimentTable(Table):
-    name: str = 'run'
+    name: str = 'experiment'
     experiment_id: Column = Column('experiment_id', 'uuid')
     experiment_attrs: Column = Column('experiment_attrs', 'integer[]')
     experiment_properties: Column = Column('experiment_properties', 'integer[]')

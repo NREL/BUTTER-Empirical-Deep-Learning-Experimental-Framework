@@ -35,7 +35,7 @@ from dmp.task.experiment.training_experiment.training_experiment import Training
 
 from dmp.marshaling import marshal
 
-import pathos.multiprocessing as multiprocessing
+# import pathos.multiprocessing as multiprocessing
 
 
 def main():

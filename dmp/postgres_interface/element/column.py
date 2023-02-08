@@ -7,8 +7,12 @@ from dmp.postgres_interface.element.a_column_group import AColumnGroup
 
 @dataclass(eq=True, frozen=True)
 class Column(AColumnGroup, Identifiable):
-    name: str
+    _name: str
     type_name: str
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def columns(self) -> Sequence['Column']:

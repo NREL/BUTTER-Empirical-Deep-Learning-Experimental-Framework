@@ -17,7 +17,7 @@ class ColumnGroup(AColumnGroup):
     def __getitem__(self, key: Union[Column, int]) -> Union[Column, int]:
         if isinstance(key, Column):
             if self._index is None:
-                self._index = {column: i for i, column in enumerate(self)}
+                self._index = {column: i for i, column in enumerate(self._columns)}
             return self._index[key]
         return self._columns[key]
 

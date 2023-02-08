@@ -1,20 +1,8 @@
-import itertools
-from numbers import Number
 from dataclasses import dataclass
 from operator import index
-import random
 from typing import Any, Dict, Iterable, Optional, Set, Type
-import os
-import platform
-import subprocess
-import uuid
 from jobqueue.job import Job
-import pandas
-import pandas.core.groupby.groupby
-import tensorflow
 import tensorflow.keras as keras
-import numpy
-import pyarrow
 
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
@@ -22,15 +10,11 @@ from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_config
 from dmp.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
-from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
-from dmp.task.experiment.experiment_task import ExperimentTask
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.recorder.test_set_history_recorder import TestSetHistoryRecorder
-from dmp.task.experiment.training_experiment import training_experiment_keys, training_experiment_summarizer
+from dmp.task.experiment.training_experiment.a_training_experiment import ATrainingExperiment
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
-from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
-from dmp.model.network_info import NetworkInfo
 from dmp.model.model_info import ModelInfo
 from dmp.task.experiment.recorder.zero_epoch_recorder import ZeroEpochRecorder
 
@@ -39,18 +23,9 @@ from dmp.model.model_spec import ModelSpec
 
 from dmp.worker import Worker
 
-for k, v in {
-        'display.max_rows': 9000,
-        'display.min_rows': 40,
-        'display.max_columns': None,
-        'display.width': 240,
-}.items():
-    pandas.set_option(k, v)
-
 
 @dataclass
-class TrainingExperiment(ExperimentTask):
-    precision: str  # floating point precision {'float16', 'float32', 'float64'}
+class TrainingExperiment(ATrainingExperiment):
     dataset: DatasetSpec  # migrate dataset stuff into here
     model: ModelSpec  # defines network
     fit: dict  # contains batch size, epochs, shuffle (migrate from run_config)
@@ -58,17 +33,9 @@ class TrainingExperiment(ExperimentTask):
     loss: Optional[dict]  # set to None for runtime determination
     early_stopping: Optional[dict]  # direct migration
 
-    record_post_training_metrics: bool  # new default false
-    record_times: bool
-    record_model: Optional[Any]
-    record_metrics: Optional[Any]
-
-    keys = training_experiment_keys.keys
-    summarizer = training_experiment_summarizer.summarizer
-
     @property
     def version(self) -> int:
-        return 10
+        return 11
 
     def __call__(self, worker: Worker, job: Job, *args,
                  **kwargs) -> ExperimentResultRecord:
@@ -90,19 +57,6 @@ class TrainingExperiment(ExperimentTask):
             model.network,
             history,
         )
-
-    @classmethod
-    def summarize(
-        cls: Type['TrainingExperiment'],
-        results: Sequence[ExperimentResultRecord],
-    ) -> ExperimentSummaryRecord:
-        return cls.summarizer.summarize(cls, results)
-
-    def _set_random_seeds(self) -> None:
-        seed: int = self.seed
-        numpy.random.seed(seed)
-        tensorflow.random.set_seed(seed)
-        random.seed(seed)
 
     def _load_and_prepare_dataset(self) -> PreparedDataset:
         return PreparedDataset(
@@ -196,26 +150,6 @@ class TrainingExperiment(ExperimentTask):
 
         return metrics
 
-    def _make_model(self, worker, model_spec: ModelSpec) -> ModelInfo:
-        return self._make_model_from_network(
-            worker,
-            self._make_network(model_spec),
-        )
-
-    def _make_network(self, model_spec: ModelSpec) -> NetworkInfo:
-        return model_spec.make_network()
-
-    def _make_model_from_network(self, worker, network: NetworkInfo):
-        if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
-            keras.backend.set_floatx('float32')
-            keras.mixed_precision.set_global_policy(
-                keras.mixed_precision.Policy(self.precision))
-        else:
-            tensorflow.keras.backend.set_floatx(self.precision)
-        with worker.strategy.scope() as s:  # type: ignore
-            # tensorflow.config.optimizer.set_jit(True)
-            return make_keras_model_from_network(network)
-
     def _compile_model(
         self,
         dataset: PreparedDataset,
@@ -230,9 +164,12 @@ class TrainingExperiment(ExperimentTask):
         )
 
     def _fit_model(
-            self, fit_config: Dict[str, Any], dataset: PreparedDataset,
-            model: ModelInfo,
-            callbacks: List[Optional[keras.callbacks.Callback]]) -> Dict:
+        self,
+        fit_config: Dict[str, Any],
+        dataset: PreparedDataset,
+        model: ModelInfo,
+        callbacks: List[Optional[keras.callbacks.Callback]],
+    ) -> Dict:
         callbacks = [cb for cb in callbacks if cb is not None]
 
         # setup training, validation, and test datasets
@@ -245,12 +182,16 @@ class TrainingExperiment(ExperimentTask):
                                           dataset.validation)
         train_set_info = TestSetInfo(self.keys.train, dataset.train)
 
-        timestamp_recorder = TimestampRecorder() if self.record_times else None
+        timestamp_recorder = TimestampRecorder(
+            '_' + self.keys.interval_suffix,
+            self.keys.epoch_start_time_ms,
+            self.keys.epoch_time_ms,
+        ) if self.record.times else None
         zero_epoch_recorder = ZeroEpochRecorder(
             [train_set_info, validation_set_info, test_set_info], None)
 
         additional_test_sets = [test_set_info]
-        if self.record_post_training_metrics:
+        if self.record.post_training_metrics:
             additional_test_sets.append(
                 TestSetInfo(self.keys.trained, dataset.train))
 
@@ -278,7 +219,7 @@ class TrainingExperiment(ExperimentTask):
             ])
         history_callbacks.append(history)
 
-        if self.record_post_training_metrics:
+        if self.record.post_training_metrics:
             # copy zero epoch recorder's train_ metrics to trained_ metrics
             self.remap_key_prefixes(zero_epoch_recorder.history, [
                 (self.keys.train + '_', self.keys.trained + '_', False),
@@ -293,124 +234,3 @@ class TrainingExperiment(ExperimentTask):
     def _make_early_stopping_callback(
             self) -> Optional[keras.callbacks.EarlyStopping]:
         return make_keras_instance(self.early_stopping)
-
-    def _merge_histories(
-        self,
-        histories: Iterable[Union[keras.callbacks.History, TestSetRecorder]],
-    ) -> Dict[str, Any]:
-        epoch_set = set()
-        metric_map = {}
-
-        for history in histories:
-            for metric, metric_history in history.history.items():
-                for epoch, value in zip(history.epoch, metric_history):
-                    epoch += 1
-                    epoch_set.add(epoch)
-                    metric_map.setdefault(metric, {})[epoch] = value
-
-        # offset epoch numbers by 1 (untrained network becomes the 0th epoch)
-        epochs = sorted(epoch_set)
-        merged_history = {self.keys.epoch: epochs}
-        for metric, epoch_map in metric_map.items():
-            merged_history[metric] = [
-                epoch_map.get(epoch, None) for epoch in epochs
-            ]
-        return merged_history
-
-    def _concatenate_histories(
-        self,
-        target: Dict[str, Any],
-        source: Dict[str, Any],
-    ) -> None:
-        for metric, metric_history in source.items():
-            target.setdefault(metric, []).extend(metric_history)
-
-    def _make_result_record(
-        self,
-        worker_info: Dict[str, Any],
-        job_id: uuid.UUID,
-        dataset: PreparedDataset,
-        network: NetworkInfo,
-        history: Dict[str, Any],
-    ) -> ExperimentResultRecord:
-
-        experiment_parameters = self.get_parameters()
-        experiment_parameters.update({
-            'ml_task':
-            dataset.ml_task.value,
-            'num_free_parameters':
-            network.num_free_parameters,
-            # 'model_structure':
-            # network.structure,
-            'input_shape':
-            dataset.input_shape,
-            'output_shape':
-            dataset.output_shape,
-            'train_set_size':
-            dataset.train_size,
-            'test_set_size':
-            dataset.test_size,
-            'validation_set_size':
-            dataset.validation_size,
-            'data_set_size':
-            dataset.train_size + dataset.test_size + dataset.validation_size
-        })
-
-        for k, v in network.description.items():
-            experiment_parameters[f'model_{k}'] = v
-
-        run_data = {
-            'job_id': job_id,
-            'run_id': job_id,
-            'python_version': str(platform.python_version()),
-            'platform': str(platform.platform()),
-            'tensorflow_version': str(tensorflow.__version__),
-            'host_name': str(platform.node()),
-            'slurm_job_id': self._get_slurm_id(),
-            'git_hash': self._get_git_hash(),
-        }
-
-        run_data.update(worker_info)
-
-        for key in ('seed', 'precision', 'batch', 'task_version',
-                    'record_post_training_metrics', 'record_times',
-                    'record_model', 'record_metrics'):
-            run_data[key] = experiment_parameters.pop(key, None)
-
-        extended_history = self._extract_extended_history(history)
-
-        return ExperimentResultRecord(
-            experiment_parameters,
-            {},
-            run_data,
-            pandas.DataFrame(history),
-            None if len(extended_history) == 0 else
-            pandas.DataFrame(extended_history),
-        )
-
-    def _extract_extended_history(
-        self,
-        history: Dict[str, Union[List, numpy.ndarray]],
-    ) -> Dict[str, Union[List, numpy.ndarray]]:
-        extended_history = {}
-        for k in self.keys.extended_history_columns:
-            for p in self.keys.data_set_prefixes:
-                column = p + k
-                v = history.pop(column, None)
-                if v is not None:
-                    extended_history[column] = v
-        return extended_history
-
-    def _get_slurm_id(self) -> Optional[int]:
-        try:
-            return int(os.getenv("SLURM_JOB_ID"))  # type: ignore
-        except:
-            return None
-
-    def _get_git_hash(self) -> Optional[str]:
-        try:
-            return subprocess.check_output(
-                ["git", "describe", "--always"],
-                cwd=os.path.dirname(__file__)).strip().decode()
-        except:
-            return None

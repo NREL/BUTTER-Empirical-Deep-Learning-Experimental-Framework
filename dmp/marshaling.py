@@ -76,6 +76,7 @@ from dmp.layer.zeroize import Zeroize
 from dmp.layer.dense_conv import DenseConv
 from dmp.layer.separable_conv import SeparableConv
 
+# Layers:
 register_types([
     MaxPool,
     AvgPool,
@@ -135,6 +136,7 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
 register_types((OverlayTransfer, ))
 
 # Other types:
+from dmp.task.experiment.training_experiment.experiment_record_settings import ExperimentRecordSettings
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.recorder.test_set_history_recorder import TestSetHistoryRecorder
 from dmp.dataset.dataset_spec import DatasetSpec
@@ -142,6 +144,7 @@ from dmp.dataset.ml_task import MLTask
 from dmp.model.network_info import NetworkInfo
 
 register_types((
+    ExperimentRecordSettings,
     ExperimentResultRecord,
     TestSetHistoryRecorder,
     DatasetSpec,

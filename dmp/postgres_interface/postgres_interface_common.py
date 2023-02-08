@@ -10,4 +10,4 @@ def json_dump_function(value: Any) -> str:
 set_json_dumps(json_dump_function)
 
 sql_comma = SQL(',')  # sql comma delimiter
-sql_placeholder = SQL('%s')  # sql placeholders / references
+sql_placeholder = SQL('%b')  # sql placeholders / references

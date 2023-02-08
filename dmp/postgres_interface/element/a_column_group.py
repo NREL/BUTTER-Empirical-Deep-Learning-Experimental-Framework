@@ -32,7 +32,7 @@ class AColumnGroup(Iterable['Column']):
 
     @property
     def identifiers(self) -> Sequence[Identifier]:
-        return tuple((Identifier(column.name) for column in self.columns))
+        return tuple((column.identifier for column in self.columns))
 
     @property
     def columns_sql(self) -> Composed:
@@ -76,5 +76,5 @@ class AColumnGroup(Iterable['Column']):
         return result
 
 
-from dmp.postgres_interface.element.column_group import ColumnGroup
-from dmp.postgres_interface.element.column import Column
+# from dmp.postgres_interface.element.column import Column
+# from dmp.postgres_interface.element.column_group import ColumnGroup

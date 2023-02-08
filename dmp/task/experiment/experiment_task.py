@@ -1,7 +1,6 @@
 
 from abc import ABC
-from collections import Iterable
-from typing import Any, Dict, List, Tuple, Type, Union
+from typing import Any, Dict, Iterable, List, Tuple, Type, Union
 from dataclasses import dataclass
 from dmp.task.task import Task
 from dmp.common import keras_type_key, marshal_type_key

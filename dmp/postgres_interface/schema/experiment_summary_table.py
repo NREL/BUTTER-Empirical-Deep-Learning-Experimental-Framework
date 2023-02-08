@@ -17,13 +17,4 @@ class ExperimentSummaryTable(Table):
     epoch_subset: Column = Column('epoch_subset', 'bytea')
 
 
-    @property
-    def data(self)->AColumnGroup:
-        return ColumnGroup(
-            self.by_epoch,
-            self.by_loss,
-            self.by_progress,
-            self.epoch_subset,
-        )
-
 
