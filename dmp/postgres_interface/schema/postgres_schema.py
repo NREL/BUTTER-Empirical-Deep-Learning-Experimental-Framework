@@ -88,6 +88,7 @@ class PostgresSchema:
             preserve_index=False,
         )
 
+        data = None
         with io.BytesIO() as buffer:
             pyarrow_file = pyarrow.PythonFile(buffer)
             pyarrow.parquet.write_table(
@@ -102,7 +103,10 @@ class PostgresSchema:
                 data_page_version='2.0',
                 write_statistics=False,
             )
-            return buffer.getvalue()
+            data = buffer.getvalue()
+        
+        df = self.convert_bytes_to_dataframe(data)
+        return data
 
     def convert_bytes_to_dataframe(
         self,

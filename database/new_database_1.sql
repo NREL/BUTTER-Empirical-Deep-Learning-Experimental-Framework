@@ -387,12 +387,12 @@ CREATE TABLE run
     PRIMARY KEY (run_id)
 );
 
-ALTER TABLE run SET (toast_tuple_target = 256)
+ALTER TABLE run SET (toast_tuple_target = 128);
 
 ALTER TABLE run ALTER COLUMN run_history SET storage EXTERNAL;
 ALTER TABLE run ALTER COLUMN run_extended_history SET storage EXTERNAL;
 
-ALTER TABLE run SET (fillfactor = 95);
+ALTER TABLE run SET (fillfactor = 100);
 ALTER TABLE run SET (parallel_workers = 16);
 
 CREATE INDEX ON run USING btree (experiment_id);

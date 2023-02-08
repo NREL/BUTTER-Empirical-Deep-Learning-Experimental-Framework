@@ -26,9 +26,9 @@ class PostgresCompressedResultLogger(ExperimentResultLogger):
 
         experiment = self._schema.experiment
         run = self._schema.run
-        experiment = experiment.all
-        run = run.insertion_columns
-        self._values_columns = experiment + run
+        experiment_all = experiment.all
+        insertion_columns = run.insertion_columns
+        self._values_columns = experiment_all + insertion_columns
         input_table = Identifier('_input')
 
         self._log_multiple_query_prefix = SQL("""
@@ -66,13 +66,14 @@ SELECT
 FROM {input_table}
 ON CONFLICT DO NOTHING
 ;""").format(
-            experiment_columns=experiment.columns_sql,
-            run_value_columns=run.columns_sql,
+            experiment_columns=experiment_all.columns_sql,
+            run_value_columns=insertion_columns.columns_sql,
             inserted_experiment_table=Identifier('_inserted'),
             experiment=experiment.identifier,
             run=run.identifier,
             experiment_id=experiment.experiment_id.identifier,
             run_experiment_id=run.experiment_id.identifier,
+            input_table=input_table,
         )
 
     def log(self,
@@ -98,7 +99,6 @@ ON CONFLICT DO NOTHING
         run_value_columns = schema.run.values
         run_values = []
         for record in records:
-
             experiment_column_values = value_columns.extract_column_values(
                 record.experiment_attrs,
                 record.experiment_properties,

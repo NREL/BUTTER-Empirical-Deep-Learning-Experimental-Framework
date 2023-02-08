@@ -3,6 +3,7 @@ from itertools import chain
 
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
+from dmp.task.experiment.training_experiment.experiment_record_settings import ExperimentRecordSettings
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -254,11 +255,9 @@ SELECT * from result
                 # traceback.print_exc()
                 errors[old_experiment_id] = e
 
-        
         num_converted += len(result_records)
 
-        error_list = sorted([(eid, str(e))
-                                for eid, e in errors.items()])
+        error_list = sorted([(eid, str(e)) for eid, e in errors.items()])
         with ConnectionManager(credentials) as connection:
             result_logger.log(result_records, connection)
 
@@ -273,11 +272,9 @@ SELECT * from result
                         error_message
                         )
                     WHERE m.experiment_id = v.experiment_id;
-                    """).format(
-                        placeholders = sql_comma.join([SQL('(%s,%s)')] * len(error_list))
-                    ), 
-                        list(chain(*list(error_list)))
-                    )
+                    """).format(placeholders=sql_comma.join([SQL('(%s,%s)')] *
+                                                            len(error_list))),
+                    list(chain(*list(error_list))))
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(
@@ -436,10 +433,12 @@ def convert_run(old_parameter_map, result_logger, row,
             optimizer=optimizer,
             loss=None,
             early_stopping=None,
-            record_post_training_metrics=False,
-            record_times=False,
-            record_model=None,
-            record_metrics=None,
+            record=ExperimentRecordSettings(
+                post_training_metrics=False,
+                times=False,
+                model=None,
+                metrics=None,
+            ),
         )
 
         shapes = dataset_shape_map.get(dataset_name)

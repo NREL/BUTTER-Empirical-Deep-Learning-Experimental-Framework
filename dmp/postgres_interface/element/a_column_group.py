@@ -9,6 +9,7 @@ from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_plac
 class AColumnGroup(Iterable['Column']):
 
     def __add__(self, other: 'AColumnGroup') -> 'ColumnGroup':
+        from dmp.postgres_interface.element.column_group import ColumnGroup
         return ColumnGroup(self, other)
 
     @abstractmethod
@@ -62,7 +63,7 @@ class AColumnGroup(Iterable['Column']):
         result = []
         second_source = {} if second_source is None else second_source
         for column in self.columns:
-            value = second_source.pop(column.name)
+            value = second_source.pop(column.name, None)
             if column.name in source:
                 value = source.pop(column.name)
             type_name = column.type_name

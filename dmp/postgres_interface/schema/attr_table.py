@@ -47,6 +47,7 @@ class AttrTable(Table):
             self.value_float,
             self.value_str,
             self.value_json,
+            self.digest,
         )
 
     @property
