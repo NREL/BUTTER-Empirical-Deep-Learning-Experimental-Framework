@@ -252,8 +252,8 @@ SELECT * from result
                                 connection))
             except Exception as e:
                 num_excepted += 1
-                print(f'failed on Exception: {e}', flush=True)
-                traceback.print_exc()
+                # print(f'failed on Exception: {e}', flush=True)
+                # traceback.print_exc()
                 errors[old_experiment_id] = e
 
         num_converted += len(result_records)
