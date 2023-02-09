@@ -14,7 +14,7 @@ from psycopg.types.json import Jsonb, Json
 import pyarrow
 import pyarrow.parquet
 
-from dmp.parquet_util import make_pyarrow_schema_from_panads
+from dmp.parquet_util import make_pyarrow_table_from_dataframe
 from dmp.postgres_interface.attribute_value_type import AttributeValueType
 
 from dmp.postgres_interface.postgres_interface_common import json_dump_function
@@ -75,21 +75,17 @@ class PostgresSchema:
                           pandas.core.indexes.range.RangeIndex):
             dataframe = dataframe.reset_index()
 
-        schema, use_byte_stream_split = make_pyarrow_schema_from_panads(
-            dataframe)
+        # for column in dataframe.columns:
+        #     print(f'col: {column} type: {dataframe[column].dtype} nptype: {dataframe[column].to_numpy().dtype} ')
 
         # Must do this to avoid a bug in pyarrow reading nulls in
         # byte stream split columns.
         # see https://github.com/apache/arrow/issues/28737
         # and https://issues.apache.org/jira/browse/ARROW-13024
-        for c in use_byte_stream_split:
-            dataframe[c].fillna(value=numpy.nan, inplace=True)
+        # for c in use_byte_stream_split:
+        #     dataframe[c].fillna(value=numpy.nan, inplace=True)
 
-        table = pyarrow.Table.from_pandas(
-            dataframe,
-            schema=schema,
-            preserve_index=False,
-        )
+        table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
 
         data = None
         with io.BytesIO() as buffer:

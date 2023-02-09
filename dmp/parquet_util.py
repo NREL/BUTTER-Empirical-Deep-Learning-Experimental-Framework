@@ -5,11 +5,25 @@ from numpy import ndarray
 import numpy
 
 
-def make_pyarrow_schema_from_panads(
-    dataframe: pandas.DataFrame, ) -> Tuple[pyarrow.Schema, List[str]]:
-    return make_pyarrow_schema_from_dict([(str(column),
-                                           dataframe[column].to_numpy())
-                                          for column in dataframe.columns])
+
+
+def make_pyarrow_table_from_dataframe(
+    dataframe: pandas.DataFrame, 
+    ) -> Tuple[pyarrow.Table, List[str]]:
+
+    columns = list(dataframe.columns)
+    
+    def to_numpy(column):
+        array = dataframe[column].to_numpy()
+        dtype = array.dtype
+        if numpy.issubdtype(dtype, numpy.floating):
+            array = array.astype(numpy.float32)
+        return array
+
+    numpy_arrays = [to_numpy(column) for column in columns]
+    schema, use_byte_stream_split = make_pyarrow_schema_from_dict(zip(columns, numpy_arrays))# type: ignore
+    return pyarrow.Table.from_arrays(numpy_arrays, schema=schema), use_byte_stream_split
+ 
 
 
 def make_pyarrow_schema_from_dict(
@@ -20,16 +34,15 @@ def make_pyarrow_schema_from_dict(
     use_byte_stream_split = []
 
     for name, values in columns:
-        pyarrow_type = get_pyarrow_type_mapping(values)
+        pyarrow_type, nullable, use_byte_stream_split_ = get_pyarrow_type_mapping(values)
+        
         if pyarrow_type is None:
             continue
 
-        if pyarrow_type == pyarrow.float16()\
-            or pyarrow_type == pyarrow.float32()\
-            or pyarrow_type == pyarrow.float64():
+        if use_byte_stream_split_:
             use_byte_stream_split.append(name)
 
-        fields.append(pyarrow.field(name, pyarrow_type))
+        fields.append(pyarrow.field(name, pyarrow_type, nullable=nullable))
     return pyarrow.schema(fields), use_byte_stream_split
 
 
@@ -38,43 +51,54 @@ def _check_type(t, x):
 
 
 def get_pyarrow_type_mapping(
-    values: Union[list, ndarray], ) -> pyarrow.DataType:
+    values: Union[list, ndarray], ) -> Tuple[pyarrow.DataType, bool, bool]:
 
+    nullable = any((v is None for v in values))
+    use_byte_stream_split = False
+    
     t = None
     if isinstance(values, ndarray):
         t = values.dtype
     else:
         if len(values) == 0:
-            return None
+            return None, nullable, use_byte_stream_split
         t = type(values[0])
 
+    dst_type = t
     if _check_type(t, bool) or numpy.issubdtype(t, bool):
-        return pyarrow.bool_()
+        dst_type= pyarrow.bool_()
     elif _check_type(t, int) or numpy.issubdtype(t, numpy.integer):
-        hi = numpy.max(values)
-        lo = numpy.min(values)
-        if hi <= (2**7 - 1) and lo >= (-2**7):
-            return pyarrow.int8()
-        if hi <= (2**15 - 1) and lo >= (-2**15):
-            return pyarrow.int16()
-        if hi <= (2**31 - 1) and lo >= (-2**31):
-            return pyarrow.int32()
-        return pyarrow.int64()
+        hi = max(filter(lambda v: v is not None, values))
+        lo = min(filter(lambda v: v is not None, values))
+        if hi < (2**7 - 1) and lo > (-2**7):
+            dst_type= pyarrow.int8()
+        elif hi < (2**15 - 1) and lo > (-2**15):
+            dst_type = pyarrow.int16()
+        elif hi < (2**31 - 1) and lo > (-2**31):
+            dst_type = pyarrow.int32()
+        else:
+            dst_type = pyarrow.int64()
+    
     elif _check_type(t, float) or numpy.issubdtype(t, numpy.floating):
-        return pyarrow.float32()
+        dst_type = pyarrow.float32()
+        nullable = False
     elif _check_type(t, str)\
         or numpy.issubdtype(t, numpy.string_)\
         or numpy.issubdtype(t, numpy.str_):
-        return pyarrow.string
+        dst_type = pyarrow.string()
     elif _check_type(t, list):
         element_type = next((et for et in (get_pyarrow_type_mapping(v)
                                            for v in values) if et is not None),
                             None)
         if element_type is None:
-            return None
-        return pyarrow.list_(get_pyarrow_type_mapping(element_type))
+            return None, nullable, use_byte_stream_split
+        else:
+            dst_type = pyarrow.list_(get_pyarrow_type_mapping(element_type[0]))
 
-    raise NotImplementedError(f'Unhandled type {t}.')
+    else:
+        raise NotImplementedError(f'Unhandled type {t}.')
+    
+    return dst_type, nullable, use_byte_stream_split
 
 
 def truncate_least_significant_bits(
