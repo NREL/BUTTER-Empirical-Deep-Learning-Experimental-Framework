@@ -434,6 +434,18 @@ CREATE INDEX ON experiment_summary USING btree (experiment_id, most_recent_run);
 -- CREATE INDEX ON experiment_summary USING hash (last_updated);
 
 
+--- TO REQUEUE lost experiment_summaries:
+
+UPDATE experiment_summary set 
+    last_updated = '1960-01-01'::timestamp
+WHERE
+    by_epoch IS NULL
+    OR
+    (
+    SELECT MAX(run_timestamp) FROM run WHERE run.experiment_id = experiment_summary.experiment_id
+    ) > LEAST(experiment_summary.last_updated, experiment_summary.most_recent_run);
+
+
 
 --- TO MOVE attrs to properties
 
