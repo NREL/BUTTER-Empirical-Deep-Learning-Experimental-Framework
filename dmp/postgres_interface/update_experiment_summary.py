@@ -37,7 +37,7 @@ class UpdateExperimentSummary(Task):
 
     def __call__(self, worker: Worker, job: Job) -> TaskResult:
         num_summaries = 0
-        experiment_limit = 4
+        experiment_limit = 1
 
         schema = worker._schema
         experiment = schema.experiment
@@ -135,6 +135,7 @@ FROM
                         {experiment_summary}.{most_recent_run} >= {run}.{run_timestamp} 
                         AND {experiment_summary}.{experiment_id} = {run}.{experiment_id}
                 )
+                ORDER BY {experiment_id}
             ) {_selection}
             CROSS JOIN LATERAL 
             (

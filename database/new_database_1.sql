@@ -65,10 +65,9 @@ update experiment_migration m set
     migrated = False,
     error_message = NULL
     WHERE EXISTS (select 1 from run_ r where r.experiment_id = m.experiment_id)
-    AND NOT EXISTS (select 1 from experiment e where e.experiment_id = m.experiment_id)
+    AND NOT EXISTS (select 1 from experiment e where e.old_experiment_id = m.experiment_id)
     and error_message NOT LIKE 'failed on Could not find%' 
-    and error_message NOT LIKE 'wrong number%wide_first_%'
-    AND error_message NOT LIKE 'wrong number%poker%';
+    and error_message NOT LIKE 'wrong number%';
 
 update experiment_migration m
     set migrated = FALSE
