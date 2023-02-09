@@ -100,6 +100,7 @@ class UpdateExperimentSummary(Task):
                  for c in summary_columns.identifiers)),
             experiment_limit=Literal(experiment_limit),
             most_recent_run=summary.most_recent_run.identifier,
+            summary_exists=Identifier('summary_exists'),
             experiment_locked=Identifier('_experiment_locked'),
             summary_locked=Identifier('_summary_locked'),
             _claim=Identifier('_claim'),
@@ -117,7 +118,8 @@ WITH {_selection} AS
         FROM
         (
             SELECT
-                {run}.{experiment_id}
+                {run}.{experiment_id},
+                {experiment_summary}.{experiment_id} {summary_exists}
             FROM
                 (
                     SELECT {experiment_id}, {run_timestamp} FROM {run} ORDER BY {run_timestamp} DESC
@@ -125,30 +127,30 @@ WITH {_selection} AS
                 LEFT JOIN {experiment_summary} ON
                 (
                     {experiment_summary}.{experiment_id} = {run}.{experiment_id}
-                    AND
-                    {experiment_summary}.{last_updated} > {run}.{run_timestamp}
                 )
             WHERE
                 {experiment_summary}.{experiment_id} IS NULL
+                OR {experiment_summary}.{last_updated} > {run}.{run_timestamp}
         ) {_selection}
         LEFT JOIN LATERAL
         (
             SELECT 
-                TRUE {summary_locked} 
+                {experiment_summary}.{experiment_id} {summary_locked} 
             FROM 
                 {experiment_summary}
             WHERE
-                {experiment_summary}.{experiment_id} = {_selection}.{experiment_id}
+                {_selection}.{summary_exists} IS NOT NULL
+                AND {experiment_summary}.{experiment_id} = {_selection}.{experiment_id}
             FOR UPDATE SKIP LOCKED
         ) {summary_locked} ON TRUE
         LEFT JOIN LATERAL
         (
             SELECT 
-                TRUE {experiment_locked}
+                {experiment}.{experiment_id} {experiment_locked}
             FROM 
                 {experiment}
             WHERE
-                {summary_locked}.{summary_locked} IS NULL
+                {_selection}.{summary_exists} IS NULL
                 AND {experiment}.{experiment_id} = {_selection}.{experiment_id}
             FOR UPDATE SKIP LOCKED
         ) {experiment_locked} ON TRUE
