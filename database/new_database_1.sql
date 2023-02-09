@@ -396,8 +396,8 @@ ALTER TABLE run SET (parallel_workers = 16);
 
 CREATE INDEX ON run USING btree (experiment_id);
 
-create index on run using btree (run_timestamp ASC, experiment_id ASC, run_id ASC);
-create index on run using btree (experiment_id ASC, run_timestamp ASC, run_id ASC);
+CREATE INDEX ON run USING btree (experiment_id, run_timestamp);
+CREATE INDEX ON run USING btree (run_timestamp DESC, experiment_id);
 
 CREATE INDEX ON run USING btree (job_id) WHERE job_id IS NOT NULL;
 CREATE INDEX ON run USING btree (slurm_job_id) WHERE slurm_job_id IS NOT NULL;
@@ -413,7 +413,7 @@ CREATE INDEX ON run USING gin (run_data);
 CREATE TABLE experiment_summary
 (
     experiment_id uuid,
-    last_run_timestamp timestamp,
+    last_updated timestamp,
     most_recent_run timestamp,
     by_epoch bytea,
     by_loss bytea,
@@ -421,13 +421,16 @@ CREATE TABLE experiment_summary
     PRIMARY KEY (experiment_id)
 );
 
+alter table experiment_summary alter column claim_time set default '1960-01-01'::timestamp;
+
 ALTER TABLE experiment_summary ALTER COLUMN by_epoch SET STORAGE EXTERNAL;
 ALTER TABLE experiment_summary ALTER COLUMN by_loss SET STORAGE EXTERNAL;
 ALTER TABLE experiment_summary ALTER COLUMN by_progress SET STORAGE EXTERNAL;
 
-CREATE INDEX ON experiment_summary USING btree (experiment_id, most_recent_run);
-CREATE INDEX ON experiment_summary USING btree (most_recent_run, experiment_id);
-CREATE INDEX ON experiment_summary USING btree (last_run_timestamp DESC);
+CREATE INDEX ON experiment_summary USING btree (last_updated DESC, experiment_id);
+CREATE INDEX ON experiment_summary USING btree (experiment_id, last_updated);
+
+-- CREATE INDEX ON experiment_summary USING btree (last_run_timestamp DESC);
 
 -- CREATE INDEX ON experiment_summary USING hash (last_updated);
 

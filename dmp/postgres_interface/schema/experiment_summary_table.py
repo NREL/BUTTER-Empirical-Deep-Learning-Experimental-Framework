@@ -9,7 +9,7 @@ from dmp.postgres_interface.element.table import Table
 class ExperimentSummaryTable(Table):
     name: str = 'experiment_summary'
     experiment_id: Column = Column('experiment_id', 'uuid')
-    last_run_timestamp: Column = Column('last_run_timestamp', 'timestamp')
+    last_updated: Column = Column('last_updated', 'timestamp')
     most_recent_run: Column = Column('most_recent_run', 'timestamp')
     by_epoch: Column = Column('by_epoch', 'bytea')
     by_loss: Column = Column('by_loss', 'bytea')
