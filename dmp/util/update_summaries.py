@@ -73,7 +73,8 @@ def do_work(args):
     )
 
     total_updated = 0
-    while True:
+    num_tries = 0
+    while num_tries < 256:
         job = Job()
 
         task = UpdateExperimentSummary()
@@ -84,7 +85,9 @@ def do_work(args):
         total_updated += num_updated
         print(f'Updated {num_updated}.')
         if num_updated == 0:
-            break
+            num_tries += 1
+        else:
+            num_tries = 0
 
     return total_updated
 
