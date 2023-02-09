@@ -428,13 +428,15 @@ ALTER TABLE experiment_summary ALTER COLUMN by_loss SET STORAGE EXTERNAL;
 ALTER TABLE experiment_summary ALTER COLUMN by_progress SET STORAGE EXTERNAL;
 
 CREATE INDEX ON experiment_summary USING btree (last_updated DESC, experiment_id);
-CREATE INDEX ON experiment_summary USING btree (experiment_id, last_updated);
-CREATE INDEX ON experiment_summary USING btree (experiment_id, most_recent_run);
-
--- CREATE INDEX ON experiment_summary USING hash (last_updated);
+-- CREATE INDEX ON experiment_summary (experiment_id) INCLUDE (last_updated, most_recent_run);
+-- CREATE INDEX ON experiment_summary USING btree (experiment_id, last_updated);
+-- CREATE INDEX ON experiment_summary USING btree (experiment_id, most_recent_run);
 
 
 --- TO REQUEUE lost experiment_summaries:
+
+insert into experiment_summary (experiment_id)
+select experiment_id from experiment;
 
 UPDATE experiment_summary set 
     last_updated = '1960-01-01'::timestamp

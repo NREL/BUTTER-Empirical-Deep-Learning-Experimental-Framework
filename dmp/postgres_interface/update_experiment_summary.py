@@ -129,9 +129,12 @@ WITH {_selection} AS
                     {experiment_summary}.{experiment_id} = {run}.{experiment_id}
                 )
             WHERE
-                {experiment_summary}.{experiment_id} IS NULL
+                {experiment_summary}.{last_updated} IS NULL
                 OR {experiment_summary}.{last_updated} < {run}.{run_timestamp}
-                OR {experiment_summary}.{last_updated} < (CURRENT_TIMESTAMP - '30 minutes'::interval)
+                OR (
+                    {experiment_summary}.{most_recent_run} < {run}.{run_timestamp}
+                    AND {experiment_summary}.{last_updated} < (CURRENT_TIMESTAMP - '30 minutes'::interval)
+                )
         ) {_selection}
         LEFT JOIN LATERAL
         (
