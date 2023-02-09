@@ -395,6 +395,7 @@ ALTER TABLE run SET (fillfactor = 100);
 ALTER TABLE run SET (parallel_workers = 16);
 
 CREATE INDEX ON run USING btree (experiment_id);
+CREATE INDEX ON run USING hash (experiment_id);
 
 CREATE INDEX ON run USING btree (experiment_id, run_timestamp);
 CREATE INDEX ON run USING btree (run_timestamp DESC, experiment_id);
@@ -418,6 +419,7 @@ CREATE TABLE experiment_summary
     by_epoch bytea,
     by_loss bytea,
     by_progress bytea,
+    epoch_subset bytea,
     PRIMARY KEY (experiment_id)
 );
 
@@ -426,8 +428,10 @@ alter table experiment_summary alter column claim_time set default '1960-01-01':
 ALTER TABLE experiment_summary ALTER COLUMN by_epoch SET STORAGE EXTERNAL;
 ALTER TABLE experiment_summary ALTER COLUMN by_loss SET STORAGE EXTERNAL;
 ALTER TABLE experiment_summary ALTER COLUMN by_progress SET STORAGE EXTERNAL;
+ALTER TABLE experiment_summary ALTER COLUMN epoch_subset SET STORAGE EXTERNAL;
 
-CREATE INDEX ON experiment_summary USING btree (last_updated DESC, experiment_id);
+CREATE INDEX ON experiment_summary USING hash(experiment_id);
+-- CREATE INDEX ON experiment_summary USING btree (last_updated DESC, experiment_id);
 -- CREATE INDEX ON experiment_summary (experiment_id) INCLUDE (last_updated, most_recent_run);
 -- CREATE INDEX ON experiment_summary USING btree (experiment_id, last_updated);
 -- CREATE INDEX ON experiment_summary USING btree (experiment_id, most_recent_run);
