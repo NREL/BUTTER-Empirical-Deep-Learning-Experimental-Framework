@@ -429,8 +429,7 @@ ALTER TABLE experiment_summary ALTER COLUMN by_progress SET STORAGE EXTERNAL;
 
 CREATE INDEX ON experiment_summary USING btree (last_updated DESC, experiment_id);
 CREATE INDEX ON experiment_summary USING btree (experiment_id, last_updated);
-
--- CREATE INDEX ON experiment_summary USING btree (last_run_timestamp DESC);
+CREATE INDEX ON experiment_summary USING btree (experiment_id, most_recent_run);
 
 -- CREATE INDEX ON experiment_summary USING hash (last_updated);
 
