@@ -6,6 +6,7 @@ import uuid
 import hashlib
 import numpy
 import pandas
+import pandas.core.indexes.range
 
 # import psycopg
 from psycopg.sql import Identifier, SQL, Composed, Literal
@@ -27,7 +28,7 @@ class PostgresSchema:
     credentials: Dict[str, Any]
 
     experiment_id_column: str
-    
+
     run: RunTable
     attr: AttrTable
     experiment: ExperimentTable
@@ -59,8 +60,7 @@ class PostgresSchema:
     def json_to_uuid(self, target: Any) -> uuid.UUID:
         return self.str_to_uuid(json_dump_function(target))
 
-    def make_experiment_id(self,
-                            experiment_attrs: Iterable[int]) -> uuid.UUID:
+    def make_experiment_id(self, experiment_attrs: Iterable[int]) -> uuid.UUID:
         return self.str_to_uuid('{' +
                                 ','.join(str(i)
                                          for i in experiment_attrs) + '}')
@@ -71,7 +71,10 @@ class PostgresSchema:
     ) -> Optional[bytes]:
         if dataframe is None:
             return None
-        dataframe = dataframe.reset_index()
+        if not isinstance(dataframe.index,
+                          pandas.core.indexes.range.RangeIndex):
+            dataframe = dataframe.reset_index()
+
         schema, use_byte_stream_split = make_pyarrow_schema_from_panads(
             dataframe)
 
@@ -104,8 +107,12 @@ class PostgresSchema:
                 write_statistics=False,
             )
             data = buffer.getvalue()
-        
-        df = self.convert_bytes_to_dataframe(data)
+
+        try:
+            df = self.convert_bytes_to_dataframe(data)
+        except Exception as e:
+            print(table, flush=True)
+            raise e
         return data
 
     def convert_bytes_to_dataframe(

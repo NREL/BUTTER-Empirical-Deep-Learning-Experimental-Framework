@@ -261,6 +261,7 @@ SELECT * from result
         error_list = sorted([(eid, str(e)) for eid, e in errors.items()])
         with ConnectionManager(credentials) as connection:
             result_logger.log(result_records, connection)
+            raise Exception('asdf')
 
             if len(error_list) > 0:
                 connection.execute(
