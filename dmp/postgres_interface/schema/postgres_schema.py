@@ -104,11 +104,11 @@ class PostgresSchema:
             )
             data = buffer.getvalue()
 
-        try:
-            df = self.convert_bytes_to_dataframe(data)
-        except Exception as e:
-            print(table, flush=True)
-            raise e
+        # try:
+        #     df = self.convert_bytes_to_dataframe(data)
+        # except Exception as e:
+        #     print(table, flush=True)
+        #     raise e
         return data
 
     def convert_bytes_to_dataframe(
