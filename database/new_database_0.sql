@@ -114,7 +114,7 @@ CREATE TABLE run
     task_version smallint,
     num_nodes smallint,
 
-    record_timestamp timestamp DEFAULT CURRENT_TIMESTAMP,
+    record_timestamp timestamp WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         
     slurm_job_id bigint,
     job_id uuid NOT NULL,

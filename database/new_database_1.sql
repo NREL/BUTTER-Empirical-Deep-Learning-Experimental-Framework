@@ -362,7 +362,7 @@ CREATE TABLE run
 (
     experiment_id uuid,
 
-    run_timestamp timestamp DEFAULT CURRENT_TIMESTAMP,
+    run_timestamp timestamp WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
     run_id uuid NOT NULL,
     job_id uuid,

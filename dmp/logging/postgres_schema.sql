@@ -68,9 +68,9 @@ CREATE TABLE IF NOT EXISTS run
     job_id uuid NOT NULL,
     run_id uuid NOT NULL,
 
-    start_time timestamp without time zone,
-    end_time timestamp without time zone,
-    record_time timestamp without time zone DEFAULT NOW(),
+    start_time timestamp WITH TIME ZONE,
+    end_time timestamp WITH TIME ZONE,
+    record_time timestamp WITH TIME ZONE DEFAULT NOW(),
     
     duration_in_ms INTEGER,
     

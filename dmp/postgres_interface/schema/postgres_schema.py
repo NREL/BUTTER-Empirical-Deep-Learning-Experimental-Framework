@@ -6,7 +6,6 @@ import uuid
 import hashlib
 import numpy
 import pandas
-import pandas.core.indexes.range
 
 # import psycopg
 from psycopg.sql import Identifier, SQL, Composed, Literal
@@ -71,9 +70,6 @@ class PostgresSchema:
     ) -> Optional[bytes]:
         if dataframe is None:
             return None
-        if not isinstance(dataframe.index,
-                          pandas.core.indexes.range.RangeIndex):
-            dataframe = dataframe.reset_index()
 
         # for column in dataframe.columns:
         #     print(f'col: {column} type: {dataframe[column].dtype} nptype: {dataframe[column].to_numpy().dtype} ')

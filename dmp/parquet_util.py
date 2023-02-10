@@ -3,20 +3,23 @@ import pandas
 import pyarrow
 from numpy import ndarray
 import numpy
-
-
+import pandas.core.indexes.range
 
 
 def make_pyarrow_table_from_dataframe(
     dataframe: pandas.DataFrame, 
     ) -> Tuple[pyarrow.Table, List[str]]:
 
+    if not isinstance(dataframe.index,
+                          pandas.core.indexes.range.RangeIndex):
+        dataframe = dataframe.reset_index()
+
     columns = list(dataframe.columns)
     
     def to_numpy(column):
         array = dataframe[column].to_numpy()
         dtype = array.dtype
-        if numpy.issubdtype(dtype, numpy.floating):
+        if numpy.issubdtype(dtype, numpy.floating) and dtype != numpy.float32:
             array = array.astype(numpy.float32)
         return array
 
