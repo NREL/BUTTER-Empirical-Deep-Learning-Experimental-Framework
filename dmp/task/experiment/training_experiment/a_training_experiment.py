@@ -177,8 +177,9 @@ class ATrainingExperiment(ExperimentTask):
         self,
         history: Dict[str, Union[List, numpy.ndarray]],
     ) -> Dict[str, Union[List, numpy.ndarray]]:
-        extended_history = {}
-        for column in self.keys.extended_history_columns:
+        keys = self.keys
+        extended_history = {keys.epoch: history[keys.epoch]}
+        for column in keys.extended_history_columns:
             v = history.pop(column, None)
             if v is not None:
                 extended_history[column] = v

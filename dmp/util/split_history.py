@@ -4,7 +4,7 @@ import os
 from psycopg import ClientCursor
 import pyarrow
 from dmp.common import flatten
-from dmp.postgres_interface.schema.column_group import ColumnGroup
+from dmp.postgres_interface.element.column_group import ColumnGroup
 
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.training_experiment import training_experiment_keys
@@ -83,14 +83,18 @@ def do_work(args):
 
         run = schema.run
 
-        run_id_column = run['values'].column('run_id')
-        history_column = run['history']
-        extended_history_column = run['extended_history']
-        columns = ColumnGroup.concatenate((
-            run_id_column,
-            history_column,
-            extended_history_column,
-        ))
+        # run_id_column = run['values'].column('run_id')
+        # history_column = run['history']
+        # extended_history_column = run['extended_history']
+        columns = ColumnGroup(
+            run.run_id,
+            run.run_history,
+        )
+
+        update_columns = ColumnGroup(
+            columns,
+            run.extended_history
+        )
 
         get_and_lock_query = SQL("""
 SELECT 
@@ -99,62 +103,43 @@ FROM
     {run}
 WHERE 
     {extended_history} IS NULL
-ORDER BY {run_id}
 FOR UPDATE
 SKIP LOCKED
 LIMIT {block_size}
 ;""").format(
             columns=columns.columns_sql,
             run=run.identifier,
-            extended_history=extended_history_column.identifier,
-            run_id=run_id_column.identifier,
+            extended_history=run.extended_history.identifier,
             block_size=Literal(block_size),
         )
 
-        prefixes = training_experiment_keys.keys.data_set_prefixes
+        keys = training_experiment_keys.keys
 
-        extended_columns = list(chain(*[[
-                p + c for c in training_experiment_keys.keys.extended_history_columns]
-                              for p in prefixes]))
         with ConnectionManager(credentials) as connection:
             with connection.transaction():
-                run_data = []
+                run_updates = []
                 with connection.cursor(binary=True) as cursor:
-
                     cursor.execute(get_and_lock_query, binary=True)
                     rows = list(cursor.fetchall())
                     for row in rows:
+                        def value(col):
+                            return row[columns[col]]
                         try:
-                            run_id = row[columns['run_id']]
-                            try:
-                                source_history = schema.convert_bytes_to_dataframe(
-                                    row[columns['run_history']])
-                            except Exception e:
+                            run_id = value(run.run_id)
+                            source_history :pandas.DataFrame = schema.convert_bytes_to_dataframe(
+                                value(run.run_history)) # type: ignore
+                            
+                            ehc = [(keys.epoch,source_history[keys.epoch])]
+                            for k in keys.extended_history_columns:
+                                if k in source_history.columns:
+                                    ehc.append((k, source_history[k]))
+                                    source_history.drop(k, axis=1)
+                            
+                            extended_history = pandas.DataFrame([c for k, c in ehc], columns=[k for k, c in ehc])
 
-
-                            extended_history = None
-
-                            ehc = {
-                                k
-                                for k in extended_columns
-                                if k in source_history.columns
-                            }
-
-                            # print(f'ehc {ehc}')
-
-                            extended_history = source_history[list(ehc)]
-                            history = source_history[[
-                                k for k in source_history.columns
-                                if k not in ehc
-                            ]]
-
-                            # print(f'run {run_id}')
-                            # print(history)
-                            # print(extended_history)
-
-                            run_data.append((
+                            run_updates.append((
                                 run_id,
-                                schema.convert_dataframe_to_bytes(history),
+                                schema.convert_dataframe_to_bytes(source_history),
                                 schema.convert_dataframe_to_bytes(extended_history),
                             ))
                         except Exception as e:
@@ -163,35 +148,31 @@ LIMIT {block_size}
                             traceback.print_exc()
                             # errors[experiment_id] = e
 
-                    if len(run_data) > 0:
+                    if len(run_updates) > 0:
                         cursor.execute(
                             SQL("""
 UPDATE {run} SET
     {history} = {values}.{history},
     {extended_history} = {values}.{extended_history}
 FROM
-    (VALUES {placeholders}) {values}({columns})
+    (VALUES {placeholders}) {values} ({update_columns})
 WHERE
     {run}.{run_id} = {values}.{run_id}
                         ;""").format(
                                 run=run.identifier,
-                                history=history_column.identifier,
-                                extended_history=extended_history_column.
-                                identifier,
+                                history=run.run_history.identifier,
+                                extended_history=run.extended_history.identifier,
                                 values=Identifier('_values'),
                                 placeholders=sql_comma.join(
-                                    [SQL('({})').format(columns.placeholders)
-                                     ] * len(run_data)),
-                                columns=columns.columns_sql,
-                                run_id=run_id_column.identifier,
+                                    [SQL('({})').format(update_columns.placeholders)
+                                     ] * len(run_updates)),
+                                update_columns=update_columns.columns_sql,
+                                run_id=run.run_id.identifier,
                             ),
-                            list(flatten(
-                                run_data,
-                                levels=1,
-                            )),
+                            list(chain(run_updates)),
                             binary=True,
                         )
-                    num_converted = len(run_data)
+                    num_converted = len(run_updates)
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(

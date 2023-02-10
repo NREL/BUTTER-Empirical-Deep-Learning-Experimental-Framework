@@ -45,7 +45,7 @@ class TrainingExperimentKeys():
                                 for p in prefixes]))
 
         def make_with_data_set_prefixes(keys: Iterable[str]) -> List[str]:
-            return make_with_prefixes(keys, self.data_sets)
+            return make_with_prefixes(self.data_sets, keys)
 
         self.train_start_timestamp: str = 'train_start_timestamp'
 
