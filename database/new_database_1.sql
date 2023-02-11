@@ -437,6 +437,12 @@ CREATE INDEX ON experiment_summary USING hash(experiment_id);
 -- CREATE INDEX ON experiment_summary USING btree (experiment_id, most_recent_run);
 
 
+--- to check run data sizes:
+SELECT 
+    pg_size_pretty(avg(length(run_history))) avg_run_history_size,
+    pg_size_pretty(avg(length(run_extended_history))) avg_run_extended_history_size
+FROM run;
+
 --- TO REQUEUE lost experiment_summaries:
 
 insert into experiment_summary (experiment_id)

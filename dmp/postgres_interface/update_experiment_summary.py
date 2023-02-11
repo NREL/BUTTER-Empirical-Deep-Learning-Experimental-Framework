@@ -50,7 +50,7 @@ class UpdateExperimentSummary(Task):
         # )
 
         #                             AND experiment_properties @> array[2568] and experiment_attrs @> array[75, 224]
-        selection_table = Identifier('_selection')
+        selection = Identifier('_selection')
         # last_updated = Identifier('last_updated')
 
         experiment_columns = ColumnGroup(
@@ -85,6 +85,7 @@ class UpdateExperimentSummary(Task):
 
         format_args = dict(
             experiment_selection=experiment_columns.of(experiment.identifier),
+            selection_selection=experiment_columns.of(selection),
             run_selection=run_columns.of(run.identifier),
             experiment=experiment.identifier,
             run_timestamp=run.run_timestamp.identifier,
@@ -93,7 +94,7 @@ class UpdateExperimentSummary(Task):
             run=run.identifier,
             experiment_summary=summary.identifier,
             run_id=run.run_id.identifier,
-            _selection=selection_table,
+            _selection=selection,
             summary_columns=summary_columns.columns_sql,
             update_clause=sql_comma.join(
                 (SQL('{c}=EXCLUDED.{c}').format(c=c)
@@ -110,57 +111,43 @@ class UpdateExperimentSummary(Task):
         claim_and_get_query = SQL("""
 WITH {_selection} AS 
 (
-    SELECT DISTINCT ON ({_selection}.{experiment_id}) * FROM
+    SELECT DISTINCT ON ({_selection}.{experiment_id}) 
+        *
+    FROM
     (
         SELECT 
-            ({summary_locked}.{summary_locked} IS NOT NULL) {summary_locked}, 
-            {_selection}.{experiment_id}
+            {_selection}.{run_timestamp},
+            {experiment_selection}
         FROM
         (
             SELECT
                 {run}.{experiment_id},
-                {experiment_summary}.{experiment_id} {summary_exists}
+                {run}.{run_timestamp}
             FROM
-                (
-                    SELECT {experiment_id}, {run_timestamp} FROM {run} ORDER BY {run_timestamp} DESC
-                ) {run}
-                LEFT JOIN {experiment_summary} ON
-                (
-                    {experiment_summary}.{experiment_id} = {run}.{experiment_id}
-                )
+                {run}
             WHERE
-                {experiment_summary}.{last_updated} IS NULL
-                OR {experiment_summary}.{last_updated} < {run}.{run_timestamp}
-                OR (
-                    {experiment_summary}.{most_recent_run} < {run}.{run_timestamp}
-                    AND {experiment_summary}.{last_updated} < (CURRENT_TIMESTAMP - '30 minutes'::interval)
+                NOT EXISTS (
+                    SELECT
+                        1
+                    FROM
+                        {experiment_summary}
+                    WHERE
+                        {experiment_summary}.{experiment_id} = {run}.{experiment_id}
+                        AND {experiment_summary}.{most_recent_run} >= {run}.{run_timestamp}
                 )
+            ORDER BY 
+                {run}.{run_timestamp} DESC, {run}.{experiment_id}
         ) {_selection}
-        LEFT JOIN LATERAL
+        CROSS JOIN LATERAL
         (
             SELECT 
-                {experiment_summary}.{experiment_id} {summary_locked} 
-            FROM 
-                {experiment_summary}
-            WHERE
-                {_selection}.{summary_exists} IS NOT NULL
-                AND {experiment_summary}.{experiment_id} = {_selection}.{experiment_id}
-            FOR UPDATE SKIP LOCKED
-        ) {summary_locked} ON TRUE
-        LEFT JOIN LATERAL
-        (
-            SELECT 
-                {experiment}.{experiment_id} {experiment_locked}
+                {experiment_selection}
             FROM 
                 {experiment}
             WHERE
-                {_selection}.{summary_exists} IS NULL
-                AND {experiment}.{experiment_id} = {_selection}.{experiment_id}
+                {experiment}.{experiment_id} = {_selection}.{experiment_id}
             FOR UPDATE SKIP LOCKED
-        ) {experiment_locked} ON TRUE
-        WHERE 
-            {summary_locked}.{summary_locked} IS NOT NULL
-            OR {experiment_locked}.{experiment_locked} IS NOT NULL
+        ) {experiment}
         LIMIT {experiment_limit}
     ) {_selection}
 ),
@@ -168,41 +155,24 @@ WITH {_selection} AS
     INSERT INTO {experiment_summary}
     (
         {experiment_id},
+        {most_recent_run},
         {last_updated}
     )
     SELECT 
-        {experiment_id}, 
-        CURRENT_TIMESTAMP {last_updated}
+        {_selection}.{experiment_id} {experiment_id},
+        {_selection}.{run_timestamp} {most_recent_run},
+        CURRENT_TIMESTAMP
     FROM 
         {_selection}
-    WHERE
-        NOT {summary_locked}
-    ON CONFLICT DO NOTHING
-    RETURNING {experiment_summary}.{experiment_id}
-),
-{_updated} AS (
-    UPDATE {experiment_summary} SET
+    ON CONFLICT ({experiment_id}) DO UPDATE SET
+        {most_recent_run} = EXCLUDED.{most_recent_run},
         {last_updated} = CURRENT_TIMESTAMP
-    FROM
-        {_selection}
-    WHERE
-        {_selection}.{summary_locked}
-        AND {experiment_summary}.{experiment_id} = {_selection}.{experiment_id}
-    RETURNING {experiment_summary}.{experiment_id}
 )
-SELECT 
-    {experiment_selection},
+SELECT
+    {selection_selection},
     {run_selection}
 FROM
-    (
-        SELECT {experiment_id} FROM {_claim}
-        UNION ALL
-        SELECT {experiment_id} FROM {_updated}
-    ) {_selection}
-    INNER JOIN {experiment} ON
-    (
-        {experiment}.{experiment_id} = {_selection}.{experiment_id}
-    )
+    {_selection}
     INNER JOIN {run} ON
     (
         {run}.{experiment_id} = {_selection}.{experiment_id}
@@ -213,7 +183,8 @@ ORDER BY {_selection}.{experiment_id}
         def make_update_progress_query(num_summaries: int) -> Composed:
             return SQL("""
 UPDATE {experiment_summary} SET
-    {set_clause}
+    {set_clause},
+    {last_updated} = NULL
 FROM 
     (
         SELECT {summary_casting_clause}
@@ -221,6 +192,7 @@ FROM
     ) {_values}
 WHERE
     {_values}.{experiment_id} = {experiment_summary}.{experiment_id}
+    AND {experiment_summary}.{most_recent_run} <= {_values}.{most_recent_run}
 ;""").format(
                 _values=_values,
                 summary_casting_clause=summary_columns.casting_sql,
@@ -240,8 +212,6 @@ WHERE
             # with ClientCursor(connection) as cursor:
             #     print(cursor.mogrify(claim_and_get_query))
             with connection.cursor(binary=True) as cursor:
-                # lock experiments and get runs to summarize
-                # print(ClientCursor(connection).mogrify(lock_and_get_query))
                 cursor.execute(claim_and_get_query, binary=True)
                 rows = cursor.fetchall()
 
