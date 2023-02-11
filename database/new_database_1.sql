@@ -457,7 +457,22 @@ WHERE
     SELECT MAX(run_timestamp) FROM run WHERE run.experiment_id = experiment_summary.experiment_id
     ) > LEAST(experiment_summary.last_updated, experiment_summary.most_recent_run);
 
-
+select
+    *,
+    (100.0 * incomplete / total) pct_incomplete,
+    100.0 - (100.0 * incomplete / total) pct_complete
+FROM
+    (select 
+        sum((by_epoch is null)::integer) incomplete, 
+        sum((most_recent_run IS NOT NULL and by_epoch IS NULL)::integer) pending,
+        count(1) total,
+        pg_size_pretty(avg(length(by_epoch))) avg_size_by_epoch,
+        pg_size_pretty(avg(length(by_loss))) avg_size_by_loss,
+        pg_size_pretty(avg(length(by_progress))) avg_size_by_progress,
+        pg_size_pretty(avg(length(epoch_subset))) avg_size_epoch_subset
+     from experiment_summary
+     ) x
+     ;
 
 --- TO MOVE attrs to properties
 
