@@ -165,7 +165,7 @@ WITH {_selection} AS
     FROM 
         {_selection}
     ON CONFLICT ({experiment_id}) DO UPDATE SET
-        {most_recent_run} = EXCLUDED.{most_recent_run},
+        {most_recent_run} = {_selection}.{run_timestamp},
         {last_updated} = CURRENT_TIMESTAMP
 )
 SELECT
