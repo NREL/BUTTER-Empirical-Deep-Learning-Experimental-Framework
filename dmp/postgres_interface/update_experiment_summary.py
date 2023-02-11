@@ -37,7 +37,7 @@ class UpdateExperimentSummary(Task):
 
     def __call__(self, worker: Worker, job: Job) -> TaskResult:
         num_summaries = 0
-        experiment_limit = 32
+        experiment_limit = 16
 
         schema = worker._schema
         experiment = schema.experiment
