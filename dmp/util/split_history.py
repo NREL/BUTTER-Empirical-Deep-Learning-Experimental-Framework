@@ -1,5 +1,6 @@
 from itertools import chain
 import os
+import jobqueue
 
 from psycopg import ClientCursor
 import pyarrow
@@ -26,7 +27,6 @@ import uuid
 from psycopg.sql import SQL, Literal, Identifier
 from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
 
-from jobqueue import load_credentials
 from jobqueue.cursor_manager import CursorManager
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
@@ -44,7 +44,6 @@ import pathos.multiprocessing as multiprocessing
 
 
 def main():
-    # global schema, credentials
 
     parser = argparse.ArgumentParser()
     parser.add_argument('num_workers', type=int)
@@ -65,11 +64,10 @@ def main():
 
 
 def do_work(args):
-    global schema, credentials
 
     worker_number, block_size = args
 
-    credentials = load_credentials('dmp')
+    credentials = jobqueue.load_credentials('dmp')
     schema = PostgresSchema(credentials)
 
     worker_id = str(worker_number) + str(uuid.uuid4())
@@ -115,9 +113,8 @@ LIMIT {block_size}
 
         keys = training_experiment_keys.keys
         extended_cols = keys.extended_history_columns
-        print(f'ext cols: {extended_cols}')
 
-        with ConnectionManager(credentials) as connection:
+        with ConnectionManager(schema.credentials) as connection:
             with connection.transaction():
                 run_updates = []
                 with connection.cursor(binary=True) as cursor:
