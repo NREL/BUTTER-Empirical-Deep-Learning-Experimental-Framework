@@ -443,6 +443,13 @@ SELECT
     pg_size_pretty(avg(length(run_extended_history))) avg_run_extended_history_size
 FROM run;
 
+SELECT 
+    pg_size_pretty(avg(length(by_epoch))) avg_size_by_epoch,
+    pg_size_pretty(avg(length(by_loss))) avg_size_by_loss,
+    pg_size_pretty(avg(length(by_progress))) avg_size_by_progress,
+    pg_size_pretty(avg(length(epoch_subset))) avg_size_epoch_subset
+FROM experiment_summary;
+
 --- TO REQUEUE lost experiment_summaries:
 
 insert into experiment_summary (experiment_id)

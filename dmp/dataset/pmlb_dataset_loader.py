@@ -20,8 +20,8 @@ class Foo:
 @dataclass
 class PMLBDatasetLoader(DatasetLoader):
 
-    def _load_dataset(self):
-        return self._fetch_from_source()
+    # def _load_dataset(self):
+    #     return self._fetch_from_source()
 
     def _fetch_from_source(self):
         import pmlb

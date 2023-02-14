@@ -31,12 +31,22 @@ from dmp.marshaling import marshal
 
 strategy = dmp.jobqueue_interface.worker.make_strategy(4, 0, 0, 0)
 worker = Worker(
-        None,
-        None,
-        None,
-        strategy,
-        {},
-    ) # type: ignore
+    None,
+    None,
+    None,
+    strategy,
+    {},
+)  # type: ignore
+
+
+def run_experiment(experiment):
+    results = experiment(worker, Job())
+    print('experiment_attrs\n', results.experiment_attrs)
+    print('experiment_properties\n', results.experiment_properties)
+    print('run_data\n', results.run_data)
+    print('run_history\n', results.run_history)
+    print('run_extended_history\n', results.run_extended_history)
+    return results
 
 
 def test_simple():
@@ -75,22 +85,59 @@ def test_simple():
         loss=None,
         early_stopping=None,
         record=ExperimentRecordSettings(
-                post_training_metrics=True,
-                times=True,
-                model=None,
-                metrics=None,
-            ),
+            post_training_metrics=True,
+            times=True,
+            model=None,
+            metrics=None,
+        ),
     )
 
-    
- 
-    results = experiment(worker, Job())
-    print('experiment_attrs\n', results.experiment_attrs)
-    print('experiment_properties\n', results.experiment_properties)
-    print('run_data\n', results.run_data)
-    print('run_history\n', results.run_history)
-    print('run_extended_history\n', results.run_extended_history)
+    run_experiment(experiment)
 
+def test_mnist():
+    experiment = TrainingExperiment(
+        seed=0,
+        batch='test',
+        precision='float32',
+        dataset=DatasetSpec(
+            'banana',
+            'pmlb',
+            'shuffled_train_test_split',
+            0.2,
+            0.05,
+            0.0,
+        ),
+        model=DenseBySize(
+            input=None,
+            output=None,
+            shape='exponential',
+            size=16384,
+            depth=3,
+            search_method='integer',
+            inner=Dense.make(-1, {
+                'activation': 'relu',
+                'kernel_initializer': 'GlorotUniform',
+            }),
+        ),
+        fit={
+            'batch_size': 16,
+            'epochs': 5,
+        },
+        optimizer={
+            'class': 'Adam',
+            'learning_rate': 0.0001
+        },
+        loss=None,
+        early_stopping=None,
+        record=ExperimentRecordSettings(
+            post_training_metrics=True,
+            times=True,
+            model=None,
+            metrics=None,
+        ),
+    )
+
+    run_experiment(experiment)
 
 def test_growth_experiment():
     experiment = GrowthExperiment(
@@ -128,11 +175,11 @@ def test_growth_experiment():
         loss=None,
         early_stopping=None,
         record=ExperimentRecordSettings(
-                post_training_metrics=True,
-                times=True,
-                model=None,
-                metrics=None,
-            ),
+            post_training_metrics=True,
+            times=True,
+            model=None,
+            metrics=None,
+        ),
         growth_trigger=make_keras_kwcfg(
             'ProportionalStopping',
             restore_best_weights=True,
@@ -153,15 +200,7 @@ def test_growth_experiment():
         max_equivalent_epoch_budget=1000,
     )
 
-    worker = Worker(
-        None,
-        None,
-        strategy,
-        {},
-    ) # type: ignore
-
-    results = experiment(worker, Job())
-    pprint(marshal.marshal(results), indent=1)
+    run_experiment(experiment)
 
 
 def test_from_optimizer():
@@ -242,22 +281,16 @@ def test_from_optimizer():
         loss=None,
         early_stopping=None,
         record=ExperimentRecordSettings(
-                post_training_metrics=True,
-                times=True,
-                model=None,
-                metrics=None,
-            ),
+            post_training_metrics=True,
+            times=True,
+            model=None,
+            metrics=None,
+        ),
     )
 
-    worker = Worker(
-        None,
-        None,
-        strategy,
-        {},
-    ) # type: ignore
+    
 
-    results = experiment(worker, Job())
-    pprint(marshal.marshal(results), indent=1)
+    run_experiment(experiment)
 
 
 asdf = {
@@ -283,110 +316,112 @@ asdf = {
     'splice': (287, 3),
     'wine_quality_white': (11, 7),
 }
-x = {'201_pol': ([26], (11,)),
- '294_satellite_image': ([36], (6,)),
- '505_tecator': ([124], (1,)),
- '529_pollen': ([4], (1,)),
- '537_houses': ([8], (1,)),
- 'adult': ([81], (1,)),
- 'banana': ([2], (1,)),
- 'connect_4': ([126], (3,)),
- 'mnist': ([784], (10,)),
- 'nursery': ([26], (4,)),
- 'sleep': ([141], (5,)),
- 'splice': ([287], (3,)),
- 'wine_quality_white': ([11], (7,))}
+x = {
+    '201_pol': ([26], (11, )),
+    '294_satellite_image': ([36], (6, )),
+    '505_tecator': ([124], (1, )),
+    '529_pollen': ([4], (1, )),
+    '537_houses': ([8], (1, )),
+    'adult': ([81], (1, )),
+    'banana': ([2], (1, )),
+    'connect_4': ([126], (3, )),
+    'mnist': ([784], (10, )),
+    'nursery': ([26], (4, )),
+    'sleep': ([141], (5, )),
+    'splice': ([287], (3, )),
+    'wine_quality_white': ([11], (7, ))
+}
 
-def test_get_sizes():
-    mapping = {}
-    for dataset_name in [
-            '201_pol',
-            '294_satellite_image',
-            '505_tecator',
-            '529_pollen',
-            '537_houses',
-            'adult',
-            'banana',
-            'connect_4',
-            'mnist',
-            'nursery',
-            # 'poker',
-            'sleep',
-            'splice',
-            'wine_quality_white',
-    ]:
-        experiment = TrainingExperiment(
-            seed=0,
-            batch='test',
-            precision='float32',
-            dataset=DatasetSpec(
-                dataset_name,
-                'pmlb',
-                'shuffled_train_test_split',
-                0.2,
-                0.05,
-                0.0,
-            ),
-            model=DenseBySize(
-                input=None,
-                output=None,
-                shape='rectangle',
-                size=16384,
-                depth=3,
-                search_method='integer',
-                inner=Dense.make(-1, {
-                    'activation': 'relu',
-                    'kernel_initializer': 'GlorotUniform',
-                }),
-            ),
-            fit={
-                'batch_size': 16,
-                'epochs': 1,
-            },
-            optimizer={
-                'class': 'Adam',
-                'learning_rate': 0.0001
-            },
-            loss=None,
-            early_stopping=None,
-            record=ExperimentRecordSettings(
-                post_training_metrics=True,
-                times=True,
-                model=None,
-                metrics=None,
-            ),
-        )
 
-        worker = Worker(
-            None,
-            None,
-            strategy,
-            {},
-        ) # type: ignore
+# def test_get_sizes():
+#     mapping = {}
+#     for dataset_name in [
+#             '201_pol',
+#             '294_satellite_image',
+#             '505_tecator',
+#             '529_pollen',
+#             '537_houses',
+#             'adult',
+#             'banana',
+#             'connect_4',
+#             'mnist',
+#             'nursery',
+#             # 'poker',
+#             'sleep',
+#             'splice',
+#             'wine_quality_white',
+#     ]:
+#         experiment = TrainingExperiment(
+#             seed=0,
+#             batch='test',
+#             precision='float32',
+#             dataset=DatasetSpec(
+#                 dataset_name,
+#                 'pmlb',
+#                 'shuffled_train_test_split',
+#                 0.2,
+#                 0.05,
+#                 0.0,
+#             ),
+#             model=DenseBySize(
+#                 input=None,
+#                 output=None,
+#                 shape='rectangle',
+#                 size=16384,
+#                 depth=3,
+#                 search_method='integer',
+#                 inner=Dense.make(-1, {
+#                     'activation': 'relu',
+#                     'kernel_initializer': 'GlorotUniform',
+#                 }),
+#             ),
+#             fit={
+#                 'batch_size': 16,
+#                 'epochs': 1,
+#             },
+#             optimizer={
+#                 'class': 'Adam',
+#                 'learning_rate': 0.0001
+#             },
+#             loss=None,
+#             early_stopping=None,
+#             record=ExperimentRecordSettings(
+#                 post_training_metrics=True,
+#                 times=True,
+#                 model=None,
+#                 metrics=None,
+#             ),
+#         )
 
-        results = experiment(worker, Job())
-        print(f"dataset {dataset_name}")
-        print(
-            f"experiment.model.input.shape {experiment.model.input['shape']}")
-        print(
-            f"experiment.model.input.computed_shape {experiment.model.input.computed_shape}"
-        )
-        print(
-            f"experiment.model.output.units {experiment.model.output['units']}"
-        )
-        print(
-            f"experiment.model.output.computed_shape {experiment.model.output.computed_shape}"
-        )
-        mapping[dataset_name] = (experiment.model.input['shape'],
-                                 (experiment.model.output['units'], ))
-        # pprint(marshal.marshal(results), indent=1)
+#         worker = Worker(
+#             None,
+#             None,
+#             strategy,
+#             {},
+#         )  # type: ignore
 
-    pprint(mapping)
+#         results = experiment(worker, Job())
+#         print(f"dataset {dataset_name}")
+#         print(
+#             f"experiment.model.input.shape {experiment.model.input['shape']}")
+#         print(
+#             f"experiment.model.input.computed_shape {experiment.model.input.computed_shape}"
+#         )
+#         print(
+#             f"experiment.model.output.units {experiment.model.output['units']}"
+#         )
+#         print(
+#             f"experiment.model.output.computed_shape {experiment.model.output.computed_shape}"
+#         )
+#         mapping[dataset_name] = (experiment.model.input['shape'],
+#                                  (experiment.model.output['units'], ))
+#         # pprint(marshal.marshal(results), indent=1)
+
+#     pprint(mapping)
 
 
 # test_growth_experiment()
-test_simple()
+# test_simple()
+test_mnist()
 # test_from_optimizer()
 # test_get_sizes()
-
-

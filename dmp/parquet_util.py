@@ -7,26 +7,36 @@ import pandas.core.indexes.range
 
 
 def make_pyarrow_table_from_dataframe(
-    dataframe: pandas.DataFrame, 
-    ) -> Tuple[pyarrow.Table, List[str]]:
+    dataframe: pandas.DataFrame, ) -> Tuple[pyarrow.Table, List[str]]:
 
-    if not isinstance(dataframe.index,
-                          pandas.core.indexes.range.RangeIndex):
+    if not isinstance(dataframe.index, pandas.core.indexes.range.RangeIndex):
         dataframe = dataframe.reset_index()
 
     columns = list(dataframe.columns)
-    
+
     def to_numpy(column):
         array = dataframe[column].to_numpy()
         dtype = array.dtype
-        if numpy.issubdtype(dtype, numpy.floating) and dtype != numpy.float32:
+        if numpy.issubdtype(
+                dtype, numpy.floating
+        ) and dtype != numpy.float32 and dtype != numpy.float16:
             array = array.astype(numpy.float32)
         return array
 
-    numpy_arrays = [to_numpy(column) for column in columns]
-    schema, use_byte_stream_split = make_pyarrow_schema_from_dict(zip(columns, numpy_arrays))# type: ignore
-    return pyarrow.Table.from_arrays(numpy_arrays, schema=schema), use_byte_stream_split
- 
+    return make_pyarrow_table_from_numpy(
+        [str(column) for column in columns],
+        [to_numpy(column) for column in columns],
+    )
+
+
+def make_pyarrow_table_from_numpy(
+    columns: Sequence[str],
+    numpy_arrays: Sequence[numpy.ndarray],
+) -> Tuple[pyarrow.Table, List[str]]:
+    schema, use_byte_stream_split = make_pyarrow_schema_from_dict(
+        zip(columns, numpy_arrays))  # type: ignore
+    return pyarrow.Table.from_arrays(numpy_arrays,
+                                     schema=schema), use_byte_stream_split
 
 
 def make_pyarrow_schema_from_dict(
@@ -37,8 +47,9 @@ def make_pyarrow_schema_from_dict(
     use_byte_stream_split = []
 
     for name, values in columns:
-        pyarrow_type, nullable, use_byte_stream_split_ = get_pyarrow_type_mapping(values)
-        
+        pyarrow_type, nullable, use_byte_stream_split_ = get_pyarrow_type_mapping(
+            values)
+
         if pyarrow_type is None:
             continue
 
@@ -58,7 +69,7 @@ def get_pyarrow_type_mapping(
 
     nullable = any((v is None for v in values))
     use_byte_stream_split = False
-    
+
     t = None
     if isinstance(values, ndarray):
         t = values.dtype
@@ -69,19 +80,20 @@ def get_pyarrow_type_mapping(
 
     dst_type = t
     if _check_type(t, bool) or numpy.issubdtype(t, bool):
-        dst_type= pyarrow.bool_()
+        dst_type = pyarrow.bool_()
     elif _check_type(t, int) or numpy.issubdtype(t, numpy.integer):
+        print(values.shape)
         hi = max(filter(lambda v: v is not None, values))
         lo = min(filter(lambda v: v is not None, values))
         if hi < (2**7 - 1) and lo > (-2**7):
-            dst_type= pyarrow.int8()
+            dst_type = pyarrow.int8()
         elif hi < (2**15 - 1) and lo > (-2**15):
             dst_type = pyarrow.int16()
         elif hi < (2**31 - 1) and lo > (-2**31):
             dst_type = pyarrow.int32()
         else:
             dst_type = pyarrow.int64()
-    
+
     elif _check_type(t, float) or numpy.issubdtype(t, numpy.floating):
         dst_type = pyarrow.float32()
         nullable = False
@@ -100,7 +112,7 @@ def get_pyarrow_type_mapping(
 
     else:
         raise NotImplementedError(f'Unhandled type {t}.')
-    
+
     return dst_type, nullable, use_byte_stream_split
 
 

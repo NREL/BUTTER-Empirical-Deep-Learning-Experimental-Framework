@@ -2,7 +2,7 @@ import pandas as pd
 import pyarrow
 import pyarrow.parquet as parquet
 import os
-import numpy as np
+import numpy
 
 def butter_data_path():
     return os.getenv("DMP_BUTTER_DATA_DIR", "s3://oedi-data-lake/butter")
@@ -61,7 +61,7 @@ def extract_data(original_df, downsample_epochs=False, grouper='shape'):
 
     #downsample by epoch logarithmically
     if downsample_epochs:
-        keep_epochs = np.unique(np.logspace(0,np.log10(3000),100,base=10).astype(int))
+        keep_epochs = numpy.unique(numpy.logspace(0,numpy.log10(3000),100,base=10).astype(int))
         df = df[df["epoch"].isin(keep_epochs)]
 
     # num_free_parameters is not unique in sizes. Take first experiment

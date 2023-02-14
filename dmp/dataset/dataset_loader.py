@@ -1,3 +1,4 @@
+from itertools import chain
 import numbers
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -11,13 +12,14 @@ from typing import (
     Dict,
     List,
     Optional,
+    Sequence,
     Tuple,
     Any,
 )
 import numpy
-import numpy as np
 from numpy import ndarray
 import pandas
+import pyarrow
 from sklearn.preprocessing import (
     MinMaxScaler,
     OneHotEncoder,
@@ -25,9 +27,10 @@ from sklearn.preprocessing import (
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset import Dataset
 from dmp.dataset.ml_task import MLTask
-
+from dmp.parquet_util import make_pyarrow_table_from_numpy
 
 dataset_cache_directory = os.path.join(os.getcwd(), '.dataset_cache')
+
 
 @dataclass
 class DatasetLoader(ABC):
@@ -35,7 +38,10 @@ class DatasetLoader(ABC):
     dataset_name: str
     ml_task: MLTask
 
-    
+    feature_prefix = 'f'
+    response_prefix = 'r'
+    index_delimiter = 'x'
+    _group_column = 'g'
 
     def __call__(self) -> Dataset:
         # check cache first for raw inputs and outputs in the working directory
@@ -59,11 +65,47 @@ class DatasetLoader(ABC):
         return os.path.join(dataset_cache_directory, filename)
 
     def _try_read_from_cache(self) -> Optional[Dataset]:
-        filename = self._get_cache_path('.pkl')
+        filename = self._get_cache_path('.pq')
         try:
             os.makedirs(dataset_cache_directory, exist_ok=True)
-            with open(filename, 'rb') as file_handle:
-                return pickle.load(file_handle)
+            table = pyarrow.parquet.read_from_file(filename)
+
+            def accumulate_variable_name(prefix, name):
+                index_string = name[len(prefix):]
+                return tuple(
+                    (int(i) for i in index_string.split(self.index_delimiter)))
+
+            def accumulate_columns(prefix):
+                columns = [(name, accumulate_variable_name(prefix, name))
+                           for name in table.column_names()
+                           if name.starts_with(prefix)]
+                columns.sort(key=lambda c: c[1])
+                shape = columns[-1][1]
+                return columns, shape
+
+            def extract_columns(prefix, group_code) -> numpy.ndarray:
+                group_table = pyarrow.compute.equal(
+                    table[self._group_column],
+                    group_code,
+                )
+                columns, shape = accumulate_columns(prefix)
+                result = None
+                if len(columns) == 1:
+                    result = group_table[columns[0][0]].to_numpy()
+                else:
+                    result = numpy.hstack([
+                        group_table[column].to_numpy()
+                        for column, index in columns
+                    ])
+                return result.reshape((group_table.shape[0], *shape))
+
+            return Dataset(
+                self.ml_task,
+                *(DatasetGroup(
+                    extract_columns(self.feature_prefix, group_code),
+                    extract_columns(self.response_prefix, group_code),
+                ) for group_code in range(3)),
+            )
 
         except FileNotFoundError:
             return None
@@ -82,8 +124,74 @@ class DatasetLoader(ABC):
         pass
 
     def _write_to_cache(self, data: Dataset) -> None:
-        with open(self._get_cache_path('.pkl'), 'wb') as file_handle:
-            pickle.dump(data, file_handle)
+        # with open(self._get_cache_path('.pkl'), 'wb') as file_handle:
+        #     pickle.dump(data, file_handle)
+        splits = [
+            (group_code, dataset_group)
+            for group_code, (prefix,
+                             dataset_group) in enumerate(data.full_splits)
+            if dataset_group is not None
+        ]
+
+        group_column = numpy.vstack(
+            list(
+                numpy.repeat(group_code, dataset_group.inputs.shape[0]).astype(
+                    numpy.int8) for group_code, dataset_group in splits))
+
+        variable_types = [
+                             (self.feature_prefix,
+                              lambda dataset_group: dataset_group.inputs),
+                             (self.response_prefix,
+                              lambda dataset_group: dataset_group.outputs),
+                         ]
+
+        all_columns = []
+        all_arrays = []
+
+        for prefix, getter in variable_types:
+            shape = None
+            indexes = []
+            arrays = []
+            columns = []
+            for group_code, dataset_group in splits:
+                array = getter(dataset_group)
+                if len(array.shape) == 1:
+                    array = array.reshape((array.shape[0], 1))
+
+                if shape is None:
+                    shape = array.shape[1:]
+                    print(f'shape: {array.shape} : {shape}')
+                    indexes = list(numpy.ndindex(shape))
+                    arrays = [ [], ] * len(indexes)
+                    columns = [prefix + self.index_delimiter.join((str(i) for i in index)) for index in indexes]
+                
+                for i, index in enumerate(indexes):
+                    arrays[i].append(array[(slice(None), *index)])
+            
+            all_columns.extend(columns)
+            all_arrays.extend(arrays)
+
+        numpy_columns = [numpy.vstack(arrays) for arrays in all_arrays]
+        print(numpy_columns)
+        print(all_arrays)
+
+        table, use_byte_stream_split = make_pyarrow_table_from_numpy(
+            all_columns, 
+            numpy_columns,
+        )
+        del all_arrays
+
+        pyarrow.parquet.write_table(table, self._get_cache_path('.pq'),
+                compression='ZSTD',
+                compression_level=15,
+                use_dictionary=False,
+                use_byte_stream_split=use_byte_stream_split,  # type: ignore
+                version='2.6',
+                data_page_version='2.0',
+                write_statistics=False,
+        )
+
+        
 
     def _prepare_dataset_data(self, data: Dataset) -> Dataset:
         data.train = self._prepare_data_group(data.train)
@@ -143,7 +251,7 @@ class DatasetLoader(ABC):
         if self.ml_task == MLTask.classification:
             num_distinct_values = numpy.unique(value).size
             if num_distinct_values <= 1:
-                return np.zeros_like(value)
+                return numpy.zeros_like(value)
             if num_distinct_values <= 2:
                 return self.binary(value)
             return self.one_hot(value)
@@ -191,7 +299,7 @@ class DatasetLoader(ABC):
 
     def binary(self, value: ndarray) -> ndarray:
         # if there are only two values, set them as 0 and 1
-        return (value == value[0]).astype(np.int)  # type: ignore
+        return (value == value[0]).astype(numpy.int)  # type: ignore
 
     def _prepare_image(self, data: ndarray) -> ndarray:
         return (data / 255.0).astype(numpy.float16)

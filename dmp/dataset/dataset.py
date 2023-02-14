@@ -27,6 +27,14 @@ class Dataset():
         return splits
 
     @property
+    def full_splits(self)->Sequence[Tuple[str, Optional[DatasetGroup]]]:
+        return (
+                (training_experiment_keys.keys.train, self.train),
+                (training_experiment_keys.keys.test, self.test),
+                (training_experiment_keys.keys.validation, self.validation),
+            )
+
+    @property
     def input_shape(self) -> List[int]:
         return [int(i) for i in self.train.inputs.shape[1:]]  # type: ignore
 
