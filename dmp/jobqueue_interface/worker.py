@@ -78,7 +78,6 @@ if __name__ == "__main__":
     worker_id = uuid.uuid4()
     print(f'Worker id {worker_id} starting...')
     print('\n', flush=True)
-    
 
     if not isinstance(queue_id, int):
         queue_id = 1
@@ -90,16 +89,16 @@ if __name__ == "__main__":
     print(f'Worker id {worker_id} create job queue...\n', flush=True)
     job_queue = JobQueue(credentials, int(queue_id), check_table=False)
     print(f'Worker id {worker_id} create result logger..\n', flush=True)
-    result_logger = PostgresCompressedResultLogger(credentials)
+    result_logger = PostgresCompressedResultLogger(schema)
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
 
     strategy = make_strategy(
-            num_cores,
-            first_gpu,
-            num_gpus,
-            gpu_memory,
-        )
-        
+        num_cores,
+        first_gpu,
+        num_gpus,
+        gpu_memory,
+    )
+
     worker = Worker(
         job_queue,
         schema,

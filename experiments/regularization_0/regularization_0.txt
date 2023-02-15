@@ -465,3 +465,7 @@ for i in {1..8}; do sbatch -J lgx_1 -N1 -t14400 --gres=gpu:2 --account=dmpapps -
 for i in {1..8}; do sbatch -J lgx_2 -N2 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 for i in {1..8}; do sbatch -J lgx_4 -N4 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 for i in {1..8}; do sbatch -J lgx_8 -N8 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
+
+
+for i in {1..32}; do sbatch -J gc_gl_1 -N1 -t14250 --gres=gpu:2 --account=gcomp --qos=standby ./custom_gpu_run_script.sh 1 2 0 0,1 python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 1 0 2 0 2 13312 dmp 2 0 0,1 ; done

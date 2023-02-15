@@ -2,10 +2,37 @@
 Enqueues jobs from stdin into the JobQueue
 """
 
-import argparse
+import sys
+
+import numpy
+import pandas
+from tensorflow.python.framework.ops import re
+
+from dmp.model.cnn.cnn_stack import CNNStack
+from dmp.model.cnn.cnn_stacker import CNNStacker
+from dmp.model.fully_connected_network import FullyConnectedNetwork
+from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
+from dmp.task.experiment.training_experiment.experiment_record_settings import ExperimentRecordSettings
+from dmp.worker import Worker
+from dmp.keras_interface.keras_utils import make_keras_kwcfg
+from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
+from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
+
+sys.path.insert(0, './')
+
+
+from dmp.dataset.dataset_spec import DatasetSpec
+from dmp.layer.dense import Dense
+
+from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
+from pprint import pprint
+
+from dmp.marshaling import marshal
+
 import time
 
-import jobqueue.connect as connect
+import jobqueue
 from jobqueue.job import Job
 from jobqueue.job_queue import JobQueue
 import numpy
@@ -15,193 +42,104 @@ from command_line_tools import command_line_config
 import sys
 
 
-
-def do_parameter_sweep(sweep_config, task_handler):
-
-    repetitions = sweep_config['repetitions']
-    sweep_values = sweep_config['sweep_values']
-
-    keys = list(sweep_values.keys())
-    task_config = {}
-    seed = int(time.time())
-
-    def do_sweep(key_index):
-        nonlocal task_config, keys, seed
-        if key_index < 0:
-            for rep in range(repetitions):
-                task_config['seed'] = seed
-                task = AspectTestTask(**task_config)
-                task_handler(task)
-                seed += 1
-        else:
-            key = keys[key_index]
-            for v in sweep_values[key]:
-                task_config[key] = v
-                do_sweep(key_index-1)
-
-    do_sweep(len(keys)-1)
-
-
 def main():
-    default_config = {
-        'repetitions': 1,
-        'base_priority': 3000000,
-        'queue': 3,
-        'sweep_values': {
-            'batch': ['optimizer_energy_1_cpu'],
-            # 'dataset': ['201_pol', '529_pollen', '537_houses',  'connect_4', 'mnist', 'sleep', 'wine_quality_white', ],
-            # 'dataset': ['adult', 'nursery', 'splice', '294_satellite_image', 'banana', '505_tecator', 'poker'],
-            'dataset': ['201_pol', '529_pollen', '537_houses',  'connect_4', 'mnist', 'sleep', 'wine_quality_white', 'adult', 'nursery', 'splice', '294_satellite_image', 'banana', '505_tecator'],
-            'input_activation': ['relu'],
-            'activation': ['relu'],
-            'optimizer': [
-                {'class_name': 'adam', 'config': {'learning_rate': 0.01}},
-                {'class_name': 'adam', 'config': {'learning_rate': 0.001}},
-                {'class_name': 'adam', 'config': {'learning_rate': 0.0001}},
-                {'class_name': 'adam', 'config': {'learning_rate': 0.00001}},
+    queue_id = 10
 
-                
+    def make_experiment(
+        seed,
+        width,
+        batch_size,
+        optimizer,
+        learning_rate,
+    ):
+        return TrainingExperiment(
+            seed=seed,
+            batch='optimizer_cnn_mnist_1',
+            precision='float32',
+            dataset=DatasetSpec(
+                'mnist',
+                'keras',
+                'shuffled_train_test_split',
+                0.2,
+                0.05,
+                0.0,
+            ),
+            model=CNNStack(
+                input=None,
+                output=None,
+                num_stacks=3,
+                cells_per_stack=1,
+                stem='conv_5x5_1x1_same',
+                downsample='max_pool_2x2_2x2_valid',
+                cell='conv_5x5_1x1_same',
+                final=FullyConnectedNetwork(
+                    input=None,
+                    output=None,
+                    widths=[width * 2, width * 2],
+                    residual_mode='none',
+                    flatten_input=True,
+                    inner=Dense.make(-1, {}),
+                ),
+                stem_width=width,
+                stack_width_scale_factor=1.0,
+                downsample_width_scale_factor=1.0,
+                cell_width_scale_factor=1.0,
+            ),
+            fit={
+                'batch_size': batch_size,
+                'epochs': 128,
+            },
+            optimizer={
+                'class': optimizer,
+                'learning_rate': learning_rate
+            },
+            loss=None,
+            early_stopping=make_keras_kwcfg(
+                'EarlyStopping',
+                monitor='val_loss',
+                min_delta=0,
+                patience=10,
+                restore_best_weights=True,
+            ),
+            record=ExperimentRecordSettings(
+                post_training_metrics=True,
+                times=True,
+                model=None,
+                metrics=None,
+            ),
+        )
 
-                {'class_name': 'SGD', 'config': {
-                    'learning_rate': 0.01, 'momentum': 0.0, 'nesterov': False}},
-                {'class_name': 'SGD', 'config': {
-                    'learning_rate': 0.001, 'momentum': 0.0, 'nesterov': False}},
-                {'class_name': 'SGD', 'config': {
-                    'learning_rate': 0.0001, 'momentum': 0.0, 'nesterov': False}},
-                {'class_name': 'SGD', 'config': {
-                    'learning_rate': 0.00001, 'momentum': 0.0, 'nesterov': False}},
+    sweep_config = list({
+        'width': [4, 8, 16, 32, 64, 128, 256],
+        'batch_size': [64, 128, 256, 512],
+        'optimizer': ['Adam'],
+        'learning_rate': [1e-1, 1e-2, 1e-3, 1e-4],
+    }.items())
 
-                {'class_name': 'SGD', 'config': {
-                    'learning_rate': 0.01, 'momentum': 0.9, 'nesterov': False}},
-                {'class_name': 'SGD', 'config': {
-                    'learning_rate': 0.001, 'momentum': 0.9, 'nesterov': False}},
-                {'class_name': 'SGD', 'config': {
-                    'learning_rate': 0.0001, 'momentum': 0.9, 'nesterov': False}},
-                {'class_name': 'SGD', 'config': {
-                    'learning_rate': 0.00001, 'momentum': 0.9, 'nesterov': False}},
+    jobs = []
+    seed = int(time.time())
+    repetitions = 5
+    base_priority = 1000
 
-                {'class_name': 'RMSprop', 'config': {
-                    'learning_rate': 0.01, 'momentum': 0.0}},
-                {'class_name': 'RMSprop', 'config': {
-                    'learning_rate': 0.001, 'momentum': 0.0}},
-                {'class_name': 'RMSprop', 'config': {
-                    'learning_rate': 0.0001, 'momentum': 0.0}},
-                {'class_name': 'RMSprop', 'config': {
-                    'learning_rate': 0.00001, 'momentum': 0.0}},
+    def do_sweep(i, config):
+        if i < 0:
+            for rep in range(repetitions):
+                jobs.append(
+                    Job(priority=base_priority + len(jobs),
+                        command=marshal.marshal(
+                            make_experiment(seed + len(jobs), **config))))
+        else:
+            key, values = sweep_config[i]
+            for v in values:
+                config[key] = v
+                do_sweep(i - 1, config)
 
-                {'class_name': 'RMSprop', 'config': {
-                    'learning_rate': 0.01, 'momentum': 0.9}},
-                {'class_name': 'RMSprop', 'config': {
-                    'learning_rate': 0.001, 'momentum': 0.9}},
-                {'class_name': 'RMSprop', 'config': {
-                    'learning_rate': 0.0001, 'momentum': 0.9}},
-                {'class_name': 'RMSprop', 'config': {
-                    'learning_rate': 0.00001, 'momentum': 0.9}},
+    do_sweep(len(sweep_config) - 1, {})
 
-
-                {'class_name': 'Adagrad', 'config': {'learning_rate': 0.01}},
-                {'class_name': 'Adagrad', 'config': {'learning_rate': 0.001}},
-                {'class_name': 'Adagrad', 'config': {'learning_rate': 0.0001}},
-                {'class_name': 'Adagrad', 'config': {'learning_rate': 0.00001}},
-
-                {'class_name': 'Adadelta', 'config': {'learning_rate': 0.01}},
-                {'class_name': 'Adadelta', 'config': {'learning_rate': 0.001}},
-                {'class_name': 'Adadelta', 'config': {'learning_rate': 0.0001}},
-                {'class_name': 'Adadelta', 'config': {'learning_rate': 0.00001}},
-
-                {'class_name': 'Adamax', 'config': {'learning_rate': 0.01}},
-                {'class_name': 'Adamax', 'config': {'learning_rate': 0.001}},
-                {'class_name': 'Adamax', 'config': {'learning_rate': 0.0001}},
-                {'class_name': 'Adamax', 'config': {'learning_rate': 0.00001}},
-
-                {'class_name': 'Nadam', 'config': {'learning_rate': 0.01}},
-                {'class_name': 'Nadam', 'config': {'learning_rate': 0.001}},
-                {'class_name': 'Nadam', 'config': {'learning_rate': 0.0001}},
-                {'class_name': 'Nadam', 'config': {'learning_rate': 0.00001}},
-
-                # {'class_name': 'Adadelta', 'config': {'learning_rate': 0.0001}},
-                # {'class_name': 'Adamax', 'config': {'learning_rate': 0.0001}},
-                # {'class_name': 'Nadam', 'config': {'learning_rate': 0.0001}},
-
-            ],
-            # 'trapezoid', 'exponential', 'wide_first_2x', 'rectangle_residual'],
-            'shape': ['rectangle', ],
-            'size': [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
-                     32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304,
-                     8388608, 16777216, ],
-            'depth': [2, 3, 4, 5, 6, ],  # 7, 8, 9, 10, ],
-            'test_split': [.2],
-            'test_split_method': ['shuffled_train_test_split'],
-            'run_config': [
-                {
-                    'shuffle': True,
-                    'epochs': 3000,
-                    'batch_size': 32,
-                    'verbose': 0,
-                },
-                {
-                    'shuffle': True,
-                    'epochs': 3000,
-                    'batch_size': 64,
-                    'verbose': 0,
-                },
-                {
-                    'shuffle': True,
-                    'epochs': 3000,
-                    'batch_size': 128,
-                    'verbose': 0,
-                },
-                {
-                    'shuffle': True,
-                    'epochs': 3000,
-                    'batch_size': 256,
-                    'verbose': 0,
-                },
-            ],
-            'label_noise': [0.0],
-            'kernel_regularizer': [None],
-            'bias_regularizer': [None],
-            'activity_regularizer': [None],
-            'early_stopping': [None],
-            'save_every_epochs': [None],
-        },
-    }
-
-    sweep_config = command_line_config.parse_config_from_args(
-        sys.argv[1:], default_config)
-
-    tasks = []
-
-    def handler(task):
-        nonlocal tasks
-        tasks.append(task)
-
-    do_parameter_sweep(sweep_config, handler)
-
-    # shape_priority = {s: i for i, s in enumerate(
-    #     ['rectangle', 'trapezoid', 'exponential', 'wide_first_2x', 'rectangle_residual'])}
-    # optimizer_priority = {
-    #     c: i for i, c in enumerate([
-    #         'SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adamax', 'Nadam'
-    #     ])
-    # }
-
-    tasks = sorted(tasks, key=lambda t: (
-        # shape_priority[t.shape],
-        t.depth,
-        # optimizer_priority[t.optimizer['class_name']],
-        t.dataset,
-        numpy.random.randint(10000), t.seed))
-
-    base_priority = sweep_config['base_priority']
-    jobs = [Job(
-        priority=base_priority+i,
-        command=jobqueue_marshal.marshal(t),
-    ) for i, t in enumerate(tasks)]
 
     print(f'Generated {len(jobs)} jobs.')
-    credentials = connect.load_credentials('dmp')
-    queue_id = int(sweep_config['queue'])
+    # pprint(jobs)
+    credentials = jobqueue.load_credentials('dmp')
     job_queue = JobQueue(credentials, queue_id, check_table=False)
     job_queue.push(jobs)
     print(f'Enqueued {len(jobs)} jobs.')
