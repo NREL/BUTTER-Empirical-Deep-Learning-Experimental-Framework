@@ -44,6 +44,7 @@ class TrainingExperiment(ATrainingExperiment):
         metrics = self._autoconfigure_for_dataset(dataset)
         model = self._make_model(worker, self.model)
         self._compile_model(dataset, model, metrics)
+        model.keras_model.summary()
         history = self._fit_model(
             self.fit,
             dataset,
@@ -68,6 +69,10 @@ class TrainingExperiment(ATrainingExperiment):
         self,
         dataset: PreparedDataset,
     ) -> List[Union[str, keras.metrics.Metric]]:
+
+
+        
+
         # auto-populate model inputs and outputs if not already set
         num_outputs: int = int(dataset.output_shape[0])
         ml_task: MLTask = dataset.ml_task
@@ -78,6 +83,7 @@ class TrainingExperiment(ATrainingExperiment):
         ]
         output_kernel_initializer = 'HeUniform'
         output_activation = 'relu'
+        loss = 'MeanSquaredError'
         if ml_task == MLTask.regression:
             output_activation = 'sigmoid'
             output_kernel_initializer = 'GlorotUniform'
@@ -98,6 +104,9 @@ class TrainingExperiment(ATrainingExperiment):
                     'accuracy',
                     keras.metrics.Hinge(),
                     keras.metrics.SquaredHinge(),
+                    keras.metrics.Precision(),
+                    keras.metrics.Recall(),
+                    keras.metrics.AUC(),
                 ])
             else:
                 output_activation = 'softmax'
@@ -116,15 +125,18 @@ class TrainingExperiment(ATrainingExperiment):
             model.input = Input()
         if model.input.get('shape', None) is None:
             input_shape = dataset.input_shape
-            input_dim = len(input_shape)
-            if input_dim <= 2:
-                model.input['shape'] = input_shape
-            elif input_dim == 3:
-                model.input['shape'] = list(input_shape[0:2])
-                model.input['channels'] = input_shape[2]
-            else:
-                raise NotImplementedError(
-                    f'Unsupported input shape {input_shape}.')
+            model.input['shape'] = input_shape
+
+            # input_dim = len(input_shape)
+            # print(f'input shape: {input_shape}')
+            # if input_dim <= 2:
+            #     model.input['shape'] = input_shape
+            # elif input_dim == 3:
+            #     # model.input['shape'] = list(input_shape[0:2])
+            #     # model.input['filters'] = input_shape[2]
+            # else:
+            #     raise NotImplementedError(
+            #         f'Unsupported input shape {input_shape}.')
 
         if model.output is None:
             model.output = Dense.make(
@@ -140,7 +152,8 @@ class TrainingExperiment(ATrainingExperiment):
             if output.get('units', None) is None:
                 output['units'] = int(dataset.output_shape[0])
             if output.get('activation', None) is None:
-                output['activation'] = make_keras_config(output_activation)
+                # output['activation'] = make_keras_config(output_activation)
+                output['activation'] = output_activation
             if output.get('kernel_initializer', None) is None:
                 output['kernel_initializer'] = make_keras_config(
                     output_kernel_initializer)
@@ -203,9 +216,11 @@ class TrainingExperiment(ATrainingExperiment):
 
         callbacks.extend(history_callbacks)
 
+        print(fit_config)
+
         history: keras.callbacks.History = model.keras_model.fit(
             callbacks=callbacks,
-            verbose=0,  # type: ignore
+            verbose=1,  # type: ignore
             **fit_config,
         )  # type: ignore
 

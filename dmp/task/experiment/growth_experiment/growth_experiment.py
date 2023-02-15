@@ -188,9 +188,9 @@ class GrowthExperiment(TrainingExperiment):
                 retained[i] = True
             model_history[self.keys.retained] = retained
 
-            # model_history[self.key_names.epoch] = [
-            #     e + epoch_count for e in model_history[self.key_names.epoch]
-            # ]
+            model_history[self.keys.epoch] = [
+                e + epoch_count for e in model_history[self.keys.model_epoch]
+            ]
 
             # Extend histories dictionary
             self._concatenate_histories(history, model_history)

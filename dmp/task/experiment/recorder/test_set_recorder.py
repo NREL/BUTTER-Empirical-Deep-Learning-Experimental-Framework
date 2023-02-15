@@ -27,6 +27,8 @@ class TestSetRecorder(Recorder, ABC):
 
         # evaluate on the additional test sets
         for test_set in self._test_sets:
+            if test_set.test_data is None:
+                continue
             start_time = time.time()
             results = self._evaluate_set(test_set)
             end_time = time.time()

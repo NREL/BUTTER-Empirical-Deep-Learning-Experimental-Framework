@@ -7,7 +7,7 @@ class GrowthExperimentKeys(TrainingExperimentKeys):
         super().__init__()
         self.free_parameter_count_key: str = 'free_parameter_count'
         self.model_number: str = 'model_number'
-        self.model_epoch:int = 'model_epoch'
+        self.model_epoch:str = 'model_epoch'
         self.retained: str = 'retained'
         self.layer_map_key: str = 'layer_map'
         # scale_key: str = 'scale'

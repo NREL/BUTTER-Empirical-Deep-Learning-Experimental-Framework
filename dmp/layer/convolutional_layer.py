@@ -1,5 +1,6 @@
 from abc import ABC
 from typing import Any, Dict, Optional, Sequence, Tuple, Callable, TypeVar, List, Union
+from dmp.keras_interface.keras_utils import make_keras_config
 from dmp.layer.layer import Layer, LayerConfig, LayerConstructor, empty_config, empty_inputs
 from dmp.layer.spatitial_layer import SpatitialLayer
 
@@ -8,14 +9,14 @@ T = TypeVar('T')
 
 class ConvolutionalLayer(SpatitialLayer, ABC):
 
-    _default_config: LayerConfig = {
+    _default_config = {
         'strides': (1, 1),
         'padding': 'valid',
         'data_format': None,
         'dilation_rate': (1, 1),
         'groups': 1,
         'activation': 'relu',
-        'use_bias': False,
+        'use_bias': True,
         'kernel_initializer': 'HeUniform',
         'bias_initializer': 'Zeros',
         'kernel_regularizer': None,
@@ -23,10 +24,12 @@ class ConvolutionalLayer(SpatitialLayer, ABC):
         'activity_regularizer': None,
         'kernel_constraint': None,
         'bias_constraint': None,
+        'batch_normalizer': None,
     }
 
-    @staticmethod
+    @classmethod
     def make(
+        cls,
         layer_factory: LayerConstructor[T],
         filters: int,
         kernel_size: List[int],
@@ -41,7 +44,7 @@ class ConvolutionalLayer(SpatitialLayer, ABC):
             'strides': strides,
         })
         return layer_factory(
-            ConvolutionalLayer._default_config,
+            cls._default_config,
             inputs,
             config,
         )

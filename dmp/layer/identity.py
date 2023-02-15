@@ -4,19 +4,20 @@ from dmp.layer.element_wise_operator_layer import ElementWiseOperatorLayer
 
 
 class Identity(ElementWiseOperatorLayer):
+    pass
 
-    def make_layer(
-        self,
-        inputs: List[Layer],
-        override_if_exists: LayerConfig,
-    ) -> Layer:
-        # try to elide the identity layer
+    # def make_layer(
+    #     self,
+    #     inputs: List[Layer],
+    #     override_if_exists: LayerConfig,
+    # ) -> Layer:
+    #     # try to elide the identity layer
 
-        if len(self.inputs) >= 1:
-            return self.input.make_layer(inputs, override_if_exists)
+    #     if len(self.inputs) >= 1:
+    #         return self.input.make_layer(inputs)
 
-        if len(inputs) >= 1:
-            return inputs[0]
+    #     if len(inputs) >= 1:
+    #         return inputs[0]
 
-        return self
+    #     return self
 

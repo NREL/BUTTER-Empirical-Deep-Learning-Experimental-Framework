@@ -1,3 +1,4 @@
+from pprint import pprint
 from typing import Any, Dict, Union, Optional, Tuple, Callable
 import tensorflow.keras as keras
 from dmp.common import dispatch, keras_type_key, tensorflow_type_key, tensorflow_config_key
@@ -34,8 +35,11 @@ def make_keras_instance(
         return None
 
     type_name, kwargs = __get_params_and_type_from_keras_config(config)
+
     factory = dispatch('keras type', __keras_dispatch_table, type_name)
     kwargs.update(overrides)
+
+    print(f'make_keras_instance {config}, {type_name}, {kwargs}, {factory}')
     return factory(*params, **kwargs)
 
 
@@ -69,13 +73,26 @@ def __make_keras_dispatch_table() -> Dict[str, Callable]:
     dispatch_table: Dict[str, Callable] = {}
     for module in source_modules:
         for name, cls in module.__dict__.items():
+            if name.startswith('_'):
+                continue
             dispatch_table[name] = cls
 
     # special provision for activation functions...
-    for name, cls in keras.activations.__dict__.items():
-        dispatch_table[name] = lambda *params, **kwargs: (lambda x: cls(
-            x, *params, **kwargs))
+    i = 0
+    for name, c in keras.activations.__dict__.items():
+        i = i + 1
+        if name.startswith('_'):
+            continue
 
+        def func_outer(name=name, c=c, i=i):
+            def func(**kwargs):
+                return lambda x : c(x, **kwargs)
+            return func
+
+        dispatch_table[name] = func_outer()
+    i = -10
+
+    pprint(dispatch_table)
     return dispatch_table
 
 

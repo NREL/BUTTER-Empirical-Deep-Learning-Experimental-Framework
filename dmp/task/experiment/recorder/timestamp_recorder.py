@@ -24,7 +24,7 @@ class TimestampRecorder(Recorder):
         metric_name: str,
         seconds: float,
     ) -> None:
-        relative_ms = round(seconds * 1000)
+        relative_ms = int(seconds * 1000)
         self._record_metric(metric_name + self._time_suffix, relative_ms)
 
     def on_train_begin(self, logs=None):
@@ -33,7 +33,7 @@ class TimestampRecorder(Recorder):
     def on_epoch_begin(self, epoch, logs=None):
         self._record_epoch(epoch)
         self._epoch_start_time = time.time()
-        self._record_metric(
+        self.record_time(
             self._epoch_start_metric_name,
             self._epoch_start_time,
         )

@@ -14,25 +14,35 @@ from dmp.layer import *
 class CNNStack(ModelSpec):
     num_stacks: int
     cells_per_stack: int
-    stem: str
-    downsample: str
-    cell: str
-    pooling: str
+    stem: Union[str, LayerFactory]
+    downsample: Union[str, LayerFactory]
+    cell: Union[str, LayerFactory]
+    final: Union[str, LayerFactory]
 
     stem_width: int
-    stack_width_coefficient: float
-    cell_width_coefficient: float
+    stack_width_scale_factor: float
+    downsample_width_scale_factor: float
+    cell_width_scale_factor: float
 
     def make_network(self) -> NetworkInfo:
         width = self.stem_width
         stage_widths = []
+
+        # generate widths for each stack
         for s in range(self.num_stacks):
             cell_widths = []
             stage_widths.append(cell_widths)
-            for c in range(self.cells_per_stack + 1):
+
+            # downsample step
+            width *= self.downsample_width_scale_factor
+            cell_widths.append(int(round(width)))
+
+            # cell steps
+            for c in range(self.cells_per_stack):
                 cell_widths.append(int(round(width)))
-                width *= self.cell_width_coefficient
-            width *= self.stack_width_coefficient
+                width *= self.cell_width_scale_factor
+
+            width *= self.stack_width_scale_factor
 
         return CNNStacker(
             self.input,
@@ -41,7 +51,7 @@ class CNNStack(ModelSpec):
             get_layer_factory(self.stem),
             get_layer_factory(self.downsample),
             get_layer_factory(self.cell),
-            get_layer_factory(self.pooling),
+            get_layer_factory(self.final),
         ).make_network()
 
 
@@ -51,10 +61,10 @@ _layer_factory_map = {
         [[conv_1x1()], [conv_3x3(), MaxPool.make([3, 3], [1, 1])]],
         Add(),
     ),
-    'downsample_maxpool_2x2':
-    MaxPool.make([2, 2], [2, 2]),
-    'downsample_avgpool_2x2':
-    AvgPool.make([2, 2], [2, 2]),
+    # 'downsample_maxpool_2x2':
+    # MaxPool.make([2, 2], [2, 2]),
+    # 'downsample_avgpool_2x2':
+    # AvgPool.make([2, 2], [2, 2]),
     'downsample_avgpool_2x2_residual_2x_conv_3x3':
     Add.make([
         AvgPool.make([2, 2], [2, 2]),
@@ -70,10 +80,15 @@ _layer_factory_map = {
         'activation': 'relu',
         'initialization': 'HeUniform'
     }, []),
+    'identity':
+    Identity(),
 }
 
 
-def get_layer_factory(name: str) -> LayerFactory:
+def get_layer_factory(name: Union[str, LayerFactory]) -> LayerFactory:
+    if isinstance(name, LayerFactory):
+        return name
+
     factory = _layer_factory_map.get(name, None)
     if factory is None:
         raise KeyError(f'Unknown layer factory name {name}.')
@@ -82,35 +97,45 @@ def get_layer_factory(name: str) -> LayerFactory:
 
 def add_size_and_stride(
     name: str,
+    padding:str,
     factory,
     bounds: Tuple[int, int, int, int],
 ) -> None:
     min_size, max_size, min_stride, max_stride = bounds
     for i in range(min_size, max_size + 1):
         for s in range(min_stride, max_stride + 1):
-            _layer_factory_map[f'{name}_{i}x{i}_{s}x{s}'] = factory(i, s)
+            _layer_factory_map[f'{name}_{i}x{i}_{s}x{s}_{padding}'] = factory(i, s)
 
 
-add_size_and_stride(
-    'conv',
-    lambda i, s: DenseConv.make(-1, [i, i], [s, s]),
-    (1, 16, 1, 16),
-)
-add_size_and_stride(
-    'sepconv',
-    lambda i, s: SeparableConv.make(-1, [i, i], [s, s]),
-    (3, 16, 1, 16),
-)
-add_size_and_stride(
-    'max_pool',
-    lambda i, s: MaxPool.make([i, i], [s, s]),
-    (1, 16, 1, 16),
-)
-add_size_and_stride(
-    'avg_pool',
-    lambda i, s: AvgPool.make([i, i], [s, s]),
-    (1, 16, 1, 16),
-)
+for padding in ('same', 'valid'):
+    shared_config = {'padding': padding}
+    add_size_and_stride(
+        'conv',
+        padding,
+        lambda i, s: DenseConv.make(-1, [i, i], [s, s], shared_config),
+        (1, 16, 1, 16),
+    )
+
+    add_size_and_stride(
+        'sepconv',
+        padding,
+        lambda i, s: SeparableConv.make(-1, [i, i], [s, s], shared_config),
+        (3, 16, 1, 16),
+    )
+
+    add_size_and_stride(
+        'max_pool',
+        padding,
+        lambda i, s: MaxPool.make([i, i], [s, s], shared_config),
+        (1, 16, 1, 16),
+    )
+
+    add_size_and_stride(
+        'avg_pool',
+        padding,
+        lambda i, s: AvgPool.make([i, i], [s, s], shared_config),
+        (1, 16, 1, 16),
+    )
 
 # Add({}, [
 #     DenseConv.make(-1, [3, 3], [1, 1], {}, []),

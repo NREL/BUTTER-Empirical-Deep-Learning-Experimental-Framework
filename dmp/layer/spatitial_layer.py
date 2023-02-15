@@ -1,12 +1,17 @@
 from abc import ABC
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
-from dmp.layer.layer import Layer
+from dmp.layer.layer import Layer, LayerConfig
 
 T = TypeVar('T')
 
 
 class SpatitialLayer(Layer, ABC):
 
+    _default_config = {
+        'padding': 'valid',
+        'data_format': None,
+    }
+    
     def on_padding(
         self,
         on_same: Callable[[], T],

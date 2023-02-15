@@ -1,9 +1,11 @@
 from functools import singledispatchmethod
+from pprint import pprint
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 import numpy
 import tensorflow.keras as keras
 import tensorflow
 from dmp.keras_interface.convolutional_keras_layer import ConvolutionalKerasLayer
+from dmp.layer.flatten import Flatten
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 from dmp.model.model_info import ModelInfo
 from dmp.model.network_info import NetworkInfo
@@ -195,6 +197,15 @@ class LayerToKerasVisitor:
         keras_layer = tensorflow.zeros_like(target.computed_shape)
         return KerasLayerInfo(target, keras_layer, keras_layer)
 
+    @_visit.register
+    def _(
+        self,
+        target: Flatten,
+        config: Dict[str, Any],
+        inputs: List[KerasLayer],
+    ) -> KerasLayerInfo:
+        return _make_keras_layer(target, keras.layers.Flatten, config, inputs)
+
 
 def make_keras_network_from_layer(target: Layer) -> KerasNetworkInfo:
     return LayerToKerasVisitor(target)()
@@ -207,13 +218,15 @@ def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
         outputs=keras_network.outputs,
     )
     if len(keras_model.inputs) != 1:  # type: ignore
-        raise ValueError('Wrong number of keras inputs generated')
+        raise ValueError('Wrong number of keras inputs generated.')
 
     import tensorflow.keras.backend as K
     keras_num_trainable = numpy.sum(
         [K.count_params(w) for w in keras_model.trainable_weights])
     if keras_num_trainable != network.num_free_parameters:
-        raise RuntimeError('Wrong number of trainable parameters')
+        from dmp.marshaling import marshal
+        pprint(marshal.marshal(network.structure))
+        raise RuntimeError(f'Wrong number of trainable parameters: {keras_num_trainable} vs planned {network.num_free_parameters}')
 
     return ModelInfo(network, keras_network, keras_model)
 
@@ -235,9 +248,6 @@ def _make_convolutional_layer(
     dimension_to_factory_map: Dict[int, Callable],
 ) -> KerasLayerInfo:
     config = config.copy()  # before putting keras objects in the config
-    _setup_regularizers(config)
-    _setup_activation(config)
-    _make_keras_batch_normalization(config)
     config['conv_layer_factory'] = \
         dimension_to_factory_map[target.dimension]
     return _make_keras_layer(target, ConvolutionalKerasLayer, config, inputs)
@@ -273,10 +283,16 @@ def _setup_initializers(config: Dict[str, Any]) -> None:
 
 def _setup_activation(config: Dict[str, Any]) -> None:
     replace_config_key_with_keras_instance(config, 'activation')
+    pass
 
 
-def _make_keras_batch_normalization(config: Dict[str, Any]) -> None:
-    replace_config_key_with_keras_instance(config, 'batch_normalization')
+def _make_keras_batch_normalizer(config: Dict[str, Any]) -> None:
+    key = 'batch_normalizer'
+    if key in config:
+        if config[key] is None:
+            config[key] = tensorflow.identity
+        else:
+            replace_config_key_with_keras_instance(config, key)
 
 
 def _make_keras_layer(
@@ -286,10 +302,13 @@ def _make_keras_layer(
     inputs: List[KerasLayer],
 ) -> KerasLayerInfo:
     config = config.copy()
+    print(f'make_keras_layer {layer} {target} {inputs}')
+    pprint(config)
     _setup_regularizers(config)
     _setup_activation(config)
-    _make_keras_batch_normalization(config)
+    _make_keras_batch_normalizer(config)
     _setup_initializers(config)
+    pprint(config)
     keras_layer = target(**config)
     keras_output = keras_layer(*inputs)
     return KerasLayerInfo(layer, keras_layer, keras_output)  # type: ignore

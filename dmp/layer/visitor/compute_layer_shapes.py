@@ -3,10 +3,12 @@ import math
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 
 from dmp.layer import *
+from dmp.layer.flatten import Flatten
 
 import dmp.layer.input
 
 _invalid_shape = tuple()
+
 
 class ComputeLayerShapesVisitor:
 
@@ -41,6 +43,10 @@ class ComputeLayerShapesVisitor:
     @_visit.register
     def _(self, target: dmp.layer.input.Input, config: Dict) -> Tuple:
         return config['shape']
+
+    @_visit.register
+    def _(self, target: Flatten, config: Dict) -> Tuple:
+        return (math.prod(self._get_input_shape(target)), )
 
     @_visit.register
     def _(self, target: Dense, config: Dict) -> Tuple:

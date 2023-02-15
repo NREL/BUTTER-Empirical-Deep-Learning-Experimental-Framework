@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import math
 from typing import Any, Callable, List, Tuple, Dict
 from dmp.common import make_dispatcher
+from dmp.layer.flatten import Flatten
 from dmp.model.model_spec import ModelSpec
 from dmp.model.network_info import NetworkInfo
 from dmp.model.model_util import find_closest_network_to_target_size_float, find_closest_network_to_target_size_int
@@ -37,6 +38,8 @@ class DenseBySize(ModelSpec):
 
     def make_network(self) -> NetworkInfo:
         shape = self.shape
+        if isinstance(self.input, Input) and len(self.input['shape']) > 1:
+            self.input = Flatten({}, [self.input])
 
         #TODO: make it so we don't need this hack?
         residual_mode = 'none'

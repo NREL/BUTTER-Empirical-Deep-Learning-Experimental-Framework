@@ -6,6 +6,10 @@ import pandas
 from tensorflow.python.framework.ops import re
 
 from dmp import jobqueue_interface
+from dmp.layer.flatten import Flatten
+from dmp.layer.max_pool import MaxPool
+from dmp.model.cnn.cnn_stack import CNNStack
+from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.task.experiment.training_experiment.experiment_record_settings import ExperimentRecordSettings
@@ -29,7 +33,7 @@ from pprint import pprint
 
 from dmp.marshaling import marshal
 
-strategy = dmp.jobqueue_interface.worker.make_strategy(4, 0, 0, 0)
+strategy = dmp.jobqueue_interface.worker.make_strategy(1, 1, 0, 8192)
 worker = Worker(
     None,
     None,
@@ -41,8 +45,10 @@ worker = Worker(
 
 def run_experiment(experiment):
     results = experiment(worker, Job())
-    print('experiment_attrs\n', results.experiment_attrs)
-    print('experiment_properties\n', results.experiment_properties)
+    print('experiment_attrs\n')
+    pprint(results.experiment_attrs)
+    print('experiment_properties\n')
+    pprint(results.experiment_properties)
     print('run_data\n', results.run_data)
     print('run_history\n', results.run_history)
     print('run_extended_history\n', results.run_extended_history)
@@ -55,8 +61,11 @@ def test_simple():
         batch='test',
         precision='float32',
         dataset=DatasetSpec(
-            'banana',
+            'titanic',
             'pmlb',
+            # 'GaussianClassificationDataset_2_10_100',
+            # # 'GaussianRegressionDataset_20_100',
+            # 'synthetic',
             'shuffled_train_test_split',
             0.2,
             0.05,
@@ -65,9 +74,9 @@ def test_simple():
         model=DenseBySize(
             input=None,
             output=None,
-            shape='exponential',
+            shape='rectangle',
             size=16384,
-            depth=3,
+            depth=4,
             search_method='integer',
             inner=Dense.make(-1, {
                 'activation': 'relu',
@@ -75,12 +84,12 @@ def test_simple():
             }),
         ),
         fit={
-            'batch_size': 16,
-            'epochs': 5,
+            'batch_size': 256,
+            'epochs': 500,
         },
         optimizer={
             'class': 'Adam',
-            'learning_rate': 0.0001
+            'learning_rate': 0.001
         },
         loss=None,
         early_stopping=None,
@@ -94,41 +103,115 @@ def test_simple():
 
     run_experiment(experiment)
 
+
 def test_mnist():
+    width = int(2**4)
+
     experiment = TrainingExperiment(
         seed=0,
         batch='test',
         precision='float32',
         dataset=DatasetSpec(
-            'banana',
-            'pmlb',
+            'mnist',
+            'keras',
             'shuffled_train_test_split',
             0.2,
             0.05,
             0.0,
         ),
-        model=DenseBySize(
+        # model=DenseBySize(
+        #     input=None,
+        #     output=None,
+        #     shape='rectangle',
+        #     size=2**20,
+        #     depth=3,
+        #     search_method='integer',
+        #     inner=Dense.make(-1, {
+        #         'activation': 'relu',
+        #         'kernel_initializer': 'GlorotUniform',
+        #     }),
+        # ),
+        model=CNNStack(
             input=None,
             output=None,
-            shape='exponential',
-            size=16384,
-            depth=3,
-            search_method='integer',
-            inner=Dense.make(-1, {
-                'activation': 'relu',
-                'kernel_initializer': 'GlorotUniform',
-            }),
+            num_stacks=2,
+            cells_per_stack=1,
+            stem='conv_5x5_1x1_same',
+            downsample='max_pool_2x2_2x2_same',
+            cell='conv_5x5_1x1_same',
+            final=Dense.make(
+                width * 2,
+                {},
+                [
+                    Dense.make(
+                        width * 2,
+                        {},
+                        [Flatten()],
+                    )
+                ],
+            ),
+            stem_width=width,
+            stack_width_scale_factor=1.0,
+            downsample_width_scale_factor=1.0,
+            cell_width_scale_factor=1.0,
         ),
+        # model=CNNStack(
+        #     input=None,
+        #     output=None,
+        #     num_stacks=0,
+        #     cells_per_stack=0,
+        #     stem='conv_5x5_1x1_same',
+        #     downsample='max_pool_2x2_2x2_valid',
+        #     cell='conv_5x5_1x1_same',
+        #     final=Dense.make(
+        #         width * 2,
+        #         {},
+        #         [
+        #             Dense.make(
+        #                 width * 2,
+        #                 {},
+        #                 [Flatten()],
+        #             )
+        #         ],
+        #     ),
+        #     stem_width=width,
+        #     stack_width_scale_factor=1.0,
+        #     downsample_width_scale_factor=1.0,
+        #     cell_width_scale_factor=1.0,
+        # ),
+        # model=CNNStack(
+        #     input=None,
+        #     output=None,
+        #     num_stacks=0,
+        #     cells_per_stack=1,
+        #     stem='conv_5x5_1x1_same',
+        #     downsample='max_pool_2x2_2x2_same',
+        #     cell='conv_5x5_1x1_same',
+        #     final=Flatten(
+        #         {},
+        #         [MaxPool.make((2, 2), (2, 2))],
+        #     ),
+        #     stem_width=width,
+        #     stack_width_scale_factor=1.0,
+        #     downsample_width_scale_factor=1.0,
+        #     cell_width_scale_factor=1.0,
+        # ),
         fit={
-            'batch_size': 16,
-            'epochs': 5,
+            'batch_size': 256,
+            'epochs': 30,
         },
         optimizer={
             'class': 'Adam',
             'learning_rate': 0.0001
         },
         loss=None,
-        early_stopping=None,
+        early_stopping=make_keras_kwcfg(
+            'EarlyStopping',
+            monitor='val_loss',
+            min_delta=0,
+            patience=50,
+            restore_best_weights=True,
+        ),
         record=ExperimentRecordSettings(
             post_training_metrics=True,
             times=True,
@@ -138,6 +221,7 @@ def test_mnist():
     )
 
     run_experiment(experiment)
+
 
 def test_growth_experiment():
     experiment = GrowthExperiment(
@@ -288,8 +372,6 @@ def test_from_optimizer():
         ),
     )
 
-    
-
     run_experiment(experiment)
 
 
@@ -331,7 +413,6 @@ x = {
     'splice': ([287], (3, )),
     'wine_quality_white': ([11], (7, ))
 }
-
 
 # def test_get_sizes():
 #     mapping = {}
@@ -418,7 +499,6 @@ x = {
 #         # pprint(marshal.marshal(results), indent=1)
 
 #     pprint(mapping)
-
 
 # test_growth_experiment()
 # test_simple()

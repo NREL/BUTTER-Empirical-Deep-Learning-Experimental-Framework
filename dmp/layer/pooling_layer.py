@@ -3,9 +3,7 @@ from typing import Callable, Dict, Optional, Tuple, Any, List, Sequence, TypeVar
 from dmp.layer.spatitial_layer import SpatitialLayer
 from dmp.layer.layer import Layer, LayerConstructor, LayerConfig, empty_config, empty_inputs
 
-
 T = TypeVar('T')
-
 
 
 class PoolingLayer(SpatitialLayer, ABC):
@@ -18,18 +16,18 @@ class PoolingLayer(SpatitialLayer, ABC):
             return strides
         return config['pool_size']
 
-    @staticmethod
+    @classmethod
     def make(
+        cls,
         layer_factory: LayerConstructor[T],
         pool_size: Sequence[int],
         strides: Sequence[int],
         config: LayerConfig = empty_config,
         input: List[Layer] = empty_inputs,
     ) -> T:
-        return layer_factory(config, input, {
-            'pool_size': pool_size,
-            'strides': strides,
-        })
 
+        config = config.copy()
+        config['pool_size'] = pool_size
+        config['strides'] = strides
 
-
+        return layer_factory(cls._default_config, input, config)

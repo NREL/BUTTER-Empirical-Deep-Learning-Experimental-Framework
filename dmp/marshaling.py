@@ -6,23 +6,23 @@ from lmarshal.src.marshal import Marshal
 from lmarshal.src.marshal_config import MarshalConfig
 
 marshal_settings = {
-    'type_key':marshal_type_key,
-    'label_key':'label',
-    'reference_prefix':'*',
-    'escape_prefix':'\\',
-    'flat_dict_key':':',
-    'enum_value_key':'value',
-    'label_all':False,
-    'label_referenced':True,
-    'circular_references_only':False,
-    'reference_strings':False
+    'type_key': marshal_type_key,
+    'label_key': 'label',
+    'reference_prefix': '*',
+    'escape_prefix': '\\',
+    'flat_dict_key': ':',
+    'enum_value_key': 'value',
+    'label_all': False,
+    'label_referenced': True,
+    'circular_references_only': True,
+    'reference_strings': False
 }
 
 marshal_config = MarshalConfig(**marshal_settings)
 
 flat_marshal_settings = marshal_settings.copy()
 flat_marshal_settings.update({
-    'circular_references_only':True,
+    'circular_references_only': True,
 })
 
 flat_marshal_config = MarshalConfig(**flat_marshal_settings)
@@ -75,6 +75,7 @@ from dmp.layer.identity import Identity
 from dmp.layer.zeroize import Zeroize
 from dmp.layer.dense_conv import DenseConv
 from dmp.layer.separable_conv import SeparableConv
+from dmp.layer.flatten import Flatten
 
 # Layers:
 register_types([
@@ -90,6 +91,7 @@ register_types([
     Zeroize,
     DenseConv,
     SeparableConv,
+    Flatten,
 ])
 
 # Tasks:

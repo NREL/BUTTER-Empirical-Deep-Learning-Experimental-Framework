@@ -22,6 +22,17 @@ class ImageNetDatasetLoader(DatasetLoader):
     size: int
     crop: Optional[int]
 
+    def __init__(
+        self,
+        dataset_name: str,
+        ml_task: MLTask,
+        size: int,
+        crop: Optional[int],
+    ):
+        super().__init__('imagenet', dataset_name, ml_task)
+        self.size = size
+        self.crop = crop
+
     def _fetch_from_source(self) -> Dataset:
 
         def make_group(raw_array):

@@ -11,10 +11,10 @@ from dmp.layer import *
 @dataclass
 class CNNStacker(ModelSpec):
     stage_widths: List[List[int]]
-    stem: LayerFactory  # DenseConv, (3,3), (1,1)
-    cell: LayerFactory  # ParallelCell or GraphCell
+    stem: LayerFactory
+    cell: LayerFactory
     downsample: LayerFactory
-    pooling: LayerFactory
+    final: LayerFactory
 
     def make_network(self) -> NetworkInfo:
         '''
@@ -57,6 +57,6 @@ class CNNStacker(ModelSpec):
                 else:
                     layer = self.cell.make_layer([layer], config)
 
-        layer = self.pooling.make_layer([layer], {})
+        layer = self.final.make_layer([layer], {})
         layer = self.output.make_layer([layer], {})  # type: ignore
         return NetworkInfo(layer, {})

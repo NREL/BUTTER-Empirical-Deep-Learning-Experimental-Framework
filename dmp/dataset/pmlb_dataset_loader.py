@@ -12,14 +12,21 @@ from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset_loader import DatasetLoader, dataset_cache_directory
 
-import copy 
+import copy
+
+from dmp.dataset.ml_task import MLTask 
 
 class Foo:
     last : Any = ('', None)
 
-@dataclass
 class PMLBDatasetLoader(DatasetLoader):
 
+    def __init__(
+        self,
+        dataset_name: str,
+        ml_task: MLTask,
+    ):
+        super().__init__('pmlb', dataset_name, ml_task)
     # def _load_dataset(self):
     #     return self._fetch_from_source()
 

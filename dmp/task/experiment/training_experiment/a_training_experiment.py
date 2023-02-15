@@ -1,5 +1,6 @@
 from numbers import Number
 from dataclasses import dataclass
+from pprint import pprint
 import random
 from typing import Any, Dict, Iterable, Optional, Set, Type
 import platform
@@ -69,12 +70,15 @@ class ATrainingExperiment(ExperimentTask):
         worker: Worker,
         network: NetworkInfo,
     ):
+        from dmp.marshaling import marshal
+        pprint(marshal.marshal(network.structure))
+        
         if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
             keras.backend.set_floatx('float32')
             keras.mixed_precision.set_global_policy(
                 keras.mixed_precision.Policy(self.precision))
         else:
-            tensorflow.keras.backend.set_floatx(self.precision)
+            keras.backend.set_floatx(self.precision)
         with worker.strategy.scope() as s:  # type: ignore
             # tensorflow.config.optimizer.set_jit(True)
             return make_keras_model_from_network(network)

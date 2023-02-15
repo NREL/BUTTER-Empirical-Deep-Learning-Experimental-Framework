@@ -7,11 +7,13 @@ from typing import (
     Tuple,
     Any,
 )
+from dmp.dataset.gaussian_classification_dataset import GaussianClassificationDataset
 import tensorflow.keras as keras
 import pandas
 from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_loader import DatasetLoader
 from dmp.dataset.functional_pmlb_dataset_loader import FunctionalPMLBDatasetLoader
+from dmp.dataset.gaussian_regression_dataset import GaussianRegressionDataset
 from dmp.dataset.keras_image_dataset_loader import KerasImageDatasetLoader
 from dmp.dataset.keras_mnist_dataset_loader import KerasMNISTDatasetLoader
 from dmp.dataset.ml_task import MLTask
@@ -114,12 +116,21 @@ __load_imagenet_dataset = make_dispatcher(
         ),
     ]))
 
+__load_synthetic_dataset = make_dispatcher(
+    'synthetic dataset',
+    _make_loader_map([
+        GaussianClassificationDataset(2, 10, 1.0, 10000),
+        GaussianRegressionDataset(20, 1.0, 1000),
+    ])
+)
+
 __source_loaders = make_dispatcher(
     'dataset source', {
         'keras': __load_keras_dataset,
         'tensorflow': TFImageClassificationDatasetLoader,
         'pmlb': __load_pmlb_dataset,
         'imagenet': __load_imagenet_dataset,
+        'synthetic':__load_synthetic_dataset,
     })
 '''
     keras_datasets = ['mnist', 'fashion_mnist', 'cifar10', 'cifar100']

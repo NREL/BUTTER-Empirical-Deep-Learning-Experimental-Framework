@@ -9,6 +9,7 @@ dependencies:
 - conda-forge::tensorflow >= 2.7
 - simplejson
 - libpq
+- bzip2
 - pip:
   - pyarrow >= 10
   - psycopg[binary] >= 3
