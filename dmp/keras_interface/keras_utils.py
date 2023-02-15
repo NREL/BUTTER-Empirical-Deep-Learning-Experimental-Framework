@@ -78,19 +78,16 @@ def __make_keras_dispatch_table() -> Dict[str, Callable]:
             dispatch_table[name] = cls
 
     # special provision for activation functions...
-    i = 0
     for name, c in keras.activations.__dict__.items():
-        i = i + 1
         if name.startswith('_'):
             continue
 
-        def func_outer(name=name, c=c, i=i):
+        def func_outer(name=name, c=c):
             def func(**kwargs):
                 return lambda x : c(x, **kwargs)
             return func
 
         dispatch_table[name] = func_outer()
-    i = -10
 
     pprint(dispatch_table)
     return dispatch_table

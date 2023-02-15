@@ -10,7 +10,6 @@ from dmp.dataset.ml_task import MLTask
 from .dataset_spec import DatasetSpec
 
 
-
 class PreparedDataset():
 
     def __init__(self, spec: DatasetSpec, batch_size: int) -> None:
@@ -131,50 +130,13 @@ def make_tensorflow_dataset(
         return None
 
     datasets = (group.inputs, group.outputs)
-    # # example of loading the mnist dataset
-    # from keras.datasets import mnist
-    # from matplotlib import pyplot
-    # # load dataset
-    # # (trainX, trainy), (testX, testy) = mnist.load_data()
-    # # summarize loaded dataset
-    # # print('Train: X=%s, y=%s' % (trainX.shape, trainy.shape))
-    # # print('Test: X=%s, y=%s' % (testX.shape, testy.shape))
-    # # plot first few images
-    # for i in range(5):
-    #     # define subplot
-    #     # pyplot.subplot(330 + 1 + i)
-    #     # plot raw pixel data
-    #     # pyplot.imshow(datasets[0][i], cmap=pyplot.get_cmap('gray'))
-    #     print(numpy.argmax(datasets[1][i]))
-    #     # show the figure
-    #     # pyplot.show()
 
-        
     import tensorflow
     dataset_options = tensorflow.data.Options()
     dataset_options.experimental_distribute.auto_shard_policy = \
         tensorflow.data.experimental.AutoShardPolicy.DATA
 
     tf_datasets = tensorflow.data.Dataset.from_tensor_slices(datasets)
-    # print(f'make tf datasets {group.inputs.shape, group.outputs.shape}')
-    # from matplotlib import pyplot
-    # i = 0
-    # for element in tf_datasets.as_numpy_iterator():
-    #     print(f'e: {element[0].shape} {element[1].shape}')
-    #     print(f'e: {element[0]} {element[1]}')
-    #     # define subplot
-    #     pyplot.subplot(330 + 1 + i)
-    #     i+=1
-    #     # plot raw pixel data
-    #     pyplot.imshow(element[0], cmap=pyplot.get_cmap('gray'))
-    #     print(numpy.argmax(element[1]))
-    #     if i >= 5:
-    #         break
-    #     # show the figure
-    # pyplot.show()
-
-    
-
 
     tf_datasets = tf_datasets.with_options(dataset_options)
     tf_datasets = tf_datasets.batch(batch_size)
