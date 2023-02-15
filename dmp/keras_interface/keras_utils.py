@@ -1,4 +1,3 @@
-from pprint import pprint
 from typing import Any, Dict, Union, Optional, Tuple, Callable
 import tensorflow.keras as keras
 from dmp.common import dispatch, keras_type_key, tensorflow_type_key, tensorflow_config_key
@@ -89,7 +88,6 @@ def __make_keras_dispatch_table() -> Dict[str, Callable]:
 
         dispatch_table[name] = func_outer()
 
-    pprint(dispatch_table)
     return dispatch_table
 
 

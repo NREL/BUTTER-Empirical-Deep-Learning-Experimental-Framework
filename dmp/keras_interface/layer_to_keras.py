@@ -225,7 +225,6 @@ def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
         [K.count_params(w) for w in keras_model.trainable_weights])
     if keras_num_trainable != network.num_free_parameters:
         from dmp.marshaling import marshal
-        pprint(marshal.marshal(network.structure))
         raise RuntimeError(f'Wrong number of trainable parameters: {keras_num_trainable} vs planned {network.num_free_parameters}')
 
     return ModelInfo(network, keras_network, keras_model)
@@ -302,13 +301,10 @@ def _make_keras_layer(
     inputs: List[KerasLayer],
 ) -> KerasLayerInfo:
     config = config.copy()
-    print(f'make_keras_layer {layer} {target} {inputs}')
-    pprint(config)
     _setup_regularizers(config)
     _setup_activation(config)
     _make_keras_batch_normalizer(config)
     _setup_initializers(config)
-    pprint(config)
     keras_layer = target(**config)
     keras_output = keras_layer(*inputs)
     return KerasLayerInfo(layer, keras_layer, keras_output)  # type: ignore

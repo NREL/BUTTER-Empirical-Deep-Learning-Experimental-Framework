@@ -216,11 +216,9 @@ class TrainingExperiment(ATrainingExperiment):
 
         callbacks.extend(history_callbacks)
 
-        print(fit_config)
-
         history: keras.callbacks.History = model.keras_model.fit(
             callbacks=callbacks,
-            verbose=1,  # type: ignore
+            verbose=0,  # type: ignore
             **fit_config,
         )  # type: ignore
 

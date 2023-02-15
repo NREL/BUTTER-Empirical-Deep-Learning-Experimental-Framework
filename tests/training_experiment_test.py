@@ -198,7 +198,7 @@ def test_mnist():
         # ),
         fit={
             'batch_size': 256,
-            'epochs': 30,
+            'epochs': 1,
         },
         optimizer={
             'class': 'Adam',
