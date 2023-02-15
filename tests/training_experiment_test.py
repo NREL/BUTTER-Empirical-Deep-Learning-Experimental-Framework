@@ -61,11 +61,11 @@ def test_simple():
         batch='test',
         precision='float32',
         dataset=DatasetSpec(
-            'titanic',
-            'pmlb',
-            # 'GaussianClassificationDataset_2_10_100',
+            # 'titanic',
+            # 'pmlb',
+            'GaussianClassificationDataset_2_10_100',
             # # 'GaussianRegressionDataset_20_100',
-            # 'synthetic',
+            'synthetic',
             'shuffled_train_test_split',
             0.2,
             0.05,
@@ -85,7 +85,7 @@ def test_simple():
         ),
         fit={
             'batch_size': 256,
-            'epochs': 500,
+            'epochs': 5,
         },
         optimizer={
             'class': 'Adam',
@@ -501,7 +501,7 @@ x = {
 #     pprint(mapping)
 
 # test_growth_experiment()
-# test_simple()
-test_mnist()
+test_simple()
+# test_mnist()
 # test_from_optimizer()
 # test_get_sizes()

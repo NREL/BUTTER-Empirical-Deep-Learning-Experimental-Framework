@@ -17,6 +17,7 @@ from dmp.dataset.prepared_dataset import PreparedDataset
 
 from dmp.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
+from dmp.parquet_util import make_dataframe_from_dict
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.experiment.experiment_task import ExperimentTask
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
@@ -172,9 +173,9 @@ class ATrainingExperiment(ExperimentTask):
             experiment_parameters,
             {},
             run_data,
-            pandas.DataFrame(history),
+            make_dataframe_from_dict(history),
             None if len(extended_history) == 0 else
-            pandas.DataFrame(extended_history),
+            make_dataframe_from_dict(extended_history),
         )
 
     def _extract_extended_history(

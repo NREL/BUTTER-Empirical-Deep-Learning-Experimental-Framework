@@ -50,12 +50,8 @@ class TrainingExperimentKeys():
         self.train_start_timestamp: str = 'train_start_timestamp'
 
         self.interval_suffix: str = 'ms'
-        self.epoch_start_time_ms: str = 'epoch_start_ms'
-        self.epoch_time_ms: str = 'train_ms'
-
-        self.epoch_end_key: str = 'relative_test_time'
-        self.epoch_end_key: str = 'relative_test_start_time'
-        self.epoch_end_key: str = 'relative_test_time'
+        self.epoch_start_time_ms: str = 'epoch_start'
+        self.epoch_time_ms: str = 'train'
 
         self.extended_history_columns: Set[str] = set(
             make_with_data_set_prefixes((
@@ -129,6 +125,5 @@ class TrainingExperimentKeys():
             epoch_column for column, cfunc, ifunc, result_column, epoch_column
             in self.run_summary_metrics
         ])
-
 
 keys = TrainingExperimentKeys()

@@ -38,7 +38,6 @@ def make_keras_instance(
     factory = dispatch('keras type', __keras_dispatch_table, type_name)
     kwargs.update(overrides)
 
-    print(f'make_keras_instance {config}, {type_name}, {kwargs}, {factory}')
     return factory(*params, **kwargs)
 
 
@@ -82,8 +81,10 @@ def __make_keras_dispatch_table() -> Dict[str, Callable]:
             continue
 
         def func_outer(name=name, c=c):
+
             def func(**kwargs):
-                return lambda x : c(x, **kwargs)
+                return lambda x: c(x, **kwargs)
+
             return func
 
         dispatch_table[name] = func_outer()

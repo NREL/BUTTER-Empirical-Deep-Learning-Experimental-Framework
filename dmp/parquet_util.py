@@ -28,6 +28,13 @@ def make_pyarrow_table_from_dataframe(
         [to_numpy(column) for column in columns],
     )
 
+def make_dataframe_from_dict(
+    data:Dict[str, Iterable]
+) -> pandas.DataFrame:
+    cols = {}
+    for name, col in data.items():
+        cols[name] = numpy.array(col)
+    return pandas.DataFrame(cols)
 
 def make_pyarrow_table_from_numpy(
     columns: Sequence[str],

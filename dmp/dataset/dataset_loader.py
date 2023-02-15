@@ -27,7 +27,6 @@ from sklearn.preprocessing import (
 from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset import Dataset
 from dmp.dataset.ml_task import MLTask
-from dmp.parquet_util import make_pyarrow_table_from_numpy
 
 dataset_cache_directory = os.path.join(os.getcwd(), '.dataset_cache')
 
