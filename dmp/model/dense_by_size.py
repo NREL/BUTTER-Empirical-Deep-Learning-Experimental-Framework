@@ -3,6 +3,7 @@ import math
 from typing import Any, Callable, List, Tuple, Dict
 from dmp.common import make_dispatcher
 from dmp.layer.flatten import Flatten
+from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.model.model_spec import ModelSpec
 from dmp.model.network_info import NetworkInfo
 from dmp.model.model_util import find_closest_network_to_target_size_float, find_closest_network_to_target_size_int
@@ -16,9 +17,8 @@ class DenseBySize(ModelSpec):
     depth: int  # (migrate)
     # input_layer : dict
     #input_layer.activation (migrate from input_activation)
-    search_method: str # use 'integer' or 'float' network width search method
+    search_method: str  # use 'integer' or 'float' network width search method
     inner: Dense  # config of all but output layer (no units here)
-    
     '''
         + activation (migrate)
         + kernel_regularizer (migrate)
@@ -57,17 +57,14 @@ class DenseBySize(ModelSpec):
 
         def make_network_with_scale(scale):
             widths = widths_factory(self, num_outputs, scale)
-            
-            result = NetworkInfo(
-                self._make_network_from_widths(
-                    self.input,  # type: ignore
-                    self.output,  # type: ignore
-                    residual_mode,
-                    widths,
-                ),
-                {'widths': widths},
-            )
-            return result
+
+            return FullyConnectedNetwork(
+                self.input,  # type: ignore
+                self.output,  # type: ignore
+                widths,
+                residual_mode,
+                False,
+                self.inner).make_network()
 
         search_func = find_closest_network_to_target_size_int
         if self.search_method == 'integer':
@@ -75,7 +72,8 @@ class DenseBySize(ModelSpec):
         elif self.search_method == 'float':
             search_func = find_closest_network_to_target_size_float
         else:
-            raise NotImplementedError(f'Unknown search method {self.search_method}.')
+            raise NotImplementedError(
+                f'Unknown search method {self.search_method}.')
 
         delta, network = search_func(self.size, make_network_with_scale)
 
@@ -88,42 +86,6 @@ class DenseBySize(ModelSpec):
             )
 
         return network
-
-    # TODO: wrap make_network_from_widths up with shape to width function and have it call find_best_layout_for_budget_and_depth above
-
-    def _make_network_from_widths(
-        self,
-        input: Layer,
-        output: Layer,
-        residual_mode: str,
-        widths: List[int],
-    ) -> Layer:
-        parent = input
-        # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
-        for depth, width in enumerate(widths):
-            layer = None
-            if depth == len(widths) - 1:
-                layer = output.make_layer([parent], {})
-            else:
-                layer = self.inner.make_layer([parent], {})
-                layer['units'] = width
-
-            # Skip connections for residual modes
-            if residual_mode == 'none':
-                pass
-            elif residual_mode == 'full':
-                # If this isn't the first or last layer, and the previous layer is
-                # of the same width insert a residual sum between layers
-                # NB: Only works for rectangle
-                if depth > 0 and depth < len(widths) - 1 and \
-                    width == widths[depth - 1]:
-                    layer = Add({}, [layer, parent])
-            else:
-                raise NotImplementedError(
-                    f'Unknown residual mode "{residual_mode}".')
-
-            parent = layer
-        return parent
 
 
 def _get_rectangular_widths(model: DenseBySize, num_outputs: int,

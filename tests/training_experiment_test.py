@@ -10,6 +10,7 @@ from dmp.layer.flatten import Flatten
 from dmp.layer.max_pool import MaxPool
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
+from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
 from dmp.task.experiment.training_experiment.experiment_record_settings import ExperimentRecordSettings
@@ -139,16 +140,13 @@ def test_mnist():
             stem='conv_5x5_1x1_same',
             downsample='max_pool_2x2_2x2_same',
             cell='conv_5x5_1x1_same',
-            final=Dense.make(
-                width * 2,
-                {},
-                [
-                    Dense.make(
-                        width * 2,
-                        {},
-                        [Flatten()],
-                    )
-                ],
+            final=FullyConnectedNetwork(
+                input=None,
+                output=None,
+                widths=[width * 2, width * 2],
+                residual_mode='none',
+                flatten_input=True,
+                inner=Dense.make(-1, {}),
             ),
             stem_width=width,
             stack_width_scale_factor=1.0,
@@ -501,7 +499,7 @@ x = {
 #     pprint(mapping)
 
 # test_growth_experiment()
-test_simple()
-# test_mnist()
+# test_simple()
+test_mnist()
 # test_from_optimizer()
 # test_get_sizes()

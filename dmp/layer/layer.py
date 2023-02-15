@@ -79,6 +79,11 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
             if k in self.config:
                 self.config[k] = v
 
+    def insert_if_not_exists(self, to_insert: LayerConfig) -> None:
+        for k, v in to_insert.items():
+            if k not in self.config:
+                self.config[k] = v
+
     def update(self, overrides: LayerConfig) -> None:
         self.config.update(overrides)
 

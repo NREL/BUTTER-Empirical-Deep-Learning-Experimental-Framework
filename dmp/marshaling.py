@@ -115,11 +115,13 @@ UpdateExperimentSummary.register_types([
 from dmp.model.dense_by_size import DenseBySize
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
+from dmp.model.fully_connected_network import FullyConnectedNetwork
 
 register_types((
     DenseBySize,
     CNNStack,
     CNNStacker,
+    FullyConnectedNetwork,
 ))
 
 # stopping methods and growth triggers
