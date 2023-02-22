@@ -73,7 +73,7 @@ class ATrainingExperiment(ExperimentTask):
     ):
         from dmp.marshaling import marshal
         pprint(marshal.marshal(network.structure))
-        
+
         if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
             keras.backend.set_floatx('float32')
             keras.mixed_precision.set_global_policy(
@@ -136,14 +136,18 @@ class ATrainingExperiment(ExperimentTask):
         }
         run_data.update(worker_info)
 
-        experiment_parameters = self.get_parameters()
+        experiment_attrs = self.get_parameters()
+        experiment_tags = {}
 
-        run_data_set = {'seed', 'precision', 'batch', 'task_version'}
-        for key in list(experiment_parameters.keys()):
+        run_data_set = {'seed', 'precision', 'task_version', 'batch'}
+        tag_prefix = 'tags_'
+        for key in list(experiment_attrs.keys()):
             if key in run_data_set or key.startswith('record_'):
-                run_data[key] = experiment_parameters.pop(key, None)
+                run_data[key] = experiment_attrs.pop(key, None)
+            elif key.startswith(tag_prefix):
+                experiment_tags[key[len(tag_prefix):]] = experiment_attrs.pop(key, None)
 
-        experiment_parameters.update({
+        experiment_attrs.update({
             'ml_task':
             dataset.ml_task.value,
             'num_free_parameters':
@@ -165,13 +169,13 @@ class ATrainingExperiment(ExperimentTask):
         })
 
         for k, v in network.description.items():
-            experiment_parameters[f'model_{k}'] = v
+            experiment_attrs[f'model_{k}'] = v
 
         extended_history = self._extract_extended_history(history)
 
         return ExperimentResultRecord(
-            experiment_parameters,
-            {},
+            experiment_attrs,
+            experiment_tags,
             run_data,
             make_dataframe_from_dict(history),
             None if len(extended_history) == 0 else

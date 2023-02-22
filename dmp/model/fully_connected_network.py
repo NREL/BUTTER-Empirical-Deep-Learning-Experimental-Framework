@@ -15,6 +15,16 @@ class FullyConnectedNetwork(ModelSpec, LayerFactory):
     residual_mode: str
     flatten_input: bool
     inner: Dense  # config of all but output layer (no units here)
+    depth: int = -1  # len(widths) set by __post_init__()
+    width: int = -1  # max(widths) set by __post_init__()
+    min_width: int = -1 # set by __post_init__()
+    rectangular: bool = False # set by __post_init__()
+
+    def __post_init__(self):
+        self.depth = len(self.widths)
+        self.width = max(self.widths)
+        self.min_width = min(self.widths)
+        self.rectangular = (self.width == self.min_width)
 
     def make_network(self) -> NetworkInfo:
         return NetworkInfo(
@@ -33,7 +43,7 @@ class FullyConnectedNetwork(ModelSpec, LayerFactory):
         parent = inputs[0]
         if self.flatten_input:
             parent = Flatten({}, parent)
-            
+
         # Loop over depths, creating layer from "current" to "layer", and iteratively adding more
         widths = self.widths
         residual_mode = self.residual_mode

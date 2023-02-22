@@ -48,8 +48,8 @@ def run_experiment(experiment):
     results = experiment(worker, Job())
     print('experiment_attrs\n')
     pprint(results.experiment_attrs)
-    print('experiment_properties\n')
-    pprint(results.experiment_properties)
+    print('experiment_tags\n')
+    pprint(results.experiment_tags)
     print('run_data\n', results.run_data)
     print('run_history\n', results.run_history)
     print('run_extended_history\n', results.run_extended_history)
@@ -60,6 +60,7 @@ def test_simple():
     experiment = TrainingExperiment(
         seed=0,
         batch='test',
+        tags={'simple':True},
         precision='float32',
         dataset=DatasetSpec(
             # 'titanic',
@@ -111,6 +112,7 @@ def test_mnist():
     experiment = TrainingExperiment(
         seed=0,
         batch='test',
+        tags={'simple':True},
         precision='float32',
         dataset=DatasetSpec(
             'mnist',
@@ -172,6 +174,7 @@ def test_growth_experiment():
     experiment = GrowthExperiment(
         seed=0,
         batch='test',
+        tags={'simple':True},
         precision='float32',
         dataset=DatasetSpec(
             'titanic',
@@ -278,6 +281,7 @@ def test_from_optimizer():
     experiment = TrainingExperiment(
         seed=0,
         batch='test',
+        tags=None,
         precision='float32',
         dataset=DatasetSpec(
             'banana',

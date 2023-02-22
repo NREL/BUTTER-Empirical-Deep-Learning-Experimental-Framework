@@ -47,32 +47,57 @@ WITH {input_table} as (
             {run_value_columns}
             )
 ),
-{inserted_experiment_table} as (
+{_inserted} as (
     INSERT INTO {experiment} AS e (
         {experiment_columns}
     )
     SELECT
         {experiment_columns}
-    FROM {input_table}
-    ON CONFLICT DO NOTHING
-)
+    FROM 
+        {input_table}
+    WHERE
+        NOT EXISTS (
+            SELECT 1
+            FROM {experiment}
+            WHERE 
+                {experiment}.{experiment_id} = {input_table}.{experiment_id}
+                AND {experiment}.{experiment_tags} @> {input_table}.{experiment_tags}
+        )
+    ON CONFLICT ({experiment_id}) DO UPDATE SET
+        {experiment_tags} = (SELECT array_agg(attr_id) FROM (
+            SELECT attr_id
+            FROM (
+                SELECT 
+                    attr_id
+                FROM 
+                    unnest({experiment}.{experiment_tags}) a(attr_id)
+                UNION ALL
+                SELECT 
+                    attr_id
+                FROM 
+                    unnest(EXCLUDED.{experiment_tags}) a(attr_id)
+                ) _tmp
+            GROUP BY attr_id
+            ORDER BY attr_id ASC
+            ) _tmp )
+),
 INSERT INTO {run} (
-    {run_experiment_id},
+    {experiment_id},
     {run_value_columns}
     )
 SELECT 
-    {experiment_id} AS {run_experiment_id},
+    {experiment_id},
     {run_value_columns}
 FROM {input_table}
 ON CONFLICT DO NOTHING
 ;""").format(
+            experiment_tags=experiment.experiment_tags.identifier,
             experiment_columns=experiment_all.columns_sql,
             run_value_columns=insertion_columns.columns_sql,
-            inserted_experiment_table=Identifier('_inserted'),
+            _inserted=Identifier('_inserted'),
             experiment=experiment.identifier,
             run=run.identifier,
             experiment_id=experiment.experiment_id.identifier,
-            run_experiment_id=run.experiment_id.identifier,
             input_table=input_table,
         )
 
@@ -101,7 +126,7 @@ ON CONFLICT DO NOTHING
         for record in records:
             experiment_column_values = value_columns.extract_column_values(
                 record.experiment_attrs,
-                record.experiment_properties,
+                record.experiment_tags,
             )
 
             experiment_attrs = attribute_map.to_sorted_attr_ids(
@@ -110,7 +135,7 @@ ON CONFLICT DO NOTHING
             run_values.append((
                 schema.make_experiment_id(experiment_attrs),
                 experiment_attrs,
-                attribute_map.to_sorted_attr_ids(record.experiment_properties),
+                attribute_map.to_sorted_attr_ids(record.experiment_tags),
                 *experiment_column_values,
                 *run_value_columns.extract_column_values(record.run_data),
                 Jsonb(record.run_data),

@@ -346,7 +346,7 @@ CREATE TABLE experiment
     experiment_id uuid NOT NULL,
     old_experiment_id integer,
     experiment_attrs integer[] NOT NULL,
-    experiment_properties integer[],
+    experiment_tags integer[],
     PRIMARY KEY (experiment_id)
 );
 
@@ -355,7 +355,7 @@ ALTER TABLE experiment SET (parallel_workers = 16);
 ALTER TABLE experiment ALTER COLUMN experiment_attrs SET storage PLAIN;
 
 CREATE INDEX on experiment USING btree (experiment_id) WHERE experiment_id IS NOT NULL;
-CREATE INDEX ON experiment USING gin (experiment_attrs, experiment_properties);
+CREATE INDEX ON experiment USING gin (experiment_attrs, experiment_tags);
 CREATE INDEX ON experiment USING btree (old_experiment_id) INCLUDE (experiment_id) WHERE old_experiment_id IS NOT NULL;
 
 CREATE TABLE run
@@ -492,7 +492,7 @@ exp_target as (
         e.experiment_id src_id,  
         (md5(x.experiment_attrs::text))::uuid dst_id, 
         x.experiment_attrs,
-        y.experiment_properties,
+        y.experiment_tags,
         old_experiment_id
     from 
         experiment e,
@@ -504,7 +504,7 @@ exp_target as (
             order by attr_id) x
         ) x,
         lateral (
-            select array_agg(attr_id) experiment_properties from (
+            select array_agg(attr_id) experiment_tags from (
             select attr_id
             from
                 unnest(e.experiment_attrs) a(attr_id)
@@ -522,13 +522,13 @@ dst_map as (
     SELECT
         dst_id,
         experiment_attrs,
-        first_value(experiment_properties) over (partition by dst_id ORDER BY greatest(array_length(experiment_properties, 1)) DESC) experiment_properties,
+        first_value(experiment_tags) over (partition by dst_id ORDER BY greatest(array_length(experiment_tags, 1)) DESC) experiment_tags,
         first_value(old_experiment_id) over (partition by dst_id ORDER BY old_experiment_id ASC) old_experiment_id
      FROM (
          SELECT 
             dst_id,
             experiment_attrs,
-            experiment_properties,
+            experiment_tags,
             old_experiment_id
          FROM exp_target
          UNION ALL
@@ -536,7 +536,7 @@ dst_map as (
              SELECT 
                 experiment_id dst_id,
                 experiment_attrs,
-                experiment_properties,
+                experiment_tags,
                 old_experiment_id
              FROM
                 experiment e
@@ -564,18 +564,18 @@ exp_update as (
     INSERT INTO experiment (
         experiment_id,
         experiment_attrs,
-        experiment_properties,
+        experiment_tags,
         old_experiment_id
         )
     SELECT 
         dst_id experiment_id,
         experiment_attrs,
-        experiment_properties,
+        experiment_tags,
         old_experiment_id
     FROM
         dst_map m
     ON CONFLICT (experiment_id) DO UPDATE SET
-        experiment_properties = EXCLUDED.experiment_properties,
+        experiment_tags = EXCLUDED.experiment_tags,
         old_experiment_id = EXCLUDED.old_experiment_id
 )
 update run r set

@@ -1,6 +1,6 @@
 
 from abc import ABC
-from typing import Any, Dict, Iterable, List, Tuple, Type, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
 from dataclasses import dataclass
 from dmp.task.task import Task
 from dmp.common import keras_type_key, marshal_type_key
@@ -14,6 +14,7 @@ FlatParameterDict = Dict[str, ParameterValue]
 class ExperimentTask(Task, ABC):
     seed: int
     batch: str
+    tags: Optional[Dict[str, ParameterValue]]
 
     def get_parameters(self) -> ParameterDict:
         parameters = self.extract_parameters()

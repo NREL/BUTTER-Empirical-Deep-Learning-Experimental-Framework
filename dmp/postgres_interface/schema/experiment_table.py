@@ -10,7 +10,7 @@ class ExperimentTable(Table):
     name: str = 'experiment'
     experiment_id: Column = Column('experiment_id', 'uuid')
     experiment_attrs: Column = Column('experiment_attrs', 'integer[]')
-    experiment_properties: Column = Column('experiment_properties', 'integer[]')
+    experiment_tags: Column = Column('experiment_tags', 'integer[]')
     old_experiment_id: Column = Column('old_experiment_id', 'integer')
 
     @property
@@ -22,7 +22,7 @@ class ExperimentTable(Table):
         return ColumnGroup(
             self.experiment_id,
             self.experiment_attrs,
-            self.experiment_properties,
+            self.experiment_tags,
             self.values,
         )
 

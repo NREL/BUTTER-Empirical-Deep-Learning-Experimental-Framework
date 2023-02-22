@@ -56,7 +56,7 @@ class UpdateExperimentSummary(Task):
         experiment_columns = ColumnGroup(
             experiment.experiment_id,
             experiment.experiment_attrs,
-            experiment.experiment_properties,
+            experiment.experiment_tags,
         )
 
         run_columns = ColumnGroup(
@@ -244,7 +244,7 @@ WHERE
                 experiment_attrs = schema.attribute_map.attribute_map_from_ids(
                     value_of(experiment.experiment_attrs))
                 experiment_properties = schema.attribute_map.attribute_map_from_ids(
-                    value_of(experiment.experiment_properties))
+                    value_of(experiment.experiment_tags))
                 most_recent_run = value_of(run.run_timestamp)
 
             most_recent_run = max(
