@@ -13,26 +13,22 @@ import tensorflow
 # from .common import jobqueue_marshal
 
 
-def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
-
-    devices = []
-    devices.extend(
-        ['/GPU:' + str(i) for i in range(first_gpu, first_gpu + num_gpus)])
-    devices.append('/CPU:0')  # TF batches all CPU's into one device
-
+def make_strategy(num_cores, gpus, gpu_mem):
     gpus = tensorflow.config.experimental.list_physical_devices('GPU')
     print(
-        f'Found: {len(gpus)} GPUs. Using: {first_gpu} - {first_gpu + num_gpus}.'
+        f'Found: {len(gpus)} GPUs. Using: {gpus}.'
     )
+    gpu_set = set(gpus)
     gpu_devices = []
-    for i in range(first_gpu, first_gpu + num_gpus):
-        gpu = gpus[i]
-        gpu_devices.append(gpu)
-        tensorflow.config.experimental.set_virtual_device_configuration(
-            gpu, [
-                tensorflow.config.experimental.VirtualDeviceConfiguration(
-                    memory_limit=gpu_mem)
-            ])
+    for gpu in gpus:
+        number = int(gpu.name.split(':')[-1])
+        if number in gpu_set:
+            gpu_devices.append(gpu)
+            tensorflow.config.experimental.set_virtual_device_configuration(
+                gpu, [
+                    tensorflow.config.experimental.VirtualDeviceConfiguration(
+                        memory_limit=gpu_mem)
+                ])
 
     cpus = tensorflow.config.experimental.list_physical_devices('CPU')
     # print(f'cpus: {cpus}')
@@ -44,7 +40,7 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     tensorflow.config.threading.set_intra_op_parallelism_threads(num_cores)
     tensorflow.config.threading.set_inter_op_parallelism_threads(num_cores)
 
-    if num_gpus > 1:
+    if len(gpu_devices) > 1:
         print(visible_devices)
         print(gpu_devices)
         strategy = tensorflow.distribute.MirroredStrategy(
@@ -56,22 +52,21 @@ def make_strategy(num_cores, first_gpu, num_gpus, gpu_mem):
     return strategy
 
 
-# Example: python -u -m dmp.jobqueue_interface.worker 0 2 0 36 0 0 0 dmp -10 0 0 0
+# Example:
+# python -u -m dmp.jobqueue_interface.worker dmp 10 '(0,1)' '(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35)' '(0,1)' 15360
 if __name__ == "__main__":
     a = sys.argv
     print(a)
-    num_cores = int(a[4])
-    first_gpu = int(a[5])
-    num_gpus = int(a[6])
-    gpu_memory = int(a[7])
+    
+    
 
-    database = a[8]
-    queue_id = int(a[9])
+    database = a[1]
+    queue_id = int(a[2])
 
-    nodes = [int(e) for e in a[10].split(',')]
-    cpus = [int(e) for e in a[11].split(',')]
-
-    gpus = list(range(first_gpu, first_gpu + num_gpus))
+    nodes = [int(e) for e in a[3].split(',')]
+    cpus = [int(e) for e in a[4].split(',')]
+    gpus = [int(e) for e in a[5].split(',')]
+    gpu_memory = int(a[5])
 
     tensorflow.keras.backend.set_floatx('float32')
 
@@ -93,8 +88,8 @@ if __name__ == "__main__":
     print(f'Worker id {worker_id} create Worker object..\n', flush=True)
 
     strategy = make_strategy(
-        num_cores,
-        first_gpu,
+        len(cpus),
+        gpus[0],
         num_gpus,
         gpu_memory,
     )

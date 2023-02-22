@@ -54,6 +54,10 @@ def main():
     ):
         return TrainingExperiment(
             seed=seed,
+            tags={
+                'mnist_cnn':True, 
+                'mnist_simple_cnn_v1':True,
+                },
             batch='optimizer_cnn_mnist_1',
             precision='float32',
             dataset=DatasetSpec(
@@ -118,7 +122,7 @@ def main():
 
     jobs = []
     seed = int(time.time())
-    repetitions = 5
+    repetitions = 1
     base_priority = 1000
 
     def do_sweep(i, config):
