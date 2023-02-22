@@ -41,6 +41,7 @@ class Worker:
     ) -> bool:
         from dmp.marshaling import marshal
         from dmp.task.task import Task
+        from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
         self._worker_info['worker_id'] = worker_id
 
@@ -51,7 +52,7 @@ class Worker:
         result = task(self, job)
 
         # log task run
-        if isinstance(result, 'ExperimentResultRecord'):
+        if isinstance(result, ExperimentResultRecord):
             self._result_logger.log(result)
 
         if self._max_jobs is None:
@@ -63,4 +64,3 @@ class Worker:
 
 from dmp.logging.experiment_result_logger import ExperimentResultLogger
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
