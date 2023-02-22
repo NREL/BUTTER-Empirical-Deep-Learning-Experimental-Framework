@@ -1,7 +1,7 @@
 from typing import Dict, Iterable, Sequence, Tuple, Type, Union, List
 import pandas
 import pyarrow
-from numpy import ndarray
+from numpy import issubdtype, ndarray
 import numpy
 import pandas.core.indexes.range
 
@@ -21,6 +21,31 @@ def make_pyarrow_table_from_dataframe(
                 dtype, numpy.floating
         ) and dtype != numpy.float32 and dtype != numpy.float16:
             array = array.astype(numpy.float32)
+        elif dtype == object:
+            has_bool = False
+            has_int = False
+            has_float = False
+            has_str = False
+            has_null = False
+
+            for v in array:
+                value_type = type(v)
+                has_bool |= isinstance(value_type, bool)
+                has_int |= isinstance(value_type, int)
+                has_float |= isinstance(value_type, float)
+                has_str |= isinstance(value_type, str)
+                has_null |= v is None
+
+            if has_null:
+                if has_str:
+                    array = array.astype('U')
+                elif has_float:
+                    array = array.astype(numpy.float32)
+                elif has_int:
+                    array = array.astype(numpy.Int64)
+                elif has_bool:
+                    array = array.astype(numpy.B)
+
         return array
 
     return make_pyarrow_table_from_numpy(
@@ -28,13 +53,13 @@ def make_pyarrow_table_from_dataframe(
         [to_numpy(column) for column in columns],
     )
 
-def make_dataframe_from_dict(
-    data:Dict[str, Iterable]
-) -> pandas.DataFrame:
+
+def make_dataframe_from_dict(data: Dict[str, Iterable]) -> pandas.DataFrame:
     cols = {}
     for name, col in data.items():
         cols[name] = numpy.array(col)
     return pandas.DataFrame(cols)
+
 
 def make_pyarrow_table_from_numpy(
     columns: Sequence[str],
@@ -85,11 +110,8 @@ def get_pyarrow_type_mapping(
             return None, nullable, use_byte_stream_split
         t = type(values[0])
 
-    dst_type = t
-    if _check_type(t, bool) or numpy.issubdtype(t, bool):
-        dst_type = pyarrow.bool_()
-    elif _check_type(t, int) or numpy.issubdtype(t, numpy.integer):
-        print(values.shape)
+    def check_integer():
+        nonlocal dst_type, nullable
         hi = max(filter(lambda v: v is not None, values))
         lo = min(filter(lambda v: v is not None, values))
         if hi < (2**7 - 1) and lo > (-2**7):
@@ -101,6 +123,11 @@ def get_pyarrow_type_mapping(
         else:
             dst_type = pyarrow.int64()
 
+    dst_type = t
+    if _check_type(t, bool) or numpy.issubdtype(t, bool):
+        dst_type = pyarrow.bool_()
+    elif _check_type(t, int) or numpy.issubdtype(t, numpy.integer):
+        check_integer()
     elif _check_type(t, float) or numpy.issubdtype(t, numpy.floating):
         dst_type = pyarrow.float32()
         nullable = False
@@ -116,9 +143,33 @@ def get_pyarrow_type_mapping(
             return None, nullable, use_byte_stream_split
         else:
             dst_type = pyarrow.list_(get_pyarrow_type_mapping(element_type[0]))
-
     else:
-        raise NotImplementedError(f'Unhandled type {t}.')
+        has_bool = False
+        has_int = False
+        has_float = False
+        has_str = False
+        has_null = False
+
+        for v in values:
+            value_type = type(v)
+            has_bool |= isinstance(value_type, bool)
+            has_int |= isinstance(value_type, int)
+            has_float |= isinstance(value_type, float)
+            has_str |= isinstance(value_type, str)
+            has_null |= v is None
+
+        nullable |= has_null
+
+        if has_str:
+            dst_type = pyarrow.string()
+        elif has_float:
+            dst_type = pyarrow.float32()
+        elif has_int:
+            check_integer()
+        elif has_bool:
+            dst_type = pyarrow.bool_()
+        else:
+            raise NotImplementedError(f'Unhandled type {t}.')
 
     return dst_type, nullable, use_byte_stream_split
 
