@@ -14,13 +14,13 @@ import tensorflow
 
 
 def make_strategy(num_cores, gpus, gpu_mem):
-    gpus = tensorflow.config.experimental.list_physical_devices('GPU')
+    tf_gpus = tensorflow.config.experimental.list_physical_devices('GPU')
     print(
-        f'Found: {len(gpus)} GPUs. Using: {gpus}.'
+        f'Found GPUs: {len(tf_gpus)} {tf_gpus}.\nUsing: {gpus}.'
     )
     gpu_set = set(gpus)
     gpu_devices = []
-    for gpu in gpus:
+    for gpu in tf_gpus:
         number = int(gpu.name.split(':')[-1])
         if number in gpu_set:
             gpu_devices.append(gpu)
