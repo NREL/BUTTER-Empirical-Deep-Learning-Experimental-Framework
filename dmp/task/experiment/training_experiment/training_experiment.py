@@ -39,25 +39,27 @@ class TrainingExperiment(ATrainingExperiment):
 
     def __call__(self, worker: Worker, job: Job, *args,
                  **kwargs) -> ExperimentResultRecord:
-        self._set_random_seeds()
-        dataset = self._load_and_prepare_dataset()
-        metrics = self._autoconfigure_for_dataset(dataset)
-        model = self._make_model(worker, self.model)
-        self._compile_model(dataset, model, metrics)
-        model.keras_model.summary()
-        history = self._fit_model(
-            self.fit,
-            dataset,
-            model,
-            self._make_callbacks(),
-        )
-        return self._make_result_record(
-            worker.worker_info,
-            job.id,
-            dataset,
-            model.network,
-            history,
-        )
+        with worker.strategy.scope():
+            # tensorflow.config.optimizer.set_jit(True)
+            self._set_random_seeds()
+            dataset = self._load_and_prepare_dataset()
+            metrics = self._autoconfigure_for_dataset(dataset)
+            model = self._make_model(worker, self.model)
+            self._compile_model(dataset, model, metrics)
+            model.keras_model.summary()
+            history = self._fit_model(
+                self.fit,
+                dataset,
+                model,
+                self._make_callbacks(),
+            )
+            return self._make_result_record(
+                worker.worker_info,
+                job.id,
+                dataset,
+                model.network,
+                history,
+            )
 
     def _load_and_prepare_dataset(self) -> PreparedDataset:
         return PreparedDataset(

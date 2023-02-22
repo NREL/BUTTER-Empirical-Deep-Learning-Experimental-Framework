@@ -80,9 +80,8 @@ class ATrainingExperiment(ExperimentTask):
                 keras.mixed_precision.Policy(self.precision))
         else:
             keras.backend.set_floatx(self.precision)
-        with worker.strategy.scope() as s:  # type: ignore
-            # tensorflow.config.optimizer.set_jit(True)
-            return make_keras_model_from_network(network)
+        
+        return make_keras_model_from_network(network)
 
     def _merge_histories(
         self,

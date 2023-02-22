@@ -43,7 +43,7 @@ import sys
 
 
 def main():
-    queue_id = 10
+    queue_id = 11
 
     def make_experiment(
         seed,
@@ -114,7 +114,7 @@ def main():
         )
 
     sweep_config = list({
-        'width': [4, 8, 16, 32, 64, 128, 256],
+        'width': [2, 4],
         'batch_size': [64, 128, 256, 512],
         'optimizer': ['Adam'],
         'learning_rate': [1e-1, 1e-2, 1e-3, 1e-4],
