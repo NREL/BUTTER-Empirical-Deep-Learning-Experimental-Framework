@@ -1,8 +1,8 @@
 import sys
 import uuid
 
-import jobqueue.connect as connect
 from jobqueue.job_queue import JobQueue
+from jobqueue import load_credentials
 from dmp import common
 from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
@@ -78,7 +78,7 @@ if __name__ == "__main__":
         queue_id = 1
 
     print(f'Worker id {worker_id} load credentials...\n', flush=True)
-    credentials = connect.load_credentials(database)
+    credentials = load_credentials(database)
     print(f'Worker id {worker_id} initialize database schema...\n', flush=True)
     schema = PostgresSchema(credentials)
     print(f'Worker id {worker_id} create job queue...\n', flush=True)
@@ -89,8 +89,7 @@ if __name__ == "__main__":
 
     strategy = make_strategy(
         len(cpus),
-        gpus[0],
-        num_gpus,
+        gpus,
         gpu_memory,
     )
 
