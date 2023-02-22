@@ -81,6 +81,10 @@ class PostgresSchema:
         # for c in use_byte_stream_split:
         #     dataframe[c].fillna(value=numpy.nan, inplace=True)
 
+        print(f'convert_dataframe_to_bytes')
+        print(dataframe)
+        print([dataframe[c].to_numpy().dtype for c in dataframe.columns])
+
         table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
 
         data = None
