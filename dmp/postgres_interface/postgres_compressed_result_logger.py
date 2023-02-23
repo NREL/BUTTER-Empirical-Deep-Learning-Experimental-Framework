@@ -153,6 +153,9 @@ ON CONFLICT DO NOTHING
             self._log_multiple_query_suffix,
         )
 
+        print(query)
+        print(run_values)
+
         connection.execute(
             query,
             list(chain(*run_values)),

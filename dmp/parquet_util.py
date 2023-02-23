@@ -151,11 +151,10 @@ def get_pyarrow_type_mapping(
         has_null = False
 
         for v in values:
-            value_type = type(v)
-            has_bool |= isinstance(value_type, bool)
-            has_int |= isinstance(value_type, int)
-            has_float |= isinstance(value_type, float)
-            has_str |= isinstance(value_type, str)
+            has_bool |= isinstance(v, bool)
+            has_int |= isinstance(v, int)
+            has_float |= isinstance(v, float)
+            has_str |= isinstance(v, str)
             has_null |= v is None
 
         nullable |= has_null
