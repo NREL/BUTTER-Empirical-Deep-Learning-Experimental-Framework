@@ -24,8 +24,10 @@ def make_strategy(num_cores, gpus, gpu_mem):
         number = int(gpu.name.split(':')[-1])
         if number in gpu_set:
             gpu_devices.append(gpu)
+            tensorflow.config.experimental.set_memory_growth(gpu, True)
             tensorflow.config.experimental.set_virtual_device_configuration(
                 gpu, [
+                   
                     tensorflow.config.experimental.VirtualDeviceConfiguration(
                         memory_limit=gpu_mem)
                 ])
