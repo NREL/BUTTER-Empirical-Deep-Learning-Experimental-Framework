@@ -78,8 +78,8 @@ if __name__ == "__main__":
 
     nodes = [int(e) for e in a[3].split(',')]
     cpus = [int(e) for e in a[4].split(',')]
-    gpus = [int(e) for e in a[5].split(',')]
-    gpu_memory = int(a[6])
+    gpus = [int(e) for e in a[5].split(',')] if len(a[5]) > 0 else []
+    gpu_memory = int(a[6]) if len(a[6]) > 0 else 0
 
     tensorflow.keras.backend.set_floatx('float32')
 
