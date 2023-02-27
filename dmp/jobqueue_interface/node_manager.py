@@ -77,12 +77,12 @@ def main():
     project = args[1]
     queue = int(args[2])
 
-    min_gpu_mem_per_worker = 4 * 1024
+    min_gpu_mem_per_worker = 8 * 1024
     worker_gpu_mem_overhead = 1024
     min_total_worker_gpu_mem = min_gpu_mem_per_worker + worker_gpu_mem_overhead
 
     min_gpu_mem_buffer = 500
-    max_worker_per_gpu = 3
+    max_worker_per_gpu = 2
 
     cpus_per_gpu_worker = 1
     min_cpus_per_cpu_worker = 8
