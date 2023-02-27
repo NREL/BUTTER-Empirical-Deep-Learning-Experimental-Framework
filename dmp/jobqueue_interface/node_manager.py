@@ -6,7 +6,7 @@ import sys
 import subprocess
 import os
 from typing import IO, Any, Dict, List, Tuple
-
+from dataclasses import dataclass
 from numpy import append
 
 
@@ -16,7 +16,7 @@ def get_run_script(default_script, custom_script):
     return default_script
 
 
-def make_worker_process(rank, command):
+def make_worker_process(rank: int, command: list) -> subprocess.Popen:
     command = [str(a) for a in command]
     print(f'Creating subprocess {rank} with command: "{" ".join(command)}"')
     return subprocess.Popen(command,
@@ -27,22 +27,30 @@ def make_worker_process(rank, command):
                             close_fds=True)
 
 
-def run_worker(worker_id, config, project, queue):
-    run_script = config[0]
-    cpus = config[1]
+@dataclass
+class WorkerConfig:
+    run_script: str
+    cpus: list
+    gpus: list
+    gpu_memory: int
 
-    nodes = sorted({cpu[-3] for cpu in cpus})
-    cpu_numbers = [cpu[-1] for cpu in cpus]
 
-    num_nodes = len(nodes)
-    num_cpus = len(cpu_numbers)
+def run_worker(
+    rank: int,
+    project: str,
+    queue: int,
+    config: WorkerConfig,
+) -> subprocess.Popen:
+
+    nodes = sorted({cpu[-3] for cpu in config.cpus})
+    cpu_numbers = [cpu[-1] for cpu in config.cpus]
+
     cpus_string = ','.join([str(i) for i in cpu_numbers])
     nodes_string = ','.join([str(i) for i in nodes])
-    # python -u -m dmp.jobqueue_interface.worker 0 4 (0, 0, 0, 0) 64 0 0 0 dmp 1"
+    gpus_string = ','.join([str(i) for i in config.gpus])
+
     command = [
-        f'./{run_script}',
-        num_nodes,
-        num_cpus,
+        f'./{config.run_script}',
         nodes_string,
         cpus_string,
         'python',
@@ -53,26 +61,21 @@ def run_worker(worker_id, config, project, queue):
         '-u',
         '-m',
         'dmp.jobqueue_interface.worker',
-        nodes[0],  # first node
-        num_nodes,  # num nodes
-        cpu_numbers[0],  # first cpu
-        num_cpus,  # num cpus
-        config[2],  # first  gpu
-        config[3],  # num gpus
-        config[4],  # gpu memory
-        project,  # project
-        queue,  # queue
+        project,
+        queue,
         nodes_string,
         cpus_string,
+        gpus_string,
+        str(config.gpu_memory),
     ]
 
-    return make_worker_process(worker_id, command)
+    return make_worker_process(rank, command)
 
 
 def main():
     args = sys.argv
     project = args[1]
-    queue = args[2]
+    queue = int(args[2])
 
     min_gpu_mem_per_worker = 4 * 1024
     worker_gpu_mem_overhead = 1024
@@ -179,7 +182,8 @@ def main():
                     while len(level) > 0 and \
                         (len(allocated) < min_group_size or
                          (len(groups) < max_num_groups and
-                            size < min_group_size)):
+                            size < min_group_size
+                    )):
                         sublevel_size, sublevel = level.pop()
                         new_sublevel_size, new_sublevel = \
                             do_allocate_group(sublevel_size, sublevel)
@@ -217,7 +221,7 @@ def main():
     except subprocess.CalledProcessError:
         print('No GPUs detected using nvidia-smi.')
 
-    worker_configs = []
+    worker_configs: List[WorkerConfig] = []
     for gpu_number, gpu_mem in enumerate(gpu_mems):
         mem_avail = gpu_mem - min_gpu_mem_buffer
         if mem_avail < 0:
@@ -238,23 +242,24 @@ def main():
         print(f'GPU {gpu_number} worker groups: {cpu_groups}')
         for cpu_group in cpu_groups:
             worker_configs.append(
-                [gpu_run_script, cpu_group, gpu_number, 1, mem_per_worker])
+                WorkerConfig(gpu_run_script, cpu_group, [gpu_number],
+                             mem_per_worker))
 
     # allocate CPU workers
     cpu_run_script = get_run_script('cpu_run_script.sh',
                                     'custom_cpu_run_script.sh')
     cpu_groups = allocate_cpus(1000000000, min_cpus_per_cpu_worker)
     print(f'CPU groups: {cpu_groups}')
-    worker_configs.extend(
-        ([cpu_run_script, cpu_group, 0, 0, 0] for cpu_group in cpu_groups))
+    worker_configs.extend((WorkerConfig(cpu_run_script, cpu_group, [], 0)
+                           for cpu_group in cpu_groups))
 
     # start workers
     workers = [
         run_worker(
             i,
-            config,
             project,
             queue,
+            config,
         ) for i, config in enumerate(worker_configs)
     ]
 

@@ -10,10 +10,20 @@ from dmp.worker import Worker
 
 import tensorflow
 
+
+
 # from .common import jobqueue_marshal
 
 
 def make_strategy(num_cores, gpus, gpu_mem):
+    if num_cores is None:
+        import multiprocessing
+        num_cores = max(1, multiprocessing.cpu_count()-1)
+    if gpus is None:
+        gpus = []
+    if gpu_mem is None:
+        gpu_mem = 4096
+
     tf_gpus = tensorflow.config.experimental.list_physical_devices('GPU')
     print(
         f'Found GPUs: {len(tf_gpus)} {tf_gpus}.\nUsing: {gpus}.'

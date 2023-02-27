@@ -18,5 +18,6 @@ for ((i = 1; i < $num_nodes; i++)); do
   srun --nodes=1 --ntasks=1 -w $node "$@" &
 done
 
+
 echo ""$@""
 "$@"

@@ -34,7 +34,7 @@ from pprint import pprint
 
 from dmp.marshaling import marshal
 
-strategy = dmp.jobqueue_interface.worker.make_strategy(1, 1, 0, 8192)
+strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
 worker = Worker(
     None,
     None,
@@ -323,134 +323,73 @@ def test_from_optimizer():
 
     run_experiment(experiment)
 
+def test_imagenet16():
+    width = int(2**4)
 
-asdf = {
-    '201_pol': (26, 11),
-    '294_satellite_image': (36, 6),
-    '505_tecator': (124, 1),
-    '529_pollen': (4, 1),
-    '537_houses': (8, 1),
-    '537_houses': (784, 1),
-    'adult': (8, 1),
-    'adult': (81, 1),
-    'banana': (2, 1),
-    'connect_4': (126, 3),
-    'mnist': (784, 10),
-    'nursery': (26, 4),
-    'nursery': (784, 4),
-    'poker': (14, 10),
-    'poker': (19, 10),
-    'poker': (85, 10),
-    'poker': (86, 10),
-    'poker': (87, 10),
-    'sleep': (141, 5),
-    'splice': (287, 3),
-    'wine_quality_white': (11, 7),
-}
-x = {
-    '201_pol': ([26], (11, )),
-    '294_satellite_image': ([36], (6, )),
-    '505_tecator': ([124], (1, )),
-    '529_pollen': ([4], (1, )),
-    '537_houses': ([8], (1, )),
-    'adult': ([81], (1, )),
-    'banana': ([2], (1, )),
-    'connect_4': ([126], (3, )),
-    'mnist': ([784], (10, )),
-    'nursery': ([26], (4, )),
-    'sleep': ([141], (5, )),
-    'splice': ([287], (3, )),
-    'wine_quality_white': ([11], (7, ))
-}
+    experiment = TrainingExperiment(
+        seed=0,
+        batch='test',
+        tags={'simple':True},
+        precision='float32',
+        dataset=DatasetSpec(
+            'imagenet_16',
+            'imagenet',
+            'shuffled_train_test_split',
+            0.2,
+            0.05,
+            0.0,
+        ),
+        model=CNNStack(
+            input=None,
+            output=None,
+            num_stacks=3,
+            cells_per_stack=1,
+            stem='conv_3x3_1x1_valid',
+            downsample='max_pool_2x2_2x2_valid',
+            cell='conv_3x3_1x1_valid',
+            final=FullyConnectedNetwork(
+                input=None,
+                output=None,
+                widths=[width * 2, width * 2],
+                residual_mode='none',
+                flatten_input=True,
+                inner=Dense.make(-1, {}),
+            ),
+            stem_width=width,
+            stack_width_scale_factor=1.0,
+            downsample_width_scale_factor=1.0,
+            cell_width_scale_factor=1.0,
+        ),
+        fit={
+            'batch_size': 256,
+            'epochs': 1,
+        },
+        optimizer={
+            'class': 'Adam',
+            'learning_rate': 0.0001
+        },
+        loss=None,
+        early_stopping=make_keras_kwcfg(
+            'EarlyStopping',
+            monitor='val_loss',
+            min_delta=0,
+            patience=50,
+            restore_best_weights=True,
+        ),
+        record=ExperimentRecordSettings(
+            post_training_metrics=True,
+            times=True,
+            model=None,
+            metrics=None,
+        ),
+    )
 
-# def test_get_sizes():
-#     mapping = {}
-#     for dataset_name in [
-#             '201_pol',
-#             '294_satellite_image',
-#             '505_tecator',
-#             '529_pollen',
-#             '537_houses',
-#             'adult',
-#             'banana',
-#             'connect_4',
-#             'mnist',
-#             'nursery',
-#             # 'poker',
-#             'sleep',
-#             'splice',
-#             'wine_quality_white',
-#     ]:
-#         experiment = TrainingExperiment(
-#             seed=0,
-#             batch='test',
-#             precision='float32',
-#             dataset=DatasetSpec(
-#                 dataset_name,
-#                 'pmlb',
-#                 'shuffled_train_test_split',
-#                 0.2,
-#                 0.05,
-#                 0.0,
-#             ),
-#             model=DenseBySize(
-#                 input=None,
-#                 output=None,
-#                 shape='rectangle',
-#                 size=16384,
-#                 depth=3,
-#                 search_method='integer',
-#                 inner=Dense.make(-1, {
-#                     'activation': 'relu',
-#                     'kernel_initializer': 'GlorotUniform',
-#                 }),
-#             ),
-#             fit={
-#                 'batch_size': 16,
-#                 'epochs': 1,
-#             },
-#             optimizer={
-#                 'class': 'Adam',
-#                 'learning_rate': 0.0001
-#             },
-#             loss=None,
-#             early_stopping=None,
-#             record=ExperimentRecordSettings(
-#                 post_training_metrics=True,
-#                 times=True,
-#                 model=None,
-#                 metrics=None,
-#             ),
-#         )
-
-#         worker = Worker(
-#             None,
-#             None,
-#             strategy,
-#             {},
-#         )  # type: ignore
-
-#         results = experiment(worker, Job())
-#         print(f"dataset {dataset_name}")
-#         print(
-#             f"experiment.model.input.shape {experiment.model.input['shape']}")
-#         print(
-#             f"experiment.model.input.computed_shape {experiment.model.input.computed_shape}"
-#         )
-#         print(
-#             f"experiment.model.output.units {experiment.model.output['units']}"
-#         )
-#         print(
-#             f"experiment.model.output.computed_shape {experiment.model.output.computed_shape}"
-#         )
-#         mapping[dataset_name] = (experiment.model.input['shape'],
-#                                  (experiment.model.output['units'], ))
-#         # pprint(marshal.marshal(results), indent=1)
-
-#     pprint(mapping)
+    run_experiment(experiment)
+    
 
 # test_growth_experiment()
 # test_simple()
-test_mnist()
+# test_mnist()
 # test_from_optimizer()
 # test_get_sizes()
+test_imagenet16()

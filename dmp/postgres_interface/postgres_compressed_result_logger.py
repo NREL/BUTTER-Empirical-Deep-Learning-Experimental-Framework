@@ -48,7 +48,7 @@ WITH {input_table} as (
             )
 ),
 {_inserted} as (
-    INSERT INTO {experiment} AS e (
+    INSERT INTO {experiment} (
         {experiment_columns}
     )
     SELECT
@@ -58,10 +58,10 @@ WITH {input_table} as (
     WHERE
         NOT EXISTS (
             SELECT 1
-            FROM {experiment}
+            FROM {experiment} e
             WHERE 
-                {experiment}.{experiment_id} = {input_table}.{experiment_id}
-                AND {experiment}.{experiment_tags} @> {input_table}.{experiment_tags}
+                e.{experiment_id} = {input_table}.{experiment_id}
+                AND e.{experiment_tags} @> {input_table}.{experiment_tags}
         )
     ON CONFLICT ({experiment_id}) DO UPDATE SET
         {experiment_tags} = (SELECT array_agg(attr_id) FROM (
@@ -80,7 +80,7 @@ WITH {input_table} as (
             GROUP BY attr_id
             ORDER BY attr_id ASC
             ) _tmp )
-),
+)
 INSERT INTO {run} (
     {experiment_id},
     {run_value_columns}
@@ -132,7 +132,7 @@ ON CONFLICT DO NOTHING
             experiment_attrs = attribute_map.to_sorted_attr_ids(
                 record.experiment_attrs)
 
-            run_values.append((
+            run_values.append([
                 schema.make_experiment_id(experiment_attrs),
                 experiment_attrs,
                 attribute_map.to_sorted_attr_ids(record.experiment_tags),
@@ -141,7 +141,8 @@ ON CONFLICT DO NOTHING
                 Jsonb(record.run_data),
                 schema.convert_dataframe_to_bytes(record.run_history),
                 schema.convert_dataframe_to_bytes(record.run_extended_history),
-            ))
+            ])
+            print(record.run_data)
 
         placeholders = sql_comma.join(
             [SQL('({})').format(self._values_columns.placeholders)] *
@@ -153,11 +154,13 @@ ON CONFLICT DO NOTHING
             self._log_multiple_query_suffix,
         )
 
+        
         print(query)
-        print(run_values)
+        run_payload = tuple(chain(*run_values))
+        print(run_payload)
 
         connection.execute(
             query,
-            list(chain(*run_values)),
+            run_payload,
             binary=True,
         )

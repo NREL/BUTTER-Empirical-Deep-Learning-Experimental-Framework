@@ -52,27 +52,32 @@ class ImageNetDatasetLoader(DatasetLoader):
             return DatasetGroup(inputs, outputs)
 
         batches = 10
+        source_files = []
         arrays = []
         for batch in range(1, batches + 1):
-            file_path = os.path.join(
+            source_files.append(os.path.join(
                 dataset_cache_directory,
                 f'Imagenet{self.size}_train_npz',
-                f'train_data_batch_{batch}.nzp',
-            )
-            arrays.append(numpy.load(file_path))
-        concatenated = numpy.concatenate(arrays)
+                f'train_data_batch_{batch}.npz',
+            ))
+
+        source_files.append(os.path.join(
+                dataset_cache_directory,
+                f'Imagenet{self.size}_val_npz',
+                'val_data.npz',
+            ))
+        
+        for file_path in source_files:
+            d = numpy.load(test_path)
+        for a in arrays:
+            print(a.shape)
+
+        concatenated = numpy.vstack(arrays)
         del arrays
 
         return Dataset(
             self.ml_task,
             make_group(concatenated),
-            make_group(
-                numpy.load(
-                    os.path.join(
-                        dataset_cache_directory,
-                        f'Imagenet{self.size}_val_npz',
-                        'val_data.nzp',
-                    ))),
         )
 
     def _prepare_inputs(self, data):
