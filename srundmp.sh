@@ -10,8 +10,7 @@
 #SBATCH --cpu-freq=high-high:Performance
 
 # MODIFY HERE according to your environment setup
-source ~/admp
-unset LD_PRELOAD
+source $DMP_DIR/script/$DMP_CONFIG/dmp_activate_cpu
 
 echo "executing command... python -u -m $@"
 
