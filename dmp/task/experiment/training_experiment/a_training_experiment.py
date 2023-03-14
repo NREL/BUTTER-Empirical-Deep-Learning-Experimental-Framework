@@ -71,8 +71,8 @@ class ATrainingExperiment(ExperimentTask):
         worker: Worker,
         network: NetworkInfo,
     ):
-        from dmp.marshaling import marshal
-        pprint(marshal.marshal(network.structure))
+        # from dmp.marshaling import marshal
+        # pprint(marshal.marshal(network.structure))
 
         if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
             keras.backend.set_floatx('float32')
@@ -140,11 +140,14 @@ class ATrainingExperiment(ExperimentTask):
 
         run_data_set = {'seed', 'precision', 'task_version', 'batch'}
         tag_prefix = 'tags_'
+        run_tags_prefix = 'run_tags_'
         for key in list(experiment_attrs.keys()):
             if key in run_data_set or key.startswith('record_'):
                 run_data[key] = experiment_attrs.pop(key, None)
             elif key.startswith(tag_prefix):
                 experiment_tags[key[len(tag_prefix):]] = experiment_attrs.pop(key, None)
+            elif key.startswith(run_tags_prefix):
+                run_data[key[len(run_tags_prefix):]] = experiment_attrs.pop(key, None)
 
         experiment_attrs.update({
             'ml_task':

@@ -5,12 +5,12 @@ import os
 import numpy
 
 def butter_data_path():
-    return os.getenv("DMP_BUTTER_DATA_DIR", "s3://oedi-data-lake/butter")
+    return os.getenv('DMP_BUTTER_DATA_DIR', 's3://oedi-data-lake/butter')
 
 def get_s3_filesystem():
     import s3fs
     import botocore
-    return s3fs.S3FileSystem(config_kwargs={"signature_version": botocore.UNSIGNED})
+    return s3fs.S3FileSystem(config_kwargs={'signature_version': botocore.UNSIGNED})
 
 partition_cols = [
     'dataset',
@@ -28,13 +28,13 @@ def read_pandas(sweep, filters, columns):
     path = butter_data_path()
     
     # Clean up path (trim filesystem identifier) and create filesystem objects
-    if path[:5]=="s3://":
+    if path[:5]=='s3://':
         fs = get_s3_filesystem()
-        path = path[5:] + "/" + sweep
+        path = path[5:] + '/' + sweep
         schema_fp = fs.open(f'{path}/_common_metadata')
     else:
         fs = None
-        path = path+"/"+sweep
+        path = path+'/'+sweep
         schema_fp = open(f'{path}/_common_metadata', 'rb')
     
     # Read schema data from _common_metadata file
@@ -51,18 +51,18 @@ def extract_data(original_df, downsample_epochs=False, grouper='shape'):
 
     original_df['epoch'] = original_df['test_loss_median'].apply(lambda x: list(range(1, 1 + len(x))))
 
-    epoch_wise_values = ["test_loss_median", "epoch"]
+    epoch_wise_values = ['test_loss_median', 'epoch']
 
     df = original_df.explode(epoch_wise_values)
 
     for value in epoch_wise_values:
-        df[value] = df[value].astype("float32")
-    df["epoch"] = df["epoch"].astype("int")
+        df[value] = df[value].astype('float32')
+    df['epoch'] = df['epoch'].astype('int')
 
     #downsample by epoch logarithmically
     if downsample_epochs:
         keep_epochs = numpy.unique(numpy.logspace(0,numpy.log10(3000),100,base=10).astype(int))
-        df = df[df["epoch"].isin(keep_epochs)]
+        df = df[df['epoch'].isin(keep_epochs)]
 
     # num_free_parameters is not unique in sizes. Take first experiment
     df = df.sort_values('experiment_id').groupby(list(set(['dataset',grouper,'num_free_parameters','epoch']))).first().reset_index()

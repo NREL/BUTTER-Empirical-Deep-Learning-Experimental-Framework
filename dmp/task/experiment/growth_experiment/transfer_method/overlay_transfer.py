@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 from functools import singledispatchmethod
 from typing import Any, Dict, Iterable, Set, Tuple, TypeVar
+from dmp.layer.flatten import Flatten
 
 import numpy
 import tensorflow.keras as keras
 from dmp.layer import *
+from dmp.layer.global_pooling_layer import GlobalPoolingLayer
+from dmp.layer.pooling_layer import PoolingLayer
 from dmp.keras_interface.layer_to_keras import KerasLayer
 from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.model.model_info import ModelInfo
@@ -56,6 +59,30 @@ class OverlayTransfer(TransferMethod):
     @_do_visit.register
     def _(
         self,
+        src_layer: Flatten,
+        growth_info: LayerGrowthInfo,
+    ) -> None:
+        return
+
+    @_do_visit.register
+    def _(
+        self,
+        src_layer: GlobalPoolingLayer,
+        growth_info: LayerGrowthInfo,
+    ) -> None:
+        return
+
+    @_do_visit.register
+    def _(
+        self,
+        src_layer: PoolingLayer,
+        growth_info: LayerGrowthInfo,
+    ) -> None:
+        return
+
+    @_do_visit.register
+    def _(
+        self,
         src_layer: Dense,
         growth_info: LayerGrowthInfo,
     ) -> None:
@@ -98,15 +125,18 @@ class OverlayTransfer(TransferMethod):
             raise NotImplementedError(
                 f'Layer parameter group numbers do not match {num_params}, {len(dst_params)}'
             )
+
         if num_params <= 0:
             return
+
+        print(f'overlay standard layer : {[s.shape for s in src_params]}  -> {[s.shape for s in dst_params]} {type(src_layer)} {type(dst_layer)} {src_layer.config} {dst_layer.config}')
 
         num_weight_dims = len(src_params[0].shape)
         for src_weights, dst_weights in zip(src_params, dst_params):
             num_dims = len(src_weights.shape)
             if num_dims != len(dst_weights.shape):
                 raise ValueError(
-                    f'Mismatched wieght shapes {src_weights.shape}, {dst_weights.shape}'
+                    f'Mismatched weight shapes {src_weights.shape}, {dst_weights.shape}'
                 )
 
             if num_dims == num_weight_dims:
@@ -119,7 +149,7 @@ class OverlayTransfer(TransferMethod):
                     dst_weights[..., src_channels_in:, :src_channels_out],
                     dst_weights[..., src_channels_in:, src_channels_out:],
                 )
-            elif num_dims == num_weight_dims - 1:
+            elif num_dims == num_weight_dims - 1 or num_dims == 1:
                 src_biases = src_params[1]
                 dst_biases = dst_params[1]
                 num_src_biases = src_biases.shape[-1]
@@ -130,7 +160,7 @@ class OverlayTransfer(TransferMethod):
                 )
             else:
                 raise NotImplementedError(
-                    f'Weight group dimension not supported {num_weight_dims} {num_dims}'
+                    f'Weight group dimension not supported {num_weight_dims} {num_dims} {src_weights.shape} {dst_weights.shape} {src_layer.config} {src_params[0].shape}'
                 )
 
         dst_keras_layer.set_weights(dst_params)  # type: ignore

@@ -47,7 +47,8 @@ def run_worker(
 
     cpus_string = ','.join([str(i) for i in cpu_numbers])
     nodes_string = ','.join([str(i) for i in nodes])
-    gpus_string = ','.join([str(i) for i in config.gpus])
+    gpus_string = '-' if len(config.gpus) == 0 else ','.join(
+        [str(i) for i in config.gpus])
 
     command = [
         f'./{config.run_script}',
@@ -183,7 +184,7 @@ def main():
                         (len(allocated) < min_group_size or
                          (len(groups) < max_num_groups and
                             size < min_group_size
-                    )):
+                          )):
                         sublevel_size, sublevel = level.pop()
                         new_sublevel_size, new_sublevel = \
                             do_allocate_group(sublevel_size, sublevel)

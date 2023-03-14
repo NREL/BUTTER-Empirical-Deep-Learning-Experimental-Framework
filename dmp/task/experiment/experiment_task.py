@@ -15,6 +15,7 @@ class ExperimentTask(Task, ABC):
     seed: int
     batch: str
     tags: Optional[Dict[str, ParameterValue]]
+    run_tags: Optional[Dict[str, ParameterValue]]
 
     def get_parameters(self) -> ParameterDict:
         parameters = self.extract_parameters()

@@ -1,6 +1,6 @@
-"""
+'''
 Enqueues jobs from stdin into the JobQueue
-"""
+'''
 
 import sys
 
@@ -12,20 +12,23 @@ from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
-from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
-from dmp.task.experiment.training_experiment.experiment_record_settings import ExperimentRecordSettings
+from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
+    WidthScaler, )
+from dmp.task.experiment.training_experiment.experiment_record_settings import (
+    ExperimentRecordSettings, )
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
+from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
+    OverlayTransfer, )
 
 sys.path.insert(0, './')
-
 
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.layer.dense import Dense
 
-from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment, )
 from pprint import pprint
 
 from dmp.marshaling import marshal
@@ -43,7 +46,7 @@ import sys
 
 
 def main():
-    queue_id = 11
+    queue_id = 13
 
     def make_experiment(
         seed,
@@ -51,14 +54,27 @@ def main():
         batch_size,
         optimizer,
         learning_rate,
+        momentum,
     ):
+        if optimizer == 'Adam' and momentum != 0.0:
+            return None
+
+        optimizer = {
+            'class': optimizer,
+            'learning_rate': learning_rate,
+            'momentum': momentum,
+        }
+
+        if optimizer == 'Adam':
+            del optimizer['momentum']
+
         return TrainingExperiment(
             seed=seed,
             tags={
-                'mnist_cnn':True, 
-                'mnist_simple_cnn_v1':True,
-                },
-            batch='optimizer_cnn_mnist_1',
+                'mnist_cnn': True,
+                'mnist_simple_cnn_v1': True,
+            },
+            batch='optimizer_cnn_mnist_energy_eagle_cpu_1',
             precision='float32',
             dataset=DatasetSpec(
                 'mnist',
@@ -91,18 +107,15 @@ def main():
             ),
             fit={
                 'batch_size': batch_size,
-                'epochs': 128,
+                'epochs': 1024,
             },
-            optimizer={
-                'class': optimizer,
-                'learning_rate': learning_rate
-            },
+            optimizer=optimizer,
             loss=None,
             early_stopping=make_keras_kwcfg(
                 'EarlyStopping',
                 monitor='val_loss',
                 min_delta=0,
-                patience=10,
+                patience=16,
                 restore_best_weights=True,
             ),
             record=ExperimentRecordSettings(
@@ -114,24 +127,28 @@ def main():
         )
 
     sweep_config = list({
-        'width': [2, 4],
-        'batch_size': [64, 128, 256, 512],
-        'optimizer': ['Adam'],
+        'width': [2, 3, 4, 5, 6, 7, 8],
+        'batch_size': [8, 16, 32, 64, 128, 256, 512],
+        'optimizer': ['Adam', 'SGD', 'RMSprop', 'Adagrad'],
         'learning_rate': [1e-1, 1e-2, 1e-3, 1e-4],
+        'momentum': [0.0, 0.9],
     }.items())
 
     jobs = []
     seed = int(time.time())
-    repetitions = 1
+    repetitions = 3
     base_priority = 1000
 
     def do_sweep(i, config):
         if i < 0:
             for rep in range(repetitions):
-                jobs.append(
-                    Job(priority=base_priority + len(jobs),
-                        command=marshal.marshal(
-                            make_experiment(seed + len(jobs), **config))))
+                experiment = make_experiment(seed + len(jobs), **config)
+                if experiment is not None:
+                    jobs.append(
+                        Job(
+                            priority=base_priority + len(jobs),
+                            command=marshal.marshal(experiment),
+                        ))
         else:
             key, values = sweep_config[i]
             for v in values:
@@ -139,7 +156,6 @@ def main():
                 do_sweep(i - 1, config)
 
     do_sweep(len(sweep_config) - 1, {})
-
 
     print(f'Generated {len(jobs)} jobs.')
     # pprint(jobs)
@@ -149,5 +165,5 @@ def main():
     print(f'Enqueued {len(jobs)} jobs.')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

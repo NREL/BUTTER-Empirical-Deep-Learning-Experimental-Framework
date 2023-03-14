@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
+from pprint import pprint
 from typing import Optional, Any, Dict, Tuple
 import math
+from dmp import jobqueue_interface
 
 from jobqueue.job import Job
 from dmp.layer.layer import Layer
@@ -70,6 +72,12 @@ class GrowthExperiment(TrainingExperiment):
                 for l in goal_network.structure.all_descendants
             }
 
+            # from dmp.marshaling import marshal
+            # print(f'goal network:')
+            # pprint(
+            #     marshal.marshal(
+            #         goal_network.structure))
+
             max_total_epochs: int = self.fit['epochs']
             history: dict = {}
             model_number: int = 0
@@ -121,11 +129,12 @@ class GrowthExperiment(TrainingExperiment):
                         target_size,
                         make_network,
                     )
-                    # print(
-                    #     f'Growing to {target_size} {network.num_free_parameters}')
-                    # pprint.pprint(
-                    #     jobqueue_interface.jobqueue_marshal.marshal(
-                    #         network.description))
+                    print(
+                        f'Growing to {target_size} {network.num_free_parameters}')
+                    # from dmp.marshaling import marshal
+                    # pprint(
+                    #     marshal.marshal(
+                    #         network.structure))
 
                 model = self._make_model_from_network(worker, network)
 
