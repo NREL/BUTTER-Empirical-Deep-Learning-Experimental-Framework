@@ -447,11 +447,11 @@ def test_imagenet16():
         model=CNNStack(
             input=None,
             output=None,
-            num_stacks=3,
-            cells_per_stack=1,
+            num_stacks=2,
+            cells_per_stack=2,
             stem='conv_3x3_1x1_valid',
-            downsample='max_pool_2x2_2x2_valid',
-            cell='conv_3x3_1x1_valid',
+            downsample='max_pool_2x2_2x2_same',
+            cell='conv_3x3_1x1_same',
             final=FullyConnectedNetwork(
                 input=None,
                 output=None,
@@ -497,5 +497,5 @@ def test_imagenet16():
 # test_mnist()
 # test_from_optimizer()
 # test_get_sizes()
-test_growth_experiment_mnist()
-# test_imagenet16()
+# test_growth_experiment_mnist()
+test_imagenet16()

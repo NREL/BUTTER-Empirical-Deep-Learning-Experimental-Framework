@@ -33,11 +33,14 @@ class ImageNetDatasetLoader(DatasetLoader):
         self.size = size
         self.crop = crop
 
+    # def _load_dataset(self):
+    #     return self._fetch_from_source() # bypass local caching
+
     def _fetch_from_source(self) -> Dataset:
 
-        def make_group(raw_array):
-            inputs = raw_array['data']
-            outputs = raw_array['labels']
+        def load_data_from_npz(npz_file):
+            inputs = npz_file['data']
+            outputs = npz_file['labels']
             outputs -= 1  # subtract 1 to make labels start at 0
 
             if self.crop is not None:
@@ -45,39 +48,55 @@ class ImageNetDatasetLoader(DatasetLoader):
                 inputs = inputs[inds]
                 outputs = outputs[inds]
 
-            outputs = outputs.astype(int)
             n = outputs.shape[0]
             inputs = inputs.reshape(n, 3, self.size, self.size)
             inputs = numpy.transpose(inputs, (0, 2, 3, 1))
-            return DatasetGroup(inputs, outputs)
+            outputs = outputs.reshape(n, 1).astype(numpy.uint16)
+            return inputs, outputs
 
         batches = 10
         source_files = []
         arrays = []
         for batch in range(1, batches + 1):
-            source_files.append(os.path.join(
-                dataset_cache_directory,
-                f'Imagenet{self.size}_train_npz',
-                f'train_data_batch_{batch}.npz',
-            ))
+            source_files.append(
+                os.path.join(
+                    dataset_cache_directory,
+                    f'Imagenet{self.size}_train_npz',
+                    f'train_data_batch_{batch}.npz',
+                ))
 
-        source_files.append(os.path.join(
+        source_files.append(
+            os.path.join(
                 dataset_cache_directory,
                 f'Imagenet{self.size}_val_npz',
                 'val_data.npz',
             ))
-        
-        for file_path in source_files:
-            d = numpy.load(test_path)
-        for a in arrays:
-            print(a.shape)
 
-        concatenated = numpy.vstack(arrays)
+        print(f' source files : {source_files}')
+        for file_path in source_files:
+            with numpy.load(file_path) as file:
+                arrays.append(load_data_from_npz(file))
+
+        print(f'loaded {len(arrays)} arrays')
+
+        for inputs, outputs in arrays:
+            print(
+                f's: {inputs.shape} {inputs.dtype} : {outputs.shape} {outputs.dtype} {outputs.max()}'
+            )
+
+        inputs = numpy.concatenate([i for i, o in arrays], axis=0)
+        outputs = numpy.concatenate([o for i, o in arrays], axis=0)
         del arrays
+
+        # concatenated = numpy.vstack(arrays)
+
+        print(
+            f'inputs: {inputs.shape} {inputs.dtype}, outputs: {outputs.shape} {outputs.dtype}'
+        )
 
         return Dataset(
             self.ml_task,
-            make_group(concatenated),
+            DatasetGroup(inputs, outputs),
         )
 
     def _prepare_inputs(self, data):

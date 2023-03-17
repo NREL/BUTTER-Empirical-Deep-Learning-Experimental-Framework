@@ -49,25 +49,31 @@ class DatasetLoader(ABC):
         return data
 
     def _load_dataset(self):
-        # data = self._try_read_from_cache()
+        data = self._try_read_from_cache()
         data = None
         if data is None:
             data = self._fetch_from_source()
-            # self._write_to_cache(data)
+            self._write_to_cache(data)
         return data
 
     def _get_cache_path(self, name):
-        filename = self.source + '_' + self.dataset_name + f'_{name}'
+        filename = self.source + '_' + self.dataset_name + name
         return os.path.join(dataset_cache_directory, filename)
 
     def _try_read_from_cache(self) -> Optional[Dataset]:
-        filename = self._get_cache_path('.pkl.bz2')
+        # filename = self._get_cache_path('.pkl.bz2')
+        # try:
+        #     import bz2
+        #     with bz2.BZ2File(filename, 'rb') as file: 
+        #         return pickle.load(file)
+        filename = self._get_cache_path('.pkl.lz4')
         try:
-            import bz2
-            with bz2.BZ2File(filename, 'rb') as file: 
+            import lz4
+            with lz4.frame.open(filename, mode='rb') as file:
                 return pickle.load(file)
-
+        # 
         except FileNotFoundError:
+            print(f'Dataset cache file {filename} not found while reading from dataset cache for {self}.')
             return None
         except:
             print(f'Error reading from dataset cache for {self}:')
@@ -85,9 +91,22 @@ class DatasetLoader(ABC):
 
     def _write_to_cache(self, data: Dataset) -> None:
         try:
-            import bz2
-            with bz2.BZ2File(self._get_cache_path('.pkl.bz2'), 'wb') as file:
+            # filename = self._get_cache_path('.pkl.bz2')
+            # print(f'Writing dataset cache file {filename} for {self}.')
+
+            # import bz2
+            # with bz2.BZ2File(filename, 'wb', compresslevel=1) as file:
+            #     pickle.dump(data, file)
+
+            filename = self._get_cache_path('.pkl.lz4')
+            print(f'Writing dataset cache file {filename} for {self}.')
+
+            import lz4
+            with lz4.frame.open(filename, mode='wb') as file:
                 pickle.dump(data, file)
+
+            print(f'Done writing dataset cache file {filename} for {self}.')
+            
         except Exception as e:
             print(f'Error writing to dataset cache for {self}:')
             traceback.print_exc()

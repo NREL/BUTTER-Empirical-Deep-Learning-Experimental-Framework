@@ -12,8 +12,8 @@ from dmp.layer import *
 class CNNStacker(ModelSpec):
     stage_widths: List[List[int]]
     stem: LayerFactory
-    cell: LayerFactory
     downsample: LayerFactory
+    cell: LayerFactory
     final: LayerFactory
 
     def make_network(self) -> NetworkInfo:

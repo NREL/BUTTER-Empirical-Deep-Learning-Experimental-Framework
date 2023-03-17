@@ -71,8 +71,8 @@ class ATrainingExperiment(ExperimentTask):
         worker: Worker,
         network: NetworkInfo,
     ):
-        # from dmp.marshaling import marshal
-        # pprint(marshal.marshal(network.structure))
+        from dmp.marshaling import marshal
+        pprint(marshal.marshal(network.structure))
 
         if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
             keras.backend.set_floatx('float32')
