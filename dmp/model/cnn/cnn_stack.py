@@ -43,7 +43,7 @@ class CNNStack(ModelSpec):
                 width *= self.cell_width_scale_factor
 
             width *= self.stack_width_scale_factor
-
+        print(f'widths: {stage_widths}')
         return CNNStacker(
             self.input,
             self.output,

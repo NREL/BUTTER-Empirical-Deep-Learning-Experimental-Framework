@@ -180,11 +180,82 @@ def test_mnist():
     run_experiment(experiment)
 
 
+def test_mnist_lenet():
+
+    experiment = TrainingExperiment(
+        seed=0,
+        batch='test',
+        tags={
+            'model_name': 'lenet',
+            'model_activation' : 'relu',
+        },
+        run_tags={
+            'test': True,
+        },
+        precision='float32',
+        dataset=DatasetSpec(
+            'mnist',
+            'keras',
+            'shuffled_train_test_split',
+            0.2,
+            0.05,
+            0.0,
+        ),
+        model=CNNStack(
+            input=None,
+            output=None,
+            num_stacks=2,
+            cells_per_stack=1,
+            stem='conv_5x5_1x1_same',
+            downsample='max_pool_2x2_2x2_valid',
+            cell='conv_5x5_1x1_valid',
+            final=FullyConnectedNetwork(
+                input=None,
+                output=None,
+                widths=[120, 84],
+                residual_mode='none',
+                flatten_input=True,
+                inner=Dense.make(-1, {}),
+            ),
+            stem_width=6,
+            stack_width_scale_factor=16.0 / 6.0,
+            downsample_width_scale_factor=1.0,
+            cell_width_scale_factor=1.0,
+        ),
+        fit={
+            'batch_size': 256,
+            'epochs': 1,
+        },
+        optimizer={
+            'class': 'Adam',
+            'learning_rate': 0.0001
+        },
+        loss=None,
+        early_stopping=make_keras_kwcfg(
+            'EarlyStopping',
+            monitor='val_loss',
+            min_delta=0,
+            patience=50,
+            restore_best_weights=True,
+        ),
+        record=ExperimentRecordSettings(
+            post_training_metrics=True,
+            times=True,
+            model=None,
+            metrics=None,
+        ),
+    )
+
+    run_experiment(experiment)
+
+
 def test_growth_experiment():
     experiment = GrowthExperiment(
         seed=0,
         batch='test',
-        tags={'simple': True},
+        tags={
+            'simple': True,
+        },
         run_tags={'test': True},
         precision='float32',
         dataset=DatasetSpec(
@@ -260,8 +331,12 @@ def test_growth_experiment_mnist():
     experiment = GrowthExperiment(
         seed=0,
         batch='test',
-        tags={'simple': True},
-        run_tags={'test': True},
+        tags={
+            'simple': True,
+        },
+        run_tags={
+            'test': True,
+        },
         precision='float32',
         dataset=DatasetSpec(
             'mnist',
@@ -495,7 +570,8 @@ def test_imagenet16():
 # test_growth_experiment()
 # test_simple()
 # test_mnist()
+test_mnist_lenet()
 # test_from_optimizer()
 # test_get_sizes()
 # test_growth_experiment_mnist()
-test_imagenet16()
+# test_imagenet16()
