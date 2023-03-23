@@ -55,11 +55,11 @@ class Worker:
         if isinstance(result, ExperimentResultRecord):
             self._result_logger.log(result)
 
-        if self._max_jobs is None:
-            return True
+        if self._max_jobs is not None:
+            self._max_jobs -= 1
 
-        self._max_jobs -= 1
-        return self._max_jobs > 0 and common.get_git_hash() == git_hash
+        second_git_hash = common.get_git_hash()
+        return (self._max_jobs is None or self._max_jobs > 0) and (git_hash is second_git_hash or git_hash == second_git_hash)
 
 
 from dmp.logging.experiment_result_logger import ExperimentResultLogger
