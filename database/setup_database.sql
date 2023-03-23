@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS job_status ( queue smallint NOT NULL,
                                                        status smallint NOT NULL DEFAULT 0,
                                                                                         priority integer NOT NULL,
                                                                                                          id uuid NOT NULL,
-                                                                                                                 start_time timestamp without time zone,
-                                                                                                                                                   update_time timestamp without time zone,
+                                                                                                                 start_time timestamp with time zone,
+                                                                                                                                                   update_time timestamp with time zone,
                                                                                                                                                                                       worker uuid,
                                                                                                                                                                                       error_count smallint, error text , CONSTRAINT job_status_pkey PRIMARY KEY (id));
 

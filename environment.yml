@@ -1,26 +1,22 @@
 name: dmp
 dependencies:
-- python=3.9
+- python >= 3.10
 - pandas
-- jupyter
-- matplotlib
 - scikit-learn
-- statsmodels
-- seaborn
 - pip
 - scipy
 - numpy
-- sqlalchemy
-- psycopg2
 - conda-forge::tensorflow >= 2.7
 - simplejson
+- libpq
+- bzip2
 - pip:
-  - pyarrow >= 8
+  - pyarrow >= 10
+  - psycopg[binary] >= 3
+  - psycopg_pool >= 3
   - pytest
   - tensorflow_datasets
   - pmlb
-  - orjson
-  - connectorx
   - pathos
 
 

@@ -6,15 +6,15 @@ import argparse
 
 from jobqueue.connect import connect
 from jobqueue.job_queue import JobQueue
-from dmp.jobqueue_interface.common import jobqueue_marshal
+from dmp.marshaling import marshal
 
 import sys
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        'project', help='project identifier in your jobqueue.json file')
+    parser.add_argument('project',
+                        help='project identifier in your jobqueue.json file')
     parser.add_argument('queue', help='queue id to use (smallint)')
     args = parser.parse_args()
 
@@ -22,10 +22,13 @@ if __name__ == "__main__":
     job_queue = JobQueue(credentials, int(args.queue), check_table=False)
 
     accumulated = []
-    lines = sys.stdin.readlines()
+    stdin = sys.stdin
+    if stdin is None:
+        raise RuntimeError('stdin is None')
+    lines = stdin.readlines()
 
     for line in lines:
-        task = jobqueue_marshal.demarshal(line)
+        task = marshal.demarshal(line)
         accumulated.append(task)
         if len(accumulated) > 512:
             job_queue.push(accumulated)

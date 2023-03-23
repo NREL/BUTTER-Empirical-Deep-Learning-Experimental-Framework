@@ -1,0 +1,138 @@
+Done:
++ new task format
++ widths visitor
++ widths logging
++ CNN builder (and consolidate CNN building functions)
++ update growth visitor (add CNNs)
++ add run_id generation somewhere
++ CNN dataset refactor
++ CNN loader
+---
+Current:
+
++ saving pre-training metrics, loss
++ saving post-training train metrics
+
++ dataset-based fixed train-test split method
+
++ task schema redesign
+    + task migration script
+
++ new run schema design
+    + migrate task parameter connector from '.' to '_'
+    + experiment with parquet compression
+        + run converter
+    + update postgres result logger
++ new summary schema
+    + new materialization script
+    + new query script
+
++ subprocess runner method
++ add system_name, queue_id, job_name to worker info
+
++ save time at end of epoch 
+---
+Later:
+
++ better per-epoch histories:
+    + get zero-epoch values
+    + record post-epoch training loss
+    + might need to adjust existing results to include this
+
+
+
+
+
++ filtering kwargs?
+
++ Do CNN merge
+    + convert CNN builder code to use Layers
+    + make CNN task (or figure out how to specify it)
+        + might need to rename parameters in DB
+            + might need to remap Tasks in DB
+        + make CNN logging work properly (see below)
+    + make growth visitor compatible with CNNs
+
++ Test/fix revised aspect and growth experiments
+
+
++ test parquet DB storage
+    + possibly convert to parquet
+        + update result logger
+        + update summary materialization script
+
++ make worker run script?
+    + how to pop from the queue efficiently?
+        + worker just pops one job? 
+        + pass worker a max wait time?
+        + exit codes to indicate worker status?
+
+
+------------
+
++ Refine CNN task specification
+    + Micro vs macro
+        + defined by simple 'cell type' or 'shape'?
+            + cell type
+            + cell depth (# cells between downsample stages)
+            + downsamples (# downsampling stages)
+            + cell widths (# channels/filters at each level/depth)
+            -> alternative:
+                + cell type
+                + depth (in terms of levels (cells + downsamples))
+                + num_downsamples
+                    + evenly distributed; remaining levels are normal cells
+                + shape, size 
+                + dense output section?
+                    + depth
+                    + size (output width determined by dataset/task)
+                    + width(s) (maybe uniform/rectangular?)
+                    + shape (maybe all rectangular?)
+                + num dense parameters
+                -> also log:
+                    + widths (# channels/filters at each level)
+                    + total num layers
+                        + num cell layers
+                    + total num levels
+                    + total num downsamples
+                    + total num cells
+                    + level types array (like widths but for levels not layers)
+        + log cell structure? 
+            -> experiment data like widths
+            -> is it forced to be unique?
+    + possibly log cell structure to use with microarch searches?
+
+
++ Data/DB storage improvement?
+    + convert network module structures into layer structures
+    + store run data as single blob or byte array?
+        + could be a parquet encoding-> perhaps a single row table?
+            + wrap python bytes in BytesIO (https://docs.python.org/3/library/io.html#io.BytesIO)
+            + wrap BytesIO in pyarrow.PythonFile (https://arrow.apache.org/docs/python/generated/pyarrow.PythonFile.html#pyarrow.PythonFile)
+            + store as parquet table: https://arrow.apache.org/docs/python/parquet.html
+        - Need a script to link runs to experiments
+            - or, we need to keep using the experiment table when storing a result
+        - Need a worker script to do aggregation and materialization
+            - can't do work in DB query alone for this one
+            - load runs for experiment, compute aggregation, store in summary table
+        + Easier to extract subsets into parquet files
+        + smaller, possibly faster to deal with (mainly because smaller)
+        + simpler in some ways (single blob to move around)
+        + might reduce chances of issues with Yuma
+
+
++ add initializer config?
+
++ organize aspect test utils, etc
+
++ rename 'type' to 'name' in configs?
+
++ Rename AspectTestTask to TrainingExperiment?
+    + could probably get away with only renaming parameters
+
+
++ Rename some parameters? (esp. based on CNN merge)
+    + must rename command for pending tasks as well as parameter table entries
+
++ slurm re-queueing script for Vermilion, etc?
+

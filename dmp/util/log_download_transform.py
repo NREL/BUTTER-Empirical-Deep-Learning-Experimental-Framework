@@ -25,7 +25,7 @@ del _credentials['table_name']
 from pathos.multiprocessing import Pool
 import math
 
-from psycopg2.extensions import register_adapter, AsIs
+from psycopg.extensions import register_adapter, AsIs
 
 
 def adapt_numpy_float64(numpy_float64):
@@ -254,9 +254,9 @@ history_cols = [
     'test_loss',
 ]
 
-dest_cols = set(base_cols)
-dest_cols.update(loss_cols)
-dest_cols.update(history_cols)
+dst_cols = set(base_cols)
+dst_cols.update(loss_cols)
+dst_cols.update(history_cols)
 
 string_map = {}
 
@@ -323,7 +323,7 @@ def postprocess_dataframe(data_log, engine):
     for col in canonical_cols:
         datasets[col] = datasets[col].apply(canonicalize_string)
 
-    datasets.drop(columns=[c for c in datasets.columns if c not in dest_cols], inplace=True)
+    datasets.drop(columns=[c for c in datasets.columns if c not in dst_cols], inplace=True)
     base = datasets.filter(base_cols, axis=1)
     loss = datasets.filter(loss_cols, axis=1)
     history = datasets.filter(history_cols, axis=1)
@@ -355,9 +355,9 @@ def func():
     # log_filename = 'aspect_analysis_datasets.feather'
     groups = ('fixed_3k_1', 'fixed_3k_0', 'fixed_01', 'exp00', 'exp01')
     source_table = 'log'
-    dest_table_base = 'materialized_experiments_3_base'
-    dest_table_test_loss = 'materialized_experiments_3_test_loss'
-    dest_table_history = 'materialized_experiments_3_history'
+    dst_table_base = 'materialized_experiments_3_base'
+    dst_table_test_loss = 'materialized_experiments_3_test_loss'
+    dst_table_history = 'materialized_experiments_3_history'
     num_threads = 64
     # num_threads = 1
     # engine, session = log._connect()
@@ -388,9 +388,9 @@ def func():
     select log.id from {source_table} AS log 
     where {conditions} AND 
     (
-    NOT EXISTS (SELECT id FROM {dest_table_base} AS d WHERE d.id = log.id) OR
-    NOT EXISTS (SELECT id FROM {dest_table_test_loss} AS d WHERE d.id = log.id) OR
-    NOT EXISTS (SELECT id FROM {dest_table_history} AS d WHERE d.id = log.id)
+    NOT EXISTS (SELECT id FROM {dst_table_base} AS d WHERE d.id = log.id) OR
+    NOT EXISTS (SELECT id FROM {dst_table_test_loss} AS d WHERE d.id = log.id) OR
+    NOT EXISTS (SELECT id FROM {dst_table_history} AS d WHERE d.id = log.id)
     )
     ORDER BY id ASC
     '''
@@ -457,9 +457,9 @@ def func():
                 break
             base_chunk, loss_chunk, history_chunk = postprocess_dataframe(chunk, engine)
             print(f'Read #{read_number}: writing chunk to database...')
-            base_chunk.to_sql(dest_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
-            loss_chunk.to_sql(dest_table_test_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
-            history_chunk.to_sql(dest_table_history, engine, method=insert_on_duplicate, if_exists='append',
+            base_chunk.to_sql(dst_table_base, engine, method=insert_on_duplicate, if_exists='append', index=False)
+            loss_chunk.to_sql(dst_table_test_loss, engine, method=insert_on_duplicate, if_exists='append', index=False)
+            history_chunk.to_sql(dst_table_history, engine, method=insert_on_duplicate, if_exists='append',
                                  index=False)
             print(f'Read #{read_number}: done writing...')
             del base_chunk

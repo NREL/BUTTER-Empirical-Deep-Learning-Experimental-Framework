@@ -6,14 +6,14 @@ from jobqueue import connect
 from jobqueue.cursor_manager import CursorManager
 import numpy
 
-from dmp.logging.postgres_parameter_map import PostgresParameterMap
+from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 
 
 def main():
     credentials = connect.load_credentials('dmp')
     parameter_map = None
     with CursorManager(credentials) as cursor:
-        parameter_map = PostgresParameterMap(cursor)
+        parameter_map = PostgresAttrMap(cursor)
 
     # base_path = '/projects/dmpapps/jperrsau/datasets/2022_05_20_fixed_3k_1/'
     # base_path = '/home/ctripp/scratch/'
@@ -146,13 +146,13 @@ def main():
         experiment_ids = []
         with CursorManager(credentials) as cursor:
             cursor.execute(f'''
-        SELECT
-            experiment_id
-        FROM
-            experiment_summary_ s
-        WHERE
-            s.experiment_parameters @> (array[ {parameter_map.to_parameter_ids(fixed_parameters)} ])::smallint[]
-        ;''')
+SELECT
+    experiment_id
+FROM
+    experiment_summary_ s
+WHERE
+    s.experiment_parameters @> (array[ {parameter_map.to_parameter_ids(fixed_parameters)} ])::smallint[]
+;''')
 
             for row in cursor.fetchall():
                 experiment_ids.append(row[0])
@@ -170,13 +170,13 @@ def main():
             with CursorManager(credentials) as cursor:
                 for variable, dtype in return_values:
                     cursor.execute(f'''
-    SELECT 
-        experiment_id, experiment_parameters, {variable}
-    FROM
-        experiment_summary_ s
-    WHERE
-        s.experiment_id in ( {','.join((str(eid) for eid in chunk))} )
-    ;''')
+SELECT 
+    experiment_id, experiment_parameters, {variable}
+FROM
+    experiment_summary_ s
+WHERE
+    s.experiment_id in ( {','.join((str(eid) for eid in chunk))} )
+;''')
                     for row in cursor.fetchall():
                         dims = [0] * len(all_kinds)
                         for id in row[1]:

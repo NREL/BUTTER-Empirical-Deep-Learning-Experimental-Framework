@@ -16,10 +16,10 @@ class CategoricalIndexer(Preprocessor):
         self._forward_mapping = forward_mapping
         self._backward_mapping = backward_mapping
     
-    def forward(self, element: any) -> int:
+    def forward(self, element) -> int:
         return self._forward_mapping[element]
     
-    def backward(self, element: int) -> any:
+    def backward(self, element: int):
         return self._backward_mapping[element]
     
     @property

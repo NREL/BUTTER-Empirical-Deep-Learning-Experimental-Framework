@@ -1,5 +1,5 @@
 
-mamba install python=3.9 pandas jupyter matplotlib scikit-learn statsmodels seaborn pip scipy numpy sqlalchemy psycopg2 pyarrow tensorflow-gpu=2.7 cudnn=8 simplejson --force-reinstall
+mamba install python=3.9 pandas jupyter matplotlib scikit-learn statsmodels seaborn pip scipy numpy sqlalchemy psycopg pyarrow tensorflow-gpu=2.7 cudnn=8 simplejson --force-reinstall
 squeue -o "%.10i %9P %Q %60j %10u %.2t %.10M %.6D %.4C %10R %o" | less
 
 squeue -u ctripp -o "%.10i %9P %Q %60j %10u %.2t %.10M %.6D %.4C %10R %o"
@@ -203,6 +203,8 @@ squeue -u ctripp -A dmpapps -h | grep -P "\s+g_\d+\s+.*" | awk '{print $1}' | xa
 squeue -u ctripp -A dmpapps -h | grep -P "\s+gs12_1\s+.*" | awk '{print $1}' | xargs scontrol release
 
 squeue -u ctripp -h | grep -P ".*\s+flx_\s+.*\(.*\)" | awk '{print $1}' | xargs scancel
+
+squeue -u ctripp -h | grep "\sR\s" | awk '{print $1}' | xargs scancel
 
 
 
@@ -454,7 +456,21 @@ for i in {1..128}; do sbatch -J gc_cxl_2 -N1 -t14250 --account=gcomp --qos=stand
 
 for i in {1..40}; do sbatch -J gx_10 -N10 -t2880 --gres=gpu:2 --account=dmpscale --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 
-for i in {1..8}; do sbatch -J lgx_1 -N1 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+for i in {1..1024}; do sbatch -J gc_c_q1 -N1 -t2880 --account=gcomp --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
+for i in {1..128}; do sbatch -J gc_c16_q1 -N16 -t2880 --account=gcomp --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
+
+
 for i in {1..8}; do sbatch -J lgx_2 -N2 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 for i in {1..8}; do sbatch -J lgx_4 -N4 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
 for i in {1..8}; do sbatch -J lgx_8 -N8 -t14400 --gres=gpu:2 --account=dmpapps --qos=standby slurm_job_runner.sh python -m dmp.jq.jq_node_manager dmp 1; done
+
+
+
+for i in {1..32}; do sbatch -J gc_gl_1 -N1 -t14250 --gres=gpu:2 --account=gcomp --qos=standby ./custom_gpu_run_script.sh 1 2 0 0,1 python -u -m dmp.jobqueue_interface.worker_manager python -u -m dmp.jobqueue_interface.worker 0 1 0 2 0 2 13312 dmp 2 0 0,1 ; done
+
+
+
+sbatch -J g1 -N1 -t2880 --gres=gpu:2 --account=dmpapps slurm_job_runner.sh python -m dmp.jobqueue_interface.node_manager dmp 1
+for i in {1..8}; do ; done

@@ -1,10 +1,125 @@
+CREATE TABLE IF NOT EXISTS parameter
+(
+    id SMALLINT NOT NULL DEFAULT nextval('parameter_id_seq'::regclass),
+    kind TEXT COLLATE pg_catalog."default" NOT NULL,
+    bool_value BOOLEAN,
+    real_value REAL,
+    integer_value BIGINT,
+    string_value TEXT,
+    CONSTRAINT PRIMARY KEY (id)
+);
+
+CREATE SEQUENCE IF NOT EXISTS parameter_id_seq
+    INCREMENT 1
+    START -32699
+    MINVALUE -32768
+    MAXVALUE 32767
+    CACHE 1
+    OWNED BY parameter.id;
+
+CREATE INDEX ON parameter USING btree (kind);
+
+CREATE INDEX ON parameter USING btree (kind) WHERE bool_value IS NULL AND real_value IS NULL AND integer_value IS NULL and string_value IS NULL;
+CREATE INDEX ON parameter USING btree (kind, bool_value) WHERE bool_value IS NOT NULL;
+CREATE INDEX ON parameter USING btree (kind, real_value) WHERE real_value IS NOT NULL;
+CREATE INDEX ON parameter USING btree (kind, integer_value) WHERE integer_value IS NOT NULL;
+CREATE INDEX ON parameter USING btree (kind, string_value) WHERE string_value IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS sweep
+(
+    id SMALLINT NOT NULL DEFAULT nextval('sweep_id_seq'::regclass),
+    name TEXT,
+    CONSTRAINT PRIMARY KEY (id)
+);
+
+CREATE INDEX ON sweep (name);
+
+
+CREATE SEQUENCE IF NOT EXISTS sweep_id_seq
+    INCREMENT 1
+    START 0
+    MINVALUE -32768
+    MAXVALUE 32767
+    CACHE 1
+    OWNED BY sweep.id;
+
+CREATE TABLE IF NOT EXISTS experiment
+(
+    experiment_id BIGSERIAL NOT NULL,
+    experiment_parameters SMALLINT[] NOT NULL,
+    sweeps SMALLINT[],
+    experiment_data jsonb not null,
+    model_computed_network_structure jsonb,
+    relative_size_error REAL,
+    CONSTRAINT PRIMARY KEY (experiment_parameters)
+);
+
+CREATE INDEX ON experiment (experiment_id);
+CREATE INDEX ON experiment USING GIN (experiment_parameters);
+CREATE INDEX ON experiment USING GIN (experiment_data);
+CREATE INDEX ON experiment USING GIN (sweeps);
+
+
+CREATE TABLE IF NOT EXISTS run
+(
+    experiment_id BIGINT NOT NULL,
+    slurm_job_id BIGINT,
+
+    job_id uuid NOT NULL,
+    run_id uuid NOT NULL,
+
+    start_time timestamp WITH TIME ZONE,
+    end_time timestamp WITH TIME ZONE,
+    record_time timestamp WITH TIME ZONE DEFAULT NOW(),
+    
+    duration_in_ms INTEGER,
+    
+    task_version SMALLINT,
+    queue_id SMALLINT,
+    save_every_epochs SMALLINT,
+    num_gpus SMALLINT,
+    num_nodes SMALLINT,
+    num_cpus SMALLINT,
+    gpu_memory INTEGER,
+    
+    batch TEXT,
+    system_name TEXT,
+    host_name TEXT,
+    tensorflow_strategy TEXT,
+
+    run_data jsonb NOT NULL,
+    run_history bytes[] NOT NULL,
+    
+    CONSTRAINT PRIMARY KEY (run_id)
+);
+
+ALTER TABLE IF EXISTS public.run_
+    ALTER COLUMN run_history SET STORAGE EXTERNAL;
+
+create index on run (experiment_id);
+create index on run USING GIN (run_data);
+
+
+create index on run (system_name, start_time);
+create index on run (system_name, num_gpus, num_cpus, start_time);
+create index on run (system_name, num_cpus);
+
+create index on run using hash (job_id);
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS experiment_
 (
     experiment_id serial NOT NULL,
-    experiment_parameters smallint[] NOT NULL PRIMARY KEY,
-    num_free_parameters bigint,
-    widths smallint[],
+    experiment_parameters SMALLINT[] NOT NULL PRIMARY KEY,
+    num_free_parameters BIGINT,
+    widths SMALLINT[],
     network_structure jsonb
 );
 
@@ -17,11 +132,11 @@ create index on experiment_ using gin (experiment_parameters);
 
 CREATE TABLE IF NOT EXISTS run_
 (
-    experiment_id integer,
-    record_timestamp integer DEFAULT ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer,
+    experiment_id INTEGER,
+    record_timestamp INTEGER DEFAULT ((date_part('epoch'::TEXT, CURRENT_TIMESTAMP) - (1600000000)::double precision))::INTEGER,
     run_id uuid NOT NULL PRIMARY KEY,
     job_id uuid,
-    run_parameters smallint[] NOT NULL,
+    run_parameters SMALLINT[] NOT NULL,
     test_loss real[],
     train_loss real[],
     test_accuracy real[],
@@ -42,12 +157,12 @@ CREATE TABLE IF NOT EXISTS run_
     train_cosine_similarity real[],
     test_kullback_leibler_divergence real[],
     train_kullback_leibler_divergence real[],
-    platform text,
-    git_hash text,
-    hostname text,
-    slurm_job_id text,
-    seed bigint,
-    save_every_epochs smallint
+    platform TEXT,
+    git_hash TEXT,
+    hostname TEXT,
+    slurm_job_id TEXT,
+    seed BIGINT,
+    save_every_epochs SMALLINT
 );
 
 alter table run_ alter column test_loss set storage EXTERNAL;
@@ -82,11 +197,11 @@ create index on run_ using gin (run_parameters);
 CREATE TABLE IF NOT EXISTS parameter_
 (
     id smallserial NOT NULL primary key,
-    bool_value boolean,
+    bool_value BOOLEAN,
     real_value real,
-    integer_value bigint,
-    string_value text COLLATE pg_catalog."default",
-    kind text COLLATE pg_catalog."default" NOT NULL
+    integer_value BIGINT,
+    string_value TEXT COLLATE pg_catalog."default",
+    kind TEXT COLLATE pg_catalog."default" NOT NULL
 );
 
 CREATE UNIQUE INDEX on parameter_ (kind, bool_value) include (id) where bool_value is not null;
@@ -99,19 +214,19 @@ CREATE UNIQUE INDEX on parameter_ (kind) include (id) where bool_value is null a
 
 CREATE TABLE IF NOT EXISTS experiment_summary_
 (
-    experiment_id integer NOT NULL primary key,
-    update_timestamp integer NOT NULL DEFAULT ((date_part('epoch'::text, CURRENT_TIMESTAMP) - (1600000000)::double precision))::integer,
-    experiment_parameters smallint[] NOT NULL,
-    num_runs smallint NOT NULL,
-    num_free_parameters integer,
-    num smallint[],
-    test_loss_num_finite smallint[],
+    experiment_id INTEGER NOT NULL primary key,
+    update_timestamp INTEGER NOT NULL DEFAULT ((date_part('epoch'::TEXT, CURRENT_TIMESTAMP) - (1600000000)::double precision))::INTEGER,
+    experiment_parameters SMALLINT[] NOT NULL,
+    num_runs SMALLINT NOT NULL,
+    num_free_parameters INTEGER,
+    num SMALLINT[],
+    test_loss_num_finite SMALLINT[],
     test_loss_avg real[],
     test_loss_stddev real[],
     test_loss_min real[],
     test_loss_max real[],
     test_loss_percentile real[],
-    train_loss_num_finite smallint[],
+    train_loss_num_finite SMALLINT[],
     train_loss_avg real[],
     train_loss_stddev real[],
     train_loss_min real[],
@@ -130,7 +245,7 @@ CREATE TABLE IF NOT EXISTS experiment_summary_
     train_kullback_leibler_divergence_avg real[],
     train_kullback_leibler_divergence_stddev real[],
     network_structure jsonb,
-    widths integer[]
+    widths INTEGER[]
 );
 
 
@@ -197,9 +312,9 @@ where
             parameter_ dataset_
         where
             e.relative_size_error > .2 and
-            e.experiment_parameters @> array[size_.id] and size_.kind = 'size' and size_.integer_value = (d.command->'size')::bigint and
+            e.experiment_parameters @> array[size_.id] and size_.kind = 'size' and size_.integer_value = (d.command->'size')::BIGINT and
             e.experiment_parameters @> array[shape_.id] and shape_.kind = 'shape' and shape_.string_value = d.command->>'shape' and
-            e.experiment_parameters @> array[depth_.id] and depth_.kind = 'depth' and depth_.integer_value = (d.command->'depth')::bigint and
+            e.experiment_parameters @> array[depth_.id] and depth_.kind = 'depth' and depth_.integer_value = (d.command->'depth')::BIGINT and
             e.experiment_parameters @> array[dataset_.id] and dataset_.kind = 'dataset' and  dataset_.string_value = d.command->>'dataset'
         )
 ),
