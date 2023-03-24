@@ -2,6 +2,7 @@
 Enqueues jobs from stdin into the JobQueue
 '''
 
+import math
 import sys
 
 import numpy
@@ -13,27 +14,22 @@ from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
-    WidthScaler,
-)
+    WidthScaler, )
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    ExperimentRecordSettings,
-)
+    ExperimentRecordSettings, )
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
-    OverlayTransfer,
-)
+    OverlayTransfer, )
 
 sys.path.insert(0, './')
-
 
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.layer.dense import Dense
 
 from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment,
-)
+    TrainingExperiment, )
 from pprint import pprint
 
 from dmp.marshaling import marshal
@@ -51,11 +47,12 @@ import sys
 
 
 def main():
-    queue_id = 12
+    queue_id = 11
 
     def make_experiment(
         seed,
-        width,
+        fc_scale,
+        stem_width,
         batch_size,
         optimizer,
         learning_rate,
@@ -73,15 +70,22 @@ def main():
         if optimizer == 'Adam':
             del optimizer['momentum']
 
+        tags = {
+            'mnist_cnn': True,
+            'mnist_simple_cnn_v1': True,
+            'model_family': 'lenet',
+            'model_genus': 'lenet_relu',
+            'model_fc_scale': fc_scale,
+        }
+
+        if fc_scale == 1.0 and stem_width == 6:
+            tags['model_species'] = 'lenet'
+
         return TrainingExperiment(
             seed=seed,
-            tags={
-                'mnist_cnn': True,
-                'mnist_simple_cnn_v1': True,
-            },
-            run_tags={
-            },
-            batch='optimizer_cnn_mnist_energy_eagle_gpu_1',
+            batch='optimizer_cnn_mnist_1',
+            tags=tags,
+            run_tags={},
             precision='float32',
             dataset=DatasetSpec(
                 'mnist',
@@ -94,21 +98,22 @@ def main():
             model=CNNStack(
                 input=None,
                 output=None,
-                num_stacks=3,
+                num_stacks=2,
                 cells_per_stack=1,
                 stem='conv_5x5_1x1_same',
                 downsample='max_pool_2x2_2x2_valid',
-                cell='conv_5x5_1x1_same',
+                cell='conv_5x5_1x1_valid',
                 final=FullyConnectedNetwork(
                     input=None,
                     output=None,
-                    widths=[width * 2, width * 2],
+                    widths=numpy.round(numpy.array([120, 84]) *
+                                       fc_scale).astype(int).tolist(),
                     residual_mode='none',
                     flatten_input=True,
                     inner=Dense.make(-1, {}),
                 ),
-                stem_width=width,
-                stack_width_scale_factor=1.0,
+                stem_width=stem_width,
+                stack_width_scale_factor=16.0 / 6.0,
                 downsample_width_scale_factor=1.0,
                 cell_width_scale_factor=1.0,
             ),
@@ -122,7 +127,7 @@ def main():
                 'EarlyStopping',
                 monitor='val_loss',
                 min_delta=0,
-                patience=16,
+                patience=32,
                 restore_best_weights=True,
             ),
             record=ExperimentRecordSettings(
@@ -133,20 +138,30 @@ def main():
             ),
         )
 
-    sweep_config = list(
-        {
-            'width': [2, 3, 4, 5, 6, 7, 8],
-            'batch_size': [8, 16, 32, 64, 128, 256, 512],
-            'optimizer': ['Adam', 'SGD', 'RMSprop', 'Adagrad'],
-            'learning_rate': [1e-1, 1e-2, 1e-3, 1e-4],
-            'momentum': [0.0, 0.9],
-        }.items()
-    )
+    sweep_config = list({
+        'fc_scale': [
+            1.0,
+        ],
+        'stem_width': [3, 4, 5, 6, 7, 8],
+        'batch_size': [
+            8,
+            16,
+            32,
+            64,
+            128,
+            256,
+        ],
+        'optimizer': [
+            'Adam',
+        ],  #'SGD', 'RMSprop', 'Adagrad'
+        'learning_rate': [3e-4, 6e-4, 1.2e-3, 2.4e-3, 4.8e-3],
+        'momentum': [0.0, 0.9],
+    }.items())
 
     jobs = []
     seed = int(time.time())
-    repetitions = 3
-    base_priority = 1000
+    repetitions = 10
+    base_priority = 0
 
     def do_sweep(i, config):
         if i < 0:
@@ -156,11 +171,8 @@ def main():
                     jobs.append(
                         Job(
                             priority=base_priority + len(jobs),
-                            command=marshal.marshal(
-                                experiment
-                            ),
-                        )
-                    )
+                            command=marshal.marshal(experiment),
+                        ))
         else:
             key, values = sweep_config[i]
             for v in values:
