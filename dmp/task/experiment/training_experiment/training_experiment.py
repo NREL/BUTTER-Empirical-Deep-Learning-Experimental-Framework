@@ -46,7 +46,7 @@ class TrainingExperiment(ATrainingExperiment):
             metrics = self._autoconfigure_for_dataset(dataset)
             model = self._make_model(worker, self.model)
             self._compile_model(dataset, model, metrics)
-            model.keras_model.summary()
+            # model.keras_model.summary()
             history = self._fit_model(
                 self.fit,
                 dataset,

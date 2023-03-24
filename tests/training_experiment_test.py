@@ -100,7 +100,7 @@ def test_simple():
         },
         optimizer={
             'class': 'Adam',
-            'learning_rate': 0.001
+            'learning_rate': 0.001,
         },
         loss=None,
         early_stopping=None,
@@ -186,8 +186,8 @@ def test_mnist_lenet():
         seed=0,
         batch='test',
         tags={
-            'model_name': 'lenet',
-            'model_activation' : 'relu',
+            'model_family': 'lenet',
+            'model_name': 'lenet_relu',
         },
         run_tags={
             'test': True,
