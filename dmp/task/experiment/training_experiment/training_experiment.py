@@ -184,6 +184,7 @@ class TrainingExperiment(ATrainingExperiment):
         dataset: PreparedDataset,
         model: ModelInfo,
         callbacks: List[Optional[keras.callbacks.Callback]],
+        epochs : Optional[int] = None,
     ) -> Dict:
         callbacks = [cb for cb in callbacks if cb is not None]
 
@@ -191,6 +192,9 @@ class TrainingExperiment(ATrainingExperiment):
         fit_config = fit_config.copy()
         fit_config['x'] = dataset.train
         fit_config['validation_data'] = dataset.validation
+
+        if epochs is not None:
+            fit_config['epochs'] = epochs
 
         test_set_info = TestSetInfo(self.keys.test, dataset.test)
         validation_set_info = TestSetInfo(self.keys.validation,
@@ -244,7 +248,11 @@ class TrainingExperiment(ATrainingExperiment):
         return self._merge_histories(history_callbacks)
 
     def _make_callbacks(self) -> List[Optional[keras.callbacks.Callback]]:
-        return [self._make_early_stopping_callback()]
+        callbacks = []
+        early_stopping = self._make_early_stopping_callback()
+        if early_stopping is not None:
+            callbacks.append(early_stopping)
+        return callbacks
 
     def _make_early_stopping_callback(
             self) -> Optional[keras.callbacks.EarlyStopping]:

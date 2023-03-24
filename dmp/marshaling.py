@@ -124,10 +124,12 @@ register_types((
     FullyConnectedNetwork,
 ))
 
-# stopping methods and growth triggers
+# stopping methods, growth triggers, callbacks
 from dmp.task.experiment.growth_experiment.growth_trigger.proportional_stopping import ProportionalStopping
+from dmp.task.experiment.lottery_ticket_experiment.lottery_ticket_iterative_pruning_callback import LotteryTicketIterativePruningCallback
 
 register_custom_keras_type('ProportionalStopping', ProportionalStopping)
+register_custom_keras_type('LotteryTicketIterativePruningCallback', LotteryTicketIterativePruningCallback)
 
 # scaling methods
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
@@ -155,3 +157,4 @@ register_types((
     MLTask,
     NetworkInfo,
 ))
+

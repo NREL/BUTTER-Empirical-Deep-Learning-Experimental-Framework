@@ -24,42 +24,94 @@ from dmp.task.experiment.growth_experiment.transfer_method.transfer_method impor
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
 
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
+from dmp.task.experiment.lottery_ticket_experiment.lottery_ticket_iterative_pruning_callback import LotteryTicketIterativePruningCallback
 from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 from dmp.model.model_util import find_closest_network_to_target_size_float
 from dmp.worker import Worker
 
 
 @dataclass
-class GrowthExperiment(TrainingExperiment):
+class LotteryTicketExperiment(TrainingExperiment):
 
-    growth_trigger: dict = field(default_factory=lambda: make_keras_kwcfg(
-        'EarlyStopping',
-        restore_best_weights=True,
-        monitor='val_loss',
-        min_delta=0,
-        patience=0,
-        verbose=0,
-        mode='auto',
-        baseline=None,
-        # start_from_epoch=0,
-    ))
+    pre_prune_epochs_k: int
+    num_pruning_iterations_N: int
+    epochs_per_iteration: int
 
-    scaling_method: ScalingMethod = field(default_factory=WidthScaler)
-    transfer_method: TransferMethod = field(default_factory=OverlayTransfer)
-    growth_scale: float = 2.0
-    # num_scales: int = 1024
-    initial_size: int = 1024
-    max_epochs_per_stage: int = 3000
-    max_equivalent_epoch_budget: int = 3000
 
-    keys = growth_experiment_keys.keys
+    end_prune_epoch: int
+    
+    j_steps: int
+    prune_amount: float
 
     @property
     def version(self) -> int:
         return 0
 
-    def __call__(self, worker: Worker, job: Job, *args,
-                 **kwargs) -> ExperimentResultRecord:
+    '''
+    Masking types from LTH paper:
+    + don't prune last layer
+    + global and layer-wise pruning (start w/global)
+    + no pruning of residual projection (conv) layers
+    -> Set constraint in ModelSpec for each layer to be pruned
+    '''
+
+    def __call__(
+        self,
+        worker: Worker,
+        job: Job,
+        *args,
+        **kwargs,
+    ) -> ExperimentResultRecord:
+        # http://proceedings.mlr.press/v119/frankle20a/frankle20a.pdf Algorithim 2
+
+        with worker.strategy.scope():
+            # tensorflow.config.optimizer.set_jit(True)
+            self._set_random_seeds()
+            dataset = self._load_and_prepare_dataset()
+            metrics = self._autoconfigure_for_dataset(dataset)
+            
+            # 1: Create a network with randomly initialization W0 ∈ Rd.
+            # 2: Initialize pruning mask to m = 1d.
+            # TODO: import masking constraint code
+            model = self._make_model(worker, self.model)
+            self._compile_model(dataset, model, metrics)
+
+            # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
+            model_history = self._fit_model(
+                    self.fit,
+                    dataset,
+                    model,
+                    self._make_callbacks(),
+                    epochs=self.pre_prune_epochs_k,
+                )
+
+            # 4: for n ∈ {1, . . . , N} do
+            for iteration_n in range(self.num_pruning_iterations_N):
+                # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
+                model_history = self._fit_model(
+                    self.fit,
+                    dataset,
+                    model,
+                    self._make_callbacks(),
+                    epochs=self.epochs_per_iteration,
+                )
+                # TODO: merge histories
+                # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
+                # TODO: prune
+
+            # 7: Return Wk, m
+            
+            
+            return self._make_result_record(
+                worker.worker_info,
+                job.id,
+                dataset,
+                model.network,
+                history,
+            )
+
+    def growth_exp_call(self, worker: Worker, job: Job, *args,
+                        **kwargs) -> ExperimentResultRecord:
         with worker.strategy.scope():
             self._set_random_seeds()
             dataset = self._load_and_prepare_dataset()
@@ -150,6 +202,9 @@ class GrowthExperiment(TrainingExperiment):
                 if max_epochs_at_this_iteration <= 0:
                     break
 
+                fit_config = self.fit.copy()
+                fit_config['epochs'] = max_epochs_at_this_iteration
+
                 if src_model is not None:
                     self.transfer_method.transfer(
                         self._make_transfer_map(src_model, model), )
@@ -164,16 +219,11 @@ class GrowthExperiment(TrainingExperiment):
                     early_stopping_callback = make_keras_instance(
                         self.growth_trigger)
 
-                callbacks = []
-                if early_stopping_callback is not None:
-                    callbacks.append(early_stopping_callback)
-
                 model_history = self._fit_model(
-                    self.fit,
+                    fit_config,
                     dataset,
                     model,
-                    callbacks,
-                    epochs = max_epochs_at_this_iteration,
+                    [early_stopping_callback],
                 )
 
                 # add additional history columns
