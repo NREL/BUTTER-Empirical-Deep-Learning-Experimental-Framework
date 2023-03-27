@@ -73,6 +73,11 @@ class TrainingExperimentKeys():
 
         self.prefixed_loss_metrics: Sequence[str] = tuple(
             make_with_data_set_prefixes(self.loss_metrics))
+        
+        self.free_parameter_count_key: str = 'free_parameter_count'
+        self.model_number: str = 'model_number'
+        self.model_epoch:str = 'model_epoch'
+        self.retained: str = 'retained'
 
         def cmax(a):
             # Thanks: https://stackoverflow.com/questions/40672186/cumulative-argmax-of-a-numpy-array

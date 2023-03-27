@@ -80,7 +80,7 @@ class ATrainingExperiment(ExperimentTask):
                 keras.mixed_precision.Policy(self.precision))
         else:
             keras.backend.set_floatx(self.precision)
-        
+
         return make_keras_model_from_network(network)
 
     def _merge_histories(
@@ -106,13 +106,70 @@ class ATrainingExperiment(ExperimentTask):
             ]
         return merged_history
 
-    def _concatenate_histories(
+    def _get_last_epoch(
         self,
-        target: Dict[str, Any],
-        source: Dict[str, Any],
+        history: Dict[str, Any],
+    ) -> int:
+        return self._get_last_value_of(history, self.keys.epoch, 0)
+
+    def _get_last_value_of(
+        self,
+        history: Dict[str, Any],
+        key: str,
+        default_value: Any,
+    ) -> Any:
+        vals = history.get(key, [])
+        if len(vals) > 0:
+            return vals[-1]
+        return default_value
+
+    def _accumulate_model_history(
+        self,
+        history: Dict[str, Any],
+        model_history: Dict[str, Any],
+        num_free_parameters: int,
+        early_stopping_callback: Optional[Any],
     ) -> None:
-        for metric, metric_history in source.items():
-            target.setdefault(metric, []).extend(metric_history)
+        source_length = len(model_history[self.keys.epoch])
+
+        # model number column
+        model_history[self.keys.model_number] = [
+            self._get_last_value_of(history, self.keys.model_number, -1) + 1
+        ] * source_length
+
+        # set model epoch column
+        model_epochs = numpy.array(model_history[self.keys.epoch])
+        model_history[self.keys.model_epoch] = model_epochs
+
+        # convert model epochs to history epochs
+        model_history[
+            self.keys.epoch] = model_epochs + self._get_last_value_of(
+                history, self.keys.epoch, 0)
+
+        # free parameter count history
+        model_history[self.keys.free_parameter_count_key] = [
+            num_free_parameters
+        ] * source_length
+
+        # set retained column
+        retained = [True] * source_length
+        model_history[self.keys.retained] = retained
+
+        if early_stopping_callback is not None and early_stopping_callback.stopped_epoch > 0:
+            last_retained_epoch = len(model_history[
+                self.keys.epoch]) - early_stopping_callback.patience
+            for i in range(last_retained_epoch + 1, source_length):
+                retained[i] = False
+
+        self._extend_history(history, model_history)
+
+    def _extend_history(
+        self,
+        history: Dict[str, Any],
+        additional_history: Dict[str, Any],
+    ) -> None:
+        for metric, metric_history in additional_history.items():
+            history.setdefault(metric, []).extend(metric_history)
 
     def _make_result_record(
         self,
@@ -145,9 +202,11 @@ class ATrainingExperiment(ExperimentTask):
             if key in run_data_set or key.startswith('record_'):
                 run_data[key] = experiment_attrs.pop(key, None)
             elif key.startswith(tag_prefix):
-                experiment_tags[key[len(tag_prefix):]] = experiment_attrs.pop(key, None)
+                experiment_tags[key[len(tag_prefix):]] = experiment_attrs.pop(
+                    key, None)
             elif key.startswith(run_tags_prefix):
-                run_data[key[len(run_tags_prefix):]] = experiment_attrs.pop(key, None)
+                run_data[key[len(run_tags_prefix):]] = experiment_attrs.pop(
+                    key, None)
 
         experiment_attrs.update({
             'ml_task':

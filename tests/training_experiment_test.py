@@ -567,10 +567,10 @@ def test_imagenet16():
     run_experiment(experiment)
 
 
-# test_growth_experiment()
+test_growth_experiment()
 # test_simple()
 # test_mnist()
-test_mnist_lenet()
+# test_mnist_lenet()
 # test_from_optimizer()
 # test_get_sizes()
 # test_growth_experiment_mnist()

@@ -79,10 +79,9 @@ class GrowthExperiment(TrainingExperiment):
             #         goal_network.structure))
 
             max_total_epochs: int = self.fit['epochs']
-            history: dict = {}
+            history: Dict[str, Any] = {}
             model_number: int = 0
             epoch_parameters: int = 0
-            epoch_count: int = 0
             src_model: Optional[ModelInfo] = None
             parent_epoch: int = 0
             on_final_iteration: bool = False
@@ -95,13 +94,9 @@ class GrowthExperiment(TrainingExperiment):
                 # print(
                 #     f'target_size {target_size}, self.initial_size {self.initial_size}, growth_step {model_number}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}'
                 # )
-                # if we 'skipped' over a growth step, handle it
-                if src_model is not None and \
-                    target_size <= src_model.network.num_free_parameters:
-                    model_number += 1
-                    continue
 
-                max_epochs_at_this_iteration = max_total_epochs - epoch_count
+                max_epochs_at_this_iteration = max_total_epochs - self._get_last_epoch(
+                    history)
 
                 # if we topped out at the maximum size, this is the last iteration
                 network = None
@@ -129,13 +124,19 @@ class GrowthExperiment(TrainingExperiment):
                         target_size,
                         make_network,
                     )
-                    print(
-                        f'Growing to {target_size} {network.num_free_parameters}'
-                    )
                     # from dmp.marshaling import marshal
                     # pprint(
                     #     marshal.marshal(
                     #         network.structure))
+
+                    if src_model is not None and \
+                        network.num_free_parameters <= src_model.network.num_free_parameters:
+                        model_number += 1
+                        continue
+
+                    print(
+                        f'Growing to {target_size} {network.num_free_parameters}'
+                    )
 
                 model = self._make_model_from_network(worker, network)
 
@@ -156,64 +157,31 @@ class GrowthExperiment(TrainingExperiment):
 
                 self._compile_model(dataset, model, metrics)
 
-                early_stopping_callback = None
+                early_stopping = None
                 if on_final_iteration:
-                    early_stopping_callback = self._make_early_stopping_callback(
-                    )
+                    early_stopping = self._make_early_stopping_callback()
                 else:
-                    early_stopping_callback = make_keras_instance(
-                        self.growth_trigger)
+                    early_stopping = make_keras_instance(self.growth_trigger)
 
-                callbacks = []
-                if early_stopping_callback is not None:
-                    callbacks.append(early_stopping_callback)
-
-                model_history = self._fit_model(
+                model_history: Dict[str, Any] = self._fit_model(
                     self.fit,
                     dataset,
                     model,
-                    callbacks,
-                    epochs = max_epochs_at_this_iteration,
+                    [early_stopping],
+                    epochs=max_epochs_at_this_iteration,
                 )
 
-                # add additional history columns
-                model_history_length = len(model_history[self.keys.train +
-                                                         '_loss'])
-
-                # model number
-                model_history[self.keys.model_number] = \
-                    [model_number] * model_history_length
-
-                # model epoch
-                model_history[self.keys.model_epoch] = \
-                    model_history.pop(self.keys.epoch)
-
-                # free parameter count history
-                model_history[self.keys.free_parameter_count_key] = \
-                    [network.num_free_parameters] * model_history_length
-
-                last_retained_epoch = model_history_length
-                if early_stopping_callback is not None \
-                    and early_stopping_callback.stopped_epoch > 0:
-                    last_retained_epoch -= early_stopping_callback.patience  # type: ignore
-
-                retained = [False] * model_history_length
-                for i in range(last_retained_epoch):
-                    retained[i] = True
-                model_history[self.keys.retained] = retained
-
-                model_history[self.keys.epoch] = [
-                    e + epoch_count
-                    for e in model_history[self.keys.model_epoch]
-                ]
-
-                # Extend histories dictionary
-                self._concatenate_histories(history, model_history)
+                self._accumulate_model_history(
+                    history,
+                    model_history,
+                    network.num_free_parameters,
+                    early_stopping,
+                )
 
                 src_model = model
                 model_number += 1
-                epoch_count += (model_history_length - 1)
-                epoch_parameters += model_history_length * model.network.num_free_parameters
+                epoch_parameters += self._get_last_epoch(
+                    history) * model.network.num_free_parameters
                 continue  # just put this here for better readability
 
             if src_model is None:
