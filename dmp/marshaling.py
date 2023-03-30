@@ -141,6 +141,15 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
 
 register_types((OverlayTransfer, ))
 
+# constraints:
+
+from dmp.task.experiment.lottery_ticket_experiment.weight_mask import WeightMask
+register_types((WeightMask, ))
+
+# pruning methods:
+from dmp.task.experiment.lottery_ticket_experiment.magnitude_pruner import MagnitudePruner
+register_types((MagnitudePruner, ))
+
 # Other types:
 from dmp.task.experiment.training_experiment.experiment_record_settings import ExperimentRecordSettings
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord

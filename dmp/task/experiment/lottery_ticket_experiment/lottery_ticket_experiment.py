@@ -72,7 +72,8 @@ class LotteryTicketExperiment(TrainingExperiment):
                         + coorelation/mutual information, etc with other weights
                         + ??
                     
-
+    + Random Pruning (as baseline)
+    + Random Reinit  (as baseline)
 
     Masking types from LTH paper:
     + pg 24: Lenet on MNIST (same for Conv-X nets)
@@ -202,9 +203,10 @@ class LotteryTicketExperiment(TrainingExperiment):
                     [early_stopping],
                     epochs=self.epochs_per_iteration,
                 )
-                
-                # TODO: mask num free parameters
+
                 # TODO: rewinding...? Marking what epoch was used?
+
+                # TODO: mask num free parameters
                 self._accumulate_model_history(
                     history,
                     model_history,
@@ -212,7 +214,9 @@ class LotteryTicketExperiment(TrainingExperiment):
                     early_stopping,
                 )
 
+                
                 # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
+                
                 # TODO: prune
 
 
