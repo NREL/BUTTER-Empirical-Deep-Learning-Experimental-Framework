@@ -22,8 +22,10 @@ T = TypeVar('T')
 #     register_type(type)
 #     # layer_types.append(type)
 
-
 class LayerFactory(ABC):
+    '''
+    Thing that can make a layer.
+    '''
 
     @abstractmethod
     def make_layer(
@@ -35,18 +37,21 @@ class LayerFactory(ABC):
 
 
 class Layer(LayerFactory, CustomMarshalable, ABC):
+    '''
+    Defines a network Layer. Close to 1-1 correspondance with Keras layer classes.
+    '''
 
     def __init__(
         self,
-        config: LayerConfig = empty_config,
-        input: Union['Layer', List['Layer']] = empty_inputs,
-        overrides: LayerConfig = empty_config,
+        config: LayerConfig = empty_config, # keras constructor kwargs
+        input: Union['Layer', List['Layer']] = empty_inputs, # input Layers to this Layers
+        overrides: LayerConfig = empty_config, # optional override keys of config
     ) -> None:
         if not isinstance(input, List):
             input = [input]
         else:
             input = input.copy()  # defensive copy
-
+        
         config = config.copy()  # defensive copy
         config.update(overrides)
 

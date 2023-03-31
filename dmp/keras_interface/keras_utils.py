@@ -1,9 +1,12 @@
 from typing import Any, Dict, Union, Optional, Tuple, Callable
 import tensorflow.keras as keras
-from dmp.common import dispatch, keras_type_key, tensorflow_type_key, tensorflow_config_key
+from dmp.common import KerasConfig, dispatch, keras_type_key, tensorflow_type_key, tensorflow_config_key
 
 
-def keras_to_config(target: Any) -> Dict[str, Any]:
+def keras_to_config(target: Any) -> Optional[KerasConfig]:
+    if target is None:
+        return None
+    
     s = keras.utils.serialize_keras_object(target)
     if isinstance(s, dict):
         return make_keras_config(s[tensorflow_type_key],
@@ -26,7 +29,7 @@ def register_custom_keras_types(type_map: Dict[str, Callable]) -> None:
 
 
 def make_keras_instance(
-    config: Optional[Dict[str, Any]],
+    config: Optional[KerasConfig],
     *params,
     **overrides,
 ) -> Any:
@@ -41,7 +44,7 @@ def make_keras_instance(
     return factory(*params, **kwargs)
 
 
-def make_keras_config(type_name: str, params: Optional[dict] = None) -> dict:
+def make_keras_config(type_name: str, params: Optional[dict] = None) -> KerasConfig:
     if params is None:
         return {keras_type_key: type_name}
 
@@ -52,7 +55,7 @@ def make_keras_config(type_name: str, params: Optional[dict] = None) -> dict:
     return config
 
 
-def make_keras_kwcfg(type_name: str, **kwargs) -> dict:
+def make_keras_kwcfg(type_name: str, **kwargs) -> KerasConfig:
     return make_keras_config(type_name, kwargs)
 
 

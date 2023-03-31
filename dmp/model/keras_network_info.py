@@ -7,7 +7,10 @@ from dmp.layer import Layer
 
 @dataclass
 class KerasNetworkInfo():
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo]
-    inputs : List[KerasLayer]
-    outputs : List[KerasLayer]
+    '''
+    Details about a keras network made from a NetworkInfo 
+    '''
+    layer_to_keras_map: Dict[Layer, KerasLayerInfo] # mapping between Layer instances and KerasLayerInfo's
+    inputs : List[KerasLayer] # inputs to the keras model
+    outputs : List[KerasLayer] # outputs to the keras model
     

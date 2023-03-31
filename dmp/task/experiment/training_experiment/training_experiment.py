@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from operator import index
 from typing import Any, Dict, Iterable, Optional, Set, Type
 from jobqueue.job import Job
+from dmp.common import KerasConfig
 import tensorflow.keras as keras
 
 from dmp.dataset.ml_task import MLTask
@@ -30,8 +31,8 @@ class TrainingExperiment(ATrainingExperiment):
     model: ModelSpec  # defines network
     fit: dict  # contains batch size, epochs, shuffle (migrate from run_config)
     optimizer: dict  # contains learning rate (migrate converting to typed config from keras serialization)
-    loss: Optional[dict]  # set to None for runtime determination
-    early_stopping: Optional[dict]  # direct migration
+    loss: Optional[KerasConfig]  # set to None for runtime determination
+    early_stopping: Optional[KerasConfig]  # direct migration
 
     @property
     def version(self) -> int:

@@ -10,6 +10,8 @@ marshal_type_key: str = 'type'
 K = TypeVar('K')
 V = TypeVar('V')
 
+KerasConfig = Dict[str, Any]
+
 
 def dispatch(
         dispatch_name: str,

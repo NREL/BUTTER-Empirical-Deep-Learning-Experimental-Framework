@@ -126,7 +126,7 @@ register_types((
 
 # stopping methods, growth triggers, callbacks
 from dmp.task.experiment.growth_experiment.growth_trigger.proportional_stopping import ProportionalStopping
-from dmp.task.experiment.lottery_ticket_experiment.lottery_ticket_iterative_pruning_callback import LotteryTicketIterativePruningCallback
+from dmp.task.experiment.pruning_experiment.lottery_ticket_iterative_pruning_callback import LotteryTicketIterativePruningCallback
 
 register_custom_keras_type('ProportionalStopping', ProportionalStopping)
 register_custom_keras_type('LotteryTicketIterativePruningCallback', LotteryTicketIterativePruningCallback)
@@ -143,11 +143,11 @@ register_types((OverlayTransfer, ))
 
 # constraints:
 
-from dmp.task.experiment.lottery_ticket_experiment.weight_mask import WeightMask
+from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
 register_types((WeightMask, ))
 
 # pruning methods:
-from dmp.task.experiment.lottery_ticket_experiment.magnitude_pruner import MagnitudePruner
+from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import MagnitudePruner
 register_types((MagnitudePruner, ))
 
 # Other types:

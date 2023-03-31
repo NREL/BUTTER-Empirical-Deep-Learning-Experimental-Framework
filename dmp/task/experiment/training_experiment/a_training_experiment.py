@@ -240,7 +240,7 @@ class ATrainingExperiment(ExperimentTask):
             run_data,
             make_dataframe_from_dict(history),
             None if len(extended_history) == 0 else
-            make_dataframe_from_dict(extended_history),
+            make_dataframe_from_dict(extended_history), # type: ignore
         )
 
     def _extract_extended_history(
