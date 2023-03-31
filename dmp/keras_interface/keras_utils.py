@@ -62,6 +62,7 @@ def make_keras_kwcfg(type_name: str, **kwargs) -> KerasConfig:
 def __make_keras_dispatch_table() -> Dict[str, Callable]:
     source_modules = (
         keras.layers,
+        keras.constraints,
         keras.regularizers,
         keras.callbacks,
         keras.constraints,

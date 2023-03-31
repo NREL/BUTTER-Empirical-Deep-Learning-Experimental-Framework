@@ -24,7 +24,8 @@ class AccessModelWeights():
         weight_map = {}
         for layer in root.all_descendants:
             keras_layer = layer_to_keras_map[layer].keras_layer
-            weight_map[layer] = keras_layer.get_weights()  # type: ignore
+            if hasattr(keras_layer, 'get_weights'):
+                weight_map[layer] = keras_layer.get_weights()  # type: ignore
 
         return weight_map
 
@@ -40,4 +41,5 @@ class AccessModelWeights():
                 continue
 
             keras_layer = layer_to_keras_map[layer].keras_layer
-            keras_layer.set_weights(layer_weights)  # type: ignore
+            if hasattr(keras_layer, 'get_weights'):
+                keras_layer.set_weights(layer_weights)  # type: ignore

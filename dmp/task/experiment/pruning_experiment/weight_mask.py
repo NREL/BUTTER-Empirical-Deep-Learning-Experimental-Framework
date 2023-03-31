@@ -18,24 +18,13 @@ class WeightMask(tf.keras.constraints.Constraint):
         super().__init__()
         logger.debug("__init__")
         self.mask_group: int = mask_group
-        self.mask = tf.Variable(True,
-                                shape=tf.TensorShape(None),
-                                trainable=False,
-                                dtype=tf.bool)
-        # I'd prefer to initialize it with the correct shape, we could pass in the kernel_size. But why don't we have access to it?
-        # I'd also prefer to not have to initialize this to 1.0, but it is required. Maybe a placeholder variable could work?
-
-    def updateMask(self, mask):
-        """
-        updateMask function.
-        To try and get around the fact that __call__ is only called once at model inititialization, I use a single tensor Variable whose values are updated each iteration.
-        """
-        logger.debug("updateMask")
-        self.mask.assign(mask)
+        self.mask = tf.Variable(
+            True, shape=tf.TensorShape(None), trainable=False, dtype=tf.bool
+        )
 
     def __call__(self, w):
         """
         Used by tensorflow to add the constraint to the computation graph.
         """
         logger.debug("__call__")
-        return tf.multiply(w, self.mask)
+        return tf.where(self.mask, w, 0)

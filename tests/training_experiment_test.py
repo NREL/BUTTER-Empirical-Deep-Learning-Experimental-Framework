@@ -13,16 +13,25 @@ from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
-    WidthScaler, )
+    WidthScaler,
+)
+from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import (
+    IterativePruningExperiment,
+)
+from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
+    MagnitudePruner,
+)
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    ExperimentRecordSettings, )
+    ExperimentRecordSettings,
+)
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
-    OverlayTransfer, )
+    OverlayTransfer,
+)
 
-sys.path.insert(0, './')
+sys.path.insert(0, "./")
 
 import tensorflow
 import dmp.jobqueue_interface.worker
@@ -33,7 +42,8 @@ from dmp.layer.dense import Dense
 from dmp.model.dense_by_size import DenseBySize
 
 from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment, )
+    TrainingExperiment,
+)
 from pprint import pprint
 
 from dmp.marshaling import marshal
@@ -51,30 +61,30 @@ worker = Worker(
 
 def run_experiment(experiment):
     results = experiment(worker, Job())
-    print('experiment_attrs\n')
+    print("experiment_attrs\n")
     pprint(results.experiment_attrs)
-    print('experiment_tags\n')
+    print("experiment_tags\n")
     pprint(results.experiment_tags)
-    print('run_data\n', results.run_data)
-    print('run_history\n', results.run_history)
-    print('run_extended_history\n', results.run_extended_history)
+    print("run_data\n", results.run_data)
+    print("run_history\n", results.run_history)
+    print("run_extended_history\n", results.run_extended_history)
     return results
 
 
 def test_simple():
     experiment = TrainingExperiment(
         seed=0,
-        batch='test',
-        tags={'simple': True},
-        run_tags={'test': True},
-        precision='float32',
+        batch="test",
+        tags={"simple": True},
+        run_tags={"test": True},
+        precision="float32",
         dataset=DatasetSpec(
             # 'titanic',
             # 'pmlb',
-            'GaussianClassificationDataset_2_10_100',
+            "GaussianClassificationDataset_2_10_100",
             # # 'GaussianRegressionDataset_20_100',
-            'synthetic',
-            'shuffled_train_test_split',
+            "synthetic",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -82,25 +92,25 @@ def test_simple():
         model=DenseBySize(
             input=None,
             output=None,
-            shape='rectangle',
+            shape="rectangle",
             size=16384,
             depth=4,
-            search_method='integer',
+            search_method="integer",
             inner=Dense.make(
                 -1,
                 {
-                    'activation': 'relu',
-                    'kernel_initializer': 'GlorotUniform',
+                    "activation": "relu",
+                    "kernel_initializer": "GlorotUniform",
                 },
             ),
         ),
         fit={
-            'batch_size': 256,
-            'epochs': 5,
+            "batch_size": 256,
+            "epochs": 5,
         },
         optimizer={
-            'class': 'Adam',
-            'learning_rate': 0.001,
+            "class": "Adam",
+            "learning_rate": 0.001,
         },
         loss=None,
         early_stopping=None,
@@ -120,14 +130,14 @@ def test_mnist():
 
     experiment = TrainingExperiment(
         seed=0,
-        batch='test',
-        tags={'simple': True},
-        run_tags={'test': True},
-        precision='float32',
+        batch="test",
+        tags={"simple": True},
+        run_tags={"test": True},
+        precision="float32",
         dataset=DatasetSpec(
-            'mnist',
-            'keras',
-            'shuffled_train_test_split',
+            "mnist",
+            "keras",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -137,14 +147,14 @@ def test_mnist():
             output=None,
             num_stacks=3,
             cells_per_stack=1,
-            stem='conv_5x5_1x1_same',
-            downsample='max_pool_2x2_2x2_valid',
-            cell='conv_5x5_1x1_same',
+            stem="conv_5x5_1x1_same",
+            downsample="max_pool_2x2_2x2_valid",
+            cell="conv_5x5_1x1_same",
             final=FullyConnectedNetwork(
                 input=None,
                 output=None,
                 widths=[width * 2, width * 2],
-                residual_mode='none',
+                residual_mode="none",
                 flatten_input=True,
                 inner=Dense.make(-1, {}),
             ),
@@ -154,17 +164,14 @@ def test_mnist():
             cell_width_scale_factor=1.0,
         ),
         fit={
-            'batch_size': 256,
-            'epochs': 1,
+            "batch_size": 256,
+            "epochs": 1,
         },
-        optimizer={
-            'class': 'Adam',
-            'learning_rate': 0.0001
-        },
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=50,
             restore_best_weights=True,
@@ -181,22 +188,21 @@ def test_mnist():
 
 
 def test_mnist_lenet():
-
     experiment = TrainingExperiment(
         seed=0,
-        batch='test',
+        batch="test",
         tags={
-            'model_family': 'lenet',
-            'model_name': 'lenet_relu',
+            "model_family": "lenet",
+            "model_name": "lenet_relu",
         },
         run_tags={
-            'test': True,
+            "test": True,
         },
-        precision='float32',
+        precision="float32",
         dataset=DatasetSpec(
-            'mnist',
-            'keras',
-            'shuffled_train_test_split',
+            "mnist",
+            "keras",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -206,14 +212,14 @@ def test_mnist_lenet():
             output=None,
             num_stacks=2,
             cells_per_stack=1,
-            stem='conv_5x5_1x1_same',
-            downsample='max_pool_2x2_2x2_valid',
-            cell='conv_5x5_1x1_valid',
+            stem="conv_5x5_1x1_same",
+            downsample="max_pool_2x2_2x2_valid",
+            cell="conv_5x5_1x1_valid",
             final=FullyConnectedNetwork(
                 input=None,
                 output=None,
                 widths=[120, 84],
-                residual_mode='none',
+                residual_mode="none",
                 flatten_input=True,
                 inner=Dense.make(-1, {}),
             ),
@@ -223,17 +229,14 @@ def test_mnist_lenet():
             cell_width_scale_factor=1.0,
         ),
         fit={
-            'batch_size': 256,
-            'epochs': 1,
+            "batch_size": 256,
+            "epochs": 1,
         },
-        optimizer={
-            'class': 'Adam',
-            'learning_rate': 0.0001
-        },
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=50,
             restore_best_weights=True,
@@ -252,16 +255,16 @@ def test_mnist_lenet():
 def test_growth_experiment():
     experiment = GrowthExperiment(
         seed=0,
-        batch='test',
+        batch="test",
         tags={
-            'simple': True,
+            "simple": True,
         },
-        run_tags={'test': True},
-        precision='float32',
+        run_tags={"test": True},
+        precision="float32",
         dataset=DatasetSpec(
-            'titanic',
-            'pmlb',
-            'shuffled_train_test_split',
+            "titanic",
+            "pmlb",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -269,26 +272,23 @@ def test_growth_experiment():
         model=DenseBySize(
             input=None,
             output=None,
-            shape='rectangle',
+            shape="rectangle",
             size=4096,
             depth=3,
-            search_method='integer',
+            search_method="integer",
             inner=Dense.make(
                 -1,
                 {
-                    'activation': 'relu',
-                    'kernel_initializer': 'GlorotUniform',
+                    "activation": "relu",
+                    "kernel_initializer": "GlorotUniform",
                 },
             ),
         ),
         fit={
-            'batch_size': 32,
-            'epochs': 100,
+            "batch_size": 32,
+            "epochs": 100,
         },
-        optimizer={
-            'class': 'Adam',
-            'learning_rate': 0.001
-        },
+        optimizer={"class": "Adam", "learning_rate": 0.001},
         loss=None,
         early_stopping=None,
         record=ExperimentRecordSettings(
@@ -298,13 +298,13 @@ def test_growth_experiment():
             metrics=None,
         ),
         growth_trigger=make_keras_kwcfg(
-            'ProportionalStopping',
+            "ProportionalStopping",
             restore_best_weights=True,
-            monitor='val_loss',
+            monitor="val_loss",
             min_delta=0.005,
             patience=3,
             verbose=1,
-            mode='min',
+            mode="min",
             baseline=None,
             # start_from_epoch=0,
         ),
@@ -324,24 +324,24 @@ def test_growth_experiment_mnist():
     width = 2
     batch_size = 64
     optimizer = {
-        'class': 'Adam',
-        'learning_rate': 0.001,
+        "class": "Adam",
+        "learning_rate": 0.001,
     }
 
     experiment = GrowthExperiment(
         seed=0,
-        batch='test',
+        batch="test",
         tags={
-            'simple': True,
+            "simple": True,
         },
         run_tags={
-            'test': True,
+            "test": True,
         },
-        precision='float32',
+        precision="float32",
         dataset=DatasetSpec(
-            'mnist',
-            'keras',
-            'shuffled_train_test_split',
+            "mnist",
+            "keras",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -351,14 +351,14 @@ def test_growth_experiment_mnist():
             output=None,
             num_stacks=3,
             cells_per_stack=1,
-            stem='conv_5x5_1x1_same',
-            downsample='max_pool_2x2_2x2_valid',
-            cell='conv_5x5_1x1_same',
+            stem="conv_5x5_1x1_same",
+            downsample="max_pool_2x2_2x2_valid",
+            cell="conv_5x5_1x1_same",
             final=FullyConnectedNetwork(
                 input=None,
                 output=None,
                 widths=[width * 2, width * 2],
-                residual_mode='none',
+                residual_mode="none",
                 flatten_input=True,
                 inner=Dense.make(-1, {}),
             ),
@@ -368,14 +368,14 @@ def test_growth_experiment_mnist():
             cell_width_scale_factor=1.0,
         ),
         fit={
-            'batch_size': batch_size,
-            'epochs': 1024 * 32,
+            "batch_size": batch_size,
+            "epochs": 1024 * 32,
         },
         optimizer=optimizer,
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=16,
             restore_best_weights=True,
@@ -387,13 +387,13 @@ def test_growth_experiment_mnist():
             metrics=None,
         ),
         growth_trigger=make_keras_kwcfg(
-            'ProportionalStopping',
+            "ProportionalStopping",
             restore_best_weights=True,
-            monitor='val_loss',
+            monitor="val_loss",
             min_delta=0.01,
             patience=0,
             verbose=1,
-            mode='min',
+            mode="min",
             baseline=None,
             # start_from_epoch=0,
         ),
@@ -410,7 +410,7 @@ def test_growth_experiment_mnist():
 
 
 def test_from_optimizer():
-    '''
+    """
 
 
 
@@ -451,17 +451,17 @@ def test_from_optimizer():
       },
       'save_every_epochs': null,
     }
-    '''
+    """
     experiment = TrainingExperiment(
         seed=0,
-        batch='test',
+        batch="test",
         tags=None,
-        run_tags={'test': True},
-        precision='float32',
+        run_tags={"test": True},
+        precision="float32",
         dataset=DatasetSpec(
-            'banana',
-            'pmlb',
-            'shuffled_train_test_split',
+            "banana",
+            "pmlb",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -469,26 +469,23 @@ def test_from_optimizer():
         model=DenseBySize(
             None,
             None,
-            'exponential',
+            "exponential",
             16384,
             3,
-            'integer',
+            "integer",
             Dense.make(
                 -1,
                 {
-                    'activation': 'relu',
-                    'kernel_initializer': 'GlorotUniform',
+                    "activation": "relu",
+                    "kernel_initializer": "GlorotUniform",
                 },
             ),
         ),
         fit={
-            'batch_size': 16,
-            'epochs': 3,
+            "batch_size": 16,
+            "epochs": 3,
         },
-        optimizer={
-            'class': 'Adam',
-            'learning_rate': 0.0001
-        },
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=None,
         record=ExperimentRecordSettings(
@@ -507,14 +504,14 @@ def test_imagenet16():
 
     experiment = TrainingExperiment(
         seed=0,
-        batch='test',
-        tags={'simple': True},
-        run_tags={'test': True},
-        precision='float32',
+        batch="test",
+        tags={"simple": True},
+        run_tags={"test": True},
+        precision="float32",
         dataset=DatasetSpec(
-            'imagenet_16',
-            'imagenet',
-            'shuffled_train_test_split',
+            "imagenet_16",
+            "imagenet",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -524,14 +521,14 @@ def test_imagenet16():
             output=None,
             num_stacks=2,
             cells_per_stack=2,
-            stem='conv_3x3_1x1_valid',
-            downsample='max_pool_2x2_2x2_same',
-            cell='conv_3x3_1x1_same',
+            stem="conv_3x3_1x1_valid",
+            downsample="max_pool_2x2_2x2_same",
+            cell="conv_3x3_1x1_same",
             final=FullyConnectedNetwork(
                 input=None,
                 output=None,
                 widths=[width * 2, width * 2],
-                residual_mode='none',
+                residual_mode="none",
                 flatten_input=True,
                 inner=Dense.make(-1, {}),
             ),
@@ -541,17 +538,14 @@ def test_imagenet16():
             cell_width_scale_factor=1.0,
         ),
         fit={
-            'batch_size': 256,
-            'epochs': 1,
+            "batch_size": 256,
+            "epochs": 1,
         },
-        optimizer={
-            'class': 'Adam',
-            'learning_rate': 0.0001
-        },
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=50,
             restore_best_weights=True,
@@ -567,7 +561,79 @@ def test_imagenet16():
     run_experiment(experiment)
 
 
-test_growth_experiment()
+def test_pruning_experiment():
+    experiment = IterativePruningExperiment(
+        seed=0,
+        batch="test",
+        tags={"simple": True},
+        run_tags={"test": True},
+        precision="float32",
+        dataset=DatasetSpec(
+            # 'titanic',
+            # 'pmlb',
+            "GaussianClassificationDataset_2_10_100",
+            # # 'GaussianRegressionDataset_20_100',
+            "synthetic",
+            "shuffled_train_test_split",
+            0.2,
+            0.05,
+            0.0,
+        ),
+        model=DenseBySize(
+            input=None,
+            output=None,
+            shape="rectangle",
+            size=16384,
+            depth=4,
+            search_method="integer",
+            inner=Dense.make(
+                -1,
+                {
+                    "activation": "relu",
+                    "kernel_initializer": "GlorotUniform",
+                    "kernel_constraint": make_keras_kwcfg(
+                        "WeightMask",
+                    ),
+                },
+            ),
+        ),
+        fit={
+            "batch_size": 256,
+            "epochs": 5,
+        },
+        optimizer={
+            "class": "Adam",
+            "learning_rate": 0.001,
+        },
+        loss=None,
+        early_stopping=make_keras_kwcfg(
+            "EarlyStopping",
+            monitor="val_loss",
+            min_delta=0,
+            patience=1,
+            restore_best_weights=True,
+        ),
+        record=ExperimentRecordSettings(
+            post_training_metrics=True,
+            times=True,
+            model=None,
+            metrics=None,
+        ),
+        num_pruning_iterations=4,
+        pre_prune_epochs=2,
+        pre_pruning_trigger=None,
+        pruning_method=MagnitudePruner(
+            prune_percent=1.0 - 0.5 ** (1 / 4),
+        ),
+        pruning_trigger=None,
+        max_pruning_epochs=5,
+        rewind=True,
+    )
+
+    run_experiment(experiment)
+
+
+# test_growth_experiment()
 # test_simple()
 # test_mnist()
 # test_mnist_lenet()
@@ -575,3 +641,4 @@ test_growth_experiment()
 # test_get_sizes()
 # test_growth_experiment_mnist()
 # test_imagenet16()
+test_pruning_experiment()

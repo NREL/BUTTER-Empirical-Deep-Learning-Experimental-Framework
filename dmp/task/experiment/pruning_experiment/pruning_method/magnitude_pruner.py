@@ -2,7 +2,21 @@ from copy import copy
 from dataclasses import dataclass
 from functools import singledispatchmethod
 from math import ceil
-from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy
 
@@ -10,16 +24,17 @@ from dmp import common
 
 from dmp.layer import *
 from dmp.model.keras_layer_info import KerasLayerInfo
-from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import PruningMethod
+from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
+    PruningMethod,
+)
 from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
 
 
 @dataclass
 class MagnitudePruner(PruningMethod):
-
     prune_percent: float
 
-    kernel_constraint = 'kernel_constraint'
+    kernel_constraint = "kernel_constraint"
     prunable_types = {Dense, ConvolutionalLayer}
 
     def prune(
@@ -29,7 +44,9 @@ class MagnitudePruner(PruningMethod):
     ) -> int:
         import tensorflow
 
-        def is_prunable(layer: Layer, ) -> bool:
+        def is_prunable(
+            layer: Layer,
+        ) -> bool:
             if type(layer) not in self.prunable_types:
                 return False
             keras_layer = layer_to_keras_map[layer].keras_layer
@@ -37,14 +54,17 @@ class MagnitudePruner(PruningMethod):
             return isinstance(constraint, WeightMask)
 
         def get_weights_and_mask(
-            layer: Layer, ) -> Tuple[numpy.ndarray, tensorflow.Variable]:
+            layer: Layer,
+        ) -> Tuple[numpy.ndarray, tensorflow.Variable]:
             keras_layer = layer_to_keras_map[layer].keras_layer
             return (
-                layer_to_keras_map[layer].get_weights()[0],  # type: ignore
+                keras_layer.get_weights()[0],  # type: ignore
                 keras_layer.kernel_constraint.mask,  # type: ignore
             )
 
-        def get_prunable_weights_from_layer(layer: Layer, ) -> numpy.ndarray:
+        def get_prunable_weights_from_layer(
+            layer: Layer,
+        ) -> numpy.ndarray:
             weights, mask = get_weights_and_mask(layer)
             return (weights[mask.numpy() != 0]).flatten()
 
@@ -52,11 +72,23 @@ class MagnitudePruner(PruningMethod):
             layer for layer in root.all_descendants if is_prunable(layer)
         ]
 
+        pw = [
+                l
+                for l in (
+                    get_prunable_weights_from_layer(layer) for layer in prunable_layers
+                )
+                if l is not None
+            ]
+
         prunable_weights = numpy.concatenate(
-            list(
-                filter(lambda w: w is not None,
-                       (get_prunable_weights_from_layer(layer)
-                        for layer in prunable_layers))))
+            [
+                l
+                for l in (
+                    get_prunable_weights_from_layer(layer) for layer in prunable_layers
+                )
+                if l is not None
+            ]
+        )
 
         pruning_threshold = numpy.quantile(
             prunable_weights,

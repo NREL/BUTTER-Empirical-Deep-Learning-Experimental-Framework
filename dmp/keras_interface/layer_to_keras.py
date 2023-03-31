@@ -272,6 +272,12 @@ def _setup_regularizers(config: Dict[str, Any]) -> None:
         'activity_regularizer',
     ))
 
+def _setup_constraints(config: Dict[str, Any]) -> None:
+    replace_config_key_with_keras_instance(config, (
+        'kernel_constraint',
+        'bias_constraint',
+    ))
+
 
 def _setup_initializers(config: Dict[str, Any]) -> None:
     replace_config_key_with_keras_instance(config, (
@@ -302,6 +308,7 @@ def _make_keras_layer(
 ) -> KerasLayerInfo:
     config = config.copy()
     _setup_regularizers(config)
+    _setup_constraints(config)
     _setup_activation(config)
     _make_keras_batch_normalizer(config)
     _setup_initializers(config)

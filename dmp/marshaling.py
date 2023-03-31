@@ -1,36 +1,43 @@
 from typing import Iterable, Type
-from dmp.keras_interface.keras_utils import register_custom_keras_type
+from dmp.keras_interface.keras_utils import (
+    register_custom_keras_type,
+    register_custom_keras_types,
+)
 from dmp.common import marshal_type_key
 
 from lmarshal.src.marshal import Marshal
 from lmarshal.src.marshal_config import MarshalConfig
 
 marshal_settings = {
-    'type_key': marshal_type_key,
-    'label_key': 'label',
-    'reference_prefix': '*',
-    'escape_prefix': '\\',
-    'flat_dict_key': ':',
-    'enum_value_key': 'value',
-    'label_all': False,
-    'label_referenced': True,
-    'circular_references_only': True,
-    'reference_strings': False
+    "type_key": marshal_type_key,
+    "label_key": "label",
+    "reference_prefix": "*",
+    "escape_prefix": "\\",
+    "flat_dict_key": ":",
+    "enum_value_key": "value",
+    "label_all": False,
+    "label_referenced": True,
+    "circular_references_only": True,
+    "reference_strings": False,
 }
 
 marshal_config = MarshalConfig(**marshal_settings)
 
 flat_marshal_settings = marshal_settings.copy()
-flat_marshal_settings.update({
-    'circular_references_only': True,
-})
+flat_marshal_settings.update(
+    {
+        "circular_references_only": True,
+    }
+)
 
 flat_marshal_config = MarshalConfig(**flat_marshal_settings)
 
 marshal: Marshal = Marshal(marshal_config)
 
 
-def register_types(target_types: Iterable[Type], ) -> None:
+def register_types(
+    target_types: Iterable[Type],
+) -> None:
     marshal.register_types(target_types)
 
 
@@ -56,9 +63,9 @@ import uuid
 
 register_type(
     uuid.UUID,
-    'UUID',
-    lambda m, s: {m.marshal_key('value'): str(s)},
-    lambda d, s: uuid.UUID(s[d.marshal_key('value')]),
+    "UUID",
+    lambda m, s: {m.marshal_key("value"): str(s)},
+    lambda d, s: uuid.UUID(s[d.marshal_key("value")]),
     lambda d, s, r: r,
 )
 
@@ -78,38 +85,47 @@ from dmp.layer.separable_conv import SeparableConv
 from dmp.layer.flatten import Flatten
 
 # Layers:
-register_types([
-    MaxPool,
-    AvgPool,
-    GlobalAveragePooling,
-    GlobalMaxPooling,
-    Dense,
-    Input,
-    Add,
-    Concatenate,
-    Identity,
-    Zeroize,
-    DenseConv,
-    SeparableConv,
-    Flatten,
-])
+register_types(
+    [
+        MaxPool,
+        AvgPool,
+        GlobalAveragePooling,
+        GlobalMaxPooling,
+        Dense,
+        Input,
+        Add,
+        Concatenate,
+        Identity,
+        Zeroize,
+        DenseConv,
+        SeparableConv,
+        Flatten,
+    ]
+)
 
 # Tasks:
 from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import IterativePruningExperiment
 
-register_types([
-    UpdateExperimentSummary,
-    TrainingExperiment,
-    GrowthExperiment,
-])
+register_types(
+    [
+        UpdateExperimentSummary,
+        TrainingExperiment,
+        GrowthExperiment,
+        IterativePruningExperiment,
+    ]
+)
 
 # register summarization types
-UpdateExperimentSummary.register_types([
-    TrainingExperiment,
-    GrowthExperiment,
-])
+UpdateExperimentSummary.register_types(
+    [
+        TrainingExperiment,
+        GrowthExperiment,
+        IterativePruningExperiment,
+    ]
+)
 
 # ModelSpec's:
 from dmp.model.dense_by_size import DenseBySize
@@ -117,53 +133,68 @@ from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
 
-register_types((
-    DenseBySize,
-    CNNStack,
-    CNNStacker,
-    FullyConnectedNetwork,
-))
+register_types(
+    (
+        DenseBySize,
+        CNNStack,
+        CNNStacker,
+        FullyConnectedNetwork,
+    )
+)
 
 # stopping methods, growth triggers, callbacks
-from dmp.task.experiment.growth_experiment.growth_trigger.proportional_stopping import ProportionalStopping
-from dmp.task.experiment.pruning_experiment.lottery_ticket_iterative_pruning_callback import LotteryTicketIterativePruningCallback
+from dmp.task.experiment.growth_experiment.growth_trigger.proportional_stopping import (
+    ProportionalStopping,
+)
+from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
 
-register_custom_keras_type('ProportionalStopping', ProportionalStopping)
-register_custom_keras_type('LotteryTicketIterativePruningCallback', LotteryTicketIterativePruningCallback)
+register_custom_keras_types(
+    {
+        "ProportionalStopping": ProportionalStopping,
+        "WeightMask": WeightMask,
+    }
+)
 
 # scaling methods
-from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
+from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
+    WidthScaler,
+)
 
-register_types((WidthScaler, ))
+register_types((WidthScaler,))
 
 # transfer methods
-from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
+from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
+    OverlayTransfer,
+)
 
-register_types((OverlayTransfer, ))
-
-# constraints:
-
-from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
-register_types((WeightMask, ))
+register_types((OverlayTransfer,))
 
 # pruning methods:
-from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import MagnitudePruner
-register_types((MagnitudePruner, ))
+from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
+    MagnitudePruner,
+)
+
+register_types((MagnitudePruner,))
 
 # Other types:
-from dmp.task.experiment.training_experiment.experiment_record_settings import ExperimentRecordSettings
+from dmp.task.experiment.training_experiment.experiment_record_settings import (
+    ExperimentRecordSettings,
+)
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
-from dmp.task.experiment.recorder.test_set_history_recorder import TestSetHistoryRecorder
+from dmp.task.experiment.recorder.test_set_history_recorder import (
+    TestSetHistoryRecorder,
+)
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.model.network_info import NetworkInfo
 
-register_types((
-    ExperimentRecordSettings,
-    ExperimentResultRecord,
-    TestSetHistoryRecorder,
-    DatasetSpec,
-    MLTask,
-    NetworkInfo,
-))
-
+register_types(
+    (
+        ExperimentRecordSettings,
+        ExperimentResultRecord,
+        TestSetHistoryRecorder,
+        DatasetSpec,
+        MLTask,
+        NetworkInfo,
+    )
+)
