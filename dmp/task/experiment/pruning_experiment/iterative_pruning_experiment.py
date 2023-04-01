@@ -3,6 +3,8 @@ from pprint import pprint
 from typing import Optional, Any, Dict, Tuple
 
 from jobqueue.job import Job
+import numpy
+from dmp import parquet_util
 from dmp.common import KerasConfig
 from dmp.layer.layer import Layer
 
@@ -89,6 +91,8 @@ class IterativePruningExperiment(TrainingExperiment):
                     model.keras_network.layer_to_keras_map,
                 )
 
+            self.compress_weights(model.network.structure, rewind_weights)
+
             # 4: for n ∈ {1, . . . , N} do
             for iteration_n in range(self.num_pruning_iterations):
                 # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
@@ -117,6 +121,13 @@ class IterativePruningExperiment(TrainingExperiment):
                 )
                 num_free_parameters = model.network.num_free_parameters - num_pruned
 
+                self.compress_weights(
+                    model.network.structure,
+                    AccessModelWeights.get_weights(
+                        model.network.structure,
+                        model.keras_network.layer_to_keras_map,
+                    ),
+                )
                 if self.rewind:
                     AccessModelWeights.set_weights(
                         model.network.structure,
@@ -133,3 +144,63 @@ class IterativePruningExperiment(TrainingExperiment):
                 model.network,
                 history,
             )
+
+    def compress_weights(self, root: Layer, weight_map: Dict[Layer, numpy.ndarray]):
+        # weight_shape_col = []
+        # weight_values_col = []
+        w = []
+
+        num_weights = 0
+        for layer in root.all_descendants:
+            layer_weights = weight_map.get(layer, None)
+            shape = None
+            if layer_weights is not None:
+                for lw in layer_weights:
+                    w.append(lw.flatten())
+                    # shape = weights.shape
+                    # weights = weights
+
+                    num_weights += lw.size
+            # weight_shape_col.append(shape)
+            # weight_values_col.append(weights)
+
+        table, use_byte_stream_split = parquet_util.make_pyarrow_table_from_numpy(
+            # ["shape", "weight"],
+            # [weight_shape_col, weight_values_col],
+            ['weight'],
+            [numpy.concatenate(w)],
+        )
+
+        import pyarrow
+        import pyarrow.parquet as parquet
+        import io
+
+        buffer = io.BytesIO()
+        pyarrow_file = pyarrow.PythonFile(buffer)
+
+        parquet.write_table(
+            table,
+            pyarrow_file,
+            # root_path=dataset_path,
+            # schema=schema,
+            # partition_cols=partition_cols,
+            data_page_size=8 * 1024,
+            # compression='BROTLI',
+            # compression_level=8,
+            compression='ZSTD',
+            # compression_level=12,
+            compression_level=30,
+            use_dictionary=False,
+            use_byte_stream_split=use_byte_stream_split,
+            version='2.6',
+            data_page_version='2.0',
+            # existing_data_behavior='overwrite_or_ignore',
+            # use_legacy_dataset=False,
+            write_statistics=False,
+            # write_batch_size=64,
+            # dictionary_pagesize_limit=64*1024,
+        )
+        bytes_written = buffer.getbuffer().nbytes
+        print(
+            f'Compressed {num_weights} into {bytes_written} bytes {float(bytes_written) / num_weights} per weight.'
+        )
