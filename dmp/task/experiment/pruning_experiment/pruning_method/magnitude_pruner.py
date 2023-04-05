@@ -72,14 +72,6 @@ class MagnitudePruner(PruningMethod):
             layer for layer in root.all_descendants if is_prunable(layer)
         ]
 
-        pw = [
-                l
-                for l in (
-                    get_prunable_weights_from_layer(layer) for layer in prunable_layers
-                )
-                if l is not None
-            ]
-
         prunable_weights = numpy.concatenate(
             [
                 l

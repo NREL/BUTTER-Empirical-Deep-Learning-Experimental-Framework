@@ -136,7 +136,6 @@ class IterativePruningExperiment(TrainingExperiment):
                     )
 
             # 7: Return Wk, m
-
             return self._make_result_record(
                 worker.worker_info,
                 job.id,

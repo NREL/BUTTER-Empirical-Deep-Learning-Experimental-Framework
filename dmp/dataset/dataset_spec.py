@@ -3,9 +3,13 @@ from dataclasses import dataclass
 
 @dataclass
 class DatasetSpec():
-    name: str  # migrate from dataset
-    source: str # migrate = pmldb
-    method: str  # migrate from test_split_method
-    test_split: float  # direct migrate
-    validation_split: float  # 0.0 when migrating from AspectTestTask
-    label_noise: float  # direct migrate from label_noise is None or label_noise == 'none' or label_noise <= 0.0:
+    '''
+    Defines a dataset to use in a TrainingExperiment
+    '''
+
+    name: str  # name of the dataset
+    source: str # source of the dataset
+    method: str  # how to split the validation and test data
+    test_split: float  # % test split from dataset
+    validation_split: float  # % validation split from dataset
+    label_noise: float  # % label noise to add to training data

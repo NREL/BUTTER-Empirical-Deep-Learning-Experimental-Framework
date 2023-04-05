@@ -10,6 +10,11 @@ from dmp.layer import *
 
 @dataclass
 class CNNStacker(ModelSpec):
+    '''
+    Defines a typical CNN structure with sections:
+        input -> stem -> [M stacks of: N cells -> downsample ] -> final output layer
+    '''
+
     stage_widths: List[List[int]]
     stem: LayerFactory
     downsample: LayerFactory
@@ -18,15 +23,6 @@ class CNNStacker(ModelSpec):
 
     def make_network(self) -> NetworkInfo:
         '''
-        + Structure:
-            + Stem: 3x3 Conv with input activation
-            + Repeat N times:
-                + Repeat M times:
-                    + Cell
-                + Downsample and double channels, optionally with Residual Connection
-                    + Residual: 2x2 average pooling layer with stride 2 and a 1x1
-            + Global Pooling Layer
-            + Dense Output Layer with output activation
 
         + Total depth (layer-wise or stage-wise)
         + Total number of cells

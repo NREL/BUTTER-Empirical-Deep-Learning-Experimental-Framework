@@ -12,7 +12,12 @@ from dmp.layer import *
 
 @dataclass
 class CNNStack(ModelSpec):
-    num_stacks: int
+    '''
+    High-level definition of a typical stacked CNN Architecture
+    input -> stem -> [M stacks of: N cells -> downsample ] -> final output layer
+    '''
+
+    num_stacks: int 
     cells_per_stack: int
     stem: Union[str, LayerFactory]
     downsample: Union[str, LayerFactory]

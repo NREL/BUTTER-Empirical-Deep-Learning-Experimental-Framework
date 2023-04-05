@@ -20,7 +20,11 @@ class Foo:
     last : Any = ('', None)
 
 class PMLBDatasetLoader(DatasetLoader):
-
+    '''
+    Loads PMLB datasets
+    see: https://github.com/EpistasisLab/pmlb
+    https://epistasislab.github.io/pmlb/
+    '''
     def __init__(
         self,
         dataset_name: str,
