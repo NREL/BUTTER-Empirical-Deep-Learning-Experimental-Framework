@@ -1,7 +1,7 @@
 from typing import Any, Callable, List, Optional, Tuple, Union
 import tensorflow.keras as keras
 import tensorflow.keras.layers as layers
-
+import dmp.keras_interface.keras_keys as keras_keys
 
 class ConvolutionalKerasLayer(layers.Layer):
 
@@ -12,7 +12,7 @@ class ConvolutionalKerasLayer(layers.Layer):
         activation: Callable,
         **conv_layer_args,
     ):
-        conv_layer_args['activation'] = keras.activations.linear
+        conv_layer_args[keras_keys.activation] = keras.activations.linear
         self.conv_layer = conv_layer_factory(**conv_layer_args)
         self.batch_normalizer = batch_normalizer
         self.activation = activation

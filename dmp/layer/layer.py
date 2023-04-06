@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, Callable
 from lmarshal.src.custom_marshalable import CustomMarshalable
+import dmp.keras_interface.keras_keys as keras_keys
 
 LayerConfig = Dict[str, Any]
 
@@ -131,7 +132,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
     @property
     def use_bias(self) -> bool:
-        return self.config.get('use_bias', True)
+        return self.config.get(keras_keys.use_bias, True)
 
     @property
     def dimension(self) -> int:
@@ -168,22 +169,3 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
 LayerConstructor = Callable[
     [LayerConfig, Union[Layer, List[Layer]], LayerConfig], T]
-
-# '''
-# + single class:
-#     + simple
-#     + data-oriented
-#     - complex abstract visitor class
-#         - two things to add for each type:
-#             - dispatch entry
-#             - abstract method
-#         - inflexible visitor interface
-
-# + class per type
-#     + clean oo
-#     - many classes
-#     - one class to add for each type
-#     + can easily implement polymorphic methods
-#     + more compact serialization
-#     + could avoid serializing config or inputs in a few cases
-# '''

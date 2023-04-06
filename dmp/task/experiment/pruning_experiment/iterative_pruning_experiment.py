@@ -89,9 +89,10 @@ class IterativePruningExperiment(TrainingExperiment):
                 rewind_weights = AccessModelWeights.get_weights(
                     model.network.structure,
                     model.keras_network.layer_to_keras_map,
+                    use_mask=False,
                 )
 
-            self.compress_weights(model.network.structure, rewind_weights)
+            self.compress_weights(model.network.structure, num_free_parameters, rewind_weights)
 
             # 4: for n ∈ {1, . . . , N} do
             for iteration_n in range(self.num_pruning_iterations):
@@ -123,9 +124,11 @@ class IterativePruningExperiment(TrainingExperiment):
 
                 self.compress_weights(
                     model.network.structure,
+                    num_free_parameters,
                     AccessModelWeights.get_weights(
                         model.network.structure,
                         model.keras_network.layer_to_keras_map,
+                        use_mask=True,
                     ),
                 )
                 if self.rewind:
@@ -133,6 +136,7 @@ class IterativePruningExperiment(TrainingExperiment):
                         model.network.structure,
                         model.keras_network.layer_to_keras_map,
                         rewind_weights,
+                        use_mask=False,
                     )
 
             # 7: Return Wk, m
@@ -144,7 +148,12 @@ class IterativePruningExperiment(TrainingExperiment):
                 history,
             )
 
-    def compress_weights(self, root: Layer, weight_map: Dict[Layer, numpy.ndarray]):
+    def compress_weights(
+        self,
+        root: Layer,
+        num_free_parameters: int,
+        weight_map: Dict[Layer, numpy.ndarray],
+    ):
         # weight_shape_col = []
         # weight_values_col = []
         w = []
@@ -155,6 +164,8 @@ class IterativePruningExperiment(TrainingExperiment):
             shape = None
             if layer_weights is not None:
                 for lw in layer_weights:
+                    lw = lw.flatten()
+
                     w.append(lw.flatten())
                     # shape = weights.shape
                     # weights = weights
@@ -201,5 +212,5 @@ class IterativePruningExperiment(TrainingExperiment):
         )
         bytes_written = buffer.getbuffer().nbytes
         print(
-            f'Compressed {num_weights} into {bytes_written} bytes {float(bytes_written) / num_weights} per weight.'
+            f'Compressed {num_free_parameters}/{num_weights} weights into {bytes_written} bytes {float(bytes_written) / num_weights} per weight, {float(bytes_written) / num_free_parameters} per unmasked weight.'
         )

@@ -13,6 +13,7 @@ from dmp.model.keras_network_info import KerasNetworkInfo
 from dmp.keras_interface.keras_utils import make_keras_instance
 import dmp.keras_interface.keras_utils as keras_utils
 from dmp.layer import *
+import dmp.keras_interface.keras_keys as keras_keys
 
 
 class LayerToKerasVisitor:
@@ -247,7 +248,7 @@ def _make_convolutional_layer(
     dimension_to_factory_map: Dict[int, Callable],
 ) -> KerasLayerInfo:
     config = config.copy()  # before putting keras objects in the config
-    config['conv_layer_factory'] = \
+    config[keras_keys.conv_layer_factory] = \
         dimension_to_factory_map[target.dimension]
     return _make_keras_layer(target, ConvolutionalKerasLayer, config, inputs)
 
@@ -267,32 +268,32 @@ def replace_config_key_with_keras_instance(
 
 def _setup_regularizers(config: Dict[str, Any]) -> None:
     replace_config_key_with_keras_instance(config, (
-        'kernel_regularizer',
-        'bias_regularizer',
-        'activity_regularizer',
+        keras_keys.kernel_regularizer,
+        keras_keys.bias_regularizer,
+        keras_keys.activity_regularizer,
     ))
 
 def _setup_constraints(config: Dict[str, Any]) -> None:
     replace_config_key_with_keras_instance(config, (
-        'kernel_constraint',
-        'bias_constraint',
+        keras_keys.kernel_constraint,
+        keras_keys.bias_constraint,
     ))
 
 
 def _setup_initializers(config: Dict[str, Any]) -> None:
     replace_config_key_with_keras_instance(config, (
-        'kernel_initializer',
-        'bias_initializer',
+        keras_keys.kernel_initializer,
+        keras_keys.bias_initializer,
     ))
 
 
 def _setup_activation(config: Dict[str, Any]) -> None:
-    replace_config_key_with_keras_instance(config, 'activation')
+    replace_config_key_with_keras_instance(config, keras_keys.activation)
     pass
 
 
 def _make_keras_batch_normalizer(config: Dict[str, Any]) -> None:
-    key = 'batch_normalizer'
+    key = keras_keys.batch_normalizer
     if key in config:
         if config[key] is None:
             config[key] = tensorflow.identity

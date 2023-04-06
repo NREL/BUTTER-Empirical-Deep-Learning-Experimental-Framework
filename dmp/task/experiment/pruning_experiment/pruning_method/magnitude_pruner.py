@@ -28,14 +28,12 @@ from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import
     PruningMethod,
 )
 from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
+import dmp.keras_interface.keras_keys as keras_keys
 
 
 @dataclass
 class MagnitudePruner(PruningMethod):
     prune_percent: float
-
-    kernel_constraint = "kernel_constraint"
-    prunable_types = {Dense, ConvolutionalLayer}
 
     def prune(
         self,
@@ -47,11 +45,9 @@ class MagnitudePruner(PruningMethod):
         def is_prunable(
             layer: Layer,
         ) -> bool:
-            if type(layer) not in self.prunable_types:
-                return False
             keras_layer = layer_to_keras_map[layer].keras_layer
-            constraint = keras_layer.kernel_constraint  # type: ignore
-            return isinstance(constraint, WeightMask)
+            return hasattr(keras_layer, keras_keys.kernel_constraint) \
+                and isinstance(keras_layer.kernel_constraint, WeightMask)
 
         def get_weights_and_mask(
             layer: Layer,
@@ -66,7 +62,7 @@ class MagnitudePruner(PruningMethod):
             layer: Layer,
         ) -> numpy.ndarray:
             weights, mask = get_weights_and_mask(layer)
-            return (weights[mask.numpy() != 0]).flatten()
+            return (weights[mask]).flatten()
 
         prunable_layers = [
             layer for layer in root.all_descendants if is_prunable(layer)
@@ -93,7 +89,7 @@ class MagnitudePruner(PruningMethod):
         for layer in prunable_layers:
             weights, mask = get_weights_and_mask(layer)
             new_mask = numpy.logical_and(
-                mask.numpy(),
+                mask,
                 weights > pruning_threshold,
             )
             total_pruned += new_mask.size - new_mask.sum()

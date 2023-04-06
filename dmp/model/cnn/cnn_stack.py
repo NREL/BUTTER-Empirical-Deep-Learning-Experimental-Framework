@@ -8,7 +8,7 @@ from dmp.model.model_spec import ModelSpec
 from dmp.model.network_info import NetworkInfo
 
 from dmp.layer import *
-
+import dmp.keras_interface.keras_keys as keras_keys
 
 @dataclass
 class CNNStack(ModelSpec):
@@ -82,8 +82,8 @@ _layer_factory_map = {
     ]),
     'dense':
     Dense.make(-1, {
-        'activation': 'relu',
-        'initialization': 'HeUniform'
+        keras_keys.activation: 'relu',
+        keras_keys.initialization: 'HeUniform'
     }, []),
     'identity':
     Identity(),
@@ -113,7 +113,7 @@ def add_size_and_stride(
 
 
 for padding in ('same', 'valid'):
-    shared_config = {'padding': padding}
+    shared_config = {keras_keys.padding: padding}
     add_size_and_stride(
         'conv',
         padding,
@@ -141,86 +141,3 @@ for padding in ('same', 'valid'):
         lambda i, s: AvgPool.make([i, i], [s, s], shared_config),
         (1, 16, 1, 16),
     )
-
-# Add({}, [
-#     DenseConv.make(-1, [3, 3], [1, 1], {}, []),
-#     MaxPool.make([3, 3], [1, 1], {},
-#                  [DenseConv.make(-1, [1, 1], [1, 1], {}, [])])
-# ]),
-# 'graph2':
-# Add({}, [
-#     DenseConv.make(-1, [3, 3], [1, 1], {}, []),
-#     MaxPool.make([3, 3], [1, 1], {},
-#                  [DenseConv.make(-1, [1, 1], [1, 1], {}, [])])
-# ])
-
-# def make_layer_from_operation(
-#         self,
-#         op: LayerFactory,
-#         width: int,
-#         conv_config: Dict[str, Any],
-#         pooling_config: Dict[str, Any],
-#         input: Union[Layer, List[Layer]],
-#     ):
-#         if op == 'conv1x1':
-#             return DenseConv.make(\
-#                 width, (1,1), (1,1), conv_config, input)
-#         elif op == 'conv3x3':
-#             return DenseConv.make(\
-#                 width, (3,3), (1,1), conv_config, input)
-#         elif op == 'conv5x5':
-#             return DenseConv.make(\
-#                 width, (5,5), (1,1), conv_config, input)
-#         elif op == 'sepconv3x3':
-#             return SeparableConv.make(\
-#                 width, (3,3), (1,1), conv_config, input)
-#         elif op == 'sepconv5x5':
-#             return SeparableConv.make(\
-#                 width, (5,5), (1,1), conv_config, input)
-#         elif op == 'maxpool3x3':
-#             return APoolingLayer.make(\
-#                 MaxPool, (3, 3), (1, 1), pooling_config, input)
-#         elif op == 'identity':
-#             return IdentityOperation({}, input)
-#         elif op == 'zeroize':
-#             return ZeroizeOperation({}, input)
-
-#         raise ValueError(f'Unknown operation {op}')
-
-# def stem_generator(
-#     filters: int,
-#     conv_config: Dict[str, Any],
-# ) -> Callable[[Layer], Layer]:
-#     return lambda input: DenseConv.make(filters, (3, 3),
-#                                         (1, 1), conv_config, input)
-
-# def cell_generator(
-#         width: int,  # width of input and output
-#         operations: List[List[str]],  # defines the cell structure
-#         conv_config: Dict[str, Any],  # conv layer configuration
-#         pooling_config: Dict[str, Any],  # pooling layer configuration
-# ) -> Callable[[Layer], Layer]:
-#     return lambda input: make_graph_cell(width, operations, conv_config,
-#                                          pooling_config, input)
-
-# def residual_downsample_generator(
-#     conv_config: Dict[str, Any],
-#     pooling_config: Dict[str, Any],
-#     width: int,
-#     stride: Sequence[int],
-# ) -> Callable[[Layer], Layer]:
-
-#     def factory(input: Layer) -> Layer:
-#         long = DenseConv.make(width, (3, 3), stride, conv_config, input)
-#         long = DenseConv.make(width, (3, 3), (1, 1), conv_config, long)
-#         short = APoolingLayer.make(\
-#             AvgPool, (2, 2), (2, 2), pooling_config, input)
-#         return Add({}, [long, short])
-
-#     return factory
-
-# def output_factory_generator(
-#     config: Dict[str, Any],
-#     num_outputs: int,
-# ) -> Callable[[Layer], Layer]:
-#     return lambda input: Dense(config, GlobalAveragePooling({}, input))

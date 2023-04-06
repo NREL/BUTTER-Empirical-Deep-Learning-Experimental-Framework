@@ -2,6 +2,7 @@ from functools import singledispatchmethod
 import math
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 from dmp.layer import *
+import dmp.keras_interface.keras_keys as keras_keys
 
 
 class CountFreeParametersVisitor:
@@ -35,14 +36,14 @@ class CountFreeParametersVisitor:
     def _(self, target: ConvolutionalLayer) -> int:
         return self._get_count_for_conv_layer(
             target,
-            math.prod(target['kernel_size']),
+            int(math.prod(target[keras_keys.kernel_size])),
         )
 
     @_visit.register
     def _(self, target: SeparableConv) -> int:
         return self._get_count_for_conv_layer(
             target,
-            sum(target['kernel_size']),
+            sum(target[keras_keys.kernel_size]),
         )
 
     def _get_count_for_conv_layer(
@@ -57,7 +58,7 @@ class CountFreeParametersVisitor:
 
         # num_nodes = num_nodes_per_filter * target['filters']
         weights_per_filter = input_weights_per_node_channel * input_channels + (1 if target.use_bias else 0)
-        return weights_per_filter * target['filters']
+        return weights_per_filter * target[keras_keys.filters]
 
 
 def count_free_parameters(target: Layer) -> int:
