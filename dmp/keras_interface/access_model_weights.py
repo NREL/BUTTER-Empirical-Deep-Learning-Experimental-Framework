@@ -36,17 +36,20 @@ class AccessModelWeights:
     def get_weights(
         root: Layer,
         layer_to_keras_map: Dict[Layer, KerasLayerInfo],
-        use_mask : bool = True,
-    ) -> Dict[Layer, Any]:
-        weight_map = {}
+        use_mask: bool = True,
+    ) -> Dict[Layer, List[numpy.ndarray]]:
+        weight_map: Dict[Layer, List[numpy.ndarray]] = {}
 
         def visit_weights(layer, keras_layer, layer_weights):
             weight_map[layer] = layer_weights
-        
-        mask_visitor = lambda keras_layer, layer_weights : None
+
+        mask_visitor = lambda keras_layer, layer_weights: None
         if use_mask:
-            mask_visitor = lambda keras_layer, layer_weights: AccessModelWeights._visit_masks(
-                AccessModelWeights._get_and_merge_mask, keras_layer, layer_weights)
+            mask_visitor = (
+                lambda keras_layer, layer_weights: AccessModelWeights._visit_masks(
+                    AccessModelWeights._get_and_merge_mask, keras_layer, layer_weights
+                )
+            )
 
         AccessModelWeights._visit_weights(
             root,
@@ -58,18 +61,34 @@ class AccessModelWeights:
         return weight_map
 
     @staticmethod
+    def lin_iterp_weights(
+        weights_a: Dict[Layer, List[numpy.ndarray]],
+        alpha: float,
+        weights_b: Dict[Layer, List[numpy.ndarray]],
+    ) -> Dict[Layer, List[numpy.ndarray]]:
+        results = {}
+        for layer, weights in weights_a.items():
+            results[layer] = [
+                weight_a * alpha + weight_b * (1.0 - alpha)
+                for weight_a, weight_b in zip(weights, weights_b[layer])
+            ]
+        return results
+
+    @staticmethod
     def set_weights(
         root: Layer,
         layer_to_keras_map: Dict[Layer, KerasLayerInfo],
-        weight_map: Dict[Layer, Any],
-        use_mask : bool = True,
+        weight_map: Dict[Layer, List[numpy.ndarray]],
+        use_mask: bool = True,
     ) -> None:
-        
-        mask_visitor = lambda keras_layer, layer_weights : None
+        mask_visitor = lambda keras_layer, layer_weights: None
         if use_mask:
-            mask_visitor = lambda keras_layer, layer_weights: AccessModelWeights._visit_masks(
-                AccessModelWeights._set_mask, keras_layer, layer_weights)
-            
+            mask_visitor = (
+                lambda keras_layer, layer_weights: AccessModelWeights._visit_masks(
+                    AccessModelWeights._set_mask, keras_layer, layer_weights
+                )
+            )
+
         AccessModelWeights._visit_weights(
             root,
             lambda layer: AccessModelWeights._get_keras_layer_to_set(
@@ -157,9 +176,6 @@ class AccessModelWeights:
         )
         if constraint is not None:
             weights = numpy.where(constraint.mask, weights, numpy.nan)
-            # special_value = numpy.finfo(weights.dtype).smallest_subnormal
-            # weights = numpy.where(weights == special_value, 0.0, weights)
-            # weights = numpy.where(constraint.mask, weights, special_value)
         return weights
 
     @staticmethod
@@ -171,8 +187,6 @@ class AccessModelWeights:
         )
         if constraint is not None:
             mask = numpy.logical_not(numpy.isnan(weights))
-            # special_value = numpy.finfo(weights.dtype).smallest_subnormal
-            # mask = numpy.logical_not(weights == special_value)
             constraint.mask = mask
             weights = numpy.where(mask, weights, 0.0)
         return weights

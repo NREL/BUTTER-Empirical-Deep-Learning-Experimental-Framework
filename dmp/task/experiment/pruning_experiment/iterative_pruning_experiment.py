@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pprint import pprint
-from typing import Optional, Any, Dict, Tuple
+from typing import List, Optional, Any, Dict, Tuple
 
 from jobqueue.job import Job
 import numpy
@@ -152,7 +152,7 @@ class IterativePruningExperiment(TrainingExperiment):
         self,
         root: Layer,
         num_free_parameters: int,
-        weight_map: Dict[Layer, numpy.ndarray],
+        weight_map: Dict[Layer, List[numpy.ndarray]],
     ):
         # weight_shape_col = []
         # weight_values_col = []
