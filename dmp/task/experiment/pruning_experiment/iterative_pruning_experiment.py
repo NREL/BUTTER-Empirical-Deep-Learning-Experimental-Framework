@@ -164,22 +164,28 @@ class IterativePruningExperiment(TrainingExperiment):
             shape = None
             if layer_weights is not None:
                 for lw in layer_weights:
-                    lw = lw.flatten()
+                    lw = lw.flatten().astype(numpy.float32)
 
-                    w.append(lw.flatten())
+                    w.append(lw)
                     # shape = weights.shape
                     # weights = weights
 
                     num_weights += lw.size
             # weight_shape_col.append(shape)
             # weight_values_col.append(weights)
+        weight_array = numpy.concatenate(w)
+        del w
 
         table, use_byte_stream_split = parquet_util.make_pyarrow_table_from_numpy(
             # ["shape", "weight"],
             # [weight_shape_col, weight_values_col],
             ['weight'],
-            [numpy.concatenate(w)],
+            [weight_array],
+            # [[None if numpy.isnan(e) else e for e in weight_array]],
+            nan_to_none=True,
         )
+        # print(table['weight'].dtype)
+        # print(table['weight'])
 
         import pyarrow
         import pyarrow.parquet as parquet

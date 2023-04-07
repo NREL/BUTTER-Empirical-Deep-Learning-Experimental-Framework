@@ -62,7 +62,7 @@ class MagnitudePruner(PruningMethod):
             layer: Layer,
         ) -> numpy.ndarray:
             weights, mask = get_weights_and_mask(layer)
-            return (weights[mask]).flatten()
+            return (weights[mask]).flatten()  # type: ignore
 
         prunable_layers = [
             layer for layer in root.all_descendants if is_prunable(layer)
@@ -89,7 +89,7 @@ class MagnitudePruner(PruningMethod):
         for layer in prunable_layers:
             weights, mask = get_weights_and_mask(layer)
             new_mask = numpy.logical_and(
-                mask,
+                mask,   # type: ignore
                 weights > pruning_threshold,
             )
             total_pruned += new_mask.size - new_mask.sum()

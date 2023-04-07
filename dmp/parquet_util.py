@@ -66,23 +66,34 @@ def make_dataframe_from_dict(data: Dict[str, Iterable]) -> pandas.DataFrame:
 def make_pyarrow_table_from_numpy(
     columns: Sequence[str],
     numpy_arrays: Sequence[numpy.ndarray],
+    nan_to_none: bool = True,
 ) -> Tuple[pyarrow.Table, List[str]]:
-    schema, use_byte_stream_split = make_pyarrow_schema_from_dict(
-        zip(columns, numpy_arrays)
+    schema, use_byte_stream_split, column_data = make_pyarrow_schema_from_dict(
+        zip(columns, numpy_arrays),
+        nan_to_none=nan_to_none,
     )  # type: ignore
-    return pyarrow.Table.from_arrays(numpy_arrays, schema=schema), use_byte_stream_split
+    return pyarrow.Table.from_arrays([data for name, data in column_data], schema=schema), use_byte_stream_split
 
 
 def make_pyarrow_schema_from_dict(
     columns: Iterable[Tuple[str, Union[list, ndarray]]],
-) -> Tuple[pyarrow.Schema, List[str]]:
+    nan_to_none: bool = True,
+) -> Tuple[pyarrow.Schema, List[str], List[Tuple[str, Union[list, ndarray]]]]:
     fields = []
     use_byte_stream_split = []
 
+    result_columns = []
     for name, values in columns:
-        pyarrow_type, nullable, use_byte_stream_split_ = get_pyarrow_type_mapping(
-            values
+        (
+            pyarrow_type,
+            nullable,
+            use_byte_stream_split_,
+            values,
+        ) = get_pyarrow_type_mapping(
+            values,
+            nan_to_none=nan_to_none,
         )
+        result_columns.append((name, values))
 
         if pyarrow_type is None:
             continue
@@ -91,7 +102,8 @@ def make_pyarrow_schema_from_dict(
             use_byte_stream_split.append(name)
 
         fields.append(pyarrow.field(name, pyarrow_type, nullable=nullable))
-    return pyarrow.schema(fields), use_byte_stream_split
+
+    return pyarrow.schema(fields), use_byte_stream_split, result_columns
 
 
 def _check_type(t, x):
@@ -100,8 +112,14 @@ def _check_type(t, x):
 
 def get_pyarrow_type_mapping(
     values: Union[list, ndarray],
-) -> Tuple[pyarrow.DataType, bool, bool]:
-    nullable = any((v is None for v in values))
+    nan_to_none: bool = True,
+) -> Tuple[pyarrow.DataType, bool, bool, Union[list, ndarray]]:
+    nullable = False
+    if nan_to_none:
+        nullable = bool(numpy.any(numpy.isnan(values)))
+    if not nullable and not isinstance(values, ndarray):
+        nullable = any((v is None for v in values))
+
     use_byte_stream_split = False
 
     t = None
@@ -109,8 +127,10 @@ def get_pyarrow_type_mapping(
         t = values.dtype
     else:
         if len(values) == 0:
-            return None, nullable, use_byte_stream_split
-        t = type(values[0])
+            return None, nullable, use_byte_stream_split, values
+        for v in values:
+            if v is not None:
+                t = type(v)
 
     def check_integer():
         nonlocal dst_type, nullable
@@ -132,7 +152,11 @@ def get_pyarrow_type_mapping(
         check_integer()
     elif _check_type(t, float) or numpy.issubdtype(t, numpy.floating):
         dst_type = pyarrow.float32()
-        nullable = False
+        if nan_to_none and numpy.any(numpy.isnan(values)):
+            values = [None if numpy.isnan(v) else v for v in values]
+            nullable = True
+        use_byte_stream_split = True
+        # print(f'check float {dst_type} {nullable} {use_byte_stream_split} {nan_to_none}')
     elif (
         _check_type(t, str)
         or numpy.issubdtype(t, numpy.string_)
@@ -149,37 +173,58 @@ def get_pyarrow_type_mapping(
             None,
         )
         if element_type is None:
-            return None, nullable, use_byte_stream_split
+            return None, nullable, use_byte_stream_split, values
         else:
-            dst_type = pyarrow.list_(get_pyarrow_type_mapping(element_type[0]))
+            # dst_type = pyarrow.list_(get_pyarrow_type_mapping(element_type[0]))
+            raise NotImplemented()
     else:
-        has_bool = False
-        has_int = False
-        has_float = False
-        has_str = False
-        has_null = False
+        false_types = {
+            'bool': lambda v: isinstance(v, bool),
+            'int': lambda v: isinstance(v, int),
+            'float': lambda v: isinstance(v, float),
+            'nan': lambda v: isinstance(v, float) and numpy.isnan(v),
+            'str': lambda v: isinstance(v, str),
+            'none': lambda v: v is None,
+        }
+        true_types = set()
 
         for v in values:
-            has_bool |= isinstance(v, bool)
-            has_int |= isinstance(v, int)
-            has_float |= isinstance(v, float)
-            has_str |= isinstance(v, str)
-            has_null |= v is None
+            to_remove = None
+            for k, f in false_types.items():
+                if f(v):
+                    true_types.add(k)
+                    if to_remove is None:
+                        to_remove = [k]
+                    else:
+                        to_remove.append(k)
 
-        nullable |= has_null
+            if to_remove is not None:
+                for k in to_remove:
+                    false_types.pop(k)
 
-        if has_str:
+            if len(false_types) == 0:
+                break
+
+        nullable = (
+            nullable or ('none' in true_types) or ('nan' in true_types and nan_to_none)
+        )
+
+        if 'str' in true_types:
             dst_type = pyarrow.string()
-        elif has_float:
+        elif 'float' in true_types:
             dst_type = pyarrow.float32()
-        elif has_int:
+            use_byte_stream_split = True
+            if nan_to_none and nullable:
+                values = [None if v is None else v for v in values]
+        elif 'int' in true_types:
             check_integer()
-        elif has_bool:
+        elif 'bool' in true_types:
             dst_type = pyarrow.bool_()
         else:
             raise NotImplementedError(f"Unhandled type {t}.")
 
-    return dst_type, nullable, use_byte_stream_split
+    
+    return dst_type, nullable, use_byte_stream_split, values
 
 
 def truncate_least_significant_bits(
