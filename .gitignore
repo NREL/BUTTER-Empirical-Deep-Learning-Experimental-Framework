@@ -29,3 +29,4 @@ src/dmp.egg-info/
 flex_job_runner.sh
 .cnn_dataset_cache/
 test_loaders.ipynb
+/model_data

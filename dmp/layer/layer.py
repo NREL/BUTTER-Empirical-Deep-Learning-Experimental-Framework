@@ -108,6 +108,10 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         result = self.__class__(self.config, layer_inputs)
         result.update_if_exists(override_if_exists)
         return result
+    
+    @property
+    def name(self)->Optional[str]:
+        return self.config.get(keras_keys.name, None)
 
     @property
     def input(self) -> 'Layer':

@@ -86,11 +86,15 @@ class IterativePruningExperiment(TrainingExperiment):
             # save weights at this point for rewinding
             rewind_weights = {}
             if self.rewind:
-                rewind_weights = AccessModelWeights.get_weights(
+                rewind_weights = AccessModelWeights().get_weights(
                     model.network.structure,
                     model.keras_network.layer_to_keras_map,
                     use_mask=False,
                 )
+            model.keras_model.summary()
+            from dmp.marshaling import marshal
+            from pprint import pprint
+            pprint(marshal.marshal(model.network))
 
             self.compress_weights(model.network.structure, num_free_parameters, rewind_weights)
 
@@ -125,14 +129,14 @@ class IterativePruningExperiment(TrainingExperiment):
                 self.compress_weights(
                     model.network.structure,
                     num_free_parameters,
-                    AccessModelWeights.get_weights(
+                    AccessModelWeights().get_weights(
                         model.network.structure,
                         model.keras_network.layer_to_keras_map,
                         use_mask=True,
                     ),
                 )
                 if self.rewind:
-                    AccessModelWeights.set_weights(
+                    AccessModelWeights().set_weights(
                         model.network.structure,
                         model.keras_network.layer_to_keras_map,
                         rewind_weights,
@@ -205,7 +209,7 @@ class IterativePruningExperiment(TrainingExperiment):
             # compression_level=8,
             compression='ZSTD',
             # compression_level=12,
-            compression_level=30,
+            compression_level=15,
             use_dictionary=False,
             use_byte_stream_split=use_byte_stream_split,
             version='2.6',
