@@ -10,7 +10,7 @@ class CountFreeParametersVisitor:
     def __init__(self, target: Layer) -> None:
 
         num_free_parameters = 0
-        for layer in target.all_descendants:
+        for layer in target.descendants:
             num_in_layer = self._visit(layer)
             num_free_parameters += num_in_layer
             layer.free_parameters += num_in_layer

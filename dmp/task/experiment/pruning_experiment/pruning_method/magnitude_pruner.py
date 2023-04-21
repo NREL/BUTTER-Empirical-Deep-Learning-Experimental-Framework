@@ -46,6 +46,16 @@ class MagnitudePruner(PruningMethod):
             layer: Layer,
         ) -> bool:
             keras_layer = layer_to_keras_map[layer].keras_layer
+            res = hasattr(keras_layer, keras_keys.kernel_constraint) \
+                and isinstance(keras_layer.kernel_constraint, WeightMask)
+        
+            print(f'is_prunable {layer} : { res} : {keras_layer}')
+            try:
+                print(f'kc: {keras_layer.kernel_constraint}')
+            except:
+                print(f'except')
+
+            keras_layer = layer_to_keras_map[layer].keras_layer
             return hasattr(keras_layer, keras_keys.kernel_constraint) \
                 and isinstance(keras_layer.kernel_constraint, WeightMask)
 
@@ -65,7 +75,7 @@ class MagnitudePruner(PruningMethod):
             return (weights[mask]).flatten()  # type: ignore
 
         prunable_layers = [
-            layer for layer in root.all_descendants if is_prunable(layer)
+            layer for layer in root.descendants if is_prunable(layer)
         ]
 
         prunable_weights = numpy.concatenate(

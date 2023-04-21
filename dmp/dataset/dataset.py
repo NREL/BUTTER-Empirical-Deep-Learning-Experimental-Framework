@@ -8,7 +8,11 @@ import dmp.task.experiment.training_experiment.training_experiment_keys as train
 
 @dataclass
 class Dataset():
-    ml_task: MLTask
+    '''
+    Represents a ML dataset.
+    '''
+
+    ml_task: MLTask # task that this dataset is intended for
     train: Optional[DatasetGroup] = None
     test: Optional[DatasetGroup] = None
     validation: Optional[DatasetGroup] = None

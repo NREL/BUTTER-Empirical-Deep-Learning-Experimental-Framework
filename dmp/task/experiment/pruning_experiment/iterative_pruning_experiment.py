@@ -6,6 +6,7 @@ from jobqueue.job import Job
 import numpy
 from dmp import parquet_util
 from dmp.common import KerasConfig
+from dmp.keras_interface.model_serialization import ModelSeralizer
 from dmp.layer.layer import Layer
 
 from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_kwcfg
@@ -97,6 +98,9 @@ class IterativePruningExperiment(TrainingExperiment):
             pprint(marshal.marshal(model.network))
 
             self.compress_weights(model.network.structure, num_free_parameters, rewind_weights)
+            # ModelSeralizer().store_model_data(model, 'test')
+            # model = ModelSeralizer().load_model_data('test')
+            # model.keras_model.summary()
 
             # 4: for n ∈ {1, . . . , N} do
             for iteration_n in range(self.num_pruning_iterations):
@@ -135,6 +139,10 @@ class IterativePruningExperiment(TrainingExperiment):
                         use_mask=True,
                     ),
                 )
+                
+                ModelSeralizer().store_model_data(model, 'test')
+                model = ModelSeralizer().load_model_data('test')
+                model.keras_model.summary()
                 if self.rewind:
                     AccessModelWeights().set_weights(
                         model.network.structure,
@@ -163,7 +171,7 @@ class IterativePruningExperiment(TrainingExperiment):
         w = []
 
         num_weights = 0
-        for layer in root.all_descendants:
+        for layer in root.descendants:
             layer_weights = weight_map.get(layer, None)
             shape = None
             if layer_weights is not None:

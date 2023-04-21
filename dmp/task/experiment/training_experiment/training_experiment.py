@@ -12,12 +12,12 @@ from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_conf
 from dmp.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.recorder.test_set_history_recorder import TestSetHistoryRecorder
+from dmp.task.experiment.recorder.zero_epoch_recorder import ZeroEpochRecorder
+from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.training_experiment.a_training_experiment import ATrainingExperiment
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
 from dmp.model.model_info import ModelInfo
-from dmp.task.experiment.recorder.zero_epoch_recorder import ZeroEpochRecorder
 
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec

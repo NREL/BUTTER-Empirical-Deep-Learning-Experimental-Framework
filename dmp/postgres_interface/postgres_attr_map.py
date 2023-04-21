@@ -2,7 +2,7 @@ from typing import Any, Dict, Hashable, Iterable, List, Mapping, Optional, Seque
 
 import uuid
 from jobqueue.cursor_manager import CursorManager
-from dmp.marshaling import marshal
+
 from dmp.postgres_interface.attr import Attr, ComparableValue
 from dmp.postgres_interface.attribute_value_type import AttributeValueType, get_attribute_value_type_for_type_code, get_attribute_value_type_for_value
 
@@ -261,6 +261,7 @@ SELECT * from {inserted}
         value: Any,
     ) -> Any:
         if value_type == AttributeValueType.JSON:
+            from dmp.marshaling import marshal
             return marshal.marshal(value)
         return value
 
@@ -270,5 +271,6 @@ SELECT * from {inserted}
         database_value: Any,
     ) -> Any:
         if value_type == AttributeValueType.JSON:
+            from dmp.marshaling import marshal
             return marshal.demarshal(database_value)
         return database_value

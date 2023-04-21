@@ -69,7 +69,7 @@ class GrowthExperiment(TrainingExperiment):
             # goal_network.description[self.key_names.scale_key] = 1.0
             goal_network.description[self.keys.layer_map_key] = {
                 l: l
-                for l in goal_network.structure.all_descendants
+                for l in goal_network.structure.descendants
             }
 
             # from dmp.marshaling import marshal

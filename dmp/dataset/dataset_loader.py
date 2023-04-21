@@ -33,6 +33,10 @@ dataset_cache_directory = os.path.join(os.getcwd(), '.dataset_cache')
 
 @dataclass
 class DatasetLoader(ABC):
+    '''
+    Responsible for returning a Dataset object when called.
+    Contains convience functions for assisting in dataset loading and preprocessing.
+    '''
 
     source : str
     dataset_name: str
@@ -44,6 +48,9 @@ class DatasetLoader(ABC):
     _group_column = 'g'
 
     def __call__(self) -> Dataset:
+        '''
+        Generates a Dataset object (ususally by loading the dataset and preparing it for use)
+        '''
         data = self._load_dataset()
         data = self._prepare_dataset_data(data)
         return data
@@ -71,7 +78,7 @@ class DatasetLoader(ABC):
             import lz4
             with lz4.frame.open(filename, mode='rb') as file:
                 return pickle.load(file)
-        # 
+
         except FileNotFoundError:
             print(f'Dataset cache file {filename} not found while reading from dataset cache for {self}.')
             return None

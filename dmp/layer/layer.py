@@ -118,7 +118,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         return self.inputs[0]
 
     @property
-    def all_descendants(self) -> Iterator['Layer']:
+    def descendants(self) -> Iterator['Layer']:
         '''
         An iterator over all layers in the graph without duplicates.
         '''
@@ -133,6 +133,12 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
                     yield from visit(i)
 
         yield from visit(self)
+    
+    @property
+    def leaves(self) -> Iterator['Layer']:
+        for layer in self.descendants:
+            if len(layer.inputs) == 0:
+                yield layer
 
     @property
     def use_bias(self) -> bool:

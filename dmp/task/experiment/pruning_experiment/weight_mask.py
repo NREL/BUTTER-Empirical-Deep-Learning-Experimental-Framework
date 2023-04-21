@@ -1,12 +1,7 @@
-from dataclasses import dataclass
-import tensorflow as tf
-import numpy as np
-import logging
-
-logger = logging.getLogger(__name__)
+import tensorflow
 
 
-class WeightMask(tf.keras.constraints.Constraint):
+class WeightMask(tensorflow.keras.constraints.Constraint):
     """
     A class that implements a constraint function to mask weights in a neural network model.
     """
@@ -16,15 +11,16 @@ class WeightMask(tf.keras.constraints.Constraint):
         mask_group: int = 0,
     ):
         super().__init__()
-        logger.debug("__init__")
         self.mask_group: int = mask_group
-        self.mask = tf.Variable(
-            True, shape=tf.TensorShape(None), trainable=False, dtype=tf.bool
+        self.mask = tensorflow.Variable(
+            True,
+            shape=tensorflow.TensorShape(None),
+            trainable=False,
+            dtype=tensorflow.bool,
         )
 
     def __call__(self, w):
         """
         Used by tensorflow to add the constraint to the computation graph.
         """
-        logger.debug("__call__")
-        return tf.where(self.mask, w, 0)
+        return tensorflow.where(self.mask, w, 0)
