@@ -52,7 +52,7 @@ from pprint import pprint
 from dmp.marshaling import marshal
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
+strategy = dmp.jobqueue_interface.worker.make_strategy(6, None, None)
 worker = Worker(
     None,
     None,
@@ -83,8 +83,8 @@ def test_vgg16():
         seed=0,
         batch='test',
         tags={
-            'model_family': 'lenet',
-            'model_name': 'lenet_relu',
+            'model_family': 'vgg',
+            'model_name': 'vgg16',
         },
         run_tags={
             'test': True,
