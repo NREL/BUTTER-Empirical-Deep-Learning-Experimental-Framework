@@ -23,6 +23,7 @@ class Dense(Layer):
         config: LayerConfig = empty_config,
         input: List[Layer] = empty_inputs,
     ) -> 'Dense':
+        config = config.copy()
         config['units'] = units
         return Dense(Dense._default_config, input, config)
 

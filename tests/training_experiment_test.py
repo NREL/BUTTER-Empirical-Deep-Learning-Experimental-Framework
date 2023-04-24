@@ -632,13 +632,13 @@ def test_pruning_experiment():
 
     run_experiment(experiment)
 
-
-# test_growth_experiment()
-# test_simple()
-# test_mnist()
-# test_mnist_lenet()
-# test_from_optimizer()
-# test_get_sizes()
-# test_growth_experiment_mnist()
-# test_imagenet16()
-test_pruning_experiment()
+if __name__ == '__main__':
+    # test_growth_experiment()
+    # test_simple()
+    # test_mnist()
+    # test_mnist_lenet()
+    # test_from_optimizer()
+    # test_get_sizes()
+    # test_growth_experiment_mnist()
+    # test_imagenet16()
+    test_pruning_experiment()

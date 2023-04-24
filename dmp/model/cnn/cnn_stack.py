@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Sequence
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.cnn.parallel_cell import ParallelCell
@@ -17,17 +17,17 @@ class CNNStack(ModelSpec):
     input -> stem -> [M stacks of: N cells -> downsample ] -> final output layer
     '''
 
-    num_stacks: int 
-    cells_per_stack: int
-    stem: Union[str, LayerFactory]
-    downsample: Union[str, LayerFactory]
-    cell: Union[str, LayerFactory]
-    final: Union[str, LayerFactory]
+    num_stacks: int = 1
+    cells_per_stack: int = 1
+    stem: Union[str, LayerFactory] = 'conv_3x3_1x1_same'
+    downsample: Union[str, LayerFactory]  = 'max_pool_3x3_1x1_same'
+    cell: Union[str, LayerFactory] = 'conv_3x3_1x1_same'
+    final: Union[str, LayerFactory] = field(default_factory=lambda:Dense.make(4096))
 
-    stem_width: int
-    stack_width_scale_factor: float
-    downsample_width_scale_factor: float
-    cell_width_scale_factor: float
+    stem_width: int = 64
+    stack_width_scale_factor: float = 1.0
+    downsample_width_scale_factor: float = 1.0
+    cell_width_scale_factor: float = 1.0
 
     def make_network(self) -> NetworkInfo:
         width = self.stem_width
@@ -73,7 +73,8 @@ _layer_factory_map = {
     'downsample_avgpool_2x2_residual_2x_conv_3x3':
     Add.make([
         AvgPool.make([2, 2], [2, 2]),
-        conv_3x3([DenseConv.make(-1, [3, 3], [2, 2])]),
+        # conv_3x3([DenseConv.make(-1, [3, 3], [2, 2])]),
+        DenseConv.make(-1, [3, 3], [1, 1], {keras_keys.padding:'same'}, [DenseConv.make(-1, [3, 3], [2, 2], {keras_keys.padding:'same'})])
     ]),  # type: ignore
     'downsample_avgpool_2x2_residual_conv_3x3':
     Add.make([

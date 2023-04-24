@@ -34,6 +34,10 @@ class LayerFactory(ABC):
         inputs: List['Layer'],
         config: 'LayerConfig',
     ) -> 'Layer':
+        '''
+        Factory method that makes a layer that consumes the provided inputs and overrides layer configurations with the
+        provided config dictionary.
+        '''
         pass
 
 

@@ -48,7 +48,7 @@ class TrainingExperiment(ATrainingExperiment):
             metrics = self._autoconfigure_for_dataset(dataset)
             model = self._make_model(worker, self.model)
             self._compile_model(dataset, model, metrics)
-            # model.keras_model.summary()
+            model.keras_model.summary()
             history = self._fit_model(
                 self.fit,
                 dataset,
@@ -73,10 +73,6 @@ class TrainingExperiment(ATrainingExperiment):
         self,
         dataset: PreparedDataset,
     ) -> List[Union[str, keras.metrics.Metric]]:
-
-
-        
-
         # auto-populate model inputs and outputs if not already set
         num_outputs: int = int(dataset.output_shape[0])
         ml_task: MLTask = dataset.ml_task

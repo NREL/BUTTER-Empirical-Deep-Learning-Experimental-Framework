@@ -11,10 +11,10 @@ T = TypeVar('T')
 class ConvolutionalLayer(SpatitialLayer, ABC):
 
     _default_config = {
-        keras_keys.strides: (1, 1),
+        keras_keys.strides: [1, 1],
         keras_keys.padding: 'valid',
         keras_keys.data_format: None,
-        keras_keys.dilation_rate: (1, 1),
+        keras_keys.dilation_rate: [1, 1],
         keras_keys.groups: 1,
         keras_keys.activation: 'relu',
         keras_keys.use_bias: True,

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Sequence
 
 from dmp.model.model_spec import ModelSpec
@@ -15,11 +15,13 @@ class CNNStacker(ModelSpec):
         input -> stem -> [M stacks of: N cells -> downsample ] -> final output layer
     '''
 
-    stage_widths: List[List[int]]
-    stem: LayerFactory
-    downsample: LayerFactory
-    cell: LayerFactory
-    final: LayerFactory
+    stage_widths: List[List[int]] = field(default_factory=list)
+    stem: LayerFactory = field(default_factory=conv_3x3)
+    downsample: LayerFactory = field(
+        default_factory=lambda: MaxPool.make([2, 2], [2, 2])
+    )
+    cell: LayerFactory = field(default_factory=conv_3x3)
+    final: LayerFactory = field(default_factory=lambda: Dense.make(4096))
 
     def make_network(self) -> NetworkInfo:
         '''

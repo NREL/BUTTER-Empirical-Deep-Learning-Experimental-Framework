@@ -1,30 +1,35 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 from typing import Any, Callable, List, Tuple, Dict
 from dmp.common import make_dispatcher
 from dmp.layer.flatten import Flatten
 from dmp.model.model_spec import ModelSpec
 from dmp.model.network_info import NetworkInfo
-from dmp.model.model_util import find_closest_network_to_target_size_float, find_closest_network_to_target_size_int
+from dmp.model.model_util import (
+    find_closest_network_to_target_size_float,
+    find_closest_network_to_target_size_int,
+)
 from dmp.layer import *
 
 
 @dataclass
 class FullyConnectedNetwork(ModelSpec, LayerFactory):
-    widths: List[int]
-    residual_mode: str
-    flatten_input: bool
-    inner: Dense  # config of all but output layer (no units here)
+    widths: List[int] = field(default_factory=lambda:[4096])
+    residual_mode: str = 'none' # 'none' or 'full'
+    flatten_input: bool = True
+    inner: Dense = field(
+        default_factory=lambda: Dense.make(4096)
+    )  # config of all but output layer (no units here)
     depth: int = -1  # len(widths) set by __post_init__()
     width: int = -1  # max(widths) set by __post_init__()
-    min_width: int = -1 # set by __post_init__()
-    rectangular: bool = False # set by __post_init__()
+    min_width: int = -1  # set by __post_init__()
+    rectangular: bool = False  # set by __post_init__()
 
     def __post_init__(self):
         self.depth = len(self.widths)
         self.width = max(self.widths)
         self.min_width = min(self.widths)
-        self.rectangular = (self.width == self.min_width)
+        self.rectangular = self.width == self.min_width
 
     def make_network(self) -> NetworkInfo:
         return NetworkInfo(
@@ -64,12 +69,10 @@ class FullyConnectedNetwork(ModelSpec, LayerFactory):
                 # If this isn't the first or last layer, and the previous layer is
                 # of the same width insert a residual sum between layers
                 # NB: Only works for rectangle
-                if depth > 0 and depth < len(widths) - 1 and \
-                    width == widths[depth - 1]:
+                if depth > 0 and depth < len(widths) - 1 and width == widths[depth - 1]:
                     layer = Add({}, [layer, parent])
             else:
-                raise NotImplementedError(
-                    f'Unknown residual mode "{residual_mode}".')
+                raise NotImplementedError(f'Unknown residual mode "{residual_mode}".')
 
             parent = layer
         return parent

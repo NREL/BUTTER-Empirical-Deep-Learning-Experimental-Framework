@@ -106,8 +106,12 @@ register_types(
 # Tasks:
 from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
-from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import IterativePruningExperiment
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
+from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import (
+    IterativePruningExperiment,
+)
 
 register_types(
     [
@@ -132,6 +136,8 @@ from dmp.model.dense_by_size import DenseBySize
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
+from dmp.model.sequential_model import SequentialModel
+from dmp.model.repeated_model import RepeatedModel
 
 register_types(
     (
@@ -139,6 +145,8 @@ register_types(
         CNNStack,
         CNNStacker,
         FullyConnectedNetwork,
+        SequentialModel,
+        RepeatedModel,
     )
 )
 
@@ -198,5 +206,3 @@ register_types(
         NetworkInfo,
     )
 )
-
-

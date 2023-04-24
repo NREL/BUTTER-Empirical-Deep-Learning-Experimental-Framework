@@ -10,8 +10,8 @@ T = TypeVar('T')
 
 @dataclass
 class ModelSpec(ABC):
-    input: Optional[Layer]  # set to None for runtime determination
-    output: Optional[Layer]  # set to None for runtime determination
+    input: Optional[Layer] = None  # set to None for runtime determination
+    output: Optional[Layer] = None  # set to None for runtime determination
 
     @abstractmethod
     def make_network(self) -> NetworkInfo:
