@@ -31,7 +31,7 @@ class SpatitialLayer(Layer, ABC):
         on_channels_last: Callable[[], T],
         on_channels_first: Callable[[], T],
     ) -> T:
-        data_format = self.config[keras_keys.data_format]
+        data_format = self.config.get(keras_keys.data_format, None)
         if data_format is None or data_format == 'channels_last':
             return on_channels_last()
         elif data_format == 'channels_first':

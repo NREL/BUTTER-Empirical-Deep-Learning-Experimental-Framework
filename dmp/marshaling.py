@@ -83,6 +83,8 @@ from dmp.layer.zeroize import Zeroize
 from dmp.layer.dense_conv import DenseConv
 from dmp.layer.separable_conv import SeparableConv
 from dmp.layer.flatten import Flatten
+from dmp.layer.op_layer import OpLayer
+from dmp.layer.batch_normalization import BatchNormalization
 
 # Layers:
 register_types(
@@ -100,6 +102,8 @@ register_types(
         DenseConv,
         SeparableConv,
         Flatten,
+        OpLayer,
+        BatchNormalization,
     ]
 )
 
@@ -139,6 +143,9 @@ from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.model.sequential_model import SequentialModel
 from dmp.model.repeated_model import RepeatedModel
 
+# LayerFactory's
+from dmp.model.res_net_block import ResNetBlock
+
 register_types(
     (
         DenseBySize,
@@ -147,6 +154,7 @@ register_types(
         FullyConnectedNetwork,
         SequentialModel,
         RepeatedModel,
+        ResNetBlock,
     )
 )
 

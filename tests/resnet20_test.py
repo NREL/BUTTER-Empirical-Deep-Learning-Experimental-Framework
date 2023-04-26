@@ -1,16 +1,27 @@
+from dataclasses import dataclass
 import sys
+from typing import List, Union
 
 from jobqueue.job import Job
 import numpy
 import pandas
 from tensorflow.python.framework.ops import re
+from dmp.layer.add import Add
+from dmp.layer.avg_pool import AvgPool
+from dmp.layer.dense_conv import DenseConv
 
 # from dmp import jobqueue_interface
 from dmp.layer.flatten import Flatten
+from dmp.layer.global_average_pooling import GlobalAveragePooling
+from dmp.layer.identity import Identity
+from dmp.layer.layer import Layer, LayerConfig, LayerFactory
 from dmp.layer.max_pool import MaxPool
+from dmp.layer.op_layer import OpLayer
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
+from dmp.model.res_net_block import ResNetBlock
+from dmp.model.sequential_model import SequentialModel
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
@@ -72,12 +83,52 @@ def run_experiment(experiment):
 
 
 def test_resenet20():
+    # ResNet Paper: https://arxiv.org/pdf/1512.03385.pdf
+    # One imperfect implementation: https://github.com/Eric-mingjie/rethinking-network-pruning/blob/2ac473d70a09810df888e932bb394f225f9ed2d1/cifar/lottery-ticket/l1-norm-pruning/models/resnet.py#L20
+    # Another not-quite-right implementation: https://github.com/LuigiRussoDev/ResNets/blob/master/resnet20.py
+    # Helpful reference: https://towardsdatascience.com/understanding-and-visualizing-resnets-442284831be8
+    # Helpful but incomplete diagram: https://www.researchgate.net/figure/ResNet-20-architecture_fig3_351046093
+
+    # cells_per_stack = 3
+    # depth = cells_per_stack * 3 + 2
+    # def make_downsample(input):
+    #     return AvgPool.make(
+    #         [2, 2],
+    #         [2, 2],
+    #         {'padding': 'same'},
+    #         input,
+    #     )
+
+    model = SequentialModel([
+        DenseConv.make(
+            16,
+            [7,7],
+            [2,2],
+            {
+                'padding': 'same',
+                'use_bias': False,
+            },
+        ),
+        ResNetBlock(16, 1),
+        ResNetBlock(16, 1),
+        ResNetBlock(16, 1),
+        ResNetBlock(32, 2),
+        ResNetBlock(32, 1),
+        ResNetBlock(32, 1),
+        ResNetBlock(64, 2),
+        ResNetBlock(64, 1),
+        ResNetBlock(64, 1),
+        GlobalAveragePooling(),
+        Flatten(),
+    ])
+
     experiment = TrainingExperiment(
         seed=0,
         batch='test',
         tags={
-            'model_family': 'lenet',
-            'model_name': 'lenet_relu',
+            'model_family': 'resnet',
+            'model_name': f'resnet20',
+            'resnet_depth': 20,
         },
         run_tags={
             'test': True,
@@ -93,29 +144,9 @@ def test_resenet20():
             0.05,
             0.0,
         ),
-        model=CNNStack(
-            input=None,
-            output=None,
-            num_stacks=2,
-            cells_per_stack=1,
-            stem='conv_5x5_1x1_same',
-            downsample='max_pool_2x2_2x2_valid',
-            cell='conv_5x5_1x1_valid',
-            final=FullyConnectedNetwork(
-                input=None,
-                output=None,
-                widths=[120, 84],
-                residual_mode='none',
-                flatten_input=True,
-                inner=Dense.make(-1, {}),
-            ),
-            stem_width=6,
-            stack_width_scale_factor=16.0 / 6.0,
-            downsample_width_scale_factor=1.0,
-            cell_width_scale_factor=1.0,
-        ),
+        model=model,
         fit={
-            'batch_size': 256,
+            'batch_size': 16,
             'epochs': 1,
         },
         optimizer={'class': 'Adam', 'learning_rate': 0.0001},
@@ -136,6 +167,7 @@ def test_resenet20():
     )
 
     run_experiment(experiment)
+
 
 if __name__ == '__main__':
     test_resenet20()

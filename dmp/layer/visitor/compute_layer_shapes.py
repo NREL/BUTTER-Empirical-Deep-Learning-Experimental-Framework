@@ -6,6 +6,7 @@ from dmp.layer import *
 from dmp.layer.flatten import Flatten
 
 import dmp.layer.input
+from dmp.layer.op_layer import OpLayer
 
 _invalid_shape = tuple()
 import dmp.keras_interface.keras_keys as keras_keys
@@ -48,6 +49,10 @@ class ComputeLayerShapesVisitor:
     def _(self, target: Flatten, config: Dict) -> Tuple:
         return (math.prod(self._get_input_shape(target)), )
 
+    @_visit.register
+    def _(self, target: OpLayer, config: Dict) -> Tuple:
+        return self._get_input_shape(target)
+    
     @_visit.register
     def _(self, target: Dense, config: Dict) -> Tuple:
         return (config[keras_keys.units], )

@@ -17,6 +17,13 @@ T = TypeVar('T')
 
 # layer_types: List[Type] = []
 
+'''
++ how to make keras layer (factor into visitor)
++ compute shape
++ count free parameters
++ convience constructors/factories
+
+'''
 
 # def register_layer_type(type: Type) -> None:
 #     from dmp.marshal_registry import register_type
@@ -25,13 +32,13 @@ T = TypeVar('T')
 
 class LayerFactory(ABC):
     '''
-    Thing that can make a layer.
+    Factory class that makes layers.
     '''
 
     @abstractmethod
     def make_layer(
         self,
-        inputs: List['Layer'],
+        inputs: Union['Layer', List['Layer']],
         config: 'LayerConfig',
     ) -> 'Layer':
         '''
@@ -49,7 +56,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
     def __init__(
         self,
         config: LayerConfig = empty_config, # keras constructor kwargs
-        input: Union['Layer', List['Layer']] = empty_inputs, # input Layers to this Layers
+        input: Union['Layer', List['Layer']] = empty_inputs, # inputs to this Layer
         overrides: LayerConfig = empty_config, # optional override keys of config
     ) -> None:
         if not isinstance(input, List):
@@ -65,6 +72,8 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         self.computed_shape: Tuple[
             int, ...] = uninitialized_shape  # must be computed in context
         self.free_parameters: int = unitialized_parameter_count  # must be computed in context
+
+        print(f'make layer {type(self)} {config}')
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -84,24 +93,53 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
     def __contains__(self, key) -> bool:
         return self.config.__contains__(key)
 
+    def describe(self, indent_str = '')->str:
+        inputs = ''
+        input_indent_str = f'{indent_str} '
+        if len(self.inputs) > 0:
+            for input in self.inputs:
+                inputs += f'\n{input_indent_str}{input.describe(input_indent_str)},'
+        
+        params = {key:self[key] for key in ('units', 'kernel_size', 'strides') if key in self}
+        return f'({type(self)}: {self.computed_shape}, {params}: {inputs})'
+    
+
     def update_if_exists(self, overrides: LayerConfig) -> None:
+        '''
+        Updates layer config with the supplied overrides only where their keys already are set in the config.
+        '''
         for k, v in overrides.items():
             if k in self.config:
                 self.config[k] = v
 
     def insert_if_not_exists(self, to_insert: LayerConfig) -> None:
+        '''
+        Sets items that don't already exist in the config.
+        '''
         for k, v in to_insert.items():
             if k not in self.config:
                 self.config[k] = v
 
     def update(self, overrides: LayerConfig) -> None:
+        '''
+        Overrides/sets the config using the supplied overrides config.
+        '''
         self.config.update(overrides)
 
     def make_layer(
         self,
-        inputs: List['Layer'],
+        inputs: Union['Layer', List['Layer']],
         override_if_exists: LayerConfig,
     ) -> 'Layer':
+        '''
+        Generates a matching layer graph and links it to the supplied inputs.
+        That is, this function traverses this layer and it's descendents (inputs), making a matching copy of the graph until it reaches layers with no inputs.
+        These leaf layers have their inputs set to the supplied inputs.
+        When copying, the copies have update_if_exists(override_if_exists) called on them, allowing the caller to override the returned layers' configurations.
+        '''
+        if isinstance(inputs, Layer):
+            inputs = [inputs]
+
         layer_inputs = inputs
         if len(self.inputs) > 0:
             layer_inputs = [
@@ -115,10 +153,16 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
     
     @property
     def name(self)->Optional[str]:
+        '''
+        An optional name of this layer. Set in the config.
+        '''
         return self.config.get(keras_keys.name, None)
 
     @property
     def input(self) -> 'Layer':
+        '''
+        The zeroth input. Useful shortcut for layers with only one input.
+        '''
         return self.inputs[0]
 
     @property
@@ -140,22 +184,39 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
     
     @property
     def leaves(self) -> Iterator['Layer']:
+        '''
+        An iterator over all leaf layers (layers with zero inputs) of the layer graph.
+        '''
+
         for layer in self.descendants:
             if len(layer.inputs) == 0:
                 yield layer
 
     @property
     def use_bias(self) -> bool:
+        '''
+        Shortcut to get the use_bias config parameter.
+        '''
         return self.config.get(keras_keys.use_bias, True)
 
     @property
     def dimension(self) -> int:
+        '''
+        Shortcut to get the dimensionality of the computed shape.
+        '''
         return len(self.computed_shape) - 1
 
     def get(self, key, default):
+        '''
+        Returns the value matching the given key from the config, or default if the key is not set.
+        '''
         return self.config.get(key, default)
 
     def marshal(self) -> dict:
+        '''
+        Custom marshalling implementation.
+        Converts some tuples to lists for more readable marshaling/serialization.
+        '''
         flat = self.config.copy()
 
         def safe_set(key, value):
@@ -172,6 +233,10 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         return flat
 
     def demarshal(self, flat: dict) -> None:
+        '''
+        Custom demarshaling implementation.
+        Restores tuples that were converted to lists during marshalling.
+        '''
         self.config = flat
         self.inputs = flat.pop(marshaled_inputs_key, [])
         computed_shape = flat.pop(marshaled_computed_shape_key, None)

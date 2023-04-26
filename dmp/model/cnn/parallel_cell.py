@@ -10,8 +10,18 @@ class ParallelCell(LayerFactory):
     operations: List[List[Layer]]  # defines the cell structure
     output: Layer  # combines parallel layers to form single output (Add, concat, etc)
 
-    def make_layer(self, inputs: List[Layer], config: LayerConfig) -> Layer:
-        # + multiple parallel paths of serial ops are applied and then combined
+    def make_layer(
+        self,
+        inputs: Union['Layer', List['Layer']],
+        config: LayerConfig,
+    ) -> Layer:
+        '''
+        + multiple parallel paths of serial ops are applied and then combined
+        '''
+        
+        if isinstance(inputs, Layer):
+            inputs = [inputs]
+
         parallel_outputs: List[Layer] = []
         for serial_operations in self.operations:
             serial_layer = inputs[0]

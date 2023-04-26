@@ -21,7 +21,7 @@ class Dense(Layer):
     def make(
         units: int,
         config: LayerConfig = empty_config,
-        input: List[Layer] = empty_inputs,
+        input: Union['Layer', List['Layer']] = empty_inputs,
     ) -> 'Dense':
         config = config.copy()
         config['units'] = units

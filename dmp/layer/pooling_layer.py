@@ -24,7 +24,7 @@ class PoolingLayer(SpatitialLayer, ABC):
         pool_size: Sequence[int],
         strides: Sequence[int],
         config: LayerConfig = empty_config,
-        input: List[Layer] = empty_inputs,
+        input: Union['Layer', List['Layer']] = empty_inputs,
     ) -> T:
 
         config = config.copy()

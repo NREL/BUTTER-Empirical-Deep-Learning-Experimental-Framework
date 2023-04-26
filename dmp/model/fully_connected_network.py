@@ -14,8 +14,8 @@ from dmp.layer import *
 
 @dataclass
 class FullyConnectedNetwork(ModelSpec, LayerFactory):
-    widths: List[int] = field(default_factory=lambda:[4096])
-    residual_mode: str = 'none' # 'none' or 'full'
+    widths: List[int] = field(default_factory=lambda: [4096])
+    residual_mode: str = 'none'  # 'none' or 'full'
     flatten_input: bool = True
     inner: Dense = field(
         default_factory=lambda: Dense.make(4096)
@@ -42,9 +42,12 @@ class FullyConnectedNetwork(ModelSpec, LayerFactory):
 
     def make_layer(
         self,
-        inputs: List[Layer],
+        inputs: Union['Layer', List['Layer']],
         config: 'LayerConfig',
     ) -> Layer:
+        if isinstance(inputs, Layer):
+            inputs = [inputs]
+
         parent = inputs[0]
         if self.flatten_input:
             parent = Flatten({}, parent)

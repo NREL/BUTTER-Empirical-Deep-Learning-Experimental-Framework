@@ -3,5 +3,6 @@ from dmp.layer.layer import Layer, LayerConfig
 from dmp.layer.element_wise_operator_layer import ElementWiseOperatorLayer
 
 
-class Identity(ElementWiseOperatorLayer):
+class BatchNormalization(ElementWiseOperatorLayer):
     pass
+

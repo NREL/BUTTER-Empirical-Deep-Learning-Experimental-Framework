@@ -22,7 +22,7 @@ class RepeatedModel(FactoryModel):
 
     def make_layer(
         self,
-        inputs: List[Layer],
+        inputs: Union['Layer', List['Layer']],
         config: 'LayerConfig',
     ) -> Layer:
         return SequentialModel(

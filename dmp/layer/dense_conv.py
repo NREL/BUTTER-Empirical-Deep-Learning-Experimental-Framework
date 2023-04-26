@@ -10,7 +10,7 @@ class DenseConv(ConvolutionalLayer):
         kernel_size: List[int],
         strides: List[int],
         config: LayerConfig = empty_config,
-        inputs: List[Layer] = empty_inputs,
+        inputs: Union['Layer', List['Layer']] = empty_inputs,
     ) -> 'DenseConv':
         return ConvolutionalLayer.make(DenseConv, filters, kernel_size,
                                        strides, config, inputs)

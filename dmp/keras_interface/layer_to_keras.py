@@ -20,7 +20,9 @@ import tensorflow
 from tensorflow import keras
 from keras import layers
 from dmp.keras_interface.convolutional_keras_layer import ConvolutionalKerasLayer
+from dmp.layer.batch_normalization import BatchNormalization
 from dmp.layer.flatten import Flatten
+from dmp.layer.op_layer import OpLayer
 from dmp.model.keras_layer_info import KerasLayer, KerasLayerInfo
 from dmp.model.model_info import ModelInfo
 from dmp.model.network_info import NetworkInfo
@@ -41,9 +43,13 @@ class LayerToKerasVisitor:
     '''
     _simple_class_mapping = {
         Dense: layers.Dense,
+        Flatten: layers.Flatten,
+        BatchNormalization: layers.BatchNormalization,
+    }
+
+    _simple_multiple_input_class_map = {
         Add: layers.Add,
         Concatenate: layers.Concatenate,
-        Flatten: layers.Flatten,
     }
 
     def __init__(self, target: Layer) -> None:
@@ -83,19 +89,26 @@ class LayerToKerasVisitor:
     def _make_keras_layer_from_layer(
         self,
         target: Layer,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         keras_class = self._simple_class_mapping.get(type(target), None)  # type: ignore
-        if keras_class is None:
-            raise NotImplementedError(f'Unknown Layer of type {type(target)}.')
-        return self._make_standard_keras_layer(target, keras_class, config, inputs)
+        if keras_class is not None:
+            return self._make_standard_keras_layer(target, keras_class, config, inputs)
+
+        keras_class = self._simple_multiple_input_class_map.get(type(target), None)  # type: ignore
+        if keras_class is not None:
+            return self._make_multiple_input_keras_layer(
+                target, keras_class, config, inputs
+            )
+
+        raise NotImplementedError(f'Unknown Layer of type {type(target)}.')
 
     @_make_keras_layer_from_layer.register
     def _(
         self,
         target: Input,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         result = layers.Input(**config)
@@ -106,7 +119,7 @@ class LayerToKerasVisitor:
     def visit_DenseConvolutionalLayer(
         self,
         target: DenseConv,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         return self._make_convolutional_layer(
@@ -124,7 +137,7 @@ class LayerToKerasVisitor:
     def _(
         self,
         target: SeparableConv,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         return self._make_convolutional_layer(
@@ -141,7 +154,7 @@ class LayerToKerasVisitor:
     def _(
         self,
         target: MaxPool,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         return self._make_by_dimension(
@@ -159,7 +172,7 @@ class LayerToKerasVisitor:
     def _(
         self,
         target: AvgPool,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         return self._make_by_dimension(
@@ -177,7 +190,7 @@ class LayerToKerasVisitor:
     def _(
         self,
         target: GlobalAveragePooling,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         return self._make_by_dimension(
@@ -195,7 +208,7 @@ class LayerToKerasVisitor:
     def _(
         self,
         target: GlobalMaxPooling,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         return self._make_by_dimension(
@@ -213,7 +226,7 @@ class LayerToKerasVisitor:
     def _(
         self,
         target: Identity,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         return self._info.layer_to_keras_map[target.input]
@@ -222,11 +235,21 @@ class LayerToKerasVisitor:
     def _(
         self,
         target: Zeroize,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         keras_layer = tensorflow.zeros_like(target.computed_shape)
-        # keras_layer.set_name
+        return KerasLayerInfo(target, keras_layer, keras_layer)
+
+    @_make_keras_layer_from_layer.register
+    def _(
+        self,
+        target: OpLayer,
+        config: LayerConfig,
+        inputs: List[KerasLayer],
+    ) -> KerasLayerInfo:
+        config.pop('name')
+        keras_layer = make_keras_instance(config)(*inputs)
         return KerasLayerInfo(target, keras_layer, keras_layer)
 
     def _setup_layer_name(
@@ -247,17 +270,17 @@ class LayerToKerasVisitor:
     def _make_by_dimension(
         self,
         target: Layer,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
         dimension_to_factory_map: Dict[int, Callable],
     ) -> KerasLayerInfo:
-        keras_class = dimension_to_factory_map[target.dimension]
+        keras_class = dimension_to_factory_map[target.input.dimension]
         return self._make_standard_keras_layer(target, keras_class, config, inputs)
 
     def _make_convolutional_layer(
         self,
         target: ConvolutionalLayer,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
         dimension_to_factory_map: Dict[int, Callable],
     ) -> KerasLayerInfo:
@@ -272,23 +295,43 @@ class LayerToKerasVisitor:
         self,
         layer: Layer,
         target: Callable,
-        config: Dict[str, Any],
+        config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
         '''
         Makes a keras layer using the normal configuration parameters (if defined) to
         construct regularizers, constraints, activation functions, batch notrmalizer, initializer, etc.
         '''
-        self._setup_regularizers(config)
-        self._setup_constraints(config)
-        self._setup_activation(config)
-        self._make_keras_batch_normalizer(config)
-        self._setup_initializers(config)
+        print(f'_make_standard_keras_layer {layer} {inputs}')
+        self._setup_standard_layer(config)
         keras_layer = target(**config)
         keras_output = keras_layer(*inputs)
         return KerasLayerInfo(layer, keras_layer, keras_output)  # type: ignore
 
-    def _setup_regularizers(self, config: Dict[str, Any]) -> None:
+    def _make_multiple_input_keras_layer(
+        self,
+        layer: Layer,
+        target: Callable,
+        config: LayerConfig,
+        inputs: List[KerasLayer],
+    ) -> KerasLayerInfo:
+        print(f'_make_multiple_input_keras_layer {layer} {inputs}')
+        self._setup_standard_layer(config)
+        keras_layer = target(**config)
+        keras_output = keras_layer(inputs)
+        return KerasLayerInfo(layer, keras_layer, keras_output)  # type: ignore
+
+    def _setup_standard_layer(
+        self,
+        config: LayerConfig,
+    ) -> None:
+        self._setup_regularizers(config)
+        self._setup_constraints(config)
+        self._setup_activation(config)
+        self._make_keras_batch_normalization(config)
+        self._setup_initializers(config)
+
+    def _setup_regularizers(self, config: LayerConfig) -> None:
         self.replace_config_key_with_keras_instance(
             config,
             (
@@ -298,7 +341,7 @@ class LayerToKerasVisitor:
             ),
         )
 
-    def _setup_constraints(self, config: Dict[str, Any]) -> None:
+    def _setup_constraints(self, config: LayerConfig) -> None:
         self.replace_config_key_with_keras_instance(
             config,
             (
@@ -307,7 +350,7 @@ class LayerToKerasVisitor:
             ),
         )
 
-    def _setup_initializers(self, config: Dict[str, Any]) -> None:
+    def _setup_initializers(self, config: LayerConfig) -> None:
         self.replace_config_key_with_keras_instance(
             config,
             (
@@ -316,20 +359,24 @@ class LayerToKerasVisitor:
             ),
         )
 
-    def _setup_activation(self, config: Dict[str, Any]) -> None:
+    def _setup_activation(self, config: LayerConfig) -> None:
         self.replace_config_key_with_keras_instance(config, keras_keys.activation)
 
-    def _make_keras_batch_normalizer(self, config: Dict[str, Any]) -> None:
-        key = keras_keys.batch_normalizer
+    def _make_keras_batch_normalization(self, config: LayerConfig) -> None:
+        key = keras_keys.batch_normalization
         if key in config:
-            if config[key] is None:
+            batch_normalization = config[key]
+            if batch_normalization is None:
                 config[key] = tensorflow.identity
             else:
-                self.replace_config_key_with_keras_instance(config, key)
+                batch_normalization_config = batch_normalization.config.copy()
+                self._setup_standard_layer(batch_normalization_config)
+                keras_layer = layers.BatchNormalization(**batch_normalization_config)
+                config[key] = keras_layer
 
     def replace_config_key_with_keras_instance(
         self,
-        config: Dict[str, Any],
+        config: LayerConfig,
         key: Union[Iterable[str], str],
     ) -> None:
         if isinstance(key, str):

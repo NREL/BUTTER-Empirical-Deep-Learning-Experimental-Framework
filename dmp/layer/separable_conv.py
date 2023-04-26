@@ -11,7 +11,7 @@ class SeparableConv(ConvolutionalLayer):
         kernel_size: List[int],
         strides: List[int],
         config: LayerConfig = empty_config,
-        input: List[Layer] = empty_inputs,
+        input: Union['Layer', List['Layer']] = empty_inputs,
     ) -> 'SeparableConv':
         return ConvolutionalLayer.make(SeparableConv, filters, kernel_size,
                                         strides, config, input)

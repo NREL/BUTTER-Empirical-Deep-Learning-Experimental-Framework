@@ -5,5 +5,5 @@ from dmp.layer.layer import Layer
 class Add(ElementWiseOperatorLayer):
 
     @staticmethod
-    def make(input: List[Layer]) -> 'Add':
+    def make(input: Union['Layer', List['Layer']]) -> 'Add':
         return Add({}, input)

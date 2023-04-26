@@ -6,7 +6,7 @@ Configuration key strings for configuring Keras objects including Keras Layer ob
 activation: str = 'activation'
 activity_regularizer: str = 'activity_regularizer'
 axis: str = 'axis'
-batch_normalizer: str = 'batch_normalizer'
+batch_normalization: str = 'batch_normalization'
 bias_constraint: str = 'bias_constraint'
 bias_initializer: str = 'bias_initializer'
 bias_regularizer: str = 'bias_regularizer'

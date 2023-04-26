@@ -8,18 +8,18 @@ class ConvolutionalKerasLayer(layers.Layer):
     def __init__(
         self,
         conv_layer_factory: Callable,
-        batch_normalizer: Callable,
+        batch_normalization: Callable,
         activation: Callable,
         **conv_layer_args,
     ):
         conv_layer_args[keras_keys.activation] = keras.activations.linear
         self.conv_layer = conv_layer_factory(**conv_layer_args)
-        self.batch_normalizer = batch_normalizer
+        self.batch_normalization = batch_normalization
         self.activation = activation
         super().__init__()
 
     def call(self, input):
         # see https://stackoverflow.com/questions/55827660/batchnormalization-implementation-in-keras-tf-backend-before-or-after-activa
         x = self.conv_layer(input)
-        x = self.batch_normalizer(x)
+        x = self.batch_normalization(x)
         return self.activation(x)
