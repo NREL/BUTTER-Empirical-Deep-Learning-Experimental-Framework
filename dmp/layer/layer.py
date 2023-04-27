@@ -1,5 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, Callable
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    Callable,
+)
 from lmarshal.src.custom_marshalable import CustomMarshalable
 import dmp.keras_interface.keras_keys as keras_keys
 
@@ -30,6 +43,7 @@ T = TypeVar('T')
 #     register_type(type)
 #     # layer_types.append(type)
 
+
 class LayerFactory(ABC):
     '''
     Factory class that makes layers.
@@ -55,25 +69,28 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
     def __init__(
         self,
-        config: LayerConfig = empty_config, # keras constructor kwargs
-        input: Union['Layer', List['Layer']] = empty_inputs, # inputs to this Layer
-        overrides: LayerConfig = empty_config, # optional override keys of config
+        config: LayerConfig = empty_config,  # keras constructor kwargs
+        input: Union['Layer', List['Layer']] = empty_inputs,  # inputs to this Layer
+        overrides: LayerConfig = empty_config,  # optional override keys of config
     ) -> None:
         if not isinstance(input, List):
             input = [input]
         else:
             input = input.copy()  # defensive copy
-        
+
         config = config.copy()  # defensive copy
         config.update(overrides)
 
         self.config: LayerConfig = config
         self.inputs: List['Layer'] = input
         self.computed_shape: Tuple[
-            int, ...] = uninitialized_shape  # must be computed in context
-        self.free_parameters: int = unitialized_parameter_count  # must be computed in context
+            int, ...
+        ] = uninitialized_shape  # must be computed in context
+        self.free_parameters: int = (
+            unitialized_parameter_count  # must be computed in context
+        )
 
-        print(f'make layer {type(self)} {config}')
+        # print(f'make layer {type(self)} {config}')
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -93,16 +110,60 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
     def __contains__(self, key) -> bool:
         return self.config.__contains__(key)
 
-    def describe(self, indent_str = '')->str:
-        inputs = ''
-        input_indent_str = f'{indent_str} '
-        if len(self.inputs) > 0:
-            for input in self.inputs:
-                inputs += f'\n{input_indent_str}{input.describe(input_indent_str)},'
+    def describe(self) -> str:
+        graph_inputs = []
+        output_map = {}
         
-        params = {key:self[key] for key in ('units', 'kernel_size', 'strides') if key in self}
-        return f'({type(self)}: {self.computed_shape}, {params}: {inputs})'
-    
+        for layer in self.layers_post_ordered:
+            output_map.setdefault(layer, [])
+
+            if len(layer.inputs) == 0:
+                graph_inputs.append(layer)
+
+            for input in layer.inputs:
+                output_map.setdefault(input, []).append(layer)
+
+        layer_order_index = {}
+        ordered_layers = []
+
+        def compute_order(layer):
+            if layer not in layer_order_index:
+                layer_order_index[layer] = len(layer_order_index)
+                ordered_layers.append(layer)
+                for output in output_map[layer]:
+                    compute_order(output)
+
+        for input in graph_inputs:
+            compute_order(input)
+
+        descriptions = []
+        for index, layer in enumerate(ordered_layers):
+            # describe this layer
+            params = []            
+            if 'kernel_size' in layer:
+                params.append('x'.join((str(s) for s in layer['kernel_size'])))
+
+            if 'strides' in layer:
+                params.append(f's: {"x".join((str(s) for s in layer["strides"]))}')
+            
+            if 'units' in layer:
+                params.append(f'x{layer["units"]}')
+            
+            if not layer.use_bias:
+                params.append('-b')
+
+            if 'activation' in layer:
+                params.append(f'{layer["activation"]}')
+            
+            if 'name' in layer:
+                params.append(f'"{layer["name"]}"')
+
+            output_indicies = ', '.join(
+                (str(layer_order_index[output]) for output in output_map[layer])
+            )
+            descriptions.append(f'{index}: ({type(layer)}: {layer.free_parameters}, {layer.computed_shape}, {", ".join(params)} -> [{output_indicies}])')
+
+        return '\n'.join(descriptions)
 
     def update_if_exists(self, overrides: LayerConfig) -> None:
         '''
@@ -143,16 +204,15 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         layer_inputs = inputs
         if len(self.inputs) > 0:
             layer_inputs = [
-                input.make_layer(inputs, override_if_exists)
-                for input in self.inputs
+                input.make_layer(inputs, override_if_exists) for input in self.inputs
             ]
 
         result = self.__class__(self.config, layer_inputs)
         result.update_if_exists(override_if_exists)
         return result
-    
+
     @property
-    def name(self)->Optional[str]:
+    def name(self) -> Optional[str]:
         '''
         An optional name of this layer. Set in the config.
         '''
@@ -166,11 +226,20 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         return self.inputs[0]
 
     @property
-    def descendants(self) -> Iterator['Layer']:
+    def layers(self) -> Iterator['Layer']:
         '''
         An iterator over all layers in the graph without duplicates.
+        Ordering not guaranteed.
         '''
+        return self.layers_pre_ordered
 
+    @property
+    def layers_pre_ordered(self) -> Iterator['Layer']:
+        '''
+        An iterator over all layers in the graph without duplicates.
+        Pre-order traversal (this layer, the output layer, is the root),
+        skipping layers already traversed.
+        '''
         visited: Set['Layer'] = set()
 
         def visit(current: 'Layer') -> Iterator['Layer']:
@@ -181,14 +250,32 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
                     yield from visit(i)
 
         yield from visit(self)
-    
+
+    @property
+    def layers_post_ordered(self) -> Iterator['Layer']:
+        '''
+        An iterator over all layers in the graph without duplicates.
+        Post-order traversal (this layer, the output layer, is the root),
+        skipping layers already traversed.
+        '''
+        visited: Set['Layer'] = set()
+
+        def visit(current: 'Layer') -> Iterator['Layer']:
+            if current not in visited:
+                visited.add(current)
+                for i in current.inputs:
+                    yield from visit(i)
+                yield current
+
+        yield from visit(self)
+
     @property
     def leaves(self) -> Iterator['Layer']:
         '''
         An iterator over all leaf layers (layers with zero inputs) of the layer graph.
         '''
 
-        for layer in self.descendants:
+        for layer in self.layers:
             if len(layer.inputs) == 0:
                 yield layer
 
@@ -240,11 +327,12 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         self.config = flat
         self.inputs = flat.pop(marshaled_inputs_key, [])
         computed_shape = flat.pop(marshaled_computed_shape_key, None)
-        self.computed_shape = uninitialized_shape if computed_shape is None \
-            else tuple(computed_shape)
-        self.free_parameters = flat.pop(marshaled_free_parameters_key,
-                                        unitialized_parameter_count)
+        self.computed_shape = (
+            uninitialized_shape if computed_shape is None else tuple(computed_shape)
+        )
+        self.free_parameters = flat.pop(
+            marshaled_free_parameters_key, unitialized_parameter_count
+        )
 
 
-LayerConstructor = Callable[
-    [LayerConfig, Union[Layer, List[Layer]], LayerConfig], T]
+LayerConstructor = Callable[[LayerConfig, Union[Layer, List[Layer]], LayerConfig], T]

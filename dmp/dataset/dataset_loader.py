@@ -57,7 +57,6 @@ class DatasetLoader(ABC):
 
     def _load_dataset(self):
         data = self._try_read_from_cache()
-        data = None
         if data is None:
             data = self._fetch_from_source()
             self._write_to_cache(data)

@@ -410,6 +410,7 @@ def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
     )
 
     if keras_num_trainable != network.num_free_parameters:
+        keras_model.summarize()
         raise RuntimeError(
             f'Wrong number of trainable parameters: {keras_num_trainable} vs planned {network.num_free_parameters}'
         )

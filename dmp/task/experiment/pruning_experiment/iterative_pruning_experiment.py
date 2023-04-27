@@ -171,7 +171,7 @@ class IterativePruningExperiment(TrainingExperiment):
         w = []
 
         num_weights = 0
-        for layer in root.descendants:
+        for layer in root.layers:
             layer_weights = weight_map.get(layer, None)
             shape = None
             if layer_weights is not None:

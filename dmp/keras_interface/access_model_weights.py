@@ -78,7 +78,7 @@ class AccessModelWeights:
         visit_masks: Callable,
         visit_weights: Callable,
     ) -> None:
-        for layer in root.descendants:
+        for layer in root.layers:
             keras_layer = get_keras_layer(layer)
             if keras_layer is None or not self._has_weights(keras_layer):
                 continue

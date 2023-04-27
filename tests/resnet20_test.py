@@ -98,6 +98,7 @@ def test_resenet20():
     #         {'padding': 'same'},
     #         input,
     #     )
+    
 
     model = SequentialModel([
         DenseConv.make(

@@ -142,7 +142,7 @@ class ModelSeralizer:
         keras_network_info = KerasNetworkInfo({}, [], [])
 
         layer_to_keras_map = keras_network_info.layer_to_keras_map
-        for layer in network.structure.descendants:
+        for layer in network.structure.layers:
             name = layer.name
             keras_layer = keras_model.get_layer(name)
             layer_to_keras_map[layer] = KerasLayerInfo(

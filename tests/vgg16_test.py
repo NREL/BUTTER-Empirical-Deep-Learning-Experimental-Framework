@@ -77,7 +77,7 @@ def run_experiment(experiment):
 def test_vgg16():
     conv_config = {
         'padding': 'same',
-        'use_bias': False,
+        'use_bias': True,
     }
     experiment = TrainingExperiment(
         seed=0,
@@ -99,8 +99,7 @@ def test_vgg16():
             0.2,
             0.05,
             0.0,
-        ),
-        
+        ),        
         # RETHINKING THE VALUE OF NETWORK PRUNING: https://arxiv.org/pdf/1810.05270.pdf
         # reference implementation: https://github.com/Eric-mingjie/rethinking-network-pruning/blob/master/cifar/lottery-ticket/l1-norm-pruning/models/vgg.py
         # Original VGG: https://arxiv.org/pdf/1409.1556.pdf
@@ -114,19 +113,19 @@ def test_vgg16():
                 MaxPool.make([2, 2], [2, 2]),
                 DenseConv.make(256, [3, 3], [1, 1], conv_config),
                 DenseConv.make(256, [3, 3], [1, 1], conv_config),
-                DenseConv.make(256, [1, 1], [1, 1], conv_config),
+                DenseConv.make(256, [3, 3], [1, 1], conv_config),
                 MaxPool.make([2, 2], [2, 2]),
                 DenseConv.make(512, [3, 3], [1, 1], conv_config),
                 DenseConv.make(512, [3, 3], [1, 1], conv_config),
-                DenseConv.make(512, [1, 1], [1, 1], conv_config),
+                DenseConv.make(512, [3, 3], [1, 1], conv_config),
                 MaxPool.make([2, 2], [2, 2]),
                 DenseConv.make(512, [3, 3], [1, 1], conv_config),
                 DenseConv.make(512, [3, 3], [1, 1], conv_config),
                 DenseConv.make(512, [3, 3], [1, 1], conv_config),
                 AvgPool.make([2, 2], [2, 2]), # MaxPool in original paper
                 Flatten(),
-                Dense.make(512),
-                Dense.make(512),
+                # Dense.make(512),
+                # Dense.make(512),
             ]
         ),
         fit={

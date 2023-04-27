@@ -75,7 +75,7 @@ class MagnitudePruner(PruningMethod):
             return (weights[mask]).flatten()  # type: ignore
 
         prunable_layers = [
-            layer for layer in root.descendants if is_prunable(layer)
+            layer for layer in root.layers if is_prunable(layer)
         ]
 
         prunable_weights = numpy.concatenate(

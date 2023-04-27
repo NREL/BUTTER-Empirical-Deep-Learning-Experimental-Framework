@@ -79,7 +79,7 @@ class ResNetBlock(LayerFactory):
                 residual,
             )
 
-        result = Add({}, [residual, conv2])
+        result = Add({}, [conv2, residual])
         batch_normalization = config.get('batch_normalization', None)
         if batch_normalization is not None:
             result = batch_normalization.make_layer(result, {})
