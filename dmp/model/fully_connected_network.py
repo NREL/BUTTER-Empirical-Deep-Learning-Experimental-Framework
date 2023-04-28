@@ -34,16 +34,16 @@ class FullyConnectedNetwork(ModelSpec, LayerFactory):
     def make_network(self) -> NetworkInfo:
         return NetworkInfo(
             self.make_layer(
+                {}, # type: ignore
                 [self.input],  # type: ignore
-                {},
             ),
             {'widths': self.widths},
         )
 
     def make_layer(
         self,
-        inputs: Union['Layer', List['Layer']],
         config: 'LayerConfig',
+        inputs: Union['Layer', List['Layer']],
     ) -> Layer:
         if isinstance(inputs, Layer):
             inputs = [inputs]
@@ -59,10 +59,10 @@ class FullyConnectedNetwork(ModelSpec, LayerFactory):
             layer = None
             if depth == len(widths) - 1:
                 output = self.inner if self.output is None else self.output
-                layer = output.make_layer([parent], {})  # type: ignore
+                layer = output.make_layer({}, [parent])  # type: ignore
                 layer.insert_if_not_exists(config)
             else:
-                layer = self.inner.make_layer([parent], config)
+                layer = self.inner.make_layer(config, [parent])
             layer['units'] = width
 
             # Skip connections for residual modes

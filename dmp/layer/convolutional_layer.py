@@ -25,7 +25,7 @@ class ConvolutionalLayer(SpatitialLayer, ABC):
         keras_keys.activity_regularizer: None,
         keras_keys.kernel_constraint: None,
         keras_keys.bias_constraint: None,
-        keras_keys.batch_normalization: None,
+        # keras_keys.batch_normalization: None,
     }
 
     @classmethod

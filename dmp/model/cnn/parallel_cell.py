@@ -12,8 +12,8 @@ class ParallelCell(LayerFactory):
 
     def make_layer(
         self,
-        inputs: Union['Layer', List['Layer']],
         config: LayerConfig,
+        inputs: Union['Layer', List['Layer']],
     ) -> Layer:
         '''
         + multiple parallel paths of serial ops are applied and then combined
@@ -26,6 +26,6 @@ class ParallelCell(LayerFactory):
         for serial_operations in self.operations:
             serial_layer = inputs[0]
             for operation in serial_operations:
-                serial_layer = operation.make_layer([serial_layer], config)
+                serial_layer = operation.make_layer(config, [serial_layer])
             parallel_outputs.append(serial_layer)
-        return self.output.make_layer(parallel_outputs, config)
+        return self.output.make_layer(config, parallel_outputs)

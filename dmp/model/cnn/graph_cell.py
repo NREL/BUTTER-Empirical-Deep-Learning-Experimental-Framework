@@ -11,8 +11,8 @@ class GraphCell(LayerFactory):
 
     def make_layer(
         self,
-        inputs: Union['Layer', List['Layer']],
         config: LayerConfig,
+        inputs: Union['Layer', List['Layer']],
     ) -> Layer:
         '''
         + first serial layer is the input
@@ -29,9 +29,9 @@ class GraphCell(LayerFactory):
             for input_layer, operation in zip(serial_layers, cell_layer_operations):
                 if isinstance(operation, Zeroize):
                     continue  # skip 'zeroize' operations
-                layer = operation.make_layer([input_layer], config)
+                layer = operation.make_layer(config, [input_layer])
                 parallel_operation_layers.append(layer)
             serial_layers.append(
-                self.output.make_layer(parallel_operation_layers, config)
+                self.output.make_layer(config, parallel_operation_layers)
             )
         return serial_layers[-1]

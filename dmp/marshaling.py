@@ -140,11 +140,10 @@ from dmp.model.dense_by_size import DenseBySize
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
-from dmp.model.sequential_model import SequentialModel
-from dmp.model.repeated_model import RepeatedModel
-
-# LayerFactory's
-from dmp.model.res_net_block import ResNetBlock
+from dmp.model.layer_factory_model import LayerFactoryModel
+from dmp.structure.sequential_model import SequentialModel
+from dmp.structure.res_net_block import ResNetBlock
+from dmp.structure.batch_norm_block import BatchNormBlock
 
 register_types(
     (
@@ -153,8 +152,9 @@ register_types(
         CNNStacker,
         FullyConnectedNetwork,
         SequentialModel,
-        RepeatedModel,
         ResNetBlock,
+        BatchNormBlock,
+        LayerFactoryModel,
     )
 )
 

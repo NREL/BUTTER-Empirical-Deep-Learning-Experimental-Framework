@@ -3,6 +3,7 @@ import math
 from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, TypeVar, Union
 from dmp.layer import *
 import dmp.keras_interface.keras_keys as keras_keys
+from dmp.layer.batch_normalization import BatchNormalization
 
 
 class CountFreeParametersVisitor:
@@ -45,6 +46,10 @@ class CountFreeParametersVisitor:
             target,
             sum(target[keras_keys.kernel_size]),
         )
+    
+    @_visit.register
+    def _(self, target: BatchNormalization) -> int:
+        return 2 * target.computed_shape[-1]
 
     def _get_count_for_conv_layer(
         self,

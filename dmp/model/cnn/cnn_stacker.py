@@ -48,17 +48,15 @@ class CNNStacker(ModelSpec):
             print('stage')
             for cell, cell_width in enumerate(cell_widths):
                 config = {'filters': cell_width}
+                source = self.downsample
                 if cell < len(cell_widths) - 1:
                     if stage == 0:
-                        print('stem')
-                        layer = self.stem.make_layer([layer], config)
+                        source = self.stem
                     else:
                         print('cell')
-                        layer = self.cell.make_layer([layer], config)
-                else:
-                    print('downsample')
-                    layer = self.downsample.make_layer([layer], config)
+                        source = self.cell
+                layer = source.make_layer(config, [layer])
 
-        layer = self.final.make_layer([layer], {})
-        layer = self.output.make_layer([layer], {})  # type: ignore
+        layer = self.final.make_layer({}, [layer])
+        layer = self.output.make_layer({}, [layer])  # type: ignore
         return NetworkInfo(layer, {})

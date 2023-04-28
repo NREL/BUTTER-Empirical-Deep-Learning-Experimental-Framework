@@ -19,7 +19,6 @@ import numpy
 import tensorflow
 from tensorflow import keras
 from keras import layers
-from dmp.keras_interface.convolutional_keras_layer import ConvolutionalKerasLayer
 from dmp.layer.batch_normalization import BatchNormalization
 from dmp.layer.flatten import Flatten
 from dmp.layer.op_layer import OpLayer
@@ -122,7 +121,7 @@ class LayerToKerasVisitor:
         config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
-        return self._make_convolutional_layer(
+        return self._make_by_dimension(
             target,
             config,
             inputs,
@@ -140,7 +139,7 @@ class LayerToKerasVisitor:
         config: LayerConfig,
         inputs: List[KerasLayer],
     ) -> KerasLayerInfo:
-        return self._make_convolutional_layer(
+        return self._make_by_dimension(
             target,
             config,
             inputs,
@@ -328,7 +327,6 @@ class LayerToKerasVisitor:
         self._setup_regularizers(config)
         self._setup_constraints(config)
         self._setup_activation(config)
-        self._make_keras_batch_normalization(config)
         self._setup_initializers(config)
 
     def _setup_regularizers(self, config: LayerConfig) -> None:
@@ -362,18 +360,6 @@ class LayerToKerasVisitor:
     def _setup_activation(self, config: LayerConfig) -> None:
         self.replace_config_key_with_keras_instance(config, keras_keys.activation)
 
-    def _make_keras_batch_normalization(self, config: LayerConfig) -> None:
-        key = keras_keys.batch_normalization
-        if key in config:
-            batch_normalization = config[key]
-            if batch_normalization is None:
-                config[key] = tensorflow.identity
-            else:
-                batch_normalization_config = batch_normalization.config.copy()
-                self._setup_standard_layer(batch_normalization_config)
-                keras_layer = layers.BatchNormalization(**batch_normalization_config)
-                config[key] = keras_layer
-
     def replace_config_key_with_keras_instance(
         self,
         config: LayerConfig,
@@ -401,16 +387,20 @@ def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
     if len(keras_model.inputs) != 1:  # type: ignore
         raise ValueError('Wrong number of keras inputs generated.')
 
-    keras_num_trainable = sum(
-        (
-            keras_layer_info.keras_layer.count_params()
-            for layer, keras_layer_info in keras_network.layer_to_keras_map.items()
-            if hasattr(keras_layer_info.keras_layer, 'count_params')
-        )
-    )
+    import tensorflow.keras.backend as K
+
+    keras_num_trainable = sum([K.count_params(w) for w in keras_model.trainable_weights])
+
+    # keras_num_trainable = sum(
+    #     (
+    #         tensorflow.keras.utils.layer_utils.count_params(keras_layer_info.keras_layer.trainable_weights)
+    #         for layer, keras_layer_info in keras_network.layer_to_keras_map.items()
+    #         if hasattr(keras_layer_info.keras_layer, 'count_params')
+    #     )
+    # ) - keras_model.count
 
     if keras_num_trainable != network.num_free_parameters:
-        keras_model.summarize()
+        keras_model.summary()
         raise RuntimeError(
             f'Wrong number of trainable parameters: {keras_num_trainable} vs planned {network.num_free_parameters}'
         )

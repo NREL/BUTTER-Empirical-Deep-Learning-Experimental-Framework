@@ -13,7 +13,9 @@ from dmp.layer.max_pool import MaxPool
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
-from dmp.model.sequential_model import SequentialModel
+from dmp.model.layer_factory_model import LayerFactoryModel
+from dmp.structure.batch_norm_block import BatchNormBlock
+from dmp.structure.sequential_model import SequentialModel
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
@@ -52,7 +54,8 @@ from pprint import pprint
 from dmp.marshaling import marshal
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-strategy = dmp.jobqueue_interface.worker.make_strategy(6, None, None)
+# strategy = dmp.jobqueue_interface.worker.make_strategy(6, None, None)
+strategy = tensorflow.distribute.get_strategy()
 worker = Worker(
     None,
     None,
@@ -99,34 +102,36 @@ def test_vgg16():
             0.2,
             0.05,
             0.0,
-        ),        
+        ),
         # RETHINKING THE VALUE OF NETWORK PRUNING: https://arxiv.org/pdf/1810.05270.pdf
         # reference implementation: https://github.com/Eric-mingjie/rethinking-network-pruning/blob/master/cifar/lottery-ticket/l1-norm-pruning/models/vgg.py
         # Original VGG: https://arxiv.org/pdf/1409.1556.pdf
-        model=SequentialModel(
-            [
-                DenseConv.make(64, [3, 3], [1, 1], conv_config),
-                DenseConv.make(64, [3, 3], [1, 1], conv_config),
-                MaxPool.make([2, 2], [2, 2]),
-                DenseConv.make(128, [3, 3], [1, 1], conv_config),
-                DenseConv.make(128, [3, 3], [1, 1], conv_config),
-                MaxPool.make([2, 2], [2, 2]),
-                DenseConv.make(256, [3, 3], [1, 1], conv_config),
-                DenseConv.make(256, [3, 3], [1, 1], conv_config),
-                DenseConv.make(256, [3, 3], [1, 1], conv_config),
-                MaxPool.make([2, 2], [2, 2]),
-                DenseConv.make(512, [3, 3], [1, 1], conv_config),
-                DenseConv.make(512, [3, 3], [1, 1], conv_config),
-                DenseConv.make(512, [3, 3], [1, 1], conv_config),
-                MaxPool.make([2, 2], [2, 2]),
-                DenseConv.make(512, [3, 3], [1, 1], conv_config),
-                DenseConv.make(512, [3, 3], [1, 1], conv_config),
-                DenseConv.make(512, [3, 3], [1, 1], conv_config),
-                AvgPool.make([2, 2], [2, 2]), # MaxPool in original paper
-                Flatten(),
-                # Dense.make(512),
-                # Dense.make(512),
-            ]
+        model=LayerFactoryModel(
+            layer_factory=SequentialModel(
+                [
+                    BatchNormBlock(DenseConv.make(64, [3, 3], [1, 1], conv_config)),
+                    BatchNormBlock(DenseConv.make(64, [3, 3], [1, 1], conv_config)),
+                    MaxPool.make([2, 2], [2, 2]),
+                    BatchNormBlock(DenseConv.make(128, [3, 3], [1, 1], conv_config)),
+                    BatchNormBlock(DenseConv.make(128, [3, 3], [1, 1], conv_config)),
+                    MaxPool.make([2, 2], [2, 2]),
+                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
+                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
+                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
+                    MaxPool.make([2, 2], [2, 2]),
+                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
+                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
+                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
+                    MaxPool.make([2, 2], [2, 2]),
+                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
+                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
+                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
+                    AvgPool.make([2, 2], [2, 2]),  # MaxPool in original paper
+                    Flatten(),
+                    # Dense.make(512),
+                    # Dense.make(512),
+                ]
+            )
         ),
         fit={
             'batch_size': 256,

@@ -20,9 +20,11 @@ from dmp.layer.op_layer import OpLayer
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
-from dmp.model.res_net_block import ResNetBlock
-from dmp.model.sequential_model import SequentialModel
+from dmp.model.layer_factory_model import LayerFactoryModel
+from dmp.structure.res_net_block import ResNetBlock
+from dmp.structure.sequential_model import SequentialModel
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.structure.batch_norm_block import BatchNormBlock
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
 )
@@ -60,7 +62,8 @@ from pprint import pprint
 from dmp.marshaling import marshal
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
+# strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
+strategy = tensorflow.distribute.get_strategy()
 worker = Worker(
     None,
     None,
@@ -98,30 +101,33 @@ def test_resenet20():
     #         {'padding': 'same'},
     #         input,
     #     )
-    
 
-    model = SequentialModel([
-        DenseConv.make(
-            16,
-            [7,7],
-            [2,2],
-            {
-                'padding': 'same',
-                'use_bias': False,
-            },
-        ),
-        ResNetBlock(16, 1),
-        ResNetBlock(16, 1),
-        ResNetBlock(16, 1),
-        ResNetBlock(32, 2),
-        ResNetBlock(32, 1),
-        ResNetBlock(32, 1),
-        ResNetBlock(64, 2),
-        ResNetBlock(64, 1),
-        ResNetBlock(64, 1),
-        GlobalAveragePooling(),
-        Flatten(),
-    ])
+    model = LayerFactoryModel(
+        layer_factory=SequentialModel(
+            [
+                BatchNormBlock(DenseConv.make(
+                    16,
+                    [7, 7],
+                    [2, 2],
+                    {
+                        'padding': 'same',
+                        'use_bias': False,
+                    },
+                )),
+                ResNetBlock(16, 1),
+                ResNetBlock(16, 1),
+                ResNetBlock(16, 1),
+                ResNetBlock(32, 2),
+                ResNetBlock(32, 1),
+                ResNetBlock(32, 1),
+                ResNetBlock(64, 2),
+                ResNetBlock(64, 1),
+                ResNetBlock(64, 1),
+                GlobalAveragePooling(),
+                Flatten(),
+            ]
+        )
+    )
 
     experiment = TrainingExperiment(
         seed=0,

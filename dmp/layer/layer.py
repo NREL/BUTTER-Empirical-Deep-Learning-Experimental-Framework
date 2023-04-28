@@ -52,8 +52,8 @@ class LayerFactory(ABC):
     @abstractmethod
     def make_layer(
         self,
-        inputs: Union['Layer', List['Layer']],
         config: 'LayerConfig',
+        inputs: Union['Layer', List['Layer']],
     ) -> 'Layer':
         '''
         Factory method that makes a layer that consumes the provided inputs and overrides layer configurations with the
@@ -189,8 +189,8 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
     def make_layer(
         self,
-        inputs: Union['Layer', List['Layer']],
         override_if_exists: LayerConfig,
+        inputs: Union['Layer', List['Layer']],
     ) -> 'Layer':
         '''
         Generates a matching layer graph and links it to the supplied inputs.
@@ -204,7 +204,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         layer_inputs = inputs
         if len(self.inputs) > 0:
             layer_inputs = [
-                input.make_layer(inputs, override_if_exists) for input in self.inputs
+                input.make_layer(override_if_exists, inputs) for input in self.inputs
             ]
 
         result = self.__class__(self.config, layer_inputs)
