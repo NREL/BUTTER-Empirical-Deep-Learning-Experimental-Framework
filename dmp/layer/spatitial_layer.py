@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Any, Dict, Sequence, Tuple, Callable, TypeVar, List, Union
 from dmp.layer.layer import Layer, LayerConfig
-import dmp.keras_interface.keras_keys as keras_keys
+
 
 T = TypeVar('T')
 
@@ -9,8 +9,8 @@ T = TypeVar('T')
 class SpatitialLayer(Layer, ABC):
 
     _default_config = {
-        keras_keys.padding: 'valid',
-        keras_keys.data_format: None,
+        'padding': 'valid',
+        'data_format': None,
     }
     
     def on_padding(
@@ -18,7 +18,7 @@ class SpatitialLayer(Layer, ABC):
         on_same: Callable[[], T],
         on_valid: Callable[[], T],
     ) -> T:
-        padding = self.config[keras_keys.padding]
+        padding = self.config['padding']
         if padding == 'same':
             return on_same()
         elif padding == 'valid':
@@ -31,7 +31,7 @@ class SpatitialLayer(Layer, ABC):
         on_channels_last: Callable[[], T],
         on_channels_first: Callable[[], T],
     ) -> T:
-        data_format = self.config.get(keras_keys.data_format, None)
+        data_format = self.config.get('data_format', None)
         if data_format is None or data_format == 'channels_last':
             return on_channels_last()
         elif data_format == 'channels_first':

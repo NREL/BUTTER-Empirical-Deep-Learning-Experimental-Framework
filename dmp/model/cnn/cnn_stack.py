@@ -8,7 +8,7 @@ from dmp.model.model_spec import ModelSpec
 from dmp.model.network_info import NetworkInfo
 
 from dmp.layer import *
-import dmp.keras_interface.keras_keys as keras_keys
+
 
 @dataclass
 class CNNStack(ModelSpec):
@@ -74,7 +74,7 @@ _layer_factory_map = {
     Add.make([
         AvgPool.make([2, 2], [2, 2]),
         # conv_3x3([DenseConv.make(-1, [3, 3], [2, 2])]),
-        DenseConv.make(-1, [3, 3], [1, 1], {keras_keys.padding:'same'}, [DenseConv.make(-1, [3, 3], [2, 2], {keras_keys.padding:'same'})])
+        DenseConv.make(-1, [3, 3], [1, 1], {'padding':'same'}, [DenseConv.make(-1, [3, 3], [2, 2], {'padding':'same'})])
     ]),  # type: ignore
     'downsample_avgpool_2x2_residual_conv_3x3':
     Add.make([
@@ -83,8 +83,8 @@ _layer_factory_map = {
     ]),
     'dense':
     Dense.make(-1, {
-        keras_keys.activation: 'relu',
-        keras_keys.initialization: 'HeUniform'
+        'activation': 'relu',
+        'initialization': 'HeUniform'
     }, []),
     'identity':
     Identity(),
@@ -114,7 +114,7 @@ def add_size_and_stride(
 
 
 for padding in ('same', 'valid'):
-    shared_config = {keras_keys.padding: padding}
+    shared_config = {'padding': padding}
     add_size_and_stride(
         'conv',
         padding,

@@ -29,7 +29,7 @@ from dmp.model.keras_network_info import KerasNetworkInfo
 from dmp.keras_interface.keras_utils import make_keras_instance
 import dmp.keras_interface.keras_utils as keras_utils
 from dmp.layer import *
-import dmp.keras_interface.keras_keys as keras_keys
+
 
 
 class LayerToKerasVisitor:
@@ -260,10 +260,10 @@ class LayerToKerasVisitor:
         Layer names take the form "dmp_layer_{layer_number}" where {layer_number}
         is the in-order traversal index of this layer.
         '''
-        if keras_keys.name in target:
+        if 'name' in target:
             pass  # don't change the name if it's already configured
         layer_number = self._layer_number
-        target[keras_keys.name] = f'{keras_keys.dmp_layer_prefix}{layer_number}'
+        target['name'] = f'{'dmp_layer_prefix'}{layer_number}'
         self._layer_number = layer_number + 1
 
     def _make_by_dimension(
@@ -283,7 +283,7 @@ class LayerToKerasVisitor:
         inputs: List[KerasLayer],
         dimension_to_factory_map: Dict[int, Callable],
     ) -> KerasLayerInfo:
-        config[keras_keys.conv_layer_factory] = dimension_to_factory_map[
+        config['conv_layer_factory'] = dimension_to_factory_map[
             target.dimension
         ]
         return self._make_standard_keras_layer(
@@ -333,9 +333,9 @@ class LayerToKerasVisitor:
         self.replace_config_key_with_keras_instance(
             config,
             (
-                keras_keys.kernel_regularizer,
-                keras_keys.bias_regularizer,
-                keras_keys.activity_regularizer,
+                'kernel_regularizer',
+                'bias_regularizer',
+                'activity_regularizer',
             ),
         )
 
@@ -343,8 +343,8 @@ class LayerToKerasVisitor:
         self.replace_config_key_with_keras_instance(
             config,
             (
-                keras_keys.kernel_constraint,
-                keras_keys.bias_constraint,
+                'kernel_constraint',
+                'bias_constraint',
             ),
         )
 
@@ -352,13 +352,13 @@ class LayerToKerasVisitor:
         self.replace_config_key_with_keras_instance(
             config,
             (
-                keras_keys.kernel_initializer,
-                keras_keys.bias_initializer,
+                'kernel_initializer',
+                'bias_initializer',
             ),
         )
 
     def _setup_activation(self, config: LayerConfig) -> None:
-        self.replace_config_key_with_keras_instance(config, keras_keys.activation)
+        self.replace_config_key_with_keras_instance(config, 'activation')
 
     def replace_config_key_with_keras_instance(
         self,

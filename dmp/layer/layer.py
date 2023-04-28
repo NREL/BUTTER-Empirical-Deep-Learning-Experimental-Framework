@@ -14,7 +14,7 @@ from typing import (
     Callable,
 )
 from lmarshal.src.custom_marshalable import CustomMarshalable
-import dmp.keras_interface.keras_keys as keras_keys
+
 
 LayerConfig = Dict[str, Any]
 
@@ -216,7 +216,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         '''
         An optional name of this layer. Set in the config.
         '''
-        return self.config.get(keras_keys.name, None)
+        return self.config.get('name', None)
 
     @property
     def input(self) -> 'Layer':
@@ -284,7 +284,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         '''
         Shortcut to get the use_bias config parameter.
         '''
-        return self.config.get(keras_keys.use_bias, True)
+        return self.config.get('use_bias', True)
 
     @property
     def dimension(self) -> int:

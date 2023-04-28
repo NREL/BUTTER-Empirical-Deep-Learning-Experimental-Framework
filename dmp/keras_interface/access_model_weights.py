@@ -19,7 +19,6 @@ import numpy
 from dmp.layer import *
 from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
-import dmp.keras_interface.keras_keys as keras_keys
 
 
 class AccessModelWeights:
@@ -89,8 +88,8 @@ class AccessModelWeights:
             visit_weights(layer, keras_layer, layer_weights)
 
     def _has_weights(self, keras_layer) -> bool:
-        return hasattr(keras_layer, keras_keys.get_weights) and hasattr(
-            keras_layer, keras_keys.set_weights
+        return hasattr(keras_layer, 'get_weights') and hasattr(
+            keras_layer, 'set_weights'
         )
 
     def _get_keras_layer_to_set(
@@ -112,14 +111,14 @@ class AccessModelWeights:
         layer_weights[0] = visit_mask(
             keras_layer,
             layer_weights[0],
-            keras_keys.kernel_constraint,
+            'kernel_constraint',
         )
 
         if len(layer_weights) > 1:
             layer_weights[1] = visit_mask(
                 keras_layer,
                 layer_weights[1],
-                keras_keys.bias_constraint,
+                'bias_constraint',
             )
 
     @classmethod

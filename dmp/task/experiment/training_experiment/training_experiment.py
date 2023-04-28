@@ -23,7 +23,7 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
 
 from dmp.worker import Worker
-import dmp.keras_interface.keras_keys as keras_keys
+
 
 
 @dataclass
@@ -124,9 +124,9 @@ class TrainingExperiment(ATrainingExperiment):
         model = self.model
         if model.input is None:
             model.input = Input()
-        if model.input.get(keras_keys.shape, None) is None:
+        if model.input.get('shape', None) is None:
             input_shape = dataset.input_shape
-            model.input[keras_keys.shape] = input_shape
+            model.input['shape'] = input_shape
 
             # input_dim = len(input_shape)
             # print(f'input shape: {input_shape}')
@@ -143,20 +143,20 @@ class TrainingExperiment(ATrainingExperiment):
             model.output = Dense.make(
                 int(dataset.output_shape[0]),
                 {
-                    keras_keys.activation: None,
-                    keras_keys.kernel_initializer: None,
+                    'activation': None,
+                    'kernel_initializer': None,
                 },
             )
 
         output = model.output
         if isinstance(output, Dense):
-            if output.get(keras_keys.units, None) is None:
-                output[keras_keys.units] = int(dataset.output_shape[0])
-            if output.get(keras_keys.activation, None) is None:
+            if output.get('units', None) is None:
+                output['units'] = int(dataset.output_shape[0])
+            if output.get('activation', None) is None:
                 # output['activation'] = make_keras_config(output_activation)
-                output[keras_keys.activation] = output_activation
-            if output.get(keras_keys.kernel_initializer, None) is None:
-                output[keras_keys.kernel_initializer] = make_keras_config(
+                output['activation'] = output_activation
+            if output.get('kernel_initializer', None) is None:
+                output['kernel_initializer'] = make_keras_config(
                     output_kernel_initializer)
 
         if self.loss is None:
@@ -193,7 +193,7 @@ class TrainingExperiment(ATrainingExperiment):
         fit_config['validation_data'] = dataset.validation
 
         if epochs is not None:
-            fit_config[keras_keys.epochs] = epochs
+            fit_config['epochs'] = epochs
 
         test_set_info = TestSetInfo(self.keys.test, dataset.test)
         validation_set_info = TestSetInfo(self.keys.validation,

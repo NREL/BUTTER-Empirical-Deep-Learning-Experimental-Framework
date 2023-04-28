@@ -9,7 +9,7 @@ import dmp.layer.input
 from dmp.layer.op_layer import OpLayer
 
 _invalid_shape = tuple()
-import dmp.keras_interface.keras_keys as keras_keys
+
 
 class ComputeLayerShapesVisitor:
 
@@ -43,7 +43,7 @@ class ComputeLayerShapesVisitor:
 
     @_visit.register
     def _(self, target: dmp.layer.input.Input, config: Dict) -> Tuple:
-        return config[keras_keys.shape]
+        return config['shape']
 
     @_visit.register
     def _(self, target: Flatten, config: Dict) -> Tuple:
@@ -55,7 +55,7 @@ class ComputeLayerShapesVisitor:
     
     @_visit.register
     def _(self, target: Dense, config: Dict) -> Tuple:
-        return (config[keras_keys.units], )
+        return (config['units'], )
 
     @_visit.register
     def _(self, target: ElementWiseOperatorLayer, config: Dict) -> Tuple:
@@ -63,7 +63,7 @@ class ComputeLayerShapesVisitor:
 
     @_visit.register
     def _(self, target: Concatenate, config: Dict) -> Tuple:
-        axis = config[keras_keys.axis]
+        axis = config['axis']
         total = sum((self._get_output_shape(i)[axis] for i in target.inputs))
         input_shape = self._get_input_shape(target)
         return input_shape[:axis] + (total, ) + input_shape[axis + 1:]
@@ -73,7 +73,7 @@ class ComputeLayerShapesVisitor:
         input_conv_shape, input_channels = \
             target.to_conv_shape_and_channels(
                 self._get_input_shape(target))
-        strides = config[keras_keys.strides]
+        strides = config['strides']
 
         output_conv_shape = tuple(
             target.on_padding(
@@ -86,13 +86,13 @@ class ComputeLayerShapesVisitor:
                     for d, s, k in zip(
                         input_conv_shape,
                         strides,
-                        config[keras_keys.kernel_size],
+                        config['kernel_size'],
                     )),
             ))
 
         return target.to_shape(
             output_conv_shape,
-            config[keras_keys.filters],
+            config['filters'],
         )
 
     @_visit.register
@@ -103,7 +103,7 @@ class ComputeLayerShapesVisitor:
 
         delta = target.on_padding(
             lambda: (1, ) * len(input_conv_shape),
-            lambda: config[keras_keys.pool_size],
+            lambda: config['pool_size'],
         )
 
         output_conv_shape = tuple((int(math.floor((i - d) / s)) + 1
@@ -124,7 +124,7 @@ class ComputeLayerShapesVisitor:
             target.to_conv_shape_and_channels(
                 self._get_input_shape(target))
 
-        if config.get(keras_keys.keepdims, False):
+        if config.get('keepdims', False):
             return target.to_shape(
                 (1, ) * len(input_conv_shape),
                 input_channels,
