@@ -301,7 +301,6 @@ class LayerToKerasVisitor:
         Makes a keras layer using the normal configuration parameters (if defined) to
         construct regularizers, constraints, activation functions, batch notrmalizer, initializer, etc.
         '''
-        print(f'_make_standard_keras_layer {layer} {inputs}')
         self._setup_standard_layer(config)
         keras_layer = target(**config)
         keras_output = keras_layer(*inputs)
