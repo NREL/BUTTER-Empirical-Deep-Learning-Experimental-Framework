@@ -263,7 +263,7 @@ class LayerToKerasVisitor:
         if 'name' in target:
             pass  # don't change the name if it's already configured
         layer_number = self._layer_number
-        target['name'] = f'{'dmp_layer_prefix'}{layer_number}'
+        target['name'] = f'dmp_{layer_number}'
         self._layer_number = layer_number + 1
 
     def _make_by_dimension(

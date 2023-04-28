@@ -161,7 +161,10 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
             output_indicies = ', '.join(
                 (str(layer_order_index[output]) for output in output_map[layer])
             )
-            descriptions.append(f'{index}: ({type(layer)}: {layer.free_parameters}, {layer.computed_shape}, {", ".join(params)} -> [{output_indicies}])')
+            input_indicies = ', '.join(
+                (str(layer_order_index[input]) for input in layer.inputs)
+            )
+            descriptions.append(f'{index}: [{input_indicies}] -> ({type(layer)}: {layer.free_parameters}, {layer.computed_shape}, {", ".join(params)}) -> [{output_indicies}]')
 
         return '\n'.join(descriptions)
 
