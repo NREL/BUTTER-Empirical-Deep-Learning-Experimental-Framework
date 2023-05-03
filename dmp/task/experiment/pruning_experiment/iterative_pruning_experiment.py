@@ -13,9 +13,8 @@ from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_kwcf
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
-from dmp.keras_interface.access_model_weights import (
-    AccessModelWeights,
-)
+import dmp.keras_interface.access_model_weights as access_model_weights
+
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
 )
@@ -87,7 +86,7 @@ class IterativePruningExperiment(TrainingExperiment):
             # save weights at this point for rewinding
             rewind_weights = {}
             if self.rewind:
-                rewind_weights = AccessModelWeights().get_weights(
+                rewind_weights = access_model_weights.get_weights(
                     model.network.structure,
                     model.keras_network.layer_to_keras_map,
                     use_mask=False,
@@ -133,22 +132,23 @@ class IterativePruningExperiment(TrainingExperiment):
                 self.compress_weights(
                     model.network.structure,
                     num_free_parameters,
-                    AccessModelWeights().get_weights(
+                    access_model_weights.get_weights(
                         model.network.structure,
                         model.keras_network.layer_to_keras_map,
                         use_mask=True,
                     ),
                 )
                 
-                ModelSeralizer().store_model_data(model, 'test')
-                model = ModelSeralizer().load_model_data('test')
+                ModelSeralizer().store_model_data(self, model, model.keras_model.optimizer, f'test_{iteration_n}')
+                # model = ModelSeralizer().load_model_data('test')
+
                 model.keras_model.summary()
                 if self.rewind:
-                    AccessModelWeights().set_weights(
+                    access_model_weights.set_weights(
                         model.network.structure,
                         model.keras_network.layer_to_keras_map,
                         rewind_weights,
-                        use_mask=False,
+                        False,
                     )
 
             # 7: Return Wk, m

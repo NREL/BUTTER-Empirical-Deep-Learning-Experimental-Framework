@@ -246,3 +246,31 @@ def truncate_least_significant_bits(
         numpy.bitwise_not(numpy.array([int(2 << bits_to_trim) - 1], dtype=int_type)),
     ).view(source_type)
     return numpy.ldexp(significand, exponent)
+
+def write_parquet_table(
+        table,
+        file,
+        use_byte_stream_split,
+):
+    pyarrow.parquet.write_table(
+        table,
+        pyarrow.PythonFile(file),
+        # root_path=dataset_path,
+        # schema=schema,
+        # partition_cols=partition_cols,
+        data_page_size=8 * 1024,
+        # compression='BROTLI',
+        # compression_level=8,
+        compression='ZSTD',
+        # compression_level=12,
+        compression_level=15,
+        use_dictionary=False,
+        use_byte_stream_split=use_byte_stream_split,
+        version='2.6',
+        data_page_version='2.0',
+        # existing_data_behavior='overwrite_or_ignore',
+        # use_legacy_dataset=False,
+        write_statistics=False,
+        # write_batch_size=64,
+        # dictionary_pagesize_limit=64*1024,
+    )

@@ -13,165 +13,104 @@ from typing import (
     TypeVar,
     Union,
 )
-
+import re
 import numpy
 
 from dmp.layer import *
 from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
+import tensorflow.keras as keras
 
 
-class AccessModelWeights:
-    def get_weights(
-        self,
-        root: Layer,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
-        use_mask: bool = True,
-    ) -> Dict[Layer, List[numpy.ndarray]]:
-        weight_map: Dict[Layer, List[numpy.ndarray]] = {}
+def get_weights(
+    root: Layer,
+    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
+    use_mask: bool,
+) -> Dict[Layer, List[numpy.ndarray]]:
+    weight_map: Dict[Layer, List[numpy.ndarray]] = {}
 
-        def visit_weights(layer, keras_layer, layer_weights):
-            weight_map[layer] = layer_weights
-
-        mask_visitor = lambda keras_layer, layer_weights: None
+    def visit_variable(layer, keras_layer, i, variable):
+        value = variable.numpy()
         if use_mask:
-            mask_visitor = lambda keras_layer, layer_weights: self._visit_masks(
-                self._get_and_merge_mask, keras_layer, layer_weights
-            )
+            constraint = get_mask_constraint(keras_layer, variable)
+            if constraint is not None:
+                value = numpy.where(constraint.mask.numpy(), value, numpy.nan,)
+        weight_map.setdefault(layer, []).append(value)
 
-        self._visit_weights(
-            root,
-            lambda layer: layer_to_keras_map[layer].keras_layer,
-            lambda layer, keras_layer: keras_layer.get_weights(),
-            mask_visitor,
-            visit_weights,
-        )
-        return weight_map
+    visit_weights(
+        root,
+        layer_to_keras_map,
+        visit_variable,
+    )
+    return weight_map
 
-    def set_weights(
-        self,
-        root: Layer,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
-        weight_map: Dict[Layer, List[numpy.ndarray]],
-        use_mask: bool = True,
-    ) -> None:
-        mask_visitor = lambda keras_layer, layer_weights: None
-        if use_mask:
-            mask_visitor = lambda keras_layer, layer_weights: self._visit_masks(
-                self._set_mask, keras_layer, layer_weights
-            )
+def set_weights(
+    root: Layer,
+    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
+    weight_map: Dict[Layer, List[numpy.ndarray]],
+    restore_mask : bool,
+) -> None:
+    
+    def visit_variable(layer, keras_layer, i, variable):
+        value_list = weight_map.get(layer, None)
+        if value_list is not None:
+            value = value_list[i]
+            if restore_mask:
+                constraint = get_mask_constraint(keras_layer, variable)
+                if constraint is not None:
+                    mask = numpy.logical_not(numpy.isnan(value))
+                    constraint.mask = mask
+                    value = numpy.where(mask, value, 0.0)
+                    print(f'set mask {variable.name}')
+            print(f'assign {variable.name}')
+            variable.assign(value)
 
-        self._visit_weights(
-            root,
-            lambda layer: self._get_keras_layer_to_set(layer_to_keras_map, layer),
-            lambda layer, keras_layer: weight_map.get(layer, None),
-            mask_visitor,
-            lambda layer, keras_layer, layer_weights: keras_layer.set_weights(layer_weights),  # type: ignore
-        )
+    visit_weights(
+        root,
+        layer_to_keras_map,
+        visit_variable,
+    )
 
-    def _visit_weights(
-        self,
-        root: Layer,
-        get_keras_layer: Callable,
-        get_layer_weights: Callable,
-        visit_masks: Callable,
-        visit_weights: Callable,
-    ) -> None:
-        for layer in root.layers:
-            keras_layer = get_keras_layer(layer)
-            if keras_layer is None or not self._has_weights(keras_layer):
-                continue
-            layer_weights = get_layer_weights(layer, keras_layer)
-            if layer_weights is None:
-                continue
-            visit_masks(keras_layer, layer_weights)
-            visit_weights(layer, keras_layer, layer_weights)
-
-    def _has_weights(self, keras_layer) -> bool:
-        return hasattr(keras_layer, 'get_weights') and hasattr(
-            keras_layer, 'set_weights'
-        )
-
-    def _get_keras_layer_to_set(
-        self,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
-        layer: Layer,
-    ) -> Optional[Any]:
+def visit_weights(
+    root: Layer,
+    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
+    visit_variable: Callable,
+) -> None:
+    for layer in root.layers:
         layer_info = layer_to_keras_map.get(layer, None)
         if layer_info is None:
-            return None
-        return layer_info.keras_layer
+            continue
+        
+        keras_layer = layer_info.keras_layer
+        if keras_layer is None or not isinstance(keras_layer, keras.layers.Layer):
+            continue
 
-    def _visit_masks(
-        self,
-        visit_mask,
-        keras_layer,
-        layer_weights,
-    ):
-        layer_weights[0] = visit_mask(
-            keras_layer,
-            layer_weights[0],
-            'kernel_constraint',
-        )
+        for i, variable in enumerate(keras_layer.variables): # type: ignore
+            visit_variable(layer, keras_layer, i, variable)
 
-        if len(layer_weights) > 1:
-            layer_weights[1] = visit_mask(
-                keras_layer,
-                layer_weights[1],
-                'bias_constraint',
-            )
-
-    @classmethod
-    def _get_mask_constraint(
-        cls,
-        keras_layer,
-        constraint_member_name: str,
-    ) -> Optional[Any]:
+def get_mask_constraint(
+    keras_layer,
+    variable,
+) -> Optional[Any]:
+    match = re.fullmatch('.*/(bias|kernel):\d+', variable.name)
+    if match is not None:
+        match_str = match.group(1)
+        constraint_member_name =  f'{match_str}_constraint'
         if hasattr(keras_layer, constraint_member_name):
             constraint = getattr(keras_layer, constraint_member_name)
             if isinstance(constraint, WeightMask):
                 return constraint
-        return None
+    return None
 
-    @classmethod
-    def _get_and_merge_mask(
-        cls,
-        keras_layer,
-        weights,
-        constraint_member_name: str,
-    ):
-        # convert masked weights to nan
-        constraint = cls._get_mask_constraint(
-            keras_layer,
-            constraint_member_name,
-        )
-        if constraint is not None:
-            weights = numpy.where(constraint.mask, weights, numpy.nan)
-        return weights
-
-    @classmethod
-    def _set_mask(cls, keras_layer, weights, constraint_member_name: str):
-        # convert masked weights to nan
-        constraint = cls._get_mask_constraint(
-            keras_layer,
-            constraint_member_name,
-        )
-        if constraint is not None:
-            mask = numpy.logical_not(numpy.isnan(weights))
-            constraint.mask = mask
-            weights = numpy.where(mask, weights, 0.0)
-        return weights
-
-    @staticmethod
-    def lin_iterp_weights(
-        weights_a: Dict[Layer, List[numpy.ndarray]],
-        alpha: float,
-        weights_b: Dict[Layer, List[numpy.ndarray]],
-    ) -> Dict[Layer, List[numpy.ndarray]]:
-        results = {}
-        for layer, weights in weights_a.items():
-            results[layer] = [
-                weight_a * alpha + weight_b * (1.0 - alpha)
-                for weight_a, weight_b in zip(weights, weights_b[layer])
-            ]
-        return results
+def lin_iterp_weights(
+    weights_a: Dict[Layer, List[numpy.ndarray]],
+    alpha: float,
+    weights_b: Dict[Layer, List[numpy.ndarray]],
+) -> Dict[Layer, List[numpy.ndarray]]:
+    results = {}
+    for layer, weights in weights_a.items():
+        results[layer] = [
+            weight_a * alpha + weight_b * (1.0 - alpha)
+            for weight_a, weight_b in zip(weights, weights_b[layer])
+        ]
+    return results

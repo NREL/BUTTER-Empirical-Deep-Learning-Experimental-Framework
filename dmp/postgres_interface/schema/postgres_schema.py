@@ -12,6 +12,7 @@ from psycopg.sql import Identifier, SQL, Composed, Literal
 from psycopg.types.json import Jsonb, Json
 import pyarrow
 import pyarrow.parquet
+from dmp import parquet_util
 
 from dmp.parquet_util import make_pyarrow_table_from_dataframe
 from dmp.postgres_interface.attribute_value_type import AttributeValueType
@@ -89,18 +90,10 @@ class PostgresSchema:
 
         data = None
         with io.BytesIO() as buffer:
-            pyarrow_file = pyarrow.PythonFile(buffer)
-            pyarrow.parquet.write_table(
+            parquet_util.write_parquet_table(
                 table,
-                pyarrow_file,
-                data_page_size=8 * 1024,
-                compression='ZSTD',
-                compression_level=12,
-                use_dictionary=False,
-                use_byte_stream_split=use_byte_stream_split,  # type: ignore
-                version='2.6',
-                data_page_version='2.0',
-                write_statistics=False,
+                buffer,
+                use_byte_stream_split,
             )
             data = buffer.getvalue()
 
