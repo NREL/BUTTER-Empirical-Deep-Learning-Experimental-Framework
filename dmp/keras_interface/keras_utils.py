@@ -57,6 +57,8 @@ def make_keras_instance(
     if config is None:
         return None
 
+    
+
     type_name, kwargs = __get_params_and_type_from_keras_config(config)
 
     factory = dispatch('keras type', __keras_dispatch_table, type_name)
@@ -101,6 +103,7 @@ def make_keras_kwcfg(type_name: str, **kwargs) -> KerasConfig:
 
 def __make_keras_dispatch_table() -> Dict[str, Callable]:
     source_modules = (
+        keras.optimizers.schedules,
         keras.layers,
         keras.constraints,
         keras.regularizers,
@@ -143,5 +146,11 @@ def __get_params_and_type_from_keras_config(
 ) -> Tuple[str, Dict[str, Any]]:
     if isinstance(config, str):
         return config, {}
-    params = config.copy()
+    
+    params = {}
+    for k, v in config.items():
+        if isinstance(v, dict) and keras_type_key in v:
+            v = make_keras_instance(v)
+        params[k] = v
+
     return params.pop(keras_type_key), params

@@ -137,7 +137,15 @@ def test_vgg16():
             'batch_size': 256,
             'epochs': 1,
         },
-        optimizer={'class': 'Adam', 'learning_rate': 0.0001},
+        optimizer={
+            'class': 'SGD',
+            'learning_rate': {
+                'class': 'PiecewiseConstantDecay',
+                'boundaries': [32e3, 48e3],
+                'values': [0.1, 0.01, 0.001],
+            },
+            'momentum': 0.9,
+        },
         loss=None,
         early_stopping=make_keras_kwcfg(
             'EarlyStopping',
