@@ -1,7 +1,7 @@
 import tensorflow
 
 
-class WeightMask(tensorflow.keras.constraints.Constraint):
+class ParameterMask(tensorflow.keras.constraints.Constraint):
     """
     A class that implements a constraint function to mask weights in a neural network model.
     """

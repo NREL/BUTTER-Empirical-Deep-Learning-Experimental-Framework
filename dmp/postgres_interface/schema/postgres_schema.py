@@ -82,9 +82,9 @@ class PostgresSchema:
         # for c in use_byte_stream_split:
         #     dataframe[c].fillna(value=numpy.nan, inplace=True)
 
-        print(f'convert_dataframe_to_bytes')
-        print(dataframe)
-        print([dataframe[c].to_numpy().dtype for c in dataframe.columns])
+        # print(f'convert_dataframe_to_bytes')
+        # print(dataframe)
+        # print([dataframe[c].to_numpy().dtype for c in dataframe.columns])
 
         table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
 
@@ -110,11 +110,7 @@ class PostgresSchema:
     ) -> Optional[pandas.DataFrame]:
         if data is None:
             return None
-
-        with io.BytesIO(data) as b:
-            pyarrow_file = pyarrow.PythonFile(b, mode='r')
-            parquet_table = pyarrow.parquet.read_table(pyarrow_file, )
-            return parquet_table.to_pandas()
-
+        with io.BytesIO(data) as buffer:
+            return parquet_util.read_parquet_table(buffer).to_pandas()
 
 from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap

@@ -72,7 +72,10 @@ def make_pyarrow_table_from_numpy(
         zip(columns, numpy_arrays),
         nan_to_none=nan_to_none,
     )  # type: ignore
-    return pyarrow.Table.from_arrays([data for name, data in column_data], schema=schema), use_byte_stream_split
+    return (
+        pyarrow.Table.from_arrays([data for name, data in column_data], schema=schema),
+        use_byte_stream_split,
+    )
 
 
 def make_pyarrow_schema_from_dict(
@@ -223,7 +226,6 @@ def get_pyarrow_type_mapping(
         else:
             raise NotImplementedError(f"Unhandled type {t}.")
 
-    
     return dst_type, nullable, use_byte_stream_split, values
 
 
@@ -247,30 +249,45 @@ def truncate_least_significant_bits(
     ).view(source_type)
     return numpy.ldexp(significand, exponent)
 
+
 def write_parquet_table(
-        table,
-        file,
-        use_byte_stream_split,
+    table,
+    file,
+    use_byte_stream_split,
+    use_dictionary=False,
+    # root_path=dataset_path,
+    # schema=schema,
+    # partition_cols=partition_cols,
+    data_page_size=8 * 1024,
+    # compression='BROTLI',
+    # compression_level=8,
+    compression='ZSTD',
+    # compression_level=12,
+    compression_level=12,
+    version='2.6',
+    data_page_version='2.0',
+    # existing_data_behavior='overwrite_or_ignore',
+    # use_legacy_dataset=False,
+    write_statistics=False,
+    # write_batch_size=64,
+    # dictionary_pagesize_limit=64*1024,
+    **kwargs,
 ):
     pyarrow.parquet.write_table(
         table,
         pyarrow.PythonFile(file),
-        # root_path=dataset_path,
-        # schema=schema,
-        # partition_cols=partition_cols,
-        data_page_size=8 * 1024,
-        # compression='BROTLI',
-        # compression_level=8,
-        compression='ZSTD',
-        # compression_level=12,
-        compression_level=15,
-        use_dictionary=False,
         use_byte_stream_split=use_byte_stream_split,
-        version='2.6',
-        data_page_version='2.0',
-        # existing_data_behavior='overwrite_or_ignore',
-        # use_legacy_dataset=False,
-        write_statistics=False,
-        # write_batch_size=64,
-        # dictionary_pagesize_limit=64*1024,
+        data_page_size=data_page_size,
+        compression=compression,
+        compression_level=compression_level,
+        use_dictionary=use_dictionary,
+        version=version,
+        data_page_version=data_page_version,
+        write_statistics=write_statistics,
+        **kwargs,
     )
+
+
+def read_parquet_table(file) -> pyarrow.Table:
+    pyarrow_file = pyarrow.PythonFile(file, mode='r')
+    return pyarrow.parquet.read_table(pyarrow_file)

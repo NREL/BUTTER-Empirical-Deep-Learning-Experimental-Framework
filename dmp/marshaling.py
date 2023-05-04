@@ -162,12 +162,12 @@ register_types(
 from dmp.task.experiment.growth_experiment.growth_trigger.proportional_stopping import (
     ProportionalStopping,
 )
-from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
+from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 register_custom_keras_types(
     {
         "ProportionalStopping": ProportionalStopping,
-        "WeightMask": WeightMask,
+        "ParameterMask": ParameterMask,
     }
 )
 

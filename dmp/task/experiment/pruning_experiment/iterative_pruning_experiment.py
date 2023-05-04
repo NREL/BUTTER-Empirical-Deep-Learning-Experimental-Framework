@@ -6,14 +6,14 @@ from jobqueue.job import Job
 import numpy
 from dmp import parquet_util
 from dmp.common import KerasConfig
-from dmp.keras_interface.model_serialization import ModelSeralizer
+import dmp.keras_interface.model_serialization as model_serialization
 from dmp.layer.layer import Layer
 
 from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_kwcfg
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
-import dmp.keras_interface.access_model_weights as access_model_weights
+import dmp.keras_interface.access_model_parameters as access_model_parameters
 
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
@@ -86,7 +86,7 @@ class IterativePruningExperiment(TrainingExperiment):
             # save weights at this point for rewinding
             rewind_weights = {}
             if self.rewind:
-                rewind_weights = access_model_weights.get_weights(
+                rewind_weights = access_model_parameters.get_parameters(
                     model.network.structure,
                     model.keras_network.layer_to_keras_map,
                     use_mask=False,
@@ -96,9 +96,10 @@ class IterativePruningExperiment(TrainingExperiment):
             from pprint import pprint
             pprint(marshal.marshal(model.network))
 
-            self.compress_weights(model.network.structure, num_free_parameters, rewind_weights)
-            # ModelSeralizer().store_model_data(model, 'test')
-            # model = ModelSeralizer().load_model_data('test')
+            model_serialization.store_model_data(self, model, f'test_base')
+            # self.compress_weights(model.network.structure, num_free_parameters, rewind_weights)
+            # model_serialization.store_model_data(model, 'test')
+            # model = model_serialization.load_model_data('test')
             # model.keras_model.summary()
 
             # 4: for n ∈ {1, . . . , N} do
@@ -122,29 +123,21 @@ class IterativePruningExperiment(TrainingExperiment):
                     early_stopping,
                 )
 
+                model_serialization.store_model_data(self, model, f'test_{iteration_n}_unpruned')
+
                 # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
                 num_pruned = self.pruning_method.prune(
                     model.network.structure,
                     model.keras_network.layer_to_keras_map,
                 )
                 num_free_parameters = model.network.num_free_parameters - num_pruned
-
-                self.compress_weights(
-                    model.network.structure,
-                    num_free_parameters,
-                    access_model_weights.get_weights(
-                        model.network.structure,
-                        model.keras_network.layer_to_keras_map,
-                        use_mask=True,
-                    ),
-                )
                 
-                ModelSeralizer().store_model_data(self, model, model.keras_model.optimizer, f'test_{iteration_n}')
-                # model = ModelSeralizer().load_model_data('test')
+                model_serialization.store_model_data(self, model, f'test_{iteration_n}_pruned')
+                # model = model_serialization.load_model_data('test')
 
                 model.keras_model.summary()
                 if self.rewind:
-                    access_model_weights.set_weights(
+                    access_model_parameters.set_parameters(
                         model.network.structure,
                         model.keras_network.layer_to_keras_map,
                         rewind_weights,

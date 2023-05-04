@@ -27,7 +27,7 @@ from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
 )
-from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
+from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 
 
@@ -47,7 +47,7 @@ class MagnitudePruner(PruningMethod):
         ) -> bool:
             keras_layer = layer_to_keras_map[layer].keras_layer
             res = hasattr(keras_layer, 'kernel_constraint') \
-                and isinstance(keras_layer.kernel_constraint, WeightMask)
+                and isinstance(keras_layer.kernel_constraint, ParameterMask)
         
             print(f'is_prunable {layer} : { res} : {keras_layer}')
             try:
@@ -57,7 +57,7 @@ class MagnitudePruner(PruningMethod):
 
             keras_layer = layer_to_keras_map[layer].keras_layer
             return hasattr(keras_layer, 'kernel_constraint') \
-                and isinstance(keras_layer.kernel_constraint, WeightMask)
+                and isinstance(keras_layer.kernel_constraint, ParameterMask)
 
         def get_weights_and_mask(
             layer: Layer,

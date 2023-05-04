@@ -592,7 +592,7 @@ def test_pruning_experiment():
                     'activation': 'relu',
                     'kernel_initializer': 'GlorotUniform',
                     'kernel_constraint': make_keras_kwcfg(
-                        'WeightMask',
+                        'ParameterMask',
                     ),
                 },
             ),

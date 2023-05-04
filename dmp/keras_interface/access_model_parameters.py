@@ -18,16 +18,16 @@ import numpy
 
 from dmp.layer import *
 from dmp.model.keras_layer_info import KerasLayerInfo
-from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
+from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 import tensorflow.keras as keras
 
 
-def get_weights(
+def get_parameters(
     root: Layer,
     layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     use_mask: bool,
 ) -> Dict[Layer, List[numpy.ndarray]]:
-    weight_map: Dict[Layer, List[numpy.ndarray]] = {}
+    parameter_map: Dict[Layer, List[numpy.ndarray]] = {}
 
     def visit_variable(layer, keras_layer, i, variable):
         value = variable.numpy()
@@ -35,24 +35,24 @@ def get_weights(
             constraint = get_mask_constraint(keras_layer, variable)
             if constraint is not None:
                 value = numpy.where(constraint.mask.numpy(), value, numpy.nan,)
-        weight_map.setdefault(layer, []).append(value)
+        parameter_map.setdefault(layer, []).append(value)
 
-    visit_weights(
+    visit_parameters(
         root,
         layer_to_keras_map,
         visit_variable,
     )
-    return weight_map
+    return parameter_map
 
-def set_weights(
+def set_parameters(
     root: Layer,
     layer_to_keras_map: Dict[Layer, KerasLayerInfo],
-    weight_map: Dict[Layer, List[numpy.ndarray]],
+    parameter_map: Dict[Layer, List[numpy.ndarray]],
     restore_mask : bool,
 ) -> None:
     
     def visit_variable(layer, keras_layer, i, variable):
-        value_list = weight_map.get(layer, None)
+        value_list = parameter_map.get(layer, None)
         if value_list is not None:
             value = value_list[i]
             if restore_mask:
@@ -65,13 +65,13 @@ def set_weights(
             print(f'assign {variable.name}')
             variable.assign(value)
 
-    visit_weights(
+    visit_parameters(
         root,
         layer_to_keras_map,
         visit_variable,
     )
 
-def visit_weights(
+def visit_parameters(
     root: Layer,
     layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     visit_variable: Callable,
@@ -98,19 +98,19 @@ def get_mask_constraint(
         constraint_member_name =  f'{match_str}_constraint'
         if hasattr(keras_layer, constraint_member_name):
             constraint = getattr(keras_layer, constraint_member_name)
-            if isinstance(constraint, WeightMask):
+            if isinstance(constraint, ParameterMask):
                 return constraint
     return None
 
-def lin_iterp_weights(
-    weights_a: Dict[Layer, List[numpy.ndarray]],
+def lin_iterp_parameters(
+    parameters_a: Dict[Layer, List[numpy.ndarray]],
     alpha: float,
-    weights_b: Dict[Layer, List[numpy.ndarray]],
+    parameters_b: Dict[Layer, List[numpy.ndarray]],
 ) -> Dict[Layer, List[numpy.ndarray]]:
     results = {}
-    for layer, weights in weights_a.items():
+    for layer, parameters in parameters_a.items():
         results[layer] = [
-            weight_a * alpha + weight_b * (1.0 - alpha)
-            for weight_a, weight_b in zip(weights, weights_b[layer])
+            parameter_a * alpha + parameter_b * (1.0 - alpha)
+            for parameter_a, parameter_b in zip(parameters, parameters_b[layer])
         ]
     return results

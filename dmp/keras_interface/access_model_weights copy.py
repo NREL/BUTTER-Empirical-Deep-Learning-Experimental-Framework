@@ -18,7 +18,7 @@ import numpy
 
 from dmp.layer import *
 from dmp.model.keras_layer_info import KerasLayerInfo
-from dmp.task.experiment.pruning_experiment.weight_mask import WeightMask
+from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 
 
@@ -123,7 +123,7 @@ def _get_mask_constraint(
 ) -> Optional[Any]:
     if hasattr(keras_layer, constraint_member_name):
         constraint = getattr(keras_layer, constraint_member_name)
-        if isinstance(constraint, WeightMask):
+        if isinstance(constraint, ParameterMask):
             return constraint
     return None
 
