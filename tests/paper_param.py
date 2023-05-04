@@ -3,12 +3,12 @@ LMCRN20 = {
         "Standard": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
-                 "batch": 128,
+                 "batch_size": 128,
                  "momentum": .1,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 
-                        "boundaries": [0, 32e3, 48e3],
-                        "values": [ .01, .001]
+                        "boundaries": [32e3, 48e3],
+                        "values": [.1, .01, .001]
                  },
                  "warmup": 0,
                  "prune_Density": .168,
@@ -18,11 +18,11 @@ LMCRN20 = {
         "Low": {
             "data": "CIFAR10",
             "train_Step": 63e3,
-            "batch": 128,
+            "batch_size": 128,
             "momentum": .01,
             "learning_rate": {
                 "class": "PiecewiseConstantDecay",
-                "boundaries": [0, 32e3, 48e3],
+                "boundaries": [32e3, 48e3],
                 "values": [.01, .001, .0001]
             },
             "warmup": 0,
@@ -33,11 +33,11 @@ LMCRN20 = {
         "Warmup": {
             "data": "CIFAR10",
             "train_Step": 63e3,
-            "batch": 128,
+            "batch_size": 128,
             "momentum": .03,
             "learning_rate": {
                 "class": "PiecewiseConstantDecay",
-                "boundaries": [0, 32e3, 48e3],
+                "boundaries": [32e3, 48e3],
                 "values": [.03, .003, .0003]
             },
             "warmup": 30e3,
@@ -50,7 +50,7 @@ LMCVGG = {
         "Standard": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
-                 "batch": 128,
+                 "batch_size": 128,
                  "momentum": .1,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 
@@ -64,7 +64,7 @@ LMCVGG = {
         "Low": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
-                 "batch": 128,
+                 "batch_size": 128,
                  "momentum": .01,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 
@@ -78,7 +78,7 @@ LMCVGG = {
         "Warmup": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
-                 "batch": 128,
+                 "batch_size": 128,
                  "momentum": .1,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 

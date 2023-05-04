@@ -71,7 +71,7 @@ worker = Worker(
     strategy,
     {},
 )  # type: ignore
-params = get_paper_param("Linear_Mode_Connectivity", "RESNET", "Low")
+param = get_paper_param("Linear_Mode_Connectivity", "RESNET", "Low")
 
 
 def run_experiment(experiment):
@@ -154,11 +154,10 @@ def test_resenet20():
         ),
         model=model,
         fit={
-            'batch_size': params['batch'],
-            'epochs': params['train_Step']*params['batch'] //60000 ,
+            'batch_size': param['batch_size'],
+            'epochs': int(param['train_Step']),
         },
-        optimizer={'class': params['optimizer'], 'momentum': params['momentum']
-                   , 'learning_rate': params['learning_rate']},
+        optimizer={'class': param['optimizer'], 'learning_rate': param['learning_rate']},
         loss=None,
         early_stopping=make_keras_kwcfg(
             'EarlyStopping',
