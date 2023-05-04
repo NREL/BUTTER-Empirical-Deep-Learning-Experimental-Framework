@@ -1,4 +1,7 @@
+
+
 LMCRN20 = {
+        # https://github.com/facebookresearch/open_lth/blob/main/models/cifar_resnet.py
         "Standard": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
@@ -46,6 +49,7 @@ LMCRN20 = {
     }
 
 LMCVGG = {
+        # https://github.com/facebookresearch/open_lth/blob/main/models/cifar_vgg.py
         "Standard": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
@@ -92,8 +96,10 @@ LMCVGG = {
         },
 }
 
+
 PaperParams = { 
-        "Linear_Mode_Connectivity": {"RESNET": LMCRN20, "VGG16": LMCVGG} 
+    # https://github.com/facebookresearch/open_lth
+    "Linear_Mode_Connectivity": {"RESNET": LMCRN20, "VGG16": LMCVGG} 
 }
 
 def get_paper_param(paper, model, param):
