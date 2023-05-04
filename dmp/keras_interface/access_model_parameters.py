@@ -61,8 +61,6 @@ def set_parameters(
                     mask = numpy.logical_not(numpy.isnan(value))
                     constraint.mask = mask
                     value = numpy.where(mask, value, 0.0)
-                    print(f'set mask {variable.name}')
-            print(f'assign {variable.name}')
             variable.assign(value)
 
     visit_parameters(

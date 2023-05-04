@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import io
 from pprint import pprint
 from typing import List, Optional, Any, Dict, Tuple
 
@@ -84,65 +85,71 @@ class IterativePruningExperiment(TrainingExperiment):
             )
 
             # save weights at this point for rewinding
-            rewind_weights = {}
-            if self.rewind:
-                rewind_weights = access_model_parameters.get_parameters(
-                    model.network.structure,
-                    model.keras_network.layer_to_keras_map,
-                    use_mask=False,
-                )
-            model.keras_model.summary()
-            from dmp.marshaling import marshal
-            from pprint import pprint
-            pprint(marshal.marshal(model.network))
+            with io.BytesIO() as restore_point:
+                model_serialization.save_model(model, restore_point)
 
-            model_serialization.store_model_data(self, model, f'test_base')
-            # self.compress_weights(model.network.structure, num_free_parameters, rewind_weights)
-            # model_serialization.store_model_data(model, 'test')
-            # model = model_serialization.load_model_data('test')
-            # model.keras_model.summary()
+                # model.keras_model.summary()
+                # from dmp.marshaling import marshal
+                # from pprint import pprint
+                # pprint(marshal.marshal(model.network))
 
-            # 4: for n ∈ {1, . . . , N} do
-            for iteration_n in range(self.num_pruning_iterations):
-                # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
-
-                early_stopping = make_keras_instance(self.pruning_trigger)
-                model_history = self._fit_model(
-                    self.fit,
-                    dataset,
-                    model,
-                    [early_stopping],
-                    epochs=self.max_pruning_epochs,
-                )
-
-                # model.network.num_free_parameters
-                self._accumulate_model_history(
-                    history,
-                    model_history,
-                    num_free_parameters,
-                    early_stopping,
-                )
-
-                model_serialization.store_model_data(self, model, f'test_{iteration_n}_unpruned')
-
-                # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
-                num_pruned = self.pruning_method.prune(
-                    model.network.structure,
-                    model.keras_network.layer_to_keras_map,
-                )
-                num_free_parameters = model.network.num_free_parameters - num_pruned
-                
-                model_serialization.store_model_data(self, model, f'test_{iteration_n}_pruned')
+                model_serialization.save_model_data(self, model, f'test_base')
+                # self.compress_weights(model.network.structure, num_free_parameters, rewind_weights)
+                # model_serialization.store_model_data(model, 'test')
                 # model = model_serialization.load_model_data('test')
+                # model.keras_model.summary()
 
-                model.keras_model.summary()
-                if self.rewind:
-                    access_model_parameters.set_parameters(
+                # 4: for n ∈ {1, . . . , N} do
+                for iteration_n in range(self.num_pruning_iterations):
+                    # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
+
+                    early_stopping = make_keras_instance(self.pruning_trigger)
+                    model_history = self._fit_model(
+                        self.fit,
+                        dataset,
+                        model,
+                        [early_stopping],
+                        epochs=self.max_pruning_epochs,
+                    )
+
+                    # model.network.num_free_parameters
+                    self._accumulate_model_history(
+                        history,
+                        model_history,
+                        num_free_parameters,
+                        early_stopping,
+                    )
+
+                    model_serialization.save_model_data(
+                        self, model, f'test_{iteration_n}_unpruned'
+                    )
+
+                    # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
+                    num_pruned = self.pruning_method.prune(
                         model.network.structure,
                         model.keras_network.layer_to_keras_map,
-                        rewind_weights,
-                        False,
                     )
+                    num_free_parameters = model.network.num_free_parameters - num_pruned
+
+                    model_serialization.save_model_data(
+                        self, model, f'test_{iteration_n}_pruned'
+                    )
+                    # model = model_serialization.load_model_data('test')
+
+                    model.keras_model.summary()
+                    if self.rewind:
+                        model_serialization.load_model(
+                            model,
+                            restore_point,
+                            load_mask=False,
+                            load_optimizer=True,
+                        )
+                        # access_model_parameters.set_parameters(
+                        #     model.network.structure,
+                        #     model.keras_network.layer_to_keras_map,
+                        #     rewind_weights,
+                        #     False,
+                        # )
 
             # 7: Return Wk, m
             return self._make_result_record(
@@ -152,76 +159,4 @@ class IterativePruningExperiment(TrainingExperiment):
                 model.network,
                 history,
             )
-
-    def compress_weights(
-        self,
-        root: Layer,
-        num_free_parameters: int,
-        weight_map: Dict[Layer, List[numpy.ndarray]],
-    ):
-        # weight_shape_col = []
-        # weight_values_col = []
-        w = []
-
-        num_weights = 0
-        for layer in root.layers:
-            layer_weights = weight_map.get(layer, None)
-            shape = None
-            if layer_weights is not None:
-                for lw in layer_weights:
-                    lw = lw.flatten().astype(numpy.float32)
-
-                    w.append(lw)
-                    # shape = weights.shape
-                    # weights = weights
-
-                    num_weights += lw.size
-            # weight_shape_col.append(shape)
-            # weight_values_col.append(weights)
-        weight_array = numpy.concatenate(w)
-        del w
-
-        table, use_byte_stream_split = parquet_util.make_pyarrow_table_from_numpy(
-            # ["shape", "weight"],
-            # [weight_shape_col, weight_values_col],
-            ['weight'],
-            [weight_array],
-            # [[None if numpy.isnan(e) else e for e in weight_array]],
-            nan_to_none=True,
-        )
-        # print(table['weight'].dtype)
-        # print(table['weight'])
-
-        import pyarrow
-        import pyarrow.parquet as parquet
-        import io
-
-        buffer = io.BytesIO()
-        pyarrow_file = pyarrow.PythonFile(buffer)
-
-        parquet.write_table(
-            table,
-            pyarrow_file,
-            # root_path=dataset_path,
-            # schema=schema,
-            # partition_cols=partition_cols,
-            data_page_size=8 * 1024,
-            # compression='BROTLI',
-            # compression_level=8,
-            compression='ZSTD',
-            # compression_level=12,
-            compression_level=15,
-            use_dictionary=False,
-            use_byte_stream_split=use_byte_stream_split,
-            version='2.6',
-            data_page_version='2.0',
-            # existing_data_behavior='overwrite_or_ignore',
-            # use_legacy_dataset=False,
-            write_statistics=False,
-            # write_batch_size=64,
-            # dictionary_pagesize_limit=64*1024,
-        )
-        bytes_written = buffer.getbuffer().nbytes
-        print(
-            f'Compressed {num_free_parameters}/{num_weights} weights into {bytes_written} bytes {float(bytes_written) / num_weights} per weight, {float(bytes_written) / num_free_parameters} per unmasked weight.'
-        )
+        

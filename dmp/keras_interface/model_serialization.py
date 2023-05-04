@@ -12,6 +12,7 @@ from dmp.model.model_info import ModelInfo
 from dmp.model.network_info import NetworkInfo
 from dmp.task.experiment.experiment_task import ExperimentTask
 import dmp.parquet_util as parquet_util
+import pyarrow
 
 model_data_path = os.path.join(os.getcwd(), 'model_data')
 
@@ -24,13 +25,14 @@ saved_optimizer_members = (
     '_momentums',
     '_velocities',
     '_velocity_hats',
+    'momentums',
 )
 # keras_model_dirname = 'keras_model'
 
 from tensorflow import keras
 
 
-def store_model_data(
+def save_model_data(
     task: ExperimentTask,
     model: ModelInfo,
     model_path: str,
@@ -77,7 +79,7 @@ def store_model_data(
 
     with open(parameters_path, 'wb') as parameters_file:
         print(f'Writing parameters to {parameters_file}...')
-        save_model(
+        save_parameters(
             model.network.structure,
             model.keras_network.layer_to_keras_map,
             None,
@@ -86,7 +88,7 @@ def store_model_data(
 
     with open(optimizer_path, 'wb') as optimizer_file:
         print(f'Writing model state to {optimizer_path}...')
-        save_model(
+        save_parameters(
             model.network.structure,
             model.keras_network.layer_to_keras_map,
             model.keras_model.optimizer,
@@ -110,11 +112,40 @@ def get_paths(
         optimizer_path,
     )
 
+
 def load_model(
+    model: ModelInfo,
+    file,
+    load_mask:bool = True,
+    load_optimizer:bool = True,
+):
+    load_parameters(
+        model.network.structure,
+        model.keras_network.layer_to_keras_map,
+        model.keras_model.optimizer if load_optimizer else None,
+        file,
+        load_mask=load_mask,
+    )
+
+
+def save_model(
+    model: ModelInfo,
+    file,
+):
+    save_parameters(
+        model.network.structure,
+        model.keras_network.layer_to_keras_map,
+        model.keras_model.optimizer,
+        file,
+    )
+
+
+def load_parameters(
     root: Layer,
     layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     optimizer: Optional[keras.optimizers.Optimizer],
     file,
+    load_mask:bool = True,
 ) -> None:
     parameters_table = parquet_util.read_parquet_table(file)
     columns = set(parameters_table.column_names)
@@ -130,24 +161,23 @@ def load_model(
     def visit_variable(layer, keras_layer, i, variable):
         nonlocal row_index
 
+        size = variable.value().numpy().size
         constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None
-        if constraint is not None:
+        if load_mask and constraint is not None:
             column = parameters_table['value']
-            chunk = column[row_index : row_index + variable.size]
-            mask = numpy.logical_not(
-                keras_layer.pyarrow.compute.is_null(chunk).to_numpy()
-            )
-            constraint.mask.assign(mask.reshape(constraint.mask.shape))
+            chunk = column[row_index : row_index + size]
+            mask = numpy.logical_not(pyarrow.compute.is_null(chunk).to_numpy())
+            constraint.mask.assign(mask.reshape(constraint.mask.value().shape))
 
         def load_value(column, variable):
             column = parameters_table[column]
-            chunk = column[row_index : row_index + variable.size]
+            chunk = column[row_index : row_index + size]
 
             prepared = chunk.to_numpy()
             if mask is not None:
                 prepared = numpy.where(mask, prepared, 0)
-            prepared = prepared.reshape(variable.shape)
+            prepared = prepared.reshape(variable.value().shape)
             variable.assign(prepared)
 
         load_value('value', variable)
@@ -155,7 +185,7 @@ def load_model(
             variable_index = optimizer._index_dict[optimizer._var_key(variable)]  # type: ignore
             load_value(member, getattr(optimizer, member)[variable_index])
 
-        row_index += variable.size
+        row_index += size
 
     access_model_parameters.visit_parameters(
         root,
@@ -164,7 +194,7 @@ def load_model(
     )
 
 
-def save_model(
+def save_parameters(
     root: Layer,
     layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     optimizer: Optional[keras.optimizers.Optimizer],

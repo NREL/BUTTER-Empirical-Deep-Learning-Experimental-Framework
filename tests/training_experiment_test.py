@@ -602,8 +602,9 @@ def test_pruning_experiment():
             'epochs': 5,
         },
         optimizer={
-            'class': 'Adam',
+            'class': 'SGD',
             'learning_rate': 0.001,
+            'momentum': 0.9,
         },
         loss=None,
         early_stopping=make_keras_kwcfg(
