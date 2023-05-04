@@ -1,4 +1,3 @@
-
 LMCRN20 = {
         "Standard": {
                  "data": "CIFAR10",
@@ -61,6 +60,7 @@ LMCVGG = {
                  "prune_Density": .015,
                  "optimizer": "SGD"
         },
+        
         "Low": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
@@ -75,6 +75,7 @@ LMCVGG = {
                  "prune_Density": .055,
                  "optimizer": "SGD"
         },
+        
         "Warmup": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
