@@ -32,7 +32,7 @@ class PostgresCompressedResultLogger(ExperimentResultLogger):
         input_table = Identifier('_input')
 
         self._log_multiple_query_prefix = SQL("""
-WITH {input_table} as (
+WITH {input_table} AS (
     SELECT
         {casting_clause}
     FROM

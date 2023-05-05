@@ -9,6 +9,7 @@ from jobqueue.job import Job
 import pandas
 import pandas.core.groupby.groupby
 import tensorflow
+from dmp.keras_interface.keras_utils import make_keras_instance
 import tensorflow.keras as keras
 import numpy
 from dmp import common
@@ -53,36 +54,8 @@ class ATrainingExperiment(ExperimentTask):
         tensorflow.random.set_seed(seed)
         random.seed(seed)
 
-    def _make_model(
-        self,
-        worker: Worker,
-        model_spec: ModelSpec,
-    ) -> ModelInfo:
-        return self._make_model_from_network(
-            worker,
-            self._make_network(model_spec),
-        )
-
     def _make_network(self, model_spec: ModelSpec) -> NetworkInfo:
         return model_spec.make_network()
-
-    def _make_model_from_network(
-        self,
-        worker: Worker,
-        network: NetworkInfo,
-    ):
-        # from dmp.marshaling import marshal
-        # pprint(marshal.marshal(network.structure))
-        print(network.structure.describe())
-
-        if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
-            keras.backend.set_floatx('float32')
-            keras.mixed_precision.set_global_policy(
-                keras.mixed_precision.Policy(self.precision))
-        else:
-            keras.backend.set_floatx(self.precision)
-
-        return make_keras_model_from_network(network)
 
     def _merge_histories(
         self,
@@ -124,18 +97,18 @@ class ATrainingExperiment(ExperimentTask):
             return vals[-1]
         return default_value
 
-    def _accumulate_model_history(
+    def _append_run_history_to_model_history(
         self,
-        history: Dict[str, Any],
+        experiment_history: Dict[str, Any],
         model_history: Dict[str, Any],
         num_free_parameters: int,
         early_stopping_callback: Optional[Any],
-    ) -> None:
+    ) -> Dict[str, Any]:
         source_length = len(model_history[self.keys.epoch])
 
         # model number column
         model_history[self.keys.model_number] = [
-            self._get_last_value_of(history, self.keys.model_number, -1) + 1
+            self._get_last_value_of(experiment_history, self.keys.model_number, -1) + 1
         ] * source_length
 
         # set model epoch column
@@ -145,7 +118,7 @@ class ATrainingExperiment(ExperimentTask):
         # convert model epochs to history epochs
         model_history[
             self.keys.epoch] = model_epochs + self._get_last_value_of(
-                history, self.keys.epoch, 0)
+                experiment_history, self.keys.epoch, 0)
 
         # free parameter count history
         model_history[self.keys.free_parameter_count_key] = [
@@ -162,7 +135,8 @@ class ATrainingExperiment(ExperimentTask):
             for i in range(last_retained_epoch + 1, source_length):
                 retained[i] = False
 
-        self._extend_history(history, model_history)
+        self._extend_history(experiment_history, model_history)
+        return experiment_history
 
     def _extend_history(
         self,
@@ -193,7 +167,7 @@ class ATrainingExperiment(ExperimentTask):
         }
         run_data.update(worker_info)
 
-        experiment_attrs = self.get_parameters()
+        experiment_attrs : Dict[str, Any] = self.get_parameters()
         experiment_tags = {}
 
         run_data_set = {'seed', 'precision', 'task_version', 'batch'}

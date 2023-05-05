@@ -161,7 +161,8 @@ def load_parameters(
     def visit_variable(layer, keras_layer, i, variable):
         nonlocal row_index
 
-        size = variable.value().numpy().size
+        size = numpy.prod(variable.value().shape)
+        print(f'variable: {variable.name} {size} {variable.value().shape}')
         constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None
         if load_mask and constraint is not None:

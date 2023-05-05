@@ -21,6 +21,7 @@ from dmp.postgres_interface.postgres_interface_common import json_dump_function
 from dmp.postgres_interface.schema.attr_table import AttrTable
 from dmp.postgres_interface.schema.experiment_summary_table import ExperimentSummaryTable
 from dmp.postgres_interface.schema.experiment_table import ExperimentTable
+from dmp.postgres_interface.schema.model_table import ModelTable
 from dmp.postgres_interface.schema.run_table import RunTable
 
 
@@ -32,6 +33,7 @@ class PostgresSchema:
     run: RunTable
     attr: AttrTable
     experiment: ExperimentTable
+    model : ModelTable
     experiment_summary: ExperimentSummaryTable
 
     log_query_suffix: Composed
@@ -48,6 +50,7 @@ class PostgresSchema:
         self.run = RunTable()
         self.attr = AttrTable()
         self.experiment = ExperimentTable()
+        self.model = ModelTable()
         self.experiment_summary = ExperimentSummaryTable()
 
         # initialize parameter map

@@ -203,6 +203,7 @@ from dmp.task.experiment.recorder.test_set_history_recorder import (
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.model.network_info import NetworkInfo
+from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveMode
 
 register_types(
     (
@@ -212,5 +213,6 @@ register_types(
         DatasetSpec,
         MLTask,
         NetworkInfo,
+        HybridSaveMode,
     )
 )

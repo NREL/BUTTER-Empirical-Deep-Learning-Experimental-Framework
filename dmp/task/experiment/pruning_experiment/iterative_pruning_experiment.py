@@ -57,99 +57,70 @@ class IterativePruningExperiment(TrainingExperiment):
         with worker.strategy.scope():
             # tensorflow.config.optimizer.set_jit(True)
             self._set_random_seeds()
-            dataset = self._load_and_prepare_dataset()
-            metrics = self._autoconfigure_for_dataset(dataset)
+            dataset, metrics = self._load_and_prepare_dataset()
 
             # 1: Create a network with randomly initialization W0 ∈ Rd.
             # 2: Initialize pruning mask to m = 1d.
-            model = self._make_model(worker, self.model)
-            self._compile_model(dataset, model, metrics)
+            network = self._make_network(self.model)
+            model = self._make_model_from_network(network, metrics)
 
             # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
+            num_free_parameters = model.network.num_free_parameters
+            experiment_history = {}
             early_stopping = make_keras_instance(self.pre_pruning_trigger)
-            model_history = self._fit_model(
+            self._fit_model(
                 self.fit,
                 dataset,
                 model,
                 [early_stopping],
                 epochs=self.pre_prune_epochs,
-            )
-
-            history = {}
-            num_free_parameters = model.network.num_free_parameters
-            self._accumulate_model_history(
-                history,
-                model_history,
-                num_free_parameters,
-                early_stopping,
+                experiment_history=experiment_history,
+                num_free_parameters=num_free_parameters,
             )
 
             # save weights at this point for rewinding
-            with io.BytesIO() as restore_point:
-                model_serialization.save_model(model, restore_point)
+            restore_point = io.BytesIO()
+            model_serialization.save_model(model, restore_point)
+            model_serialization.save_model_data(self, model, f'test_base')
 
-                # model.keras_model.summary()
-                # from dmp.marshaling import marshal
-                # from pprint import pprint
-                # pprint(marshal.marshal(model.network))
+            # 4: for n ∈ {1, . . . , N} do
+            for iteration_n in range(self.num_pruning_iterations):
+                # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
 
-                model_serialization.save_model_data(self, model, f'test_base')
-                # self.compress_weights(model.network.structure, num_free_parameters, rewind_weights)
-                # model_serialization.store_model_data(model, 'test')
-                # model = model_serialization.load_model_data('test')
-                # model.keras_model.summary()
+                early_stopping = make_keras_instance(self.pruning_trigger)
+                self._fit_model(
+                    self.fit,
+                    dataset,
+                    model,
+                    [early_stopping],
+                    epochs=self.max_pruning_epochs,
+                    experiment_history=experiment_history,
+                    num_free_parameters=num_free_parameters,
+                )
 
-                # 4: for n ∈ {1, . . . , N} do
-                for iteration_n in range(self.num_pruning_iterations):
-                    # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
+                model_serialization.save_model_data(
+                    self, model, f'test_{iteration_n}_unpruned'
+                )
 
-                    early_stopping = make_keras_instance(self.pruning_trigger)
-                    model_history = self._fit_model(
-                        self.fit,
-                        dataset,
+                # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
+                num_pruned = self.pruning_method.prune(
+                    model.network.structure,
+                    model.keras_network.layer_to_keras_map,
+                )
+                num_free_parameters = model.network.num_free_parameters - num_pruned
+
+                model_serialization.save_model_data(
+                    self, model, f'test_{iteration_n}_pruned'
+                )
+
+                model.keras_model.summary()
+                if self.rewind:
+                    model_serialization.load_model(
                         model,
-                        [early_stopping],
-                        epochs=self.max_pruning_epochs,
+                        restore_point,
+                        load_mask=False,
+                        load_optimizer=True,
                     )
-
-                    # model.network.num_free_parameters
-                    self._accumulate_model_history(
-                        history,
-                        model_history,
-                        num_free_parameters,
-                        early_stopping,
-                    )
-
-                    model_serialization.save_model_data(
-                        self, model, f'test_{iteration_n}_unpruned'
-                    )
-
-                    # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
-                    num_pruned = self.pruning_method.prune(
-                        model.network.structure,
-                        model.keras_network.layer_to_keras_map,
-                    )
-                    num_free_parameters = model.network.num_free_parameters - num_pruned
-
-                    model_serialization.save_model_data(
-                        self, model, f'test_{iteration_n}_pruned'
-                    )
-                    # model = model_serialization.load_model_data('test')
-
-                    model.keras_model.summary()
-                    if self.rewind:
-                        model_serialization.load_model(
-                            model,
-                            restore_point,
-                            load_mask=False,
-                            load_optimizer=True,
-                        )
-                        # access_model_parameters.set_parameters(
-                        #     model.network.structure,
-                        #     model.keras_network.layer_to_keras_map,
-                        #     rewind_weights,
-                        #     False,
-                        # )
 
             # 7: Return Wk, m
             return self._make_result_record(
@@ -157,6 +128,6 @@ class IterativePruningExperiment(TrainingExperiment):
                 job.id,
                 dataset,
                 model.network,
-                history,
+                experiment_history,
             )
         

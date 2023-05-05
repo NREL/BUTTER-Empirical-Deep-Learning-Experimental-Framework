@@ -11,38 +11,53 @@ from dmp.model.network_info import NetworkInfo
 from dmp.task.experiment.growth_experiment import growth_experiment_keys
 
 from dmp.task.experiment.growth_experiment.layer_growth_info import LayerGrowthInfo
-from dmp.task.experiment.growth_experiment.scaling_method.scaling_method import ScalingMethod
-from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import WidthScaler
+from dmp.task.experiment.growth_experiment.scaling_method.scaling_method import (
+    ScalingMethod,
+)
+from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
+    WidthScaler,
+)
 from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_kwcfg
-from dmp.task.experiment.growth_experiment.growth_experiment_keys import GrowthExperimentKeys
+from dmp.task.experiment.growth_experiment.growth_experiment_keys import (
+    GrowthExperimentKeys,
+)
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.model.model_util import *
 from dmp.model.model_info import ModelInfo
 
-from dmp.task.experiment.growth_experiment.growth_experiment_keys import GrowthExperimentKeys
-from dmp.task.experiment.growth_experiment.transfer_method.transfer_method import TransferMethod
-from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import OverlayTransfer
+from dmp.task.experiment.growth_experiment.growth_experiment_keys import (
+    GrowthExperimentKeys,
+)
+from dmp.task.experiment.growth_experiment.transfer_method.transfer_method import (
+    TransferMethod,
+)
+from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
+    OverlayTransfer,
+)
 
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
-from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
 from dmp.model.model_util import find_closest_network_to_target_size_float
 from dmp.worker import Worker
 
 
 @dataclass
 class GrowthExperiment(TrainingExperiment):
-
-    growth_trigger: dict = field(default_factory=lambda: make_keras_kwcfg(
-        'EarlyStopping',
-        restore_best_weights=True,
-        monitor='val_loss',
-        min_delta=0,
-        patience=0,
-        verbose=0,
-        mode='auto',
-        baseline=None,
-        # start_from_epoch=0,
-    ))
+    growth_trigger: dict = field(
+        default_factory=lambda: make_keras_kwcfg(
+            'EarlyStopping',
+            restore_best_weights=True,
+            monitor='val_loss',
+            min_delta=0,
+            patience=0,
+            verbose=0,
+            mode='auto',
+            baseline=None,
+            # start_from_epoch=0,
+        )
+    )
 
     scaling_method: ScalingMethod = field(default_factory=WidthScaler)
     transfer_method: TransferMethod = field(default_factory=OverlayTransfer)
@@ -58,18 +73,17 @@ class GrowthExperiment(TrainingExperiment):
     def version(self) -> int:
         return 0
 
-    def __call__(self, worker: Worker, job: Job, *args,
-                 **kwargs) -> ExperimentResultRecord:
+    def __call__(
+        self, worker: Worker, job: Job, *args, **kwargs
+    ) -> ExperimentResultRecord:
         with worker.strategy.scope():
             self._set_random_seeds()
-            dataset = self._load_and_prepare_dataset()
-            metrics = self._autoconfigure_for_dataset(dataset)
+            dataset, metrics = self._load_and_prepare_dataset()
 
             goal_network: NetworkInfo = self._make_network(self.model)
             # goal_network.description[self.key_names.scale_key] = 1.0
             goal_network.description[self.keys.layer_map_key] = {
-                l: l
-                for l in goal_network.structure.layers
+                l: l for l in goal_network.structure.layers
             }
 
             # from dmp.marshaling import marshal
@@ -79,24 +93,25 @@ class GrowthExperiment(TrainingExperiment):
             #         goal_network.structure))
 
             max_total_epochs: int = self.fit['epochs']
-            history: Dict[str, Any] = {}
+            experiment_history: Dict[str, Any] = {}
             model_number: int = 0
             epoch_parameters: int = 0
             src_model: Optional[ModelInfo] = None
-            parent_epoch: int = 0
             on_final_iteration: bool = False
             while not on_final_iteration:
-
                 target_size: int = int(
-                    math.floor(self.initial_size *
-                               math.pow(self.growth_scale, model_number)))
+                    math.floor(
+                        self.initial_size * math.pow(self.growth_scale, model_number)
+                    )
+                )
 
                 # print(
                 #     f'target_size {target_size}, self.initial_size {self.initial_size}, growth_step {model_number}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}'
                 # )
 
                 max_epochs_at_this_iteration = max_total_epochs - self._get_last_epoch(
-                    history)
+                    experiment_history
+                )
 
                 # if we topped out at the maximum size, this is the last iteration
                 network = None
@@ -129,33 +144,37 @@ class GrowthExperiment(TrainingExperiment):
                     #     marshal.marshal(
                     #         network.structure))
 
-                    if src_model is not None and \
-                        network.num_free_parameters <= src_model.network.num_free_parameters:
+                    if (
+                        src_model is not None
+                        and network.num_free_parameters
+                        <= src_model.network.num_free_parameters
+                    ):
                         model_number += 1
                         continue
 
-                    print(
-                        f'Growing to {target_size} {network.num_free_parameters}'
-                    )
-
-                model = self._make_model_from_network(worker, network)
+                    print(f'Growing to {target_size} {network.num_free_parameters}')
 
                 max_epochs_at_this_iteration = min(
                     max_epochs_at_this_iteration,
                     math.ceil(
-                        (self.max_equivalent_epoch_budget *
-                         goal_network.num_free_parameters - epoch_parameters) /
-                        model.network.num_free_parameters),
+                        (
+                            self.max_equivalent_epoch_budget
+                            * goal_network.num_free_parameters
+                            - epoch_parameters
+                        )
+                        / network.num_free_parameters
+                    ),
                 )
 
                 if max_epochs_at_this_iteration <= 0:
                     break
 
+                model = self._make_model_from_network(network, metrics)
+
                 if src_model is not None:
                     self.transfer_method.transfer(
-                        self._make_transfer_map(src_model, model), )
-
-                self._compile_model(dataset, model, metrics)
+                        self._make_transfer_map(src_model, model),
+                    )
 
                 early_stopping = None
                 if on_final_iteration:
@@ -163,30 +182,25 @@ class GrowthExperiment(TrainingExperiment):
                 else:
                     early_stopping = make_keras_instance(self.growth_trigger)
 
-                model_history: Dict[str, Any] = self._fit_model(
+                self._fit_model(
                     self.fit,
                     dataset,
                     model,
                     [early_stopping],
                     epochs=max_epochs_at_this_iteration,
-                )
-
-                self._accumulate_model_history(
-                    history,
-                    model_history,
-                    network.num_free_parameters,
-                    early_stopping,
+                    experiment_history=experiment_history,
                 )
 
                 src_model = model
                 model_number += 1
-                epoch_parameters += self._get_last_epoch(
-                    history) * model.network.num_free_parameters
+                epoch_parameters += (
+                    self._get_last_epoch(experiment_history)
+                    * model.network.num_free_parameters
+                )
                 continue  # just put this here for better readability
 
             if src_model is None:
-                raise RuntimeError(
-                    f'No result record generated for task {self}.')
+                raise RuntimeError(f'No result record generated for task {self}.')
 
             src_model.network.description = goal_network.description
             return self._make_result_record(
@@ -194,7 +208,7 @@ class GrowthExperiment(TrainingExperiment):
                 job.id,
                 dataset,
                 src_model.network,
-                history,
+                experiment_history,
             )
 
     def _make_transfer_map(

@@ -411,6 +411,15 @@ CREATE INDEX ON run USING btree (batch) WHERE batch IS NOT NULL;
 
 CREATE INDEX ON run USING gin (run_data);
 
+CREATE TABLE model
+(
+    experiment_id uuid,
+    model_number integer,
+    model_epoch integer,
+    epoch integer,
+    PRIMARY KEY (experiment_id, model_number, model_epoch)
+);
+
 CREATE TABLE experiment_summary
 (
     experiment_id uuid,

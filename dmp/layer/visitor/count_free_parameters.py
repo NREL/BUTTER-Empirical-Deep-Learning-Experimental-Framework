@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Generic, Iterable, Iterator, List, Optio
 from dmp.layer import *
 
 from dmp.layer.batch_normalization import BatchNormalization
+from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 
 class CountFreeParametersVisitor:
@@ -56,7 +57,6 @@ class CountFreeParametersVisitor:
         target: SpatitialLayer,
         input_weights_per_node_channel: int,
     ) -> int:
-        
 
         input_conv_shape, input_channels = \
             target.to_conv_shape_and_channels(target.input.computed_shape)

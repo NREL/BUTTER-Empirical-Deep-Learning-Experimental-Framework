@@ -110,7 +110,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
     def __contains__(self, key) -> bool:
         return self.config.__contains__(key)
 
-    def describe(self) -> str:
+    def summary(self) -> str:
         graph_inputs = []
         output_map = {}
         
