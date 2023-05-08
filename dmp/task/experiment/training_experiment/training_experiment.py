@@ -41,7 +41,7 @@ class TrainingExperiment(ATrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 11
+        return 12
 
     def __call__(
         self, worker: Worker, job: Job, *args, **kwargs
@@ -55,10 +55,12 @@ class TrainingExperiment(ATrainingExperiment):
             print(model.network.structure.summary())
             model.keras_model.summary()
             history = self._fit_model(
+                worker,
+                job,
                 self.fit,
                 dataset,
                 model,
-                self._make_callbacks(),
+                [self._make_early_stopping_callback()],
             )
             return self._make_result_record(
                 worker.worker_info,
@@ -191,7 +193,8 @@ class TrainingExperiment(ATrainingExperiment):
         if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
             keras.backend.set_floatx('float32')
             keras.mixed_precision.set_global_policy(
-                keras.mixed_precision.Policy(self.precision))
+                keras.mixed_precision.Policy(self.precision)
+            )
         else:
             keras.backend.set_floatx(self.precision)
 
@@ -207,6 +210,8 @@ class TrainingExperiment(ATrainingExperiment):
 
     def _fit_model(
         self,
+        worker: Worker,
+        job: Job,
         fit_config: Dict[str, Any],
         dataset: PreparedDataset,
         model: ModelInfo,
@@ -215,8 +220,6 @@ class TrainingExperiment(ATrainingExperiment):
         experiment_history: Optional[Dict[str, Any]] = None,
         num_free_parameters: Optional[int] = None,
     ) -> Dict:
-        callbacks = [cb for cb in callbacks if cb is not None]
-
         # setup training, validation, and test datasets
         fit_config = fit_config.copy()
         fit_config['x'] = dataset.train
@@ -252,7 +255,25 @@ class TrainingExperiment(ATrainingExperiment):
             TestSetHistoryRecorder(additional_test_sets, timestamp_recorder),
         ]
 
+        
+        model_saving = self._get_model_saving_callback(callbacks)
+        if model_saving is None:
+            # if no model saving callback, create one
+            model_saving = self._make_model_saving_callback(
+                worker,
+                job,
+            )
+            callbacks.append(model_saving)
+        
+        if model_saving is not None:
+            # configure model saving callback
+            model_saving.model = model
+        
+        callbacks = [cb for cb in callbacks if cb is not None]
+
         callbacks.extend(history_callbacks)
+
+        
 
         history: keras.callbacks.History = model.keras_model.fit(
             callbacks=callbacks,
@@ -291,20 +312,41 @@ class TrainingExperiment(ATrainingExperiment):
                 model.network.num_free_parameters
                 if num_free_parameters is None
                 else num_free_parameters,
-                next(
-                    (cb for cb in callbacks if isinstance(cb, keras.EarlyStopping)),
-                    None,
-                ),
+                self._get_early_stopping_callback(callbacks),
             )
 
         return run_history
 
-    def _make_callbacks(self) -> List[Optional[keras.callbacks.Callback]]:
-        callbacks = []
-        early_stopping = self._make_early_stopping_callback()
-        if early_stopping is not None:
-            callbacks.append(early_stopping)
-        return callbacks
-
     def _make_early_stopping_callback(self) -> Optional[keras.callbacks.EarlyStopping]:
         return make_keras_instance(self.early_stopping)
+
+    def _make_model_saving_callback(
+        self,
+        worker: Worker,
+        job: Job,
+    ) -> Optional[keras.callbacks.Callback]:
+        model_saving = self.record.model_saving
+        if model_saving is None:
+            return None
+        return model_saving.make_callback(
+            worker,
+            job,
+        )
+
+    @staticmethod
+    def _get_early_stopping_callback(
+        callbacks: List[Optional[keras.callbacks.Callback]],
+    ) -> Optional[keras.callbacks.EarlyStopping]:
+        return next(
+            (cb for cb in callbacks if isinstance(cb, keras.EarlyStopping)),
+            None,
+        )
+    
+    @staticmethod
+    def _get_model_saving_callback(
+        callbacks: List[Optional[keras.callbacks.Callback]],
+    ) -> Optional[keras.callbacks.Callback]:
+        return next(
+            (cb for cb in callbacks if isinstance(cb, keras.EarlyStopping)),
+            None,
+        )

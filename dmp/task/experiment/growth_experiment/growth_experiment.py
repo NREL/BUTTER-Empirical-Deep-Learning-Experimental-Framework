@@ -92,6 +92,10 @@ class GrowthExperiment(TrainingExperiment):
             #     marshal.marshal(
             #         goal_network.structure))
 
+            model_saving_callback = self._make_model_saving_callback(
+                worker,
+                job,
+            )
             max_total_epochs: int = self.fit['epochs']
             experiment_history: Dict[str, Any] = {}
             model_number: int = 0
@@ -183,10 +187,15 @@ class GrowthExperiment(TrainingExperiment):
                     early_stopping = make_keras_instance(self.growth_trigger)
 
                 self._fit_model(
+                    worker,
+                    job,
                     self.fit,
                     dataset,
                     model,
-                    [early_stopping],
+                    [
+                        early_stopping,
+                        model_saving_callback,
+                    ],
                     epochs=max_epochs_at_this_iteration,
                     experiment_history=experiment_history,
                 )

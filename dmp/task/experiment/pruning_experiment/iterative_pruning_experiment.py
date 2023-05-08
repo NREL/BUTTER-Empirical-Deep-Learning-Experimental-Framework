@@ -67,12 +67,21 @@ class IterativePruningExperiment(TrainingExperiment):
             # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
             num_free_parameters = model.network.num_free_parameters
             experiment_history = {}
+            model_saving_callback = self._make_model_saving_callback(
+                worker,
+                job,
+            )
             early_stopping = make_keras_instance(self.pre_pruning_trigger)
             self._fit_model(
+                worker,
+                job,
                 self.fit,
                 dataset,
                 model,
-                [early_stopping],
+                [
+                    early_stopping,
+                    model_saving_callback,
+                ],
                 epochs=self.pre_prune_epochs,
                 experiment_history=experiment_history,
                 num_free_parameters=num_free_parameters,
@@ -89,10 +98,15 @@ class IterativePruningExperiment(TrainingExperiment):
 
                 early_stopping = make_keras_instance(self.pruning_trigger)
                 self._fit_model(
+                    worker,
+                    job,
                     self.fit,
                     dataset,
                     model,
-                    [early_stopping],
+                    [
+                        early_stopping,
+                        model_saving_callback,
+                    ],
                     epochs=self.max_pruning_epochs,
                     experiment_history=experiment_history,
                     num_free_parameters=num_free_parameters,
