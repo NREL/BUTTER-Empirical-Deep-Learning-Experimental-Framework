@@ -133,6 +133,7 @@ def test_cifar_10_lenet():
             model=None,
             metrics=None,
         ),
+        resume_from=None,
     )
 
     run_experiment(experiment)

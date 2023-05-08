@@ -23,7 +23,7 @@ class TrainingExperimentSummarizer():
 
     def summarize(
         self,
-        cls: Type['ATrainingExperiment'],
+        cls: Type['TrainingExperiment'],
         results: Sequence[ExperimentResultRecord],
     ) -> ExperimentSummaryRecord:
         keys: TrainingExperimentKeys = cls.keys
@@ -105,7 +105,7 @@ class TrainingExperimentSummarizer():
 
     def _summarize_by_epoch(
         self,
-        cls: Type['ATrainingExperiment'],
+        cls: Type['TrainingExperiment'],
         history: pandas.DataFrame,
         selected_epochs: numpy.ndarray,
     ) -> pandas.DataFrame:
@@ -126,7 +126,7 @@ class TrainingExperimentSummarizer():
 
     def _summarize_epoch_subset(
         self,
-        cls: Type['ATrainingExperiment'],
+        cls: Type['TrainingExperiment'],
         history: pandas.DataFrame,
         selected_epochs: numpy.ndarray,
     ) -> pandas.DataFrame:
@@ -147,7 +147,7 @@ class TrainingExperimentSummarizer():
 
     def _summarize_by_loss(
         self,
-        cls: Type['ATrainingExperiment'],
+        cls: Type['TrainingExperiment'],
         runs: numpy.ndarray,
         history: pandas.DataFrame,
     ) -> pandas.DataFrame:
@@ -268,7 +268,7 @@ class TrainingExperimentSummarizer():
 
     def _summarize_group(
         self,
-        cls: Type['ATrainingExperiment'],
+        cls: Type['TrainingExperiment'],
         groups: pandas.core.groupby.groupby.GroupBy,
         group_column: str,  #: Union[numpy.ndarray, pandas.Series],
         simple_metrics: Set[str],
@@ -318,4 +318,4 @@ class TrainingExperimentSummarizer():
 
 summarizer = TrainingExperimentSummarizer()
 
-# from dmp.task.experiment.training_experiment.a_training_experiment import ATrainingExperiment
+# from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment

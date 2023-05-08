@@ -111,6 +111,10 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         return self.config.__contains__(key)
 
     def summary(self) -> str:
+        '''
+        Pretty-prints a description of this Layer graph.
+        '''
+
         graph_inputs = []
         output_map = {}
         

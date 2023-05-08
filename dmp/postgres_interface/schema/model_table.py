@@ -8,15 +8,15 @@ from dmp.postgres_interface.element.table import Table
 @dataclass(frozen=True)
 class ModelTable(Table):
     name: str = 'model'
-    experiment_id: Column = Column('experiment_id', 'uuid')
+    run_id: Column = Column('run_id', 'uuid')
     epoch: Column = Column('epoch', 'integer')
     model_number: Column = Column('model_number', 'integer')
     model_epoch: Column = Column('model_epoch', 'integer')
 
     @property
-    def values(self) -> AColumnGroup:
+    def columns(self) -> AColumnGroup:
         return ColumnGroup(
-            self.experiment_id,
+            self.run_id,
             self.model_number,
             self.model_epoch,
             self.epoch,

@@ -1,5 +1,6 @@
 import os
 from typing import Dict, List, Optional, Tuple
+from uuid import UUID
 
 import numpy
 import dmp.keras_interface.access_model_parameters as access_model_parameters
@@ -37,6 +38,7 @@ def save_model_data(
     model: ModelInfo,
     model_path: str,
 ):
+    # print(f'smd: {task}\n\n{model}\n\n{model_path}\n\n')
     '''
     + save file manifest
         + version [int 32]
@@ -113,11 +115,30 @@ def get_paths(
     )
 
 
+def load_model_from_file(
+    run_id: UUID,
+    model_number: int,
+    model_epoch: int,
+    model: ModelInfo,
+    load_mask: bool = True,
+    load_optimizer: bool = True,
+) -> None:
+    return load_model(
+        model,
+        get_path_for_model_savepoint(
+            run_id,
+            model_number,
+            model_epoch,
+        ),
+        load_mask=load_mask,
+        load_optimizer=load_optimizer,
+    )
+
 def load_model(
     model: ModelInfo,
     file,
-    load_mask:bool = True,
-    load_optimizer:bool = True,
+    load_mask: bool = True,
+    load_optimizer: bool = True,
 ):
     load_parameters(
         model.network.structure,
@@ -145,7 +166,7 @@ def load_parameters(
     layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     optimizer: Optional[keras.optimizers.Optimizer],
     file,
-    load_mask:bool = True,
+    load_mask: bool = True,
 ) -> None:
     parameters_table = parquet_util.read_parquet_table(file)
     columns = set(parameters_table.column_names)
@@ -247,3 +268,11 @@ def save_parameters(
         file,
         use_byte_stream_split,
     )
+
+
+def get_path_for_model_savepoint(
+    run_id: UUID,
+    model_number: int,
+    model_epoch: int,
+) -> str:
+    return os.path.join(str(run_id), f'{model_number}_{model_epoch}')

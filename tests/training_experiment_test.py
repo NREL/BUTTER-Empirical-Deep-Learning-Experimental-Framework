@@ -120,6 +120,7 @@ def test_simple():
             model=None,
             metrics=None,
         ),
+        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -182,6 +183,7 @@ def test_mnist():
             model=None,
             metrics=None,
         ),
+        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -247,6 +249,7 @@ def test_mnist_lenet():
             model=None,
             metrics=None,
         ),
+        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -315,6 +318,7 @@ def test_growth_experiment():
         initial_size=4,
         max_epochs_per_stage=300,
         max_equivalent_epoch_budget=1000,
+        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -404,6 +408,7 @@ def test_growth_experiment_mnist():
         # max_epochs_per_stage=1024 * 2,
         max_epochs_per_stage=1,
         max_equivalent_epoch_budget=2048,
+        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -494,6 +499,7 @@ def test_from_optimizer():
             model=None,
             metrics=None,
         ),
+        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -556,6 +562,7 @@ def test_imagenet16():
             model=None,
             metrics=None,
         ),
+        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -629,6 +636,7 @@ def test_pruning_experiment():
         pruning_trigger=None,
         max_pruning_epochs=5,
         rewind=True,
+        resume_from=None,
     )
 
     run_experiment(experiment)

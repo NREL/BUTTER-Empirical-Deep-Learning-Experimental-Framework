@@ -1,4 +1,5 @@
 import sys
+from jobqueue.connect import load_credentials
 
 from jobqueue.job import Job
 import numpy
@@ -24,6 +25,7 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
     ExperimentRecordSettings,
 )
+from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveMode
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
@@ -50,9 +52,11 @@ from dmp.marshaling import marshal
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
 strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
+credentials = load_credentials('dmp')
+schema = PostgresSchema(credentials)
 worker = Worker(
     None,
-    None,
+    schema,
     None,
     strategy,
     {},
@@ -133,6 +137,13 @@ def test_pruning_experiment():
             times=True,
             model=None,
             metrics=None,
+            model_saving=HybridSaveMode(
+                save_initial_model=True,
+                save_trained_model=True,
+                fixed_interval=1,
+                fixed_threshold=32,
+                exponential_rate=2,
+            ),
         ),
         num_pruning_iterations=4,
         pre_prune_epochs=2,
@@ -143,6 +154,7 @@ def test_pruning_experiment():
         pruning_trigger=None,
         max_pruning_epochs=5,
         rewind=True,
+        resume_from=None,
     )
 
     run_experiment(experiment)

@@ -5,6 +5,7 @@ from dmp.keras_interface.keras_utils import (
 )
 from dmp.common import marshal_type_key
 
+
 from lmarshal.src.marshal import Marshal
 from lmarshal.src.marshal_config import MarshalConfig
 
@@ -204,6 +205,9 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.model.network_info import NetworkInfo
 from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveMode
+from dmp.task.experiment.training_experiment.model_state_resume_config import (
+    ModelStateResumeConfig,
+)
 
 register_types(
     (
@@ -214,5 +218,6 @@ register_types(
         MLTask,
         NetworkInfo,
         HybridSaveMode,
+        ModelStateResumeConfig,
     )
 )

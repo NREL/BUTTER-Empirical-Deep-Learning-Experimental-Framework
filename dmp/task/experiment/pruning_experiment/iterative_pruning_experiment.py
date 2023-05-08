@@ -63,6 +63,7 @@ class IterativePruningExperiment(TrainingExperiment):
             # 2: Initialize pruning mask to m = 1d.
             network = self._make_network(self.model)
             model = self._make_model_from_network(network, metrics)
+            self._resume_model(model)
 
             # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
             num_free_parameters = model.network.num_free_parameters
@@ -72,6 +73,7 @@ class IterativePruningExperiment(TrainingExperiment):
                 job,
             )
             early_stopping = make_keras_instance(self.pre_pruning_trigger)
+
             self._fit_model(
                 worker,
                 job,

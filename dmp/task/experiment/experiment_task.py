@@ -1,4 +1,3 @@
-
 from abc import ABC
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
 from dataclasses import dataclass
@@ -9,6 +8,7 @@ ParameterValue = Union[None, bool, int, float, str]
 ParameterDict = Dict[str, 'Parameter']
 Parameter = Union[ParameterValue, ParameterDict]
 FlatParameterDict = Dict[str, ParameterValue]
+
 
 @dataclass
 class ExperimentTask(Task, ABC):
@@ -29,6 +29,7 @@ class ExperimentTask(Task, ABC):
 
     def extract_parameters(self) -> ParameterDict:
         from dmp.marshaling import marshal, flat_marshal_config
+
         separator = '_'
         marshaled = marshal.marshal(self, flat_marshal_config)
         parameters = {}
@@ -68,7 +69,7 @@ class ExperimentTask(Task, ABC):
         for k, v in target.items():
             for src_prefix, dst_prefix, rename in prefix_mapping:
                 if k.startswith(src_prefix):
-                    plan.append((k, v, dst_prefix + k[len(src_prefix):], rename))
+                    plan.append((k, v, dst_prefix + k[len(src_prefix) :], rename))
                     break
 
         for src_key, v, dst_key, rename in plan:
@@ -78,3 +79,13 @@ class ExperimentTask(Task, ABC):
         for src_key, v, dst_key, rename in plan:
             target[dst_key] = v
         return target
+
+    def summary(self) -> None:
+        '''
+        Pretty-prints a description of this Task.
+        '''
+
+        from dmp.marshaling import marshal
+        from pprint import pprint
+
+        pprint(marshal.marshal(self))
