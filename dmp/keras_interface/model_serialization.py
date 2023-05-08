@@ -123,16 +123,26 @@ def load_model_from_file(
     load_mask: bool = True,
     load_optimizer: bool = True,
 ) -> None:
-    return load_model(
-        model,
-        get_path_for_model_savepoint(
+    model_path = get_path_for_model_savepoint(
             run_id,
             model_number,
             model_epoch,
-        ),
-        load_mask=load_mask,
-        load_optimizer=load_optimizer,
-    )
+        )
+    (
+        absolute_path,
+        task_path,
+        network_path,
+        parameters_path,
+        optimizer_path,
+    ) = get_paths(model_path)
+
+    with open(optimizer_path, 'rb') as file:
+        return load_model(
+            model,
+            file,
+            load_mask=load_mask,
+            load_optimizer=load_optimizer,
+        )
 
 def load_model(
     model: ModelInfo,
@@ -182,15 +192,16 @@ def load_parameters(
     def visit_variable(layer, keras_layer, i, variable):
         nonlocal row_index
 
-        size = numpy.prod(variable.value().shape)
-        print(f'variable: {variable.name} {size} {variable.value().shape}')
+        shape = variable.value().shape
+        size = numpy.prod(shape)
+        print(f'variable: {variable.name} {size} {shape}')
         constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None
         if load_mask and constraint is not None:
             column = parameters_table['value']
             chunk = column[row_index : row_index + size]
             mask = numpy.logical_not(pyarrow.compute.is_null(chunk).to_numpy())
-            constraint.mask.assign(mask.reshape(constraint.mask.value().shape))
+            constraint.mask.assign(mask.reshape(shape))
 
         def load_value(column, variable):
             column = parameters_table[column]
@@ -199,7 +210,7 @@ def load_parameters(
             prepared = chunk.to_numpy()
             if mask is not None:
                 prepared = numpy.where(mask, prepared, 0)
-            prepared = prepared.reshape(variable.value().shape)
+            prepared = prepared.reshape(shape)
             variable.assign(prepared)
 
         load_value('value', variable)

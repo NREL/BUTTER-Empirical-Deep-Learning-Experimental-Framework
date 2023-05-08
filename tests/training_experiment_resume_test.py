@@ -170,6 +170,8 @@ def test_mnist_lenet():
     job_id = uuid.uuid4()
     run_experiment(experiment, job_id=job_id)
 
+def test_resume():
+    job_id = uuid.UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3')
     resume_experiment = experiment = TrainingExperiment(
         seed=0,
         batch='test',
@@ -264,4 +266,5 @@ def test_mnist_lenet():
 
 
 if __name__ == '__main__':
-    test_mnist_lenet()
+    # test_mnist_lenet()
+    test_resume()
