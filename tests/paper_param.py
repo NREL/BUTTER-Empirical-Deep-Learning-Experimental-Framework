@@ -1,4 +1,4 @@
-
+import numpy as np
 
 LMCRN20 = {
         # https://github.com/facebookresearch/open_lth/blob/main/models/cifar_resnet.py
@@ -39,8 +39,8 @@ LMCRN20 = {
             "momentum": .03,
             "learning_rate": {
                 "class": "PiecewiseConstantDecay",
-                "boundaries": [32e3, 48e3],
-                "values": [.03, .003, .0003]
+                "boundaries": np.concatenate( (np.linspace(1, 32e3, num=int(32e3-1)), np.array( [32e3, 48e3]       )  )),
+                "values":     np.concatenate( ( np.linspace(0,   .03, num=int(32e3))  , np.array( [.03  , .003, .0003] )  ))
             },
             "warmup": 30e3,
             "prune_Density": .086,
@@ -87,8 +87,8 @@ LMCVGG = {
                  "momentum": .1,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 
-                        "boundaries": [32e3, 48e3],
-                        "values": [.1, .01, .001]
+                        "boundaries": np.concatenate( (np.linspace(1, 32e3, num=int(32e3)), np.array( [32e3, 48e3]       )  )),
+                        "values":     np.concatenate( (np.linspace(0,   .03, num=int(32e3))  , np.array( [.1  , .01, .001] )  ))
                  },
                  "warmup": 30e3,
                  "prune_Density": .015,
