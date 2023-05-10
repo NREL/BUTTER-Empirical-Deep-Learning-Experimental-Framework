@@ -50,6 +50,7 @@ from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
 from pprint import pprint
+from paper_param import get_paper_param
 
 from dmp.marshaling import marshal
 
@@ -63,7 +64,7 @@ worker = Worker(
     strategy,
     {},
 )  # type: ignore
-
+params = get_paper_param("Linear_Mode_Connectivity", "VGG16", "Standard")
 
 def run_experiment(experiment):
     results = experiment(worker, Job())
@@ -134,17 +135,13 @@ def test_vgg16():
             )
         ),
         fit={
-            'batch_size': 256,
-            'epochs': 1,
+            'batch_size': params['batch'],
+            'epochs': params['batch']*params['train_Step']//60000, # 60000 is the number of training images in CIFAR10
         },
         optimizer={
-            'class': 'SGD',
-            'learning_rate': {
-                'class': 'PiecewiseConstantDecay',
-                'boundaries': [32e3, 48e3],
-                'values': [0.1, 0.01, 0.001],
-            },
-            'momentum': 0.9,
+            'class': params['optimizer'],
+            'momentum': params['momentum'],
+            'learning_rate': params['learning_rate']
         },
         loss=None,
         early_stopping=make_keras_kwcfg(
