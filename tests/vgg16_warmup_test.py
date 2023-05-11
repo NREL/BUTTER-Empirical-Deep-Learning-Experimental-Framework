@@ -135,8 +135,8 @@ def test_vgg16():
             )
         ),
         fit={
-            'batch_size': params['batch'],
-            'epochs': params['batch']*params['train_Step']//60000, # 60000 is the number of training images in CIFAR10
+            'batch_size': int(params['batch']),
+            'epochs': int(params['batch']*params['train_Step']//60000), # 60000 is the number of training images in CIFAR10
         },
         optimizer={
             'class': params['optimizer'],
