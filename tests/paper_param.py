@@ -5,7 +5,7 @@ LMCRN20 = {
         "Standard": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
-                 "batch_size": 128,
+                 "batch": 128,
                  "momentum": .1,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 
@@ -20,7 +20,7 @@ LMCRN20 = {
         "Low": {
             "data": "CIFAR10",
             "train_Step": 63e3,
-            "batch_size": 128,
+            "batch": 128,
             "momentum": .01,
             "learning_rate": {
                 "class": "PiecewiseConstantDecay",
@@ -35,13 +35,14 @@ LMCRN20 = {
         "Warmup": {
             "data": "CIFAR10",
             "train_Step": 63e3,
-            "batch_size": 128,
+            "batch": 128,
             "momentum": .03,
             "learning_rate": {
-                "class": "PiecewiseConstantDecay",
-                "boundaries": np.concatenate( (np.linspace(1, 32e3, num=int(32e3-1)), np.array( [32e3, 48e3]       )  )),
-                "values":     np.concatenate( ( np.linspace(0,   .03, num=int(32e3))  , np.array( [.03  , .003, .0003] )  ))
-            },
+                    # https://github.com/facebookresearch/open_lth/blob/2ce732fe48abd5a80c10a153c45d397b048e980c/training/optimizers.py#L48
+                    "class": "PiecewiseConstantDecay",
+                    "boundaries": list(np.concatenate((np.linspace(1, 32e3, num=int(32e3-1)), np.array([32e3, 48e3])))),
+                    "values": list(np.concatenate((np.linspace(0, .03, num=int(32e3-1)), np.array([.03, .003, .0003]))))
+                },
             "warmup": 30e3,
             "prune_Density": .086,
             "optimizer": "SGD"
@@ -53,7 +54,7 @@ LMCVGG = {
         "Standard": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
-                 "batch_size": 128,
+                 "batch": 128,
                  "momentum": .1,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 
@@ -68,7 +69,7 @@ LMCVGG = {
         "Low": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
-                 "batch_size": 128,
+                 "batch": 128,
                  "momentum": .01,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 
@@ -83,12 +84,13 @@ LMCVGG = {
         "Warmup": {
                  "data": "CIFAR10",
                  "train_Step": 63e3,
-                 "batch_size": 128,
+                 "batch": 128,
                  "momentum": .1,
                  "learning_rate": {
                         "class": "PiecewiseConstantDecay", 
-                        "boundaries": np.concatenate( (np.linspace(1, 32e3, num=int(32e3)), np.array( [32e3, 48e3]       )  )),
-                        "values":     np.concatenate( (np.linspace(0,   .03, num=int(32e3))  , np.array( [.1  , .01, .001] )  ))
+                        # https://github.com/facebookresearch/open_lth/blob/2ce732fe48abd5a80c10a153c45d397b048e980c/training/optimizers.py#L48
+                        "boundaries": np.concatenate( (np.linspace(1, 32e3, num=int(32e3-1)), np.array( [32e3, 48e3]       )  )).tolist(),
+                        "values":     np.concatenate( (np.linspace(0,   .03, num=int(32e3-1))  , np.array( [.1  , .01, .001] )  )).tolist()
                  },
                  "warmup": 30e3,
                  "prune_Density": .015,
