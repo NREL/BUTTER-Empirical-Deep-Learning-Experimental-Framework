@@ -1,22 +1,30 @@
+from dataclasses import dataclass
 import sys
+from typing import List, Union
 
 from jobqueue.job import Job
 import numpy
 import pandas
 from tensorflow.python.framework.ops import re
+from dmp.layer.add import Add
 from dmp.layer.avg_pool import AvgPool
-from dmp.layer.dense_conv import DenseConv, conv_3x3
+from dmp.layer.dense_conv import DenseConv
 
 # from dmp import jobqueue_interface
 from dmp.layer.flatten import Flatten
+from dmp.layer.global_average_pooling import GlobalAveragePooling
+from dmp.layer.identity import Identity
+from dmp.layer.layer import Layer, LayerConfig, LayerFactory
 from dmp.layer.max_pool import MaxPool
+from dmp.layer.op_layer import OpLayer
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.model.layer_factory_model import LayerFactoryModel
-from dmp.structure.batch_norm_block import BatchNormBlock
+from dmp.structure.res_net_block import ResNetBlock
 from dmp.structure.sequential_model import SequentialModel
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.structure.batch_norm_block import BatchNormBlock
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
 )
@@ -50,11 +58,11 @@ from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
 from pprint import pprint
-
+from paper_param import get_paper_param
 from dmp.marshaling import marshal
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-# strategy = dmp.jobqueue_interface.worker.make_strategy(6, None, None)
+# strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
 strategy = tensorflow.distribute.get_strategy()
 worker = Worker(
     None,
@@ -63,6 +71,7 @@ worker = Worker(
     strategy,
     {},
 )  # type: ignore
+param = get_paper_param("Linear_Mode_Connectivity", "RESNET", "Low")
 
 
 def run_experiment(experiment):
@@ -77,17 +86,57 @@ def run_experiment(experiment):
     return results
 
 
-def test_vgg16():
-    conv_config = {
-        'padding': 'same',
-        'use_bias': True,
-    }
+def test_resenet20():
+    # ResNet Paper: https://arxiv.org/pdf/1512.03385.pdf
+    # One imperfect implementation: https://github.com/Eric-mingjie/rethinking-network-pruning/blob/2ac473d70a09810df888e932bb394f225f9ed2d1/cifar/lottery-ticket/l1-norm-pruning/models/resnet.py#L20
+    # Another not-quite-right implementation: https://github.com/LuigiRussoDev/ResNets/blob/master/resnet20.py
+    # Helpful reference: https://towardsdatascience.com/understanding-and-visualizing-resnets-442284831be8
+    # Helpful but incomplete diagram: https://www.researchgate.net/figure/ResNet-20-architecture_fig3_351046093
+
+    # cells_per_stack = 3
+    # depth = cells_per_stack * 3 + 2
+    # def make_downsample(input):
+    #     return AvgPool.make(
+    #         [2, 2],
+    #         [2, 2],
+    #         {'padding': 'same'},
+    #         input,
+    #     )
+
+    model = LayerFactoryModel(
+        layer_factory=SequentialModel(
+            [
+                BatchNormBlock(DenseConv.make(
+                    16,
+                    [7, 7],
+                    [2, 2],
+                    {
+                        'padding': 'same',
+                        'use_bias': False,
+                    },
+                )),
+                ResNetBlock(16, 1),
+                ResNetBlock(16, 1),
+                ResNetBlock(16, 1),
+                ResNetBlock(32, 2),
+                ResNetBlock(32, 1),
+                ResNetBlock(32, 1),
+                ResNetBlock(64, 2),
+                ResNetBlock(64, 1),
+                ResNetBlock(64, 1),
+                GlobalAveragePooling(),
+                Flatten(),
+            ]
+        )
+    )
+
     experiment = TrainingExperiment(
         seed=0,
         batch='test',
         tags={
-            'model_family': 'vgg',
-            'model_name': 'vgg16',
+            'model_family': 'resnet',
+            'model_name': f'resnet20',
+            'resnet_depth': 20,
         },
         run_tags={
             'test': True,
@@ -103,49 +152,12 @@ def test_vgg16():
             0.05,
             0.0,
         ),
-        # RETHINKING THE VALUE OF NETWORK PRUNING: https://arxiv.org/pdf/1810.05270.pdf
-        # reference implementation: https://github.com/Eric-mingjie/rethinking-network-pruning/blob/master/cifar/lottery-ticket/l1-norm-pruning/models/vgg.py
-        # Original VGG: https://arxiv.org/pdf/1409.1556.pdf
-        model=LayerFactoryModel(
-            layer_factory=SequentialModel(
-                [
-                    BatchNormBlock(DenseConv.make(64, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(64, [3, 3], [1, 1], conv_config)),
-                    MaxPool.make([2, 2], [2, 2]),
-                    BatchNormBlock(DenseConv.make(128, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(128, [3, 3], [1, 1], conv_config)),
-                    MaxPool.make([2, 2], [2, 2]),
-                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
-                    MaxPool.make([2, 2], [2, 2]),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    MaxPool.make([2, 2], [2, 2]),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    AvgPool.make([2, 2], [2, 2]),  # MaxPool in original paper
-                    Flatten(),
-                    # Dense.make(512),
-                    # Dense.make(512),
-                ]
-            )
-        ),
+        model=model,
         fit={
-            'batch_size': 256,
-            'epochs': 1,
+            'batch_size': param['batch'],
+            'epochs': int(param['batch']*param['train_Step']//60000), # 60000 is the number of training images in CIFAR10
         },
-        optimizer={
-            'class': 'SGD',
-            'learning_rate': {
-                'class': 'PiecewiseConstantDecay',
-                'boundaries': [32e3, 48e3],
-                'values': [0.1, 0.01, 0.001],
-            },
-            'momentum': 0.9,
-        },
+        optimizer={'class': param['optimizer'], 'learning_rate': param['learning_rate']},
         loss=None,
         early_stopping=make_keras_kwcfg(
             'EarlyStopping',
@@ -166,4 +178,4 @@ def test_vgg16():
 
 
 if __name__ == '__main__':
-    test_vgg16()
+    test_resenet20()
