@@ -117,6 +117,7 @@ if __name__ == "__main__":
             'cpus': cpus,
             'gpus': gpus,
             'num_cpus': len(cpus),
+            'num_gpus' : len(gpus),
             'num_nodes': len(nodes),
             'gpu_memory': gpu_memory,
             'tensorflow_strategy': str(type(strategy)),

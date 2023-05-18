@@ -53,9 +53,21 @@ Chain goes:
     + Regular training run
         + savepoints at possible restart points, and then along the training trajectory
         + for each (early?) savepoint:
-            + for [.8^(2) = .64 (36%), .8 (20%), (.8^.5)~=.894 (10.6%)] pruning per IMP iteration to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
+            + for [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
                 + do IMP with savepoints at end of each training cycle (before pruning), maybe along the way too
                 + same as above, but with a different data order
+
++ save file custom paths
+    + edit DB
+    + edit table class
+    + edit save procedure
+    + add configuration to SaveMode
+    + add support to experiments
+        + {experiment group}/{model}/{stage (full network, IMP_pct_0, IMP_pct_1)}/{model number}/{root run id}/{model epochs}/{run id}
++ LTH chain experiment
+    + implement structure
+    + implement ID passing / parent / base ID
+    + 
 '''
 
 @dataclass
