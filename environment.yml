@@ -10,6 +10,7 @@ dependencies:
 - simplejson
 - libpq
 - bzip2
+- lz4
 - pip:
   - pyarrow >= 10
   - psycopg[binary] >= 3

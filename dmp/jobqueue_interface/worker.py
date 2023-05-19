@@ -11,16 +11,20 @@ from dmp.worker import Worker
 import tensorflow
 
 
-
 # from .common import jobqueue_marshal
 
 
 def make_strategy(num_cores, gpus, gpu_mem):
+    if num_cores is None and gpus is None and gpu_mem is None:
+        return tensorflow.distribute.get_strategy()
+
     if num_cores is None:
         import multiprocessing
         num_cores = max(1, multiprocessing.cpu_count()-1)
+
     if gpus is None:
         gpus = []
+
     if gpu_mem is None:
         gpu_mem = 4096
 
@@ -35,10 +39,10 @@ def make_strategy(num_cores, gpus, gpu_mem):
         number = int(gpu.name.split(':')[-1])
         if number in gpu_set:
             gpu_devices.append(gpu)
-            
+
             # tensorflow.config.experimental.set_virtual_device_configuration(
             #     gpu, [
-                   
+
             #         tensorflow.config.experimental.VirtualDeviceConfiguration(
             #             memory_limit=gpu_mem)
             #     ])
@@ -71,15 +75,14 @@ def make_strategy(num_cores, gpus, gpu_mem):
 if __name__ == "__main__":
     a = sys.argv
     print(a)
-    
-    
 
     database = a[1]
     queue_id = int(a[2])
 
     nodes = [int(e) for e in a[3].split(',')]
     cpus = [int(e) for e in a[4].split(',')]
-    gpus = [int(e) for e in a[5].split(',')] if len(a[5]) > 0 and a[5] != '-' else []
+    gpus = [int(e) for e in a[5].split(',')] if len(
+        a[5]) > 0 and a[5] != '-' else []
     gpu_memory = int(a[6]) if len(a[6]) > 0 else 0
 
     tensorflow.keras.backend.set_floatx('float32')
@@ -117,7 +120,7 @@ if __name__ == "__main__":
             'cpus': cpus,
             'gpus': gpus,
             'num_cpus': len(cpus),
-            'num_gpus' : len(gpus),
+            'num_gpus': len(gpus),
             'num_nodes': len(nodes),
             'gpu_memory': gpu_memory,
             'tensorflow_strategy': str(type(strategy)),

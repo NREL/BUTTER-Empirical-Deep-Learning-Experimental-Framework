@@ -116,7 +116,7 @@ def make_validation_split(spec: DatasetSpec, dataset: Dataset) -> None:
                 dataset.train.inputs,
                 dataset.train.outputs,
                 test_size=(validation_split/(1.0-spec.test_split)),
-                shuffle=True,
+                shuffle=False,
             )
     dataset.train = DatasetGroup(train_inputs, train_outputs)
     dataset.validation = DatasetGroup(validation_inputs, validation_outputs)

@@ -1,5 +1,6 @@
 import sys
 import uuid
+from jobqueue.connect import load_credentials
 
 from jobqueue.job import Job
 import numpy
@@ -58,15 +59,25 @@ from pprint import pprint
 
 from dmp.marshaling import marshal
 
-# strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
+credentials = load_credentials('dmp')
+schema = PostgresSchema(credentials)
 strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
 worker = Worker(
     None,
-    None,
+    schema,
     None,
     strategy,
     {},
 )  # type: ignore
+
+# 
+# worker = Worker(
+#     None,
+#     None,
+#     None,
+#     strategy,
+#     {},
+# )  # type: ignore
 
 
 def run_experiment(experiment, job_id=None):
@@ -88,7 +99,7 @@ def run_experiment(experiment, job_id=None):
 
 def test_mnist_lenet():
     experiment = TrainingExperiment(
-        seed=0,
+        seed=100,
         batch='test',
         tags={
             'model_family': 'lenet',
@@ -117,6 +128,7 @@ def test_mnist_lenet():
                             'padding': 'same',
                             'use_bias': True,
                             'activation': 'sigmoid',
+                            'kernel_constraint': make_keras_kwcfg('ParameterMask'),
                         },
                     ),
                     AvgPool.make([2, 2], [2, 2]),
@@ -127,6 +139,7 @@ def test_mnist_lenet():
                         {
                             'padding': 'valid',
                             'use_bias': True,
+                            'kernel_constraint': make_keras_kwcfg('ParameterMask'),
                         },
                     ),
                     AvgPool.make([2, 2], [2, 2]),
@@ -139,8 +152,8 @@ def test_mnist_lenet():
             )
         ),
         fit={
-            'batch_size': 16,
-            'epochs': 3,
+            'batch_size': 32,
+            'epochs': 1,
         },
         optimizer={'class': 'Adam', 'learning_rate': 0.0001},
         loss=None,
@@ -157,23 +170,26 @@ def test_mnist_lenet():
             model=None,
             metrics=None,
             model_saving=HybridSaveMode(
-                save_initial_model=True,
-                save_trained_model=True,
-                fixed_interval=1,
-                fixed_threshold=32,
-                exponential_rate=2,
+                save_initial_model=False,
+                save_trained_model=False,
+                save_model_epochs=[],
+                save_epochs=[1],
+                fixed_interval=0,
+                fixed_threshold=0,
+                exponential_rate=0,
+                
             ),
         ),
         resume_from=None,
     )
 
-    job_id = uuid.uuid4()
+    job_id = uuid.UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3')
     run_experiment(experiment, job_id=job_id)
 
 def test_resume():
     job_id = uuid.UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3')
     resume_experiment = experiment = TrainingExperiment(
-        seed=0,
+        seed=100,
         batch='test',
         tags={
             'model_family': 'lenet',
@@ -201,6 +217,7 @@ def test_resume():
                         {
                             'padding': 'same',
                             'use_bias': True,
+                            'activation': 'sigmoid',
                             'kernel_constraint': make_keras_kwcfg('ParameterMask'),
                         },
                     ),
@@ -219,16 +236,14 @@ def test_resume():
                     FullyConnectedNetwork(
                         widths=[120, 84],
                         flatten_input=True,
-                        inner=Dense.make(-1, {
-                            'kernel_constraint': make_keras_kwcfg('ParameterMask'),
-                        }),
+                        inner=Dense.make(-1, {}),
                     ),
                 ]
             )
         ),
         fit={
-            'batch_size': 16,
-            'epochs': 2,
+            'batch_size': 32,
+            'epochs': 10,
         },
         optimizer={'class': 'Adam', 'learning_rate': 0.0001},
         loss=None,
@@ -247,14 +262,17 @@ def test_resume():
             model_saving=HybridSaveMode(
                 save_initial_model=True,
                 save_trained_model=True,
-                fixed_interval=1,
-                fixed_threshold=32,
-                exponential_rate=2,
+                save_model_epochs=[],
+                save_epochs=[],
+                fixed_interval=0,
+                fixed_threshold=0,
+                exponential_rate=0,
+                
             ),
         ),
         resume_from=ModelStateResumeConfig(
             run_id=job_id,
-            epoch=1,
+            epoch=5,
             model_number=0,
             model_epoch=1,
             load_mask=True,
@@ -266,5 +284,5 @@ def test_resume():
 
 
 if __name__ == '__main__':
-    # test_mnist_lenet()
+    test_mnist_lenet()
     test_resume()

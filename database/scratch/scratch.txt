@@ -1,0 +1,722 @@
+2023-05-19 16:43:40.742660: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE4.1 SSE4.2 AVX AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+/home/ctripp/dmp/env0/lib/python3.10/site-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.16.5 and <1.23.0 is required for this version of SciPy (detected version 1.23.5
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+/home/ctripp/dmp/env0/lib/python3.10/site-packages/sklearn/preprocessing/_encoders.py:828: FutureWarning: `sparse` was renamed to `sparse_output` in version 1.2 and will be removed in 1.4. `sparse_output` is ignored unless you leave `sparse` to its default value.
+  warnings.warn(
+/home/ctripp/dmp/env0/lib/python3.10/site-packages/sklearn/preprocessing/_encoders.py:828: FutureWarning: `sparse` was renamed to `sparse_output` in version 1.2 and will be removed in 1.4. `sparse_output` is ignored unless you leave `sparse` to its default value.
+  warnings.warn(
+2023-05-19 16:43:44.574744: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:44.585438: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:44.585512: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:44.585711: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE4.1 SSE4.2 AVX AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2023-05-19 16:43:44.587761: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:44.587821: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:44.587852: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:45.130032: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:45.130123: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:45.130140: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1700] Could not identify NUMA node of platform GPU id 0, defaulting to 0.  Your kernel may not have been built with NUMA support.
+2023-05-19 16:43:45.130175: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:967] could not open file to read NUMA node: /sys/bus/pci/devices/0000:01:00.0/numa_node
+Your kernel may have been built without NUMA support.
+2023-05-19 16:43:45.130207: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1613] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 13603 MB memory:  -> device: 0, name: NVIDIA RTX A4500 Laptop GPU, pci bus id: 0000:01:00.0, compute capability: 8.6
+0: [] -> (<class 'dmp.layer.input.Input'>: 0, [28, 28, 1], ) -> [1]
+1: [0] -> (<class 'dmp.layer.dense_conv.DenseConv'>: 156, (28, 28, 6), 5x5, s: 1x1, sigmoid) -> [2]
+2: [1] -> (<class 'dmp.layer.avg_pool.AvgPool'>: 0, (14, 14, 6), s: 2x2) -> [3]
+3: [2] -> (<class 'dmp.layer.dense_conv.DenseConv'>: 906, (10, 10, 6), 5x5, s: 1x1, relu) -> [4]
+4: [3] -> (<class 'dmp.layer.avg_pool.AvgPool'>: 0, (5, 5, 6), s: 2x2) -> [5]
+5: [4] -> (<class 'dmp.layer.flatten.Flatten'>: 0, (150,), ) -> [6]
+6: [5] -> (<class 'dmp.layer.dense.Dense'>: 18120, (120,), x120, relu) -> [7]
+7: [6] -> (<class 'dmp.layer.dense.Dense'>: 10164, (84,), x84, relu) -> [8]
+8: [7] -> (<class 'dmp.layer.dense.Dense'>: 850, (10,), x10, softmax) -> []
+0: [] -> (<class 'dmp.layer.input.Input'>: 0, [28, 28, 1], "dmp_8") -> [1]
+1: [0] -> (<class 'dmp.layer.dense_conv.DenseConv'>: 156, (28, 28, 6), 5x5, s: 1x1, sigmoid, "dmp_7") -> [2]
+2: [1] -> (<class 'dmp.layer.avg_pool.AvgPool'>: 0, (14, 14, 6), s: 2x2, "dmp_6") -> [3]
+3: [2] -> (<class 'dmp.layer.dense_conv.DenseConv'>: 906, (10, 10, 6), 5x5, s: 1x1, relu, "dmp_5") -> [4]
+4: [3] -> (<class 'dmp.layer.avg_pool.AvgPool'>: 0, (5, 5, 6), s: 2x2, "dmp_4") -> [5]
+5: [4] -> (<class 'dmp.layer.flatten.Flatten'>: 0, (150,), "dmp_3") -> [6]
+6: [5] -> (<class 'dmp.layer.dense.Dense'>: 18120, (120,), x120, relu, "dmp_2") -> [7]
+7: [6] -> (<class 'dmp.layer.dense.Dense'>: 10164, (84,), x84, relu, "dmp_1") -> [8]
+8: [7] -> (<class 'dmp.layer.dense.Dense'>: 850, (10,), x10, softmax, "dmp_0") -> []
+Model: "model"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ dmp_8 (InputLayer)          [(None, 28, 28, 1)]       0         
+                                                                 
+ dmp_7 (Conv2D)              (None, 28, 28, 6)         156       
+                                                                 
+ dmp_6 (AveragePooling2D)    (None, 14, 14, 6)         0         
+                                                                 
+ dmp_5 (Conv2D)              (None, 10, 10, 6)         906       
+                                                                 
+ dmp_4 (AveragePooling2D)    (None, 5, 5, 6)           0         
+                                                                 
+ dmp_3 (Flatten)             (None, 150)               0         
+                                                                 
+ dmp_2 (Dense)               (None, 120)               18120     
+                                                                 
+ dmp_1 (Dense)               (None, 84)                10164     
+                                                                 
+ dmp_0 (Dense)               (None, 10)                850       
+                                                                 
+=================================================================
+Total params: 30,196
+Trainable params: 30,196
+Non-trainable params: 0
+_________________________________________________________________
+2023-05-19 16:43:45.948067: I tensorflow/compiler/xla/service/service.cc:173] XLA service 0x557d6b970280 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2023-05-19 16:43:45.948104: I tensorflow/compiler/xla/service/service.cc:181]   StreamExecutor device (0): NVIDIA RTX A4500 Laptop GPU, Compute Capability 8.6
+2023-05-19 16:43:45.956130: I tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.cc:268] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+2023-05-19 16:43:46.678703: I tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:428] Loaded cuDNN version 8800
+2023-05-19 16:43:47.208105: I tensorflow/tsl/platform/default/subprocess.cc:304] Start cannot spawn child process: No such file or directory
+2023-05-19 16:43:47.563346: I tensorflow/compiler/jit/xla_compilation_cache.cc:477] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+2023-05-19 16:43:47.564594: I tensorflow/compiler/xla/stream_executor/cuda/cuda_blas.cc:630] TensorFloat-32 will be used for the matrix multiplication. This will only be logged once.
+ON TRAIN BEGIN ZERO EPOCH
+2023-05-19 16:43:52.101352: I tensorflow/compiler/xla/stream_executor/gpu/asm_compiler.cc:325] ptxas warning : Registers are spilled to local memory in function 'fusion_71', 256 bytes spill stores, 48 bytes spill loads
+
+2023-05-19 16:43:54.910169: I tensorflow/compiler/xla/stream_executor/gpu/asm_compiler.cc:325] ptxas warning : Registers are spilled to local memory in function 'fusion_69', 256 bytes spill stores, 48 bytes spill loads
+
+Writing task to /home/ctripp/dmp/dmp/model_data/355d6326-aaf4-4d11-bfbe-d7ae667298f3/0_5/task.json...
+Writing network to /home/ctripp/dmp/dmp/model_data/355d6326-aaf4-4d11-bfbe-d7ae667298f3/0_5/network.json...
+Writing parameters to <_io.BufferedWriter name='/home/ctripp/dmp/dmp/model_data/355d6326-aaf4-4d11-bfbe-d7ae667298f3/0_5/parameters.pq'>...
+Saving model with optimizer type: <class 'NoneType'> with members [].
+saving variable: dmp_0/kernel:0 840 (84, 10)
+value, 0, 0, 840, (84, 10), values: [-0.03856584  0.16405946  0.21868217  0.08038821]
+saving variable: dmp_0/bias:0 10 (10,)
+value, 840, 1, 10, (10,), values: [-0.00542115  0.01096788 -0.00656675  0.01081566]
+saving variable: dmp_1/kernel:0 10080 (120, 84)
+value, 850, 2, 10080, (120, 84), values: [ 0.17248197  0.1787735   0.17812498 -0.02671152]
+saving variable: dmp_1/bias:0 84 (84,)
+value, 10930, 3, 84, (84,), values: [ 0.01754155  0.01446657  0.0019027  -0.00288094]
+saving variable: dmp_2/kernel:0 18000 (150, 120)
+value, 11014, 4, 18000, (150, 120), values: [-0.11232243  0.16211125 -0.24862099 -0.08551171]
+saving variable: dmp_2/bias:0 120 (120,)
+value, 29014, 5, 120, (120,), values: [ 0.00458056 -0.00639667 -0.00250198  0.00705897]
+saving variable: dmp_5/kernel:0 900 (5, 5, 6, 6)
+value, 29134, 6, 900, (5, 5, 6, 6), values: [-0.15797117  0.04643466 -0.05771144 -0.17611308]
+saving variable: dmp_5/bias:0 6 (6,)
+value, 30034, 7, 6, (6,), values: [0.00391267 0.021501   0.00560105 0.        ]
+saving variable: dmp_7/kernel:0 150 (5, 5, 1, 6)
+value, 30040, 8, 150, (5, 5, 1, 6), values: [ 0.25800103 -0.05735525  0.36670053 -0.6495288 ]
+saving variable: dmp_7/bias:0 6 (6,)
+value, 30190, 9, 6, (6,), values: [-0.05294787  0.06165721 -0.08145129  0.02547462]
+first values: [
+  [
+    -0.038565837,
+    0.16405946,
+    0.21868217,
+    0.08038821
+  ]
+]
+Writing model state to /home/ctripp/dmp/dmp/model_data/355d6326-aaf4-4d11-bfbe-d7ae667298f3/0_5/optimizer.pq...
+Saving model with optimizer type: <class 'keras.optimizers.optimizer_experimental.adam.Adam'> with members ['_momentums', '_velocities'].
+saving variable: dmp_0/kernel:0 840 (84, 10)
+value, 0, 0, 840, (84, 10), values: [-0.03856584  0.16405946  0.21868217  0.08038821]
+_momentums, 0, 0, 840, (84, 10), values: [-0.00345441 -0.0017144  -0.00725402  0.00863442]
+_velocities, 0, 0, 840, (84, 10), values: [0.00253901 0.00414215 0.00875042 0.00975986]
+saving variable: dmp_0/bias:0 10 (10,)
+value, 840, 1, 10, (10,), values: [-0.00542115  0.01096788 -0.00656675  0.01081566]
+_momentums, 840, 1, 10, (10,), values: [-0.00289675  0.00031955 -0.00101561  0.00378487]
+_velocities, 840, 1, 10, (10,), values: [0.00019193 0.00022161 0.00044436 0.00054817]
+saving variable: dmp_1/kernel:0 10080 (120, 84)
+value, 850, 2, 10080, (120, 84), values: [ 0.17248197  0.1787735   0.17812498 -0.02671152]
+_momentums, 850, 2, 10080, (120, 84), values: [ 0.0039542   0.00400034  0.00823069 -0.00622783]
+_velocities, 850, 2, 10080, (120, 84), values: [0.00083486 0.00011262 0.00086315 0.0003824 ]
+saving variable: dmp_1/bias:0 84 (84,)
+value, 10930, 3, 84, (84,), values: [ 0.01754155  0.01446657  0.0019027  -0.00288094]
+_momentums, 10930, 3, 84, (84,), values: [ 0.00247495  0.00191891  0.00365715 -0.00250788]
+_velocities, 10930, 3, 84, (84,), values: [1.2465045e-04 1.6264776e-05 1.3505273e-04 6.1567058e-05]
+saving variable: dmp_2/kernel:0 18000 (150, 120)
+value, 11014, 4, 18000, (150, 120), values: [-0.11232243  0.16211125 -0.24862099 -0.08551171]
+_momentums, 11014, 4, 18000, (150, 120), values: [-3.9120816e-05 -2.1767405e-04  6.1740610e-04 -2.2282881e-04]
+_velocities, 11014, 4, 18000, (150, 120), values: [6.8778595e-06 2.1920705e-06 5.5134587e-06 1.7436852e-06]
+saving variable: dmp_2/bias:0 120 (120,)
+value, 29014, 5, 120, (120,), values: [ 0.00458056 -0.00639667 -0.00250198  0.00705897]
+_momentums, 29014, 5, 120, (120,), values: [ 0.00153001 -0.00134649 -0.00090234 -0.00131413]
+_velocities, 29014, 5, 120, (120,), values: [2.0277884e-04 1.3110921e-04 4.2297147e-04 8.8526271e-05]
+saving variable: dmp_5/kernel:0 900 (5, 5, 6, 6)
+value, 29134, 6, 900, (5, 5, 6, 6), values: [-0.15797117  0.04643466 -0.05771144 -0.17611308]
+_momentums, 29134, 6, 900, (5, 5, 6, 6), values: [ 0.02229828 -0.01445203  0.00867894  0.        ]
+_velocities, 29134, 6, 900, (5, 5, 6, 6), values: [0.0066705  0.00196986 0.0023715  0.        ]
+saving variable: dmp_5/bias:0 6 (6,)
+value, 30034, 7, 6, (6,), values: [0.00391267 0.021501   0.00560105 0.        ]
+_momentums, 30034, 7, 6, (6,), values: [ 0.04356592 -0.03020719  0.01660075  0.        ]
+_velocities, 30034, 7, 6, (6,), values: [0.0229466  0.00733555 0.00910431 0.        ]
+saving variable: dmp_7/kernel:0 150 (5, 5, 1, 6)
+value, 30040, 8, 150, (5, 5, 1, 6), values: [ 0.25800103 -0.05735525  0.36670053 -0.6495288 ]
+_momentums, 30040, 8, 150, (5, 5, 1, 6), values: [-0.00207065  0.00038401 -0.00286582  0.0011961 ]
+_velocities, 30040, 8, 150, (5, 5, 1, 6), values: [1.7574684e-04 3.0438093e-04 9.1653725e-05 8.8409819e-05]
+saving variable: dmp_7/bias:0 6 (6,)
+value, 30190, 9, 6, (6,), values: [-0.05294787  0.06165721 -0.08145129  0.02547462]
+_momentums, 30190, 9, 6, (6,), values: [-0.00758829 -0.04220109  0.0237784  -0.01575083]
+_velocities, 30190, 9, 6, (6,), values: [0.00135843 0.01546606 0.00507316 0.00228235]
+first values: [
+  [
+    -0.038565837,
+    0.16405946,
+    0.21868217,
+    0.08038821
+  ]
+]
+Composed([SQL('\nINSERT INTO '), Identifier('model'), SQL(' ( '), Composed([Identifier('run_id'), SQL(','), Identifier('model_number'), SQL(','), Identifier('model_epoch'), SQL(','), Identifier('epoch')]), SQL(' ) \n    SELECT\n        '), Composed([Composed([Identifier('run_id'), SQL('::'), SQL('uuid')]), SQL(','), Composed([Identifier('model_number'), SQL('::'), SQL('integer')]), SQL(','), Composed([Identifier('model_epoch'), SQL('::'), SQL('integer')]), SQL(','), Composed([Identifier('epoch'), SQL('::'), SQL('integer')])]), SQL('\n    FROM\n        ( VALUES ('), Composed([SQL('%b'), SQL(','), SQL('%b'), SQL(','), SQL('%b'), SQL(','), SQL('%b')]), SQL(') ) AS V ('), Composed([Identifier('run_id'), SQL(','), Identifier('model_number'), SQL(','), Identifier('model_epoch'), SQL(','), Identifier('epoch')]), SQL(')\n    ON CONFLICT DO NOTHING;\n')])
+experiment_attrs
+
+{'data_set_size': 70000,
+ 'dataset': 'DatasetSpec',
+ 'dataset_label_noise': 0.0,
+ 'dataset_method': 'shuffled_train_test_split',
+ 'dataset_name': 'mnist',
+ 'dataset_source': 'keras',
+ 'dataset_test_split': 0.2,
+ 'dataset_validation_split': 0.05,
+ 'early_stopping': 'EarlyStopping',
+ 'early_stopping_min_delta': 0,
+ 'early_stopping_monitor': 'val_loss',
+ 'early_stopping_patience': 50,
+ 'early_stopping_restore_best_weights': True,
+ 'fit_batch_size': 32,
+ 'fit_epochs': 5,
+ 'input_shape': [28, 28, 1],
+ 'loss': 'CategoricalCrossentropy',
+ 'ml_task': 'classification',
+ 'model': 'LayerFactoryModel',
+ 'model_input': 'Input',
+ 'model_input_name': 'dmp_8',
+ 'model_input_shape': [28, 28, 1],
+ 'model_layer_factory': 'SequentialModel',
+ 'model_layer_factory_layer_factories': [{'activation': 'sigmoid',
+                                          'activity_regularizer': None,
+                                          'bias_constraint': None,
+                                          'bias_initializer': 'Zeros',
+                                          'bias_regularizer': None,
+                                          'data_format': None,
+                                          'dilation_rate': [1, 1],
+                                          'filters': 6,
+                                          'groups': 1,
+                                          'kernel_constraint': {'class': 'ParameterMask'},
+                                          'kernel_initializer': 'HeUniform',
+                                          'kernel_regularizer': None,
+                                          'kernel_size': [5, 5],
+                                          'padding': 'same',
+                                          'strides': [1, 1],
+                                          'type': 'DenseConv',
+                                          'use_bias': True},
+                                         {'data_format': None,
+                                          'padding': 'valid',
+                                          'pool_size': [2, 2],
+                                          'strides': [2, 2],
+                                          'type': 'AvgPool'},
+                                         {'activation': 'relu',
+                                          'activity_regularizer': None,
+                                          'bias_constraint': None,
+                                          'bias_initializer': 'Zeros',
+                                          'bias_regularizer': None,
+                                          'data_format': None,
+                                          'dilation_rate': [1, 1],
+                                          'filters': 6,
+                                          'groups': 1,
+                                          'kernel_constraint': {'class': 'ParameterMask'},
+                                          'kernel_initializer': 'HeUniform',
+                                          'kernel_regularizer': None,
+                                          'kernel_size': [5, 5],
+                                          'padding': 'valid',
+                                          'strides': [1, 1],
+                                          'type': 'DenseConv',
+                                          'use_bias': True},
+                                         {'data_format': None,
+                                          'padding': 'valid',
+                                          'pool_size': [2, 2],
+                                          'strides': [2, 2],
+                                          'type': 'AvgPool'},
+                                         {'depth': 2,
+                                          'flatten_input': True,
+                                          'inner': {'activation': 'relu',
+                                                    'activity_regularizer': None,
+                                                    'bias_constraint': None,
+                                                    'bias_initializer': 'Zeros',
+                                                    'bias_regularizer': None,
+                                                    'kernel_constraint': None,
+                                                    'kernel_initializer': 'HeUniform',
+                                                    'kernel_regularizer': None,
+                                                    'type': 'Dense',
+                                                    'units': -1,
+                                                    'use_bias': True},
+                                          'input': None,
+                                          'min_width': 84,
+                                          'output': None,
+                                          'rectangular': False,
+                                          'residual_mode': 'none',
+                                          'type': 'FullyConnectedNetwork',
+                                          'width': 120,
+                                          'widths': [120, 84]}],
+ 'model_output': 'Dense',
+ 'model_output_activation': 'softmax',
+ 'model_output_activity_regularizer': None,
+ 'model_output_bias_constraint': None,
+ 'model_output_bias_initializer': 'Zeros',
+ 'model_output_bias_regularizer': None,
+ 'model_output_kernel_constraint': None,
+ 'model_output_kernel_initializer': 'GlorotUniform',
+ 'model_output_kernel_regularizer': None,
+ 'model_output_units': 10,
+ 'model_output_use_bias': True,
+ 'num_free_parameters': 30196,
+ 'optimizer': 'Adam',
+ 'optimizer_learning_rate': 0.0001,
+ 'output_shape': [10],
+ 'record': 'ExperimentRecordSettings',
+ 'resume_from': None,
+ 'test_set_size': 14000,
+ 'train_set_size': 52500,
+ 'type': 'TrainingExperiment',
+ 'validation_set_size': 3500}
+experiment_tags
+
+{'model_family': 'lenet', 'model_name': 'lenet_relu'}
+run_data
+ {'job_id': UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3'), 'run_id': UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3'), 'python_version': '3.10.8', 'platform': 'Linux-5.15.90.1-microsoft-standard-WSL2-x86_64-with-glibc2.35', 'tensorflow_version': '2.11.0', 'host_name': 'CTRIPP-36296S', 'slurm_job_id': None, 'git_hash': 'a6dec64', 'batch': 'test', 'precision': 'float32', 'record_metrics': None, 'record_model': None, 'record_model_saving': 'HybridSaveMode', 'record_model_saving_exponential_rate': 0, 'record_model_saving_fixed_interval': 0, 'record_model_saving_fixed_threshold': 0, 'record_model_saving_save_epochs': [5], 'record_model_saving_save_initial_model': False, 'record_model_saving_save_model_epochs': [], 'record_model_saving_save_trained_model': False, 'record_post_training_metrics': True, 'record_times': True, 'test': True, 'seed': 100, 'task_version': 12}
+run_history
+    epoch epoch_start_ms train_ms test_ms trained_ms  train_loss  train_categorical_crossentropy  train_accuracy  validation_loss  validation_categorical_crossentropy  validation_accuracy  test_loss  test_categorical_crossentropy  \
+0      0           None     None    None       None    2.441453                        2.441453        0.104343         2.437844                             2.437844             0.096000   2.446702                       2.446702   
+1      1  1684536230750     4312     467       2045    1.119509                        1.119509        0.679790         0.528549                             0.528549             0.852571   0.530633                       0.530633   
+2      2  1684536237584     3637     653       2572    0.451304                        0.451304        0.867524         0.384276                             0.384276             0.888571   0.386547                       0.386547   
+3      3  1684536244455     3625     616       2461    0.359355                        0.359355        0.892648         0.327189                             0.327189             0.903143   0.329508                       0.329508   
+4      4  1684536251165     3712     638       2490    0.310877                        0.310877        0.906990         0.289711                             0.289711             0.914286   0.292452                       0.292452   
+5      5  1684536258015     3929     662       2519    0.276417                        0.276417        0.916514         0.261385                             0.261385             0.921714   0.262797                       0.262797   
+
+   test_accuracy  trained_loss  trained_categorical_crossentropy  trained_accuracy  
+0       0.098571      2.441453                          2.441453          0.104343  
+1       0.846143      0.538206                          0.538206          0.840648  
+2       0.886286      0.389840                          0.389840          0.883524  
+3       0.899714      0.331703                          0.331703          0.899486  
+4       0.910143      0.294071                          0.294071          0.910019  
+5       0.920000      0.263639                          0.263639          0.918648  
+run_extended_history
+    epoch  train_kullback_leibler_divergence  train_categorical_hinge  train_cosine_similarity  test_categorical_hinge  trained_categorical_hinge  test_kullback_leibler_divergence  validation_kullback_leibler_divergence  \
+0      0                           2.441439                 1.112351                 0.273786                1.113274                   1.112351                          2.446690                                2.437833   
+1      1                           1.119499                 0.733534                 0.696524                0.469515                   0.473370                          0.530624                                0.528540   
+2      2                           0.451295                 0.399170                 0.882816                0.339836                   0.342649                          0.386473                                0.384268   
+3      3                           0.359347                 0.316958                 0.906466                0.288009                   0.290688                          0.329315                                0.327182   
+4      4                           0.310870                 0.274982                 0.918821                0.256082                   0.258503                          0.292257                                0.289704   
+5      5                           0.276410                 0.246123                 0.927538                0.231230                   0.233272                          0.262643                                0.261379   
+
+   trained_kullback_leibler_divergence  validation_cosine_similarity  trained_cosine_similarity  test_cosine_similarity  validation_categorical_hinge  
+0                             2.441439                      0.273568                   0.273786                0.271856                      1.113072  
+1                             0.538198                      0.863671                   0.859355                0.862246                      0.471528  
+2                             0.389832                      0.900573                   0.898258                0.899568                      0.340850  
+3                             0.331695                      0.914886                   0.913010                0.913876                      0.288412  
+4                             0.294065                      0.924657                   0.922492                0.923171                      0.254956  
+5                             0.263633                      0.931922                   0.930248                0.930810                      0.230200  
+/home/ctripp/dmp/env0/lib/python3.10/site-packages/sklearn/preprocessing/_encoders.py:828: FutureWarning: `sparse` was renamed to `sparse_output` in version 1.2 and will be removed in 1.4. `sparse_output` is ignored unless you leave `sparse` to its default value.
+  warnings.warn(
+/home/ctripp/dmp/env0/lib/python3.10/site-packages/sklearn/preprocessing/_encoders.py:828: FutureWarning: `sparse` was renamed to `sparse_output` in version 1.2 and will be removed in 1.4. `sparse_output` is ignored unless you leave `sparse` to its default value.
+  warnings.warn(
+0: [] -> (<class 'dmp.layer.input.Input'>: 0, [28, 28, 1], ) -> [1]
+1: [0] -> (<class 'dmp.layer.dense_conv.DenseConv'>: 156, (28, 28, 6), 5x5, s: 1x1, sigmoid) -> [2]
+2: [1] -> (<class 'dmp.layer.avg_pool.AvgPool'>: 0, (14, 14, 6), s: 2x2) -> [3]
+3: [2] -> (<class 'dmp.layer.dense_conv.DenseConv'>: 906, (10, 10, 6), 5x5, s: 1x1, relu) -> [4]
+4: [3] -> (<class 'dmp.layer.avg_pool.AvgPool'>: 0, (5, 5, 6), s: 2x2) -> [5]
+5: [4] -> (<class 'dmp.layer.flatten.Flatten'>: 0, (150,), ) -> [6]
+6: [5] -> (<class 'dmp.layer.dense.Dense'>: 18120, (120,), x120, relu) -> [7]
+7: [6] -> (<class 'dmp.layer.dense.Dense'>: 10164, (84,), x84, relu) -> [8]
+8: [7] -> (<class 'dmp.layer.dense.Dense'>: 850, (10,), x10, softmax) -> []
+first values: [
+  [
+    -0.065482974,
+    0.16524729,
+    0.21761505,
+    0.07951984
+  ]
+]
+Loading model with optimizer type: <class 'keras.optimizers.optimizer_experimental.adam.Adam'> with members [].
+loading variable: dmp_0/kernel:0 840 (84, 10) 0
+value, 0, 840, (84, 10), values: [-0.06548297  0.16524729  0.21761505  0.07951984]
+loading variable: dmp_0/bias:0 10 (10,) 840
+value, 840, 10, (10,), values: [-0.00668819  0.0134083  -0.00933934  0.01333806]
+loading variable: dmp_1/kernel:0 10080 (120, 84) 850
+value, 850, 10080, (120, 84), values: [ 0.1860406   0.19381136  0.18698743 -0.03105346]
+loading variable: dmp_1/bias:0 84 (84,) 10930
+value, 10930, 84, (84,), values: [ 0.02279723  0.01980124  0.00373668 -0.00204088]
+loading variable: dmp_2/kernel:0 18000 (150, 120) 11014
+value, 11014, 18000, (150, 120), values: [-0.10134789  0.18266216 -0.29035395 -0.08083757]
+loading variable: dmp_2/bias:0 120 (120,) 29014
+value, 29014, 120, (120,), values: [ 0.00491734 -0.00540702  0.00101727  0.00726333]
+loading variable: dmp_5/kernel:0 900 (5, 5, 6, 6) 29134
+value, 29134, 900, (5, 5, 6, 6), values: [-0.16419108  0.05006687 -0.05916091 -0.17611308]
+loading variable: dmp_5/bias:0 6 (6,) 30034
+value, 30034, 6, (6,), values: [0.00517628 0.01810974 0.00506593 0.        ]
+loading variable: dmp_7/kernel:0 150 (5, 5, 1, 6) 30040
+value, 30040, 150, (5, 5, 1, 6), values: [ 0.25514567 -0.06407032  0.4212479  -0.7433549 ]
+loading variable: dmp_7/bias:0 6 (6,) 30190
+value, 30190, 6, (6,), values: [-0.10149752  0.0797006  -0.09937331  0.02521808]
+0: [] -> (<class 'dmp.layer.input.Input'>: 0, [28, 28, 1], "dmp_8") -> [1]
+1: [0] -> (<class 'dmp.layer.dense_conv.DenseConv'>: 156, (28, 28, 6), 5x5, s: 1x1, sigmoid, "dmp_7") -> [2]
+2: [1] -> (<class 'dmp.layer.avg_pool.AvgPool'>: 0, (14, 14, 6), s: 2x2, "dmp_6") -> [3]
+3: [2] -> (<class 'dmp.layer.dense_conv.DenseConv'>: 906, (10, 10, 6), 5x5, s: 1x1, relu, "dmp_5") -> [4]
+4: [3] -> (<class 'dmp.layer.avg_pool.AvgPool'>: 0, (5, 5, 6), s: 2x2, "dmp_4") -> [5]
+5: [4] -> (<class 'dmp.layer.flatten.Flatten'>: 0, (150,), "dmp_3") -> [6]
+6: [5] -> (<class 'dmp.layer.dense.Dense'>: 18120, (120,), x120, relu, "dmp_2") -> [7]
+7: [6] -> (<class 'dmp.layer.dense.Dense'>: 10164, (84,), x84, relu, "dmp_1") -> [8]
+8: [7] -> (<class 'dmp.layer.dense.Dense'>: 850, (10,), x10, softmax, "dmp_0") -> []
+Model: "model_1"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ dmp_8 (InputLayer)          [(None, 28, 28, 1)]       0         
+                                                                 
+ dmp_7 (Conv2D)              (None, 28, 28, 6)         156       
+                                                                 
+ dmp_6 (AveragePooling2D)    (None, 14, 14, 6)         0         
+                                                                 
+ dmp_5 (Conv2D)              (None, 10, 10, 6)         906       
+                                                                 
+ dmp_4 (AveragePooling2D)    (None, 5, 5, 6)           0         
+                                                                 
+ dmp_3 (Flatten)             (None, 150)               0         
+                                                                 
+ dmp_2 (Dense)               (None, 120)               18120     
+                                                                 
+ dmp_1 (Dense)               (None, 84)                10164     
+                                                                 
+ dmp_0 (Dense)               (None, 10)                850       
+                                                                 
+=================================================================
+Total params: 30,196
+Trainable params: 30,196
+Non-trainable params: 0
+_________________________________________________________________
+Writing task to /home/ctripp/dmp/dmp/model_data/2e9ffca7-df98-44fe-8192-b896d9a1fd73/0_0/task.json...
+Writing network to /home/ctripp/dmp/dmp/model_data/2e9ffca7-df98-44fe-8192-b896d9a1fd73/0_0/network.json...
+Writing parameters to <_io.BufferedWriter name='/home/ctripp/dmp/dmp/model_data/2e9ffca7-df98-44fe-8192-b896d9a1fd73/0_0/parameters.pq'>...
+Saving model with optimizer type: <class 'NoneType'> with members [].
+saving variable: dmp_0/kernel:0 840 (84, 10)
+value, 0, 0, 840, (84, 10), values: [-0.06548297  0.16524729  0.21761505  0.07951984]
+saving variable: dmp_0/bias:0 10 (10,)
+value, 840, 1, 10, (10,), values: [-0.00668819  0.0134083  -0.00933934  0.01333806]
+saving variable: dmp_1/kernel:0 10080 (120, 84)
+value, 850, 2, 10080, (120, 84), values: [ 0.1860406   0.19381136  0.18698743 -0.03105346]
+saving variable: dmp_1/bias:0 84 (84,)
+value, 10930, 3, 84, (84,), values: [ 0.02279723  0.01980124  0.00373668 -0.00204088]
+saving variable: dmp_2/kernel:0 18000 (150, 120)
+value, 11014, 4, 18000, (150, 120), values: [-0.10134789  0.18266216 -0.29035395 -0.08083757]
+saving variable: dmp_2/bias:0 120 (120,)
+value, 29014, 5, 120, (120,), values: [ 0.00491734 -0.00540702  0.00101727  0.00726333]
+saving variable: dmp_5/kernel:0 900 (5, 5, 6, 6)
+value, 29134, 6, 900, (5, 5, 6, 6), values: [-0.16419108  0.05006687 -0.05916091 -0.17611308]
+saving variable: dmp_5/bias:0 6 (6,)
+value, 30034, 7, 6, (6,), values: [0.00517628 0.01810974 0.00506593 0.        ]
+saving variable: dmp_7/kernel:0 150 (5, 5, 1, 6)
+value, 30040, 8, 150, (5, 5, 1, 6), values: [ 0.25514567 -0.06407032  0.4212479  -0.7433549 ]
+saving variable: dmp_7/bias:0 6 (6,)
+value, 30190, 9, 6, (6,), values: [-0.10149752  0.0797006  -0.09937331  0.02521808]
+first values: [
+  [
+    -0.065482974,
+    0.16524729,
+    0.21761505,
+    0.07951984
+  ]
+]
+Writing model state to /home/ctripp/dmp/dmp/model_data/2e9ffca7-df98-44fe-8192-b896d9a1fd73/0_0/optimizer.pq...
+Saving model with optimizer type: <class 'keras.optimizers.optimizer_experimental.adam.Adam'> with members [].
+saving variable: dmp_0/kernel:0 840 (84, 10)
+value, 0, 0, 840, (84, 10), values: [-0.06548297  0.16524729  0.21761505  0.07951984]
+saving variable: dmp_0/bias:0 10 (10,)
+value, 840, 1, 10, (10,), values: [-0.00668819  0.0134083  -0.00933934  0.01333806]
+saving variable: dmp_1/kernel:0 10080 (120, 84)
+value, 850, 2, 10080, (120, 84), values: [ 0.1860406   0.19381136  0.18698743 -0.03105346]
+saving variable: dmp_1/bias:0 84 (84,)
+value, 10930, 3, 84, (84,), values: [ 0.02279723  0.01980124  0.00373668 -0.00204088]
+saving variable: dmp_2/kernel:0 18000 (150, 120)
+value, 11014, 4, 18000, (150, 120), values: [-0.10134789  0.18266216 -0.29035395 -0.08083757]
+saving variable: dmp_2/bias:0 120 (120,)
+value, 29014, 5, 120, (120,), values: [ 0.00491734 -0.00540702  0.00101727  0.00726333]
+saving variable: dmp_5/kernel:0 900 (5, 5, 6, 6)
+value, 29134, 6, 900, (5, 5, 6, 6), values: [-0.16419108  0.05006687 -0.05916091 -0.17611308]
+saving variable: dmp_5/bias:0 6 (6,)
+value, 30034, 7, 6, (6,), values: [0.00517628 0.01810974 0.00506593 0.        ]
+saving variable: dmp_7/kernel:0 150 (5, 5, 1, 6)
+value, 30040, 8, 150, (5, 5, 1, 6), values: [ 0.25514567 -0.06407032  0.4212479  -0.7433549 ]
+saving variable: dmp_7/bias:0 6 (6,)
+value, 30190, 9, 6, (6,), values: [-0.10149752  0.0797006  -0.09937331  0.02521808]
+first values: [
+  [
+    -0.065482974,
+    0.16524729,
+    0.21761505,
+    0.07951984
+  ]
+]
+Composed([SQL('\nINSERT INTO '), Identifier('model'), SQL(' ( '), Composed([Identifier('run_id'), SQL(','), Identifier('model_number'), SQL(','), Identifier('model_epoch'), SQL(','), Identifier('epoch')]), SQL(' ) \n    SELECT\n        '), Composed([Composed([Identifier('run_id'), SQL('::'), SQL('uuid')]), SQL(','), Composed([Identifier('model_number'), SQL('::'), SQL('integer')]), SQL(','), Composed([Identifier('model_epoch'), SQL('::'), SQL('integer')]), SQL(','), Composed([Identifier('epoch'), SQL('::'), SQL('integer')])]), SQL('\n    FROM\n        ( VALUES ('), Composed([SQL('%b'), SQL(','), SQL('%b'), SQL(','), SQL('%b'), SQL(','), SQL('%b')]), SQL(') ) AS V ('), Composed([Identifier('run_id'), SQL(','), Identifier('model_number'), SQL(','), Identifier('model_epoch'), SQL(','), Identifier('epoch')]), SQL(')\n    ON CONFLICT DO NOTHING;\n')])
+ON TRAIN BEGIN ZERO EPOCH
+2023-05-19 16:44:35.417910: I tensorflow/compiler/xla/stream_executor/gpu/asm_compiler.cc:325] ptxas warning : Registers are spilled to local memory in function 'fusion_71', 256 bytes spill stores, 48 bytes spill loads
+
+2023-05-19 16:44:47.987699: I tensorflow/compiler/xla/stream_executor/gpu/asm_compiler.cc:325] ptxas warning : Registers are spilled to local memory in function 'fusion_69', 256 bytes spill stores, 48 bytes spill loads
+
+Writing task to /home/ctripp/dmp/dmp/model_data/2e9ffca7-df98-44fe-8192-b896d9a1fd73/0_10/task.json...
+Writing network to /home/ctripp/dmp/dmp/model_data/2e9ffca7-df98-44fe-8192-b896d9a1fd73/0_10/network.json...
+Writing parameters to <_io.BufferedWriter name='/home/ctripp/dmp/dmp/model_data/2e9ffca7-df98-44fe-8192-b896d9a1fd73/0_10/parameters.pq'>...
+Saving model with optimizer type: <class 'NoneType'> with members [].
+saving variable: dmp_0/kernel:0 840 (84, 10)
+value, 0, 0, 840, (84, 10), values: [-0.09010237  0.15724061  0.21770087  0.08527002]
+saving variable: dmp_0/bias:0 10 (10,)
+value, 840, 1, 10, (10,), values: [-0.00812203  0.01165403 -0.01406331  0.01402848]
+saving variable: dmp_1/kernel:0 10080 (120, 84)
+value, 850, 2, 10080, (120, 84), values: [ 0.18998937  0.20812252  0.19391139 -0.04638415]
+saving variable: dmp_1/bias:0 84 (84,)
+value, 10930, 3, 84, (84,), values: [ 0.02264958  0.02526622  0.00668053 -0.00974177]
+saving variable: dmp_2/kernel:0 18000 (150, 120)
+value, 11014, 4, 18000, (150, 120), values: [-0.08844658  0.18881549 -0.3289674  -0.12065416]
+saving variable: dmp_2/bias:0 120 (120,)
+value, 29014, 5, 120, (120,), values: [ 0.00113601 -0.00614819  0.00380658  0.00153995]
+saving variable: dmp_5/kernel:0 900 (5, 5, 6, 6)
+value, 29134, 6, 900, (5, 5, 6, 6), values: [-0.1721403   0.05739426 -0.06467757 -0.17611308]
+saving variable: dmp_5/bias:0 6 (6,)
+value, 30034, 7, 6, (6,), values: [0.00685638 0.01771132 0.00778339 0.        ]
+saving variable: dmp_7/kernel:0 150 (5, 5, 1, 6)
+value, 30040, 8, 150, (5, 5, 1, 6), values: [ 0.23825905 -0.02048147  0.43689236 -0.8606508 ]
+saving variable: dmp_7/bias:0 6 (6,)
+value, 30190, 9, 6, (6,), values: [-0.17405935  0.10014055 -0.12112743  0.02131826]
+first values: [
+  [
+    -0.090102375,
+    0.15724061,
+    0.21770087,
+    0.085270025
+  ]
+]
+Writing model state to /home/ctripp/dmp/dmp/model_data/2e9ffca7-df98-44fe-8192-b896d9a1fd73/0_10/optimizer.pq...
+Saving model with optimizer type: <class 'keras.optimizers.optimizer_experimental.adam.Adam'> with members ['_momentums', '_velocities'].
+saving variable: dmp_0/kernel:0 840 (84, 10)
+value, 0, 0, 840, (84, 10), values: [-0.09010237  0.15724061  0.21770087  0.08527002]
+_momentums, 0, 0, 840, (84, 10), values: [-0.00384064  0.00416094 -0.00237044 -0.01056689]
+_velocities, 0, 0, 840, (84, 10), values: [0.00124931 0.00173419 0.0030469  0.00439386]
+saving variable: dmp_0/bias:0 10 (10,)
+value, 840, 1, 10, (10,), values: [-0.00812203  0.01165403 -0.01406331  0.01402848]
+_momentums, 840, 1, 10, (10,), values: [-0.00201606  0.00174702 -0.00012369 -0.00055896]
+_velocities, 840, 1, 10, (10,), values: [8.3502848e-05 8.5701671e-05 1.4586920e-04 2.0433066e-04]
+saving variable: dmp_1/kernel:0 10080 (120, 84)
+value, 850, 2, 10080, (120, 84), values: [ 0.18998937  0.20812252  0.19391139 -0.04638415]
+_momentums, 850, 2, 10080, (120, 84), values: [ 0.00343497  0.0012825   0.00486796 -0.0020047 ]
+_velocities, 850, 2, 10080, (120, 84), values: [2.6257767e-04 2.6064322e-04 2.7178699e-04 8.4586427e-05]
+saving variable: dmp_1/bias:0 84 (84,)
+value, 10930, 3, 84, (84,), values: [ 0.02264958  0.02526622  0.00668053 -0.00974177]
+_momentums, 10930, 3, 84, (84,), values: [ 0.00277702  0.00136772  0.00295616 -0.00133447]
+_velocities, 10930, 3, 84, (84,), values: [5.2458614e-05 5.7415684e-05 5.4956130e-05 2.0429463e-05]
+saving variable: dmp_2/kernel:0 18000 (150, 120)
+value, 11014, 4, 18000, (150, 120), values: [-0.08844658  0.18881549 -0.3289674  -0.12065416]
+_momentums, 11014, 4, 18000, (150, 120), values: [-1.0519965e-04 -1.3944230e-04  6.5062440e-04 -8.9628638e-06]
+_velocities, 11014, 4, 18000, (150, 120), values: [4.4315484e-06 1.2059219e-06 3.6308336e-06 1.8393874e-06]
+saving variable: dmp_2/bias:0 120 (120,)
+value, 29014, 5, 120, (120,), values: [ 0.00113601 -0.00614819  0.00380658  0.00153995]
+_momentums, 29014, 5, 120, (120,), values: [-0.00079957 -0.00091164  0.00282701 -0.00022477]
+_velocities, 29014, 5, 120, (120,), values: [8.7884939e-05 3.2443921e-05 3.4454276e-04 9.1052905e-05]
+saving variable: dmp_5/kernel:0 900 (5, 5, 6, 6)
+value, 29134, 6, 900, (5, 5, 6, 6), values: [-0.1721403   0.05739426 -0.06467757 -0.17611308]
+_momentums, 29134, 6, 900, (5, 5, 6, 6), values: [0.00546502 0.00583255 0.00824422 0.        ]
+_velocities, 29134, 6, 900, (5, 5, 6, 6), values: [0.00269274 0.00108391 0.00135165 0.        ]
+saving variable: dmp_5/bias:0 6 (6,)
+value, 30034, 7, 6, (6,), values: [0.00685638 0.01771132 0.00778339 0.        ]
+_momentums, 30034, 7, 6, (6,), values: [0.01370877 0.0101312  0.01455    0.        ]
+_velocities, 30034, 7, 6, (6,), values: [0.01016521 0.00441176 0.00519997 0.        ]
+saving variable: dmp_7/kernel:0 150 (5, 5, 1, 6)
+value, 30040, 8, 150, (5, 5, 1, 6), values: [ 0.23825905 -0.02048147  0.43689236 -0.8606508 ]
+_momentums, 30040, 8, 150, (5, 5, 1, 6), values: [-0.00227299  0.00250385 -0.00116958  0.00162205]
+_velocities, 30040, 8, 150, (5, 5, 1, 6), values: [1.0471531e-04 9.6826938e-05 2.9493105e-05 3.2311727e-05]
+saving variable: dmp_7/bias:0 6 (6,)
+value, 30190, 9, 6, (6,), values: [-0.17405935  0.10014055 -0.12112743  0.02131826]
+_momentums, 30190, 9, 6, (6,), values: [ 0.00320667 -0.02330908  0.02035634 -0.00020055]
+_velocities, 30190, 9, 6, (6,), values: [0.0006966  0.01071732 0.00443557 0.00103698]
+first values: [
+  [
+    -0.090102375,
+    0.15724061,
+    0.21770087,
+    0.085270025
+  ]
+]
+Composed([SQL('\nINSERT INTO '), Identifier('model'), SQL(' ( '), Composed([Identifier('run_id'), SQL(','), Identifier('model_number'), SQL(','), Identifier('model_epoch'), SQL(','), Identifier('epoch')]), SQL(' ) \n    SELECT\n        '), Composed([Composed([Identifier('run_id'), SQL('::'), SQL('uuid')]), SQL(','), Composed([Identifier('model_number'), SQL('::'), SQL('integer')]), SQL(','), Composed([Identifier('model_epoch'), SQL('::'), SQL('integer')]), SQL(','), Composed([Identifier('epoch'), SQL('::'), SQL('integer')])]), SQL('\n    FROM\n        ( VALUES ('), Composed([SQL('%b'), SQL(','), SQL('%b'), SQL(','), SQL('%b'), SQL(','), SQL('%b')]), SQL(') ) AS V ('), Composed([Identifier('run_id'), SQL(','), Identifier('model_number'), SQL(','), Identifier('model_epoch'), SQL(','), Identifier('epoch')]), SQL(')\n    ON CONFLICT DO NOTHING;\n')])
+experiment_attrs
+
+{'data_set_size': 70000,
+ 'dataset': 'DatasetSpec',
+ 'dataset_label_noise': 0.0,
+ 'dataset_method': 'shuffled_train_test_split',
+ 'dataset_name': 'mnist',
+ 'dataset_source': 'keras',
+ 'dataset_test_split': 0.2,
+ 'dataset_validation_split': 0.05,
+ 'early_stopping': 'EarlyStopping',
+ 'early_stopping_min_delta': 0,
+ 'early_stopping_monitor': 'val_loss',
+ 'early_stopping_patience': 50,
+ 'early_stopping_restore_best_weights': True,
+ 'fit_batch_size': 32,
+ 'fit_epochs': 10,
+ 'input_shape': [28, 28, 1],
+ 'loss': 'CategoricalCrossentropy',
+ 'ml_task': 'classification',
+ 'model': 'LayerFactoryModel',
+ 'model_input': 'Input',
+ 'model_input_name': 'dmp_8',
+ 'model_input_shape': [28, 28, 1],
+ 'model_layer_factory': 'SequentialModel',
+ 'model_layer_factory_layer_factories': [{'activation': 'sigmoid',
+                                          'activity_regularizer': None,
+                                          'bias_constraint': None,
+                                          'bias_initializer': 'Zeros',
+                                          'bias_regularizer': None,
+                                          'data_format': None,
+                                          'dilation_rate': [1, 1],
+                                          'filters': 6,
+                                          'groups': 1,
+                                          'kernel_constraint': {'class': 'ParameterMask'},
+                                          'kernel_initializer': 'HeUniform',
+                                          'kernel_regularizer': None,
+                                          'kernel_size': [5, 5],
+                                          'padding': 'same',
+                                          'strides': [1, 1],
+                                          'type': 'DenseConv',
+                                          'use_bias': True},
+                                         {'data_format': None,
+                                          'padding': 'valid',
+                                          'pool_size': [2, 2],
+                                          'strides': [2, 2],
+                                          'type': 'AvgPool'},
+                                         {'activation': 'relu',
+                                          'activity_regularizer': None,
+                                          'bias_constraint': None,
+                                          'bias_initializer': 'Zeros',
+                                          'bias_regularizer': None,
+                                          'data_format': None,
+                                          'dilation_rate': [1, 1],
+                                          'filters': 6,
+                                          'groups': 1,
+                                          'kernel_constraint': {'class': 'ParameterMask'},
+                                          'kernel_initializer': 'HeUniform',
+                                          'kernel_regularizer': None,
+                                          'kernel_size': [5, 5],
+                                          'padding': 'valid',
+                                          'strides': [1, 1],
+                                          'type': 'DenseConv',
+                                          'use_bias': True},
+                                         {'data_format': None,
+                                          'padding': 'valid',
+                                          'pool_size': [2, 2],
+                                          'strides': [2, 2],
+                                          'type': 'AvgPool'},
+                                         {'depth': 2,
+                                          'flatten_input': True,
+                                          'inner': {'activation': 'relu',
+                                                    'activity_regularizer': None,
+                                                    'bias_constraint': None,
+                                                    'bias_initializer': 'Zeros',
+                                                    'bias_regularizer': None,
+                                                    'kernel_constraint': None,
+                                                    'kernel_initializer': 'HeUniform',
+                                                    'kernel_regularizer': None,
+                                                    'type': 'Dense',
+                                                    'units': -1,
+                                                    'use_bias': True},
+                                          'input': None,
+                                          'min_width': 84,
+                                          'output': None,
+                                          'rectangular': False,
+                                          'residual_mode': 'none',
+                                          'type': 'FullyConnectedNetwork',
+                                          'width': 120,
+                                          'widths': [120, 84]}],
+ 'model_output': 'Dense',
+ 'model_output_activation': 'softmax',
+ 'model_output_activity_regularizer': None,
+ 'model_output_bias_constraint': None,
+ 'model_output_bias_initializer': 'Zeros',
+ 'model_output_bias_regularizer': None,
+ 'model_output_kernel_constraint': None,
+ 'model_output_kernel_initializer': 'GlorotUniform',
+ 'model_output_kernel_regularizer': None,
+ 'model_output_units': 10,
+ 'model_output_use_bias': True,
+ 'num_free_parameters': 30196,
+ 'optimizer': 'Adam',
+ 'optimizer_learning_rate': 0.0001,
+ 'output_shape': [10],
+ 'record': 'ExperimentRecordSettings',
+ 'resume_from': 'ModelStateResumeConfig',
+ 'resume_from_epoch': 5,
+ 'resume_from_load_mask': True,
+ 'resume_from_load_optimizer': True,
+ 'resume_from_model_epoch': 10,
+ 'resume_from_model_number': 0,
+ 'resume_from_run_id': 'UUID',
+ 'resume_from_run_id_value': '355d6326-aaf4-4d11-bfbe-d7ae667298f3',
+ 'test_set_size': 14000,
+ 'train_set_size': 52500,
+ 'type': 'TrainingExperiment',
+ 'validation_set_size': 3500}
+experiment_tags
+
+{'model_family': 'lenet', 'model_name': 'lenet_relu'}
+run_data
+ {'job_id': UUID('2e9ffca7-df98-44fe-8192-b896d9a1fd73'), 'run_id': UUID('2e9ffca7-df98-44fe-8192-b896d9a1fd73'), 'python_version': '3.10.8', 'platform': 'Linux-5.15.90.1-microsoft-standard-WSL2-x86_64-with-glibc2.35', 'tensorflow_version': '2.11.0', 'host_name': 'CTRIPP-36296S', 'slurm_job_id': None, 'git_hash': 'a6dec64', 'batch': 'test', 'precision': 'float32', 'record_metrics': None, 'record_model': None, 'record_model_saving': 'HybridSaveMode', 'record_model_saving_exponential_rate': 0, 'record_model_saving_fixed_interval': 0, 'record_model_saving_fixed_threshold': 0, 'record_model_saving_save_epochs': [], 'record_model_saving_save_initial_model': True, 'record_model_saving_save_model_epochs': [], 'record_model_saving_save_trained_model': True, 'record_post_training_metrics': True, 'record_times': True, 'test': True, 'seed': 100, 'task_version': 12}
+run_history
+     epoch epoch_start_ms train_ms test_ms trained_ms  train_loss  train_categorical_crossentropy  train_accuracy  validation_loss  validation_categorical_crossentropy  validation_accuracy  test_loss  test_categorical_crossentropy  \
+0       0           None     None    None       None    0.172289                        0.172289        0.947162         0.175550                             0.175550             0.951429   0.174081                       0.174081   
+1       1  1684536274510    14229    2385       9071    0.166345                        0.166345        0.949029         0.164997                             0.164997             0.953714   0.163583                       0.163583   
+2       2  1684536300231     5299     641       2455    0.155937                        0.155937        0.952362         0.155718                             0.155718             0.954286   0.154382                       0.154382   
+3       3  1684536308635     3881     652       2533    0.146672                        0.146672        0.955257         0.147838                             0.147838             0.955429   0.146305                       0.146305   
+4       4  1684536315711     3352     480       2097    0.138569                        0.138569        0.958171         0.140499                             0.140499             0.958000   0.139239                       0.139239   
+5       5  1684536321650     3675     641       2456    0.131447                        0.131447        0.960286         0.133812                             0.133812             0.960000   0.133447                       0.133447   
+6       6  1684536328431     3764     652       2450    0.125118                        0.125118        0.962210         0.128341                             0.128341             0.962000   0.128352                       0.128352   
+7       7  1684536335306     3743     669       2549    0.119377                        0.119377        0.963486         0.123329                             0.123329             0.963714   0.123945                       0.123945   
+8       8  1684536342277     3602     630       2465    0.114144                        0.114144        0.964857         0.118681                             0.118681             0.964571   0.119842                       0.119842   
+9       9  1684536348983     3726     650       2531    0.109311                        0.109311        0.966495         0.114189                             0.114189             0.964857   0.115933                       0.115933   
+10     10  1684536355899     3771     614       2479    0.104900                        0.104900        0.967981         0.110599                             0.110599             0.964286   0.112406                       0.112406   
+
+    test_accuracy  trained_loss  trained_categorical_crossentropy  trained_accuracy  
+0        0.947286      0.172289                          0.172289          0.947162  
+1        0.950214      0.160887                          0.160887          0.950590  
+2        0.953857      0.150634                          0.150634          0.953657  
+3        0.956143      0.141648                          0.141648          0.956514  
+4        0.957786      0.133539                          0.133539          0.959067  
+5        0.959357      0.126661                          0.126661          0.961124  
+6        0.961214      0.120576                          0.120576          0.962990  
+7        0.962214      0.114900                          0.114900          0.964819  
+8        0.963357      0.109744                          0.109744          0.966362  
+9        0.964500      0.105052                          0.105052          0.968286  
+10       0.965786      0.100634                          0.100634          0.969962  
+run_extended_history
+     epoch  train_kullback_leibler_divergence  train_categorical_hinge  train_cosine_similarity  test_categorical_hinge  trained_categorical_hinge  test_kullback_leibler_divergence  validation_kullback_leibler_divergence  \
+0       0                           0.172283                 0.159104                 0.954596                0.157198                   0.159104                          0.174076                                0.175544   
+1       1                           0.166339                 0.153165                 0.956447                0.147766                   0.149560                          0.163578                                0.164991   
+2       2                           0.155932                 0.144136                 0.959256                0.139605                   0.141091                          0.154376                                0.155712   
+3       3                           0.146666                 0.136192                 0.961727                0.132282                   0.133334                          0.146300                                0.147833   
+4       4                           0.138564                 0.129017                 0.963861                0.125484                   0.125912                          0.139234                                0.140494   
+5       5                           0.131442                 0.122786                 0.965725                0.120064                   0.119813                          0.133441                                0.133807   
+6       6                           0.125113                 0.117119                 0.967369                0.115275                   0.114411                          0.128347                                0.128336   
+7       7                           0.119372                 0.111961                 0.968847                0.111099                   0.109393                          0.123940                                0.123324   
+8       8                           0.114139                 0.107344                 0.970190                0.106999                   0.104613                          0.119837                                0.118676   
+9       9                           0.109306                 0.103082                 0.971455                0.103508                   0.100489                          0.115928                                0.114184   
+10     10                           0.104895                 0.099163                 0.972614                0.100009                   0.096320                          0.112401                                0.110595   
+
+    trained_kullback_leibler_divergence  validation_cosine_similarity  trained_cosine_similarity  test_cosine_similarity  validation_categorical_hinge  
+0                              0.172283                      0.954826                   0.954596                0.954682                      0.158456  
+1                              0.160881                      0.957510                   0.957668                0.957608                      0.149743  
+2                              0.150629                      0.959782                   0.960448                0.960082                      0.142236  
+3                              0.141643                      0.961724                   0.962874                0.962154                      0.135446  
+4                              0.133534                      0.963587                   0.965025                0.963887                      0.128626  
+5                              0.126656                      0.965376                   0.966848                0.965317                      0.122704  
+6                              0.120571                      0.966733                   0.968467                0.966635                      0.117777  
+7                              0.114895                      0.967975                   0.969993                0.967705                      0.113314  
+8                              0.109740                      0.969075                   0.971339                0.968683                      0.109097  
+9                              0.105047                      0.970192                   0.972599                0.969620                      0.105358  
+10                             0.100630                      0.971043                   0.973763                0.970496                      0.101921 

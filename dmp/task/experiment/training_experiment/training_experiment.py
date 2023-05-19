@@ -105,10 +105,17 @@ class TrainingExperiment(ExperimentTask):
         return cls.summarizer.summarize(cls, results)
 
     def _set_random_seeds(self) -> None:
-        seed: int = self.seed
+        import os
+
+        seed: int = self.seed        
+        os.environ['PYTHONHASHSEED'] = str(seed)
         numpy.random.seed(seed)
         tensorflow.random.set_seed(seed)
         random.seed(seed)
+
+        # NB: for strict TF determinisim:
+        # os.environ['TF_DETERMINISTIC_OPS'] = '1'
+        # os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
 
     def _make_network(self, model_spec: ModelSpec) -> NetworkInfo:
         return model_spec.make_network()

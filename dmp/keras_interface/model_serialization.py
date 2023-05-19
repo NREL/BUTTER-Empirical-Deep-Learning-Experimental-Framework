@@ -178,38 +178,46 @@ def load_parameters(
     file,
     load_mask: bool = True,
 ) -> None:
-    parameters_table = parquet_util.read_parquet_table(file)
-    columns = set(parameters_table.column_names)
+    table = parquet_util.read_parquet_table(file)
+    table.sort_by([('sequence','ascending')])
+    parameters_table = {column: table[column].to_numpy() for column in table.column_names}
+    print(f'first values: {table["value"][0:4]}')
+    del table
 
     optimizer_members = [
         member
         for member in saved_optimizer_members
-        if optimizer is not None and member in columns and hasattr(optimizer, member)
+        if optimizer is not None and member in parameters_table and hasattr(optimizer, member)
     ]
 
+    print(f'Loading model with optimizer type: {type(optimizer)} with members {optimizer_members}.')
+
     row_index = 0
+
+    
 
     def visit_variable(layer, keras_layer, i, variable):
         nonlocal row_index
 
         shape = variable.value().shape
         size = numpy.prod(shape)
-        print(f'variable: {variable.name} {size} {shape}')
+        print(f'loading variable: {variable.name} {size} {shape} {row_index}')
         constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None
         if load_mask and constraint is not None:
             column = parameters_table['value']
             chunk = column[row_index : row_index + size]
-            mask = numpy.logical_not(pyarrow.compute.is_null(chunk).to_numpy())
+            # mask = numpy.logical_not(pyarrow.compute.is_null(chunk).to_numpy())
+            mask = numpy.logical_not(numpy.isnan(chunk))
             constraint.mask.assign(mask.reshape(shape))
 
-        def load_value(column, variable):
-            column = parameters_table[column]
-            chunk = column[row_index : row_index + size]
+        def load_value(name, variable):
+            column = parameters_table[name]
+            prepared = column[row_index : row_index + size]
 
-            prepared = chunk.to_numpy()
             if mask is not None:
                 prepared = numpy.where(mask, prepared, 0)
+            print(f'{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}')
             prepared = prepared.reshape(shape)
             variable.assign(prepared)
 
@@ -239,25 +247,34 @@ def save_parameters(
         if optimizer is not None and hasattr(optimizer, member)
     ]
 
-    print(f'opt type: {type(optimizer)} with members {optimizer_members}.')
+    print(f'Saving model with optimizer type: {type(optimizer)} with members {optimizer_members}.')
 
     data: dict = {column: [] for column in ['value'] + optimizer_members}
-
+    row_index = 0
+    
     def visit_variable(layer, keras_layer, i, variable):
+        nonlocal row_index
+
+        shape = variable.value().shape
+        size = numpy.prod(shape)
         constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None if constraint is None else constraint.mask.numpy().flatten()
+        print(f'saving variable: {variable.name} {size} {shape}')
 
-        def accumulate_value(column, variable):
+        def accumulate_value(name, variable):
             value = variable.numpy().flatten()
             if mask is not None:
                 value = numpy.where(mask, value, numpy.nan)
-            data[column].append(value)
+            print(f'{name}, {row_index}, {len(data[name])}, {size}, {shape}, values: {value[0:4]}')
+            data[name].append(value)
 
         accumulate_value('value', variable)
         for member in optimizer_members:
             optimizer_member = getattr(optimizer, member)
             variable_index = optimizer._index_dict[optimizer._var_key(variable)]  # type: ignore
             accumulate_value(member, optimizer_member[variable_index])
+        
+        row_index += size
 
     access_model_parameters.visit_parameters(
         root,
@@ -266,6 +283,7 @@ def save_parameters(
     )
 
     data = {k: numpy.concatenate(v) for k, v in data.items()}
+    data['sequence'] = numpy.arange(0, row_index)
     cols = sorted(data.keys())
 
     table, use_byte_stream_split = parquet_util.make_pyarrow_table_from_numpy(
@@ -273,6 +291,8 @@ def save_parameters(
         [data[c] for c in cols],
         nan_to_none=True,
     )
+
+    print(f'first values: {table["value"][0:4]}, {table["sequence"][0:4]}')
 
     parquet_util.write_parquet_table(
         table,

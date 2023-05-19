@@ -284,6 +284,7 @@ def write_parquet_table(
         version=version,
         data_page_version=data_page_version,
         write_statistics=write_statistics,
+        store_schema=True,
         **kwargs,
     )
 
