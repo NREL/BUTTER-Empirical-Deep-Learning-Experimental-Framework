@@ -154,8 +154,8 @@ def test_resenet20():
         ),
         model=model,
         fit={
-            'batch_size': param['batch_size'],
-            'epochs': int(param['train_Step']),
+            'batch_size': param['batch'],
+            'epochs': int(param['batch']*param['train_Step']//60000), # 60000 is the number of training images in CIFAR10
         },
         optimizer={'class': param['optimizer'], 'learning_rate': param['learning_rate']},
         loss=None,
