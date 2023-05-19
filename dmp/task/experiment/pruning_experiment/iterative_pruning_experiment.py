@@ -63,7 +63,7 @@ class IterativePruningExperiment(TrainingExperiment):
             # 2: Initialize pruning mask to m = 1d.
             network = self._make_network(self.model)
             model = self._make_model_from_network(network, metrics)
-            self._resume_model(model)
+            self._resume_model(model, dataset)
 
             # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
             num_free_parameters = model.network.num_free_parameters

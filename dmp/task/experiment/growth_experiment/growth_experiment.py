@@ -175,7 +175,7 @@ class GrowthExperiment(TrainingExperiment):
 
                 model = self._make_model_from_network(network, metrics)
                 if src_model is None:
-                    self._resume_model(model)
+                    self._resume_model(model, dataset)
                 else:
                     self.transfer_method.transfer(
                         self._make_transfer_map(src_model, model),

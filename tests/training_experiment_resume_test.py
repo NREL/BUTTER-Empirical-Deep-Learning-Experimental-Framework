@@ -284,5 +284,5 @@ def test_resume():
 
 
 if __name__ == '__main__':
-    test_mnist_lenet()
+    # test_mnist_lenet()
     test_resume()

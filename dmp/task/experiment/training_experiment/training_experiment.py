@@ -77,7 +77,7 @@ class TrainingExperiment(ExperimentTask):
             dataset, metrics = self._load_and_prepare_dataset()
             network = self._make_network(self.model)
             model = self._make_model_from_network(network, metrics)
-            self._resume_model(model)
+            self._resume_model(model, dataset)
             print(model.network.structure.summary())
             model.keras_model.summary()
 
@@ -261,8 +261,18 @@ class TrainingExperiment(ExperimentTask):
     def _resume_model(
         self,
         model: ModelInfo,
+        dataset: PreparedDataset,
     ) -> None:
         if self.resume_from is not None:
+            # model.keras_model.build(dataset.input_shape)
+            # model.keras_model.optimizer.variables()
+            # model.keras_model._make_train_function()
+            optimizer = model.keras_model.optimizer
+            grad_vars  =model.keras_model.trainable_weights
+            zero_grads = [tensorflow.zeros_like(w) for w in grad_vars]
+
+            # Apply gradients which don't do nothing with Adam
+            optimizer.apply_gradients(zip(zero_grads, grad_vars))
             self.resume_from.resume(model)
 
     def _fit_model(

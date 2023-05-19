@@ -1,3 +1,4 @@
+from tensorflow import keras
 import os
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
@@ -29,8 +30,6 @@ saved_optimizer_members = (
     'momentums',
 )
 # keras_model_dirname = 'keras_model'
-
-from tensorflow import keras
 
 
 def save_model_data(
@@ -124,10 +123,10 @@ def load_model_from_file(
     load_optimizer: bool = True,
 ) -> None:
     model_path = get_path_for_model_savepoint(
-            run_id,
-            model_number,
-            model_epoch,
-        )
+        run_id,
+        model_number,
+        model_epoch,
+    )
     (
         absolute_path,
         task_path,
@@ -143,6 +142,7 @@ def load_model_from_file(
             load_mask=load_mask,
             load_optimizer=load_optimizer,
         )
+
 
 def load_model(
     model: ModelInfo,
@@ -179,8 +179,9 @@ def load_parameters(
     load_mask: bool = True,
 ) -> None:
     table = parquet_util.read_parquet_table(file)
-    table.sort_by([('sequence','ascending')])
-    parameters_table = {column: table[column].to_numpy() for column in table.column_names}
+    table.sort_by([('sequence', 'ascending')])
+    parameters_table = {column: table[column].to_numpy()
+                        for column in table.column_names}
     print(f'first values: {table["value"][0:4]}')
     del table
 
@@ -190,11 +191,10 @@ def load_parameters(
         if optimizer is not None and member in parameters_table and hasattr(optimizer, member)
     ]
 
-    print(f'Loading model with optimizer type: {type(optimizer)} with members {optimizer_members}.')
+    print(
+        f'Loading model with optimizer type: {type(optimizer)} with members {optimizer_members}.')
 
     row_index = 0
-
-    
 
     def visit_variable(layer, keras_layer, i, variable):
         nonlocal row_index
@@ -202,28 +202,31 @@ def load_parameters(
         shape = variable.value().shape
         size = numpy.prod(shape)
         print(f'loading variable: {variable.name} {size} {shape} {row_index}')
-        constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
+        constraint = access_model_parameters.get_mask_constraint(
+            keras_layer, variable)
         mask = None
         if load_mask and constraint is not None:
             column = parameters_table['value']
-            chunk = column[row_index : row_index + size]
+            chunk = column[row_index: row_index + size]
             # mask = numpy.logical_not(pyarrow.compute.is_null(chunk).to_numpy())
             mask = numpy.logical_not(numpy.isnan(chunk))
             constraint.mask.assign(mask.reshape(shape))
 
         def load_value(name, variable):
             column = parameters_table[name]
-            prepared = column[row_index : row_index + size]
+            prepared = column[row_index: row_index + size]
 
             if mask is not None:
                 prepared = numpy.where(mask, prepared, 0)
-            print(f'{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}')
+            print(
+                f'{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}')
             prepared = prepared.reshape(shape)
             variable.assign(prepared)
 
         load_value('value', variable)
         for member in optimizer_members:
-            variable_index = optimizer._index_dict[optimizer._var_key(variable)]  # type: ignore
+            variable_index = optimizer._index_dict[optimizer._var_key(
+                variable)]  # type: ignore
             load_value(member, getattr(optimizer, member)[variable_index])
 
         row_index += size
@@ -247,17 +250,19 @@ def save_parameters(
         if optimizer is not None and hasattr(optimizer, member)
     ]
 
-    print(f'Saving model with optimizer type: {type(optimizer)} with members {optimizer_members}.')
+    print(
+        f'Saving model with optimizer type: {type(optimizer)} with members {optimizer_members}.')
 
     data: dict = {column: [] for column in ['value'] + optimizer_members}
     row_index = 0
-    
+
     def visit_variable(layer, keras_layer, i, variable):
         nonlocal row_index
 
         shape = variable.value().shape
         size = numpy.prod(shape)
-        constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
+        constraint = access_model_parameters.get_mask_constraint(
+            keras_layer, variable)
         mask = None if constraint is None else constraint.mask.numpy().flatten()
         print(f'saving variable: {variable.name} {size} {shape}')
 
@@ -265,15 +270,17 @@ def save_parameters(
             value = variable.numpy().flatten()
             if mask is not None:
                 value = numpy.where(mask, value, numpy.nan)
-            print(f'{name}, {row_index}, {len(data[name])}, {size}, {shape}, values: {value[0:4]}')
+            print(
+                f'{name}, {row_index}, {len(data[name])}, {size}, {shape}, values: {value[0:4]}')
             data[name].append(value)
 
         accumulate_value('value', variable)
         for member in optimizer_members:
             optimizer_member = getattr(optimizer, member)
-            variable_index = optimizer._index_dict[optimizer._var_key(variable)]  # type: ignore
+            variable_index = optimizer._index_dict[optimizer._var_key(
+                variable)]  # type: ignore
             accumulate_value(member, optimizer_member[variable_index])
-        
+
         row_index += size
 
     access_model_parameters.visit_parameters(
