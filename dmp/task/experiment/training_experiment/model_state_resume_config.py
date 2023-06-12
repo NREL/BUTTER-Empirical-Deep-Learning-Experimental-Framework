@@ -4,16 +4,15 @@ from uuid import UUID
 from dmp.model.model_info import ModelInfo
 
 from dmp.task.experiment.training_experiment.resume_config import ResumeConfig
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 
 @dataclass
 class ModelStateResumeConfig(ResumeConfig):
     run_id: UUID
-    epoch: int
-    model_number: int
-    model_epoch: int
     load_mask: bool
     load_optimizer: bool
+    epoch: TrainingEpoch
 
     def resume(
         self,
@@ -23,16 +22,12 @@ class ModelStateResumeConfig(ResumeConfig):
 
         model_serialization.load_model_from_file(
             self.run_id,
-            self.model_number,
-            self.model_epoch,
+            self.epoch.model_number,
+            self.epoch.model_epoch,
             model,
             load_mask=self.load_mask,
             load_optimizer=self.load_optimizer,
         )
 
-    def get_epoch(self) -> Tuple[int, int, int]:
-        return (
-            self.epoch,
-            self.model_number,
-            self.model_epoch,
-        )
+    def get_epoch(self) -> TrainingEpoch:
+        return self.epoch

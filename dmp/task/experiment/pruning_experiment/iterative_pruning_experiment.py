@@ -40,7 +40,7 @@ class IterativePruningExperiment(TrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 0
+        return 1
 
     def __call__(
         self,
@@ -63,15 +63,11 @@ class IterativePruningExperiment(TrainingExperiment):
             # 2: Initialize pruning mask to m = 1d.
             network = self._make_network(self.model)
             model = self._make_model_from_network(network, metrics)
-            self._resume_model(model, dataset)
+            self._resume_model(model, self.record.resume_from)
 
             # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
             num_free_parameters = model.network.num_free_parameters
             experiment_history = {}
-            model_saving_callback = self._make_model_saving_callback(
-                worker,
-                job,
-            )
             early_stopping = make_keras_instance(self.pre_pruning_trigger)
 
             self._fit_model(
@@ -80,10 +76,7 @@ class IterativePruningExperiment(TrainingExperiment):
                 self.fit,
                 dataset,
                 model,
-                [
-                    early_stopping,
-                    model_saving_callback,
-                ],
+                [early_stopping],
                 epochs=self.pre_prune_epochs,
                 experiment_history=experiment_history,
                 num_free_parameters=num_free_parameters,
@@ -105,10 +98,7 @@ class IterativePruningExperiment(TrainingExperiment):
                     self.fit,
                     dataset,
                     model,
-                    [
-                        early_stopping,
-                        model_saving_callback,
-                    ],
+                    [early_stopping],
                     epochs=self.max_pruning_epochs,
                     experiment_history=experiment_history,
                     num_free_parameters=num_free_parameters,

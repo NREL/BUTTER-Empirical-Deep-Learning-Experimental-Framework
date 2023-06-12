@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from jobqueue.job import Job
 from dmp.task.experiment.experiment_task import ExperimentTask
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.worker import Worker
 from dmp.model.model_info import ModelInfo
 
@@ -19,5 +20,6 @@ class SaveMode(ABC):
         worker: Worker,
         job: Job,
         task: ExperimentTask,
+        training_epoch: TrainingEpoch,
     ):
         pass

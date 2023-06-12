@@ -208,6 +208,7 @@ from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveM
 from dmp.task.experiment.training_experiment.model_state_resume_config import (
     ModelStateResumeConfig,
 )
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 register_types(
     (
@@ -219,5 +220,6 @@ register_types(
         NetworkInfo,
         HybridSaveMode,
         ModelStateResumeConfig,
+        TrainingEpoch,
     )
 )

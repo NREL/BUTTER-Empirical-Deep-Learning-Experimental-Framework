@@ -92,10 +92,6 @@ class GrowthExperiment(TrainingExperiment):
             #     marshal.marshal(
             #         goal_network.structure))
 
-            model_saving_callback = self._make_model_saving_callback(
-                worker,
-                job,
-            )
             max_total_epochs: int = self.fit['epochs']
             experiment_history: Dict[str, Any] = {}
             model_number: int = 0
@@ -175,7 +171,7 @@ class GrowthExperiment(TrainingExperiment):
 
                 model = self._make_model_from_network(network, metrics)
                 if src_model is None:
-                    self._resume_model(model, dataset)
+                    pass
                 else:
                     self.transfer_method.transfer(
                         self._make_transfer_map(src_model, model),
@@ -193,10 +189,7 @@ class GrowthExperiment(TrainingExperiment):
                     self.fit,
                     dataset,
                     model,
-                    [
-                        early_stopping,
-                        model_saving_callback,
-                    ],
+                    [early_stopping],
                     epochs=max_epochs_at_this_iteration,
                     experiment_history=experiment_history,
                 )

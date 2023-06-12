@@ -1,3 +1,14 @@
+from dmp.marshaling import marshal
+from pprint import pprint
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
+from dmp.model.dense_by_size import DenseBySize
+from dmp.layer.dense import Dense
+from dmp.dataset.dataset_spec import DatasetSpec
+import pytest
+import dmp.jobqueue_interface.worker
+import tensorflow
 import sys
 
 from jobqueue.job import Job
@@ -33,20 +44,6 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
 
 sys.path.insert(0, './')
 
-import tensorflow
-import dmp.jobqueue_interface.worker
-import pytest
-
-from dmp.dataset.dataset_spec import DatasetSpec
-from dmp.layer.dense import Dense
-from dmp.model.dense_by_size import DenseBySize
-
-from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment,
-)
-from pprint import pprint
-
-from dmp.marshaling import marshal
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
 strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
@@ -119,8 +116,8 @@ def test_simple():
             times=True,
             model=None,
             metrics=None,
+            resume_from=None,
         ),
-        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -182,8 +179,8 @@ def test_mnist():
             times=True,
             model=None,
             metrics=None,
+            resume_from=None,
         ),
-        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -248,8 +245,8 @@ def test_mnist_lenet():
             times=True,
             model=None,
             metrics=None,
+            resume_from=None,
         ),
-        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -299,6 +296,7 @@ def test_growth_experiment():
             times=True,
             model=None,
             metrics=None,
+            resume_from=None,
         ),
         growth_trigger=make_keras_kwcfg(
             'ProportionalStopping',
@@ -318,7 +316,6 @@ def test_growth_experiment():
         initial_size=4,
         max_epochs_per_stage=300,
         max_equivalent_epoch_budget=1000,
-        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -389,6 +386,7 @@ def test_growth_experiment_mnist():
             times=True,
             model=None,
             metrics=None,
+            resume_from=None,
         ),
         growth_trigger=make_keras_kwcfg(
             'ProportionalStopping',
@@ -408,7 +406,6 @@ def test_growth_experiment_mnist():
         # max_epochs_per_stage=1024 * 2,
         max_epochs_per_stage=1,
         max_equivalent_epoch_budget=2048,
-        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -498,8 +495,8 @@ def test_from_optimizer():
             times=True,
             model=None,
             metrics=None,
+            resume_from=None,
         ),
-        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -561,8 +558,9 @@ def test_imagenet16():
             times=True,
             model=None,
             metrics=None,
+            resume_from=None,
+
         ),
-        resume_from=None,
     )
 
     run_experiment(experiment)
@@ -626,6 +624,8 @@ def test_pruning_experiment():
             times=True,
             model=None,
             metrics=None,
+            resume_from=None,
+
         ),
         num_pruning_iterations=4,
         pre_prune_epochs=2,
@@ -636,10 +636,10 @@ def test_pruning_experiment():
         pruning_trigger=None,
         max_pruning_epochs=5,
         rewind=True,
-        resume_from=None,
     )
 
     run_experiment(experiment)
+
 
 if __name__ == '__main__':
     # test_growth_experiment()

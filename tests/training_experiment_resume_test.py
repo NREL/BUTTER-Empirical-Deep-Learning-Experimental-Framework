@@ -1,3 +1,15 @@
+from dmp.marshaling import marshal
+from pprint import pprint
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
+from dmp.model.dense_by_size import DenseBySize
+from dmp.layer.dense import Dense
+from dmp.dataset.dataset_spec import DatasetSpec
+import pytest
+import dmp.jobqueue_interface.worker
+import tensorflow
 import sys
 import uuid
 from jobqueue.connect import load_credentials
@@ -44,20 +56,6 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
 
 sys.path.insert(0, './')
 
-import tensorflow
-import dmp.jobqueue_interface.worker
-import pytest
-
-from dmp.dataset.dataset_spec import DatasetSpec
-from dmp.layer.dense import Dense
-from dmp.model.dense_by_size import DenseBySize
-
-from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment,
-)
-from pprint import pprint
-
-from dmp.marshaling import marshal
 
 credentials = load_credentials('dmp')
 schema = PostgresSchema(credentials)
@@ -70,7 +68,7 @@ worker = Worker(
     {},
 )  # type: ignore
 
-# 
+#
 # worker = Worker(
 #     None,
 #     None,
@@ -177,14 +175,15 @@ def test_mnist_lenet():
                 fixed_interval=0,
                 fixed_threshold=0,
                 exponential_rate=0,
-                
+
             ),
+            resume_from=None,
         ),
-        resume_from=None,
     )
 
     job_id = uuid.UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3')
     run_experiment(experiment, job_id=job_id)
+
 
 def test_resume():
     job_id = uuid.UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3')
@@ -267,20 +266,22 @@ def test_resume():
                 fixed_interval=0,
                 fixed_threshold=0,
                 exponential_rate=0,
-                
+
+            ),
+            resume_from=ModelStateResumeConfig(
+                run_id=job_id,
+                load_mask=True,
+                load_optimizer=True,
+                epoch=TrainingEpoch(
+                    epoch=5,
+                    model_number=0,
+                    model_epoch=1,
+                ),
             ),
         ),
-        resume_from=ModelStateResumeConfig(
-            run_id=job_id,
-            epoch=5,
-            model_number=0,
-            model_epoch=1,
-            load_mask=True,
-            load_optimizer=True,
-        ),
+
     )
     run_experiment(resume_experiment)
-
 
 
 if __name__ == '__main__':

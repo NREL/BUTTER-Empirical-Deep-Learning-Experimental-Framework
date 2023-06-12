@@ -11,13 +11,14 @@ from dmp.worker import Worker
 
 @dataclass
 class Task(ABC):
-    
+
     @abstractmethod
-    def __call__(self, worker: Worker, job: Job) -> TaskResult:
+    def __call__(self, worker: Worker, job: Job,
+                 *args,
+                 **kwargs,
+                 ) -> TaskResult:
         pass
 
     @property
     def version(self) -> int:
         return -1
-
-

@@ -1,3 +1,14 @@
+from dmp.marshaling import marshal
+from pprint import pprint
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
+from dmp.model.dense_by_size import DenseBySize
+from dmp.layer.dense import Dense
+from dmp.dataset.dataset_spec import DatasetSpec
+import pytest
+import dmp.jobqueue_interface.worker
+import tensorflow
 import sys
 from jobqueue.connect import load_credentials
 
@@ -35,20 +46,6 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
 
 sys.path.insert(0, './')
 
-import tensorflow
-import dmp.jobqueue_interface.worker
-import pytest
-
-from dmp.dataset.dataset_spec import DatasetSpec
-from dmp.layer.dense import Dense
-from dmp.model.dense_by_size import DenseBySize
-
-from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment,
-)
-from pprint import pprint
-
-from dmp.marshaling import marshal
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
 strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
@@ -140,10 +137,13 @@ def test_pruning_experiment():
             model_saving=HybridSaveMode(
                 save_initial_model=True,
                 save_trained_model=True,
+                save_epochs=[],
+                save_model_epochs=[],
                 fixed_interval=1,
                 fixed_threshold=32,
                 exponential_rate=2,
             ),
+            resume_from=None,
         ),
         num_pruning_iterations=4,
         pre_prune_epochs=2,
@@ -154,7 +154,7 @@ def test_pruning_experiment():
         pruning_trigger=None,
         max_pruning_epochs=5,
         rewind=True,
-        resume_from=None,
+
     )
 
     run_experiment(experiment)

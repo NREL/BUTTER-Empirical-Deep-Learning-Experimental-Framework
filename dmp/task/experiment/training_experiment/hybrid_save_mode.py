@@ -5,6 +5,7 @@ from typing import Any, List, Optional, Set
 from jobqueue.job import Job
 from dmp.model.model_info import ModelInfo
 from dmp.task.experiment.experiment_task import ExperimentTask
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.worker import Worker
 from dmp.task.experiment.training_experiment.save_mode import SaveMode
 
@@ -36,6 +37,7 @@ class HybridSaveMode(SaveMode):
         worker: Worker,
         job: Job,
         task: ExperimentTask,
+        training_epoch:TrainingEpoch,
     ):
         import os
         import tensorflow.keras as keras
@@ -52,32 +54,30 @@ class HybridSaveMode(SaveMode):
                 self.save_model_epochs: Set[int] = set(
                     parent.save_model_epochs)
                 self.save_epochs: Set[int] = set(parent.save_epochs)
-                self.model_number: int = -1
-                self.epoch: int = 0
-                self.model_epoch: int = 0
-                self.last_saved_epoch: int = self.epoch - 1
-                self.last_saved_model_number: int = self.model_number
+                
+                self.training_epoch : TrainingEpoch = dataclass.replace(training_epoch)
+                self.training_epoch.model_number -= 1
+
+                self.last_saved_epoch : TrainingEpoch = dataclass.replace(self.training_epoch)
+                self.last_saved_epoch.epoch -= 1
+                self.last_saved_epoch.model_epoch -= 1
+
                 self.task: ExperimentTask = task
                 self.model_info: Optional[
                     ModelInfo
                 ] = None  # NB: must be set before calling to save model states
 
             def on_train_begin(self, logs=None) -> None:
-                self.model_number += 1
-                self.model_epoch = 0
+                self.training_epoch.count_new_model()
                 if self.parent.save_initial_model:
                     self.save_model()
 
             def on_epoch_end(self, epoch, logs=None) -> None:
-                self.model_epoch += 1
-                model_epoch = self.model_epoch
+                self.training_epoch.count_new_epoch()
 
-                self.epoch += 1
-                epoch = self.epoch
-
+                model_epoch = self.training_epoch.model_epoch
                 parent = self.parent
-
-                if epoch in self.save_epochs or model_epoch in self.save_model_epochs:
+                if self.training_epoch.epoch in self.save_epochs or model_epoch in self.save_model_epochs:
                     # specified epoch
                     pass
                 elif parent.fixed_threshold > 0 and model_epoch <= parent.fixed_threshold:
@@ -103,14 +103,10 @@ class HybridSaveMode(SaveMode):
 
             def save_model(self) -> None:
                 model_info = self.model_info
-                if model_info is None or (
-                    self.last_saved_epoch == self.epoch
-                    and self.last_saved_model_number == self.model_number
-                ):
+                if model_info is None or self.last_saved_epoch == self.training_epoch:
                     return
 
-                self.last_saved_epoch = self.epoch
-                self.last_saved_model_number = self.model_number
+                self.last_saved_epoch = dataclass.replace(self.epoch)
 
                 model_path = model_serialization.get_path_for_model_savepoint(
                     job.id,
