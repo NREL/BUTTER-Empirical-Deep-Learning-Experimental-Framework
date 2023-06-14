@@ -11,7 +11,10 @@ from dmp import common
 from dmp.common import KerasConfig
 from dmp.model.network_info import NetworkInfo
 from dmp.parquet_util import make_dataframe_from_dict
+from dmp.task.experiment.delegating_experiment import DelegatingExperiment
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
+from dmp.task.experiment.lth.pruning_config import PruningConfig
+from dmp.task.experiment.pruning_experiment.pruning_iteration_experiment import PruningIterationExperiment
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import PruningMethod
 from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 from dmp.task.experiment.training_experiment import (
@@ -72,36 +75,63 @@ Chain goes:
     + implement structure
     + implement ID passing / parent / base ID
 
-    
-    -> Make an ordinary training run, saving at critical save points.
-    -> For each pruning configuration, at each rewind point
-        [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration 
+    [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration 
         to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
-        
-        -> Dispatch 2+ IMP runs at specific save points as rewind points
-            -> One run uses same data order/seed
-            -> The other run uses a different data order/seed
-            -> Each IMP Run:
-                -> optionally prune using pruning weights (different from rewind weights) 
-                -> load rewind weights and optimizer
+    
+    -> LTHChainExperiment: Make an ordinary training run, saving at critical save points.
+        -> Save as if a normal training experiment?
+            -> and mark run as a LTHChainExperiment
+    -> For alternate seeds:
+        -> LTHChainSeedChangeExperiment: finish training run with alternate seed
+        -> for each pruning config, rewind point:
+            -> PruningIterationExperiment: dispatch iterative pruning job sequence
+                -> load trained network, mask
+                -> prune trained network to get new mask
+                -> load rewind point weights (but not mask)
                 -> train & save
-                -> when completed, possibly dispatch a new pruning run 
-                    -> use same rewind point, but new pruning weights
+                -> dispatch next iteration job
+    -> For main seed:
+        -> for each pruning config, rewind point:
+            -> PruningIterationExperiment: dispatch iterative pruning job sequence
+                -> load trained network, mask
+                -> prune trained network to get new mask
+                -> load rewind point weights (but not mask)
+                -> train & save
+                -> dispatch next iteration job
+    Other concerns:
+        + tracking and labeling related runs:
+            -> use parent_run id for overall run
+            -> there's like:
+                -> root_run: the root, originating training run 
+                -> pruning_method: the pruning run sequence stemming from the root run
+                -> iteration_number: this particular run/iteration of that sequence
+            -> rewind_point: use rewind epoch data to identify rewind point epoch
+            -> use seed / parent seed (?) to identify seed changes
+                -> could also use a seed column?
+        + aggregating as experiments?
+            + parent run settings
+            + rewind point settings
+                + seed change
+            + pruning settings
+            + pruning iteration number
+        + appending/combining history data
+            + could load and append
+                + load parent run record
+                + append to run record
+                + save as my run record
+                * Convienient & fast for loading total history
+                - Inefficient space usage
+                - Handling branching records is awkward
+
 '''
 
-@dataclass
-class PruningConfig():
-    num_pruning_iterations: int
-    pruning_iteration: int
-    method: PruningMethod
-
 
 @dataclass
-class LTHChainExperiment(Task):
-    pruning_configs: List[PruningConfig]
-    alternate_seeds: List[int]
-    rewind_epochs: List[int]
+class LTHChainExperiment(DelegatingExperiment):
     baseline_experiment: TrainingExperiment
+    pruning_configs: List[PruningConfig]
+    pruning_seeds: List[int]
+    rewind_epochs: List[int]    
 
     @property
     def version(self) -> int:
@@ -113,11 +143,17 @@ class LTHChainExperiment(Task):
                  ) -> ExperimentResultRecord:
         
         result_record = self.baseline_experiment(worker, job, *args, **kwargs)
+        # TODO: add this experiment's flags, etc to the result record
         
         for rewind_point in self.rewind_epochs:
             for pruning_config in self.pruning_configs:
-                for seed in itertools.chain([self.baseline_experiment.seed], self.alternate_seeds):
+                for seed in self.pruning_seeds:
                     # TODO: enqueue prune and train experiments
-                    pass
+                    if seed == self.baseline_experiment.seed:
+                        # queue up a PruningIterationExperiment
+                        child = PruningIterationExperiment()
+                        pass
+                    else:
+                        pass
 
         return result_record

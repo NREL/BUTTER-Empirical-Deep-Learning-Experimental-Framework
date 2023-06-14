@@ -22,3 +22,15 @@ class Task(ABC):
     @property
     def version(self) -> int:
         return -1
+
+    
+    def summary(self) -> None:
+        '''
+        Pretty-prints a description of this Task.
+        '''
+
+        from dmp.marshaling import marshal
+        from pprint import pprint
+
+        pprint(marshal.marshal(self))
+    

@@ -10,7 +10,9 @@ from dmp import common
 from dmp.common import KerasConfig
 from dmp.model.network_info import NetworkInfo
 from dmp.parquet_util import make_dataframe_from_dict
+from dmp.task.experiment.a_experiment_task import FlatParameterDict, ParameterDict
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
+from dmp.task.experiment.pruning_experiment.count_masked_parameters import count_masked_parameters
 from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 from dmp.task.experiment.training_experiment import (
     training_experiment_keys,
@@ -51,19 +53,32 @@ from dmp.worker import Worker
 
 @dataclass
 class TrainingExperiment(ExperimentTask):
+    seed: int  # RNG seed
+
     # floating point precision {'float16', 'float32', 'float64'}
     precision: str
-    record: ExperimentRecordSettings
+
+    record: ExperimentRecordSettings  # what to record during this experiment run
+
     dataset: DatasetSpec  # migrate dataset stuff into here
+
     model: ModelSpec  # defines network
+
     fit: dict  # contains batch size, epochs, shuffle (migrate from run_config)
+
     # contains learning rate (migrate converting to typed config from keras serialization)
     optimizer: dict
-    loss: Optional[KerasConfig]  # set to None for runtime determination
+
+    # The loss function to use. Set to None for runtime determination.
+    loss: Optional[KerasConfig]
+
     # keras config for early stopping callback
     early_stopping: Optional[KerasConfig]
 
+    # defines important strings and collections of strings for this experiment class
     keys = training_experiment_keys.keys
+
+    # used to aggregate and summarize repetitions
     summarizer = training_experiment_summarizer.summarizer
 
     @property
@@ -284,11 +299,7 @@ class TrainingExperiment(ExperimentTask):
         new_model_number: bool = True,
         epochs: Optional[int] = None,
         experiment_history: Optional[Dict[str, Any]] = None,
-        num_free_parameters: Optional[int] = None,
     ) -> Dict:
-        # set num_free_parameters
-        num_free_parameters = model.network.num_free_parameters if num_free_parameters is None else num_free_parameters
-
         # filter None's out of callbacks
         callbacks = [cb for cb in callbacks if cb is not None]
 
@@ -357,8 +368,8 @@ class TrainingExperiment(ExperimentTask):
         )
         history_callbacks.append(history)
 
+        # copy zero epoch recorder's train_ metrics to trained_ metrics
         if self.record.post_training_metrics:
-            # copy zero epoch recorder's train_ metrics to trained_ metrics
             self.remap_key_prefixes(
                 zero_epoch_recorder.history,
                 [
@@ -368,14 +379,27 @@ class TrainingExperiment(ExperimentTask):
 
         # Add test set history into history dict.
         fit_history = self._merge_histories(history_callbacks)
-        
+
+        # set free parameter count history
+        history_length = len(fit_history[self.keys.epoch])
+        if self.keys.free_parameter_count_key not in fit_history:
+            fit_history[self.keys.free_parameter_count_key] = [
+                model.network.num_free_parameters] * history_length
+
+        # set masked parameter count history
+        if self.keys.maked_parameter_count_key not in fit_history:
+            fit_history[self.keys.maked_parameter_count_key] = [
+                count_masked_parameters(
+                    model.network.structure,
+                    model.keras_network.layer_to_keras_map,
+                )] * history_length
+
         # if experiment_history was supplied, merge this call to fit into it and return it
         if experiment_history is not None:
             self._append_fit_history_to_model_history(
                 new_model_number,
                 experiment_history,
                 fit_history,
-                num_free_parameters,
                 next((cb for cb in callbacks if isinstance(cb, keras.callbacks.EarlyStopping)),
                      None
                      )
@@ -459,7 +483,6 @@ class TrainingExperiment(ExperimentTask):
         new_model_number: bool,
         experiment_history: Optional[Dict[str, Any]],
         fit_history: Dict[str, Any],
-        num_free_parameters: int,
         early_stopping_callback: Optional[Any],
     ) -> Dict[str, Any]:
         training_epoch = self._get_current_epoch(
@@ -482,10 +505,6 @@ class TrainingExperiment(ExperimentTask):
         # convert model epochs to history epochs
         fit_history[self.keys.epoch] = model_epochs + training_epoch.epoch
 
-        # free parameter count history
-        fit_history[self.keys.free_parameter_count_key] = [
-            num_free_parameters] * history_length
-
         # set retained column
         retained = [True] * history_length
         fit_history[self.keys.retained] = retained
@@ -500,7 +519,7 @@ class TrainingExperiment(ExperimentTask):
 
         if experiment_history is None:
             return fit_history
-        
+
         for metric, metric_history in fit_history.items():
             experiment_history.setdefault(metric, []).extend(metric_history)
         return experiment_history
@@ -527,7 +546,7 @@ class TrainingExperiment(ExperimentTask):
         }
         run_data.update(worker_info)
 
-        experiment_attrs: Dict[str, Any] = self.get_parameters()
+        experiment_attrs: FlatParameterDict = self.get_parameters()
         experiment_tags = {}
 
         run_data_set = {'seed', 'precision', 'task_version', 'batch'}
@@ -558,7 +577,7 @@ class TrainingExperiment(ExperimentTask):
                 'data_set_size': dataset.train_size
                 + dataset.test_size
                 + dataset.validation_size,
-            }
+            }  # type: ignore
         )
 
         for k, v in network.description.items():

@@ -6,6 +6,7 @@ from dmp.keras_interface.keras_utils import (
 from dmp.common import marshal_type_key
 
 
+
 from lmarshal.src.marshal import Marshal
 from lmarshal.src.marshal_config import MarshalConfig
 
@@ -209,6 +210,7 @@ from dmp.task.experiment.training_experiment.model_state_resume_config import (
     ModelStateResumeConfig,
 )
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.lth.pruning_config import PruningConfig
 
 register_types(
     (
@@ -221,5 +223,6 @@ register_types(
         HybridSaveMode,
         ModelStateResumeConfig,
         TrainingEpoch,
+        PruningConfig,
     )
 )

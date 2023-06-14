@@ -75,6 +75,7 @@ class TrainingExperimentKeys():
             make_with_data_set_prefixes(self.loss_metrics))
         
         self.free_parameter_count_key: str = 'free_parameter_count'
+        self.maked_parameter_count_key: str = 'masked_parameter_count'
         self.model_number: str = 'model_number'
         self.model_epoch:str = 'model_epoch'
         self.retained: str = 'retained'
