@@ -17,11 +17,13 @@ from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 import dmp.keras_interface.access_model_parameters as access_model_parameters
 from dmp.task.experiment.experiment_task import ExperimentTask
+from dmp.task.experiment.lth.pruning_config import PruningConfig
 
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
 )
 from dmp.task.experiment.training_experiment.model_state_resume_config import ModelStateResumeConfig
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
@@ -33,17 +35,15 @@ from dmp.worker import Worker
 class PruningIterationExperiment(TrainingExperiment):
     """
     """
-    
-    pruning_method: PruningMethod
-    pruning_iteration: int
-    pruning_max_iteration: int  # run-specific attribute
+
+    pruning: PruningConfig  # contains run-specific num_iterations...
 
     # TODO: what is run vs experiment attributes here?
-    rewind_point: ModelStateResumeConfig # run-specific id
+    rewind: ModelStateResumeConfig  # run-specific id
 
     @property
     def version(self) -> int:
-        return 1
+        return super().version + 1
 
     def __call__(
         self,
@@ -58,7 +58,19 @@ class PruningIterationExperiment(TrainingExperiment):
             dataset, metrics = self._load_and_prepare_dataset()
             network = self._make_network(self.model)
             model = self._make_model_from_network(network, metrics)
+
+            # load pruning weights
             self._resume_model(model, self.record.resume_from)
+
+            # prune network
+            self.pruning.method.prune(
+                model.network.structure,
+                model.keras_network.layer_to_keras_map,
+            )
+
+            # load rewind point
+            self.rewind.resume(model)
+
             print(model.network.structure.summary())
             model.keras_model.summary()
 
@@ -70,6 +82,25 @@ class PruningIterationExperiment(TrainingExperiment):
                 model,
                 [self._make_early_stopping_callback()],
             )
+
+            # TODO: enqueue next pruning iteration
+
+            child = PruningIterationExperiment(
+                **vars(self),
+            )
+            child.record = dataclass.replace(
+                child.record,
+                resume_from=ModelStateResumeConfig(
+                    run_id=job.id,
+                    load_mask=True,
+                    load_optimizer=False,
+                    epoch=TrainingEpoch(
+                        # epoch=resume_p
+                    )
+                ),
+                parent_run=job.id,
+            )
+
             return self._make_result_record(
                 worker.worker_info,
                 job.id,
@@ -77,14 +108,3 @@ class PruningIterationExperiment(TrainingExperiment):
                 model.network,
                 history,
             )
-            # TODO: if desired, enqueue next pruning/training iteration
-
-            # # load prune source
-            # # do pruning to get new mask
-            # num_pruned = self.pruning_method.prune(
-            #     model.network.structure, model.keras_network.layer_to_keras_map)
-            # num_free_parameters = model.network.num_free_parameters - num_pruned
-
-            # set weights from reset source
-            # self._resume_model(model, self.rewind_point)
-

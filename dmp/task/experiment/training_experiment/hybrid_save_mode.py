@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import math
-from typing import Any, List, Optional, Set
+from typing import Any, Dict, List, Optional, Sequence, Set
 
 from jobqueue.job import Job
 from dmp.model.model_info import ModelInfo
@@ -66,6 +66,9 @@ class HybridSaveMode(SaveMode):
                 self.model_info: Optional[
                     ModelInfo
                 ] = None  # NB: must be set before calling to save model states
+
+                # self.history : Dict[str, List] = {}
+                self.saved_epochs : List[TrainingEpoch] = []
 
             def on_train_begin(self, logs=None) -> None:
                 self.training_epoch.count_new_model()
@@ -146,5 +149,7 @@ INSERT INTO {model_table} ( {insert_columns} )
                         (job.id, self.model_number, self.model_epoch, self.epoch),
                         binary=True,
                     )
+                
+                self.saved_epochs.append(dataclass.replace(self.epoch))
 
         return SaveCallback(self)

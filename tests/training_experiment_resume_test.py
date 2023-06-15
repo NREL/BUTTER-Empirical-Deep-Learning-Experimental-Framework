@@ -41,7 +41,7 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
     MagnitudePruner,
 )
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    ExperimentRecordSettings,
+    RunSpecificConfig,
 )
 from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveMode
 from dmp.task.experiment.training_experiment.model_state_resume_config import (
@@ -162,7 +162,7 @@ def test_mnist_lenet():
             patience=50,
             restore_best_weights=True,
         ),
-        record=ExperimentRecordSettings(
+        record=RunSpecificConfig(
             post_training_metrics=True,
             times=True,
             model=None,
@@ -253,7 +253,7 @@ def test_resume():
             patience=50,
             restore_best_weights=True,
         ),
-        record=ExperimentRecordSettings(
+        record=RunSpecificConfig(
             post_training_metrics=True,
             times=True,
             model=None,

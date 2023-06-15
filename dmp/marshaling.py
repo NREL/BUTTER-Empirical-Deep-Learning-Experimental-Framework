@@ -196,7 +196,7 @@ register_types((MagnitudePruner,))
 
 # Other types:
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    ExperimentRecordSettings,
+    RunSpecificConfig,
 )
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.recorder.test_set_history_recorder import (
@@ -214,7 +214,7 @@ from dmp.task.experiment.lth.pruning_config import PruningConfig
 
 register_types(
     (
-        ExperimentRecordSettings,
+        RunSpecificConfig,
         ExperimentResultRecord,
         TestSetHistoryRecorder,
         DatasetSpec,

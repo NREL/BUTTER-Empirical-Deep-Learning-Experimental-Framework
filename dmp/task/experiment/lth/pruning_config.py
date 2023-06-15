@@ -6,6 +6,6 @@ from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import
 
 @dataclass
 class PruningConfig():
-    num_pruning_iterations: int
     pruning_iteration: int
+    max_iterations: int # run-specific
     method: PruningMethod

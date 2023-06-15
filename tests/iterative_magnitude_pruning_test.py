@@ -34,7 +34,7 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
     MagnitudePruner,
 )
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    ExperimentRecordSettings,
+    RunSpecificConfig,
 )
 from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveMode
 from dmp.worker import Worker
@@ -129,7 +129,7 @@ def test_pruning_experiment():
             patience=1,
             restore_best_weights=True,
         ),
-        record=ExperimentRecordSettings(
+        record=RunSpecificConfig(
             post_training_metrics=True,
             times=True,
             model=None,

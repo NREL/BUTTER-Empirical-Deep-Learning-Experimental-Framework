@@ -79,7 +79,6 @@ class IterativePruningExperiment(TrainingExperiment):
                 [early_stopping],
                 epochs=self.pre_prune_epochs,
                 experiment_history=experiment_history,
-                num_free_parameters=num_free_parameters,
             )
 
             # save weights at this point for rewinding
@@ -101,7 +100,6 @@ class IterativePruningExperiment(TrainingExperiment):
                     [early_stopping],
                     epochs=self.max_pruning_epochs,
                     experiment_history=experiment_history,
-                    num_free_parameters=num_free_parameters,
                 )
 
                 model_serialization.save_model_data(
@@ -109,11 +107,10 @@ class IterativePruningExperiment(TrainingExperiment):
                 )
 
                 # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
-                num_pruned = self.pruning_method.prune(
+                self.pruning_method.prune(
                     model.network.structure,
                     model.keras_network.layer_to_keras_map,
                 )
-                num_free_parameters = model.network.num_free_parameters - num_pruned
 
                 model_serialization.save_model_data(
                     self, model, f'test_{iteration_n}_pruned'

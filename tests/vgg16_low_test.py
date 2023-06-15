@@ -28,7 +28,7 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
     MagnitudePruner,
 )
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    ExperimentRecordSettings,
+    RunSpecificConfig,
 )
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
@@ -152,7 +152,7 @@ def test_vgg16():
             patience=50,
             restore_best_weights=True,
         ),
-        record=ExperimentRecordSettings(
+        record=RunSpecificConfig(
             post_training_metrics=True,
             times=True,
             model=None,

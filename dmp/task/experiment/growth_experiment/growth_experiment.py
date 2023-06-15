@@ -71,7 +71,7 @@ class GrowthExperiment(TrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 0
+        return super().version + 2
 
     def __call__(
         self, worker: Worker, job: Job, *args, **kwargs

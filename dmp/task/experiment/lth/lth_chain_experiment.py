@@ -4,6 +4,7 @@ from operator import index
 import random
 from typing import Any, Dict, Iterable, Optional, Set, Type
 from uuid import UUID
+import uuid
 from jobqueue.job import Job
 import numpy
 import tensorflow
@@ -22,12 +23,14 @@ from dmp.task.experiment.training_experiment import (
     training_experiment_summarizer,
 )
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    ExperimentRecordSettings,
+    RunSpecificConfig,
 )
 from dmp.task.experiment.training_experiment.model_saving_callback import (
     ModelSavingCallback,
 )
+from dmp.task.experiment.training_experiment.model_state_resume_config import ModelStateResumeConfig
 from dmp.task.experiment.training_experiment.resume_config import ResumeConfig
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 import tensorflow.keras as keras
 
@@ -131,29 +134,60 @@ class LTHChainExperiment(DelegatingExperiment):
     baseline_experiment: TrainingExperiment
     pruning_configs: List[PruningConfig]
     pruning_seeds: List[int]
-    rewind_epochs: List[int]    
+    rewind_epochs: List[int]
 
     @property
     def version(self) -> int:
-        return 1
+        return super().version + 1
 
     def __call__(self, worker: Worker, job: Job,
                  *args,
                  **kwargs,
                  ) -> ExperimentResultRecord:
-        
+
         result_record = self.baseline_experiment(worker, job, *args, **kwargs)
         # TODO: add this experiment's flags, etc to the result record
+
+        from dmp.marshaling import marshal
         
-        for rewind_point in self.rewind_epochs:
+        child_jobs = []
+        for rewind_epoch in self.rewind_epochs:
+            rewind_config = ModelStateResumeConfig(
+                run_id=job.id,
+                load_mask=False,
+                load_optimizer=True,
+                epoch=TrainingEpoch(
+                    epoch=rewind_epoch,
+                    model_number=0,
+                    model_epoch=rewind_epoch,
+                ),
+            )
+
             for pruning_config in self.pruning_configs:
                 for seed in self.pruning_seeds:
                     # TODO: enqueue prune and train experiments
                     if seed == self.baseline_experiment.seed:
                         # queue up a PruningIterationExperiment
-                        child = PruningIterationExperiment()
-                        pass
+                        child_experiment = PruningIterationExperiment(
+                            **vars(self.baseline_experiment),
+                            pruning=pruning_config,
+                            rewind=rewind_config,
+                        )
                     else:
                         pass
+
+                    child_id = uuid.uuid4()
+                    child_experiment.record = dataclass.replace(
+                        child_experiment.record,
+                        root_run=job.id,
+                        parent_run=child_id,
+                        )
+                    child_job = Job(
+                        id=child_id,
+                        parent=job.id,
+                        priority=job.priority - 1,
+                        command=marshal.marshal(child_experiment),
+                    )
+                    child_jobs.append(child_job)
 
         return result_record

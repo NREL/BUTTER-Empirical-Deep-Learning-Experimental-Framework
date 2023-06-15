@@ -14,6 +14,10 @@ FlatParameterDict = Dict[str, ParameterValue]
 class AExperimentTask(Task, ABC):
     
     @property
+    def version(self) -> int:
+        return super().version + 2
+    
+    @property
     @abstractmethod
     def batch(self)-> str:
         pass

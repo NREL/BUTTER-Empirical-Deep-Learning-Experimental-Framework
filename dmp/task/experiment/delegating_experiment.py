@@ -12,6 +12,10 @@ class DelegatingExperiment(AExperimentTask, ABC):
     delegate : AExperimentTask
 
     @property
+    def version(self) -> int:
+        return super().version + 1
+    
+    @property
     def batch(self)-> str:
         return self.delegate.batch
 

@@ -19,7 +19,7 @@ from dmp.task.experiment.training_experiment import (
     training_experiment_summarizer,
 )
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    ExperimentRecordSettings,
+    RunSpecificConfig,
 )
 from dmp.task.experiment.training_experiment.model_saving_callback import (
     ModelSavingCallback,
@@ -58,7 +58,7 @@ class TrainingExperiment(ExperimentTask):
     # floating point precision {'float16', 'float32', 'float64'}
     precision: str
 
-    record: ExperimentRecordSettings  # what to record during this experiment run
+    record: RunSpecificConfig  # what to record during this experiment run
 
     dataset: DatasetSpec  # migrate dataset stuff into here
 
@@ -83,7 +83,7 @@ class TrainingExperiment(ExperimentTask):
 
     @property
     def version(self) -> int:
-        return 13
+        return super().version + 13
 
     def __call__(
         self, worker: Worker, job: Job, *args, **kwargs
@@ -394,18 +394,31 @@ class TrainingExperiment(ExperimentTask):
                     model.keras_network.layer_to_keras_map,
                 )] * history_length
 
-        # if experiment_history was supplied, merge this call to fit into it and return it
-        if experiment_history is not None:
-            self._append_fit_history_to_model_history(
-                new_model_number,
-                experiment_history,
-                fit_history,
-                next((cb for cb in callbacks if isinstance(cb, keras.callbacks.EarlyStopping)),
-                     None
-                     )
-            )
+        # set retained column
+        if self.keys.retained not in fit_history:
+            retained = [True] * history_length
+            fit_history[self.keys.retained] = retained
 
-        return fit_history
+            early_stopping_callback = next((cb for cb in callbacks if isinstance(cb, keras.callbacks.EarlyStopping)),
+                                        None,)
+
+            if early_stopping_callback is not None and early_stopping_callback.stopped_epoch > 0:
+                last_retained_epoch = (
+                    len(fit_history[self.keys.epoch]) -
+                    early_stopping_callback.patience
+                )
+                for i in range(last_retained_epoch + 1, history_length):
+                    retained[i] = False
+
+        # if experiment_history was supplied, merge this call to fit into it and return it
+        # if experiment_history is not None:
+        return self._append_fit_history_to_model_history(
+            new_model_number,
+            experiment_history,
+            fit_history,
+        )
+
+        # return fit_history
 
     def _merge_histories(
         self,
@@ -483,7 +496,6 @@ class TrainingExperiment(ExperimentTask):
         new_model_number: bool,
         experiment_history: Optional[Dict[str, Any]],
         fit_history: Dict[str, Any],
-        early_stopping_callback: Optional[Any],
     ) -> Dict[str, Any]:
         training_epoch = self._get_current_epoch(
             experiment_history)
@@ -504,18 +516,6 @@ class TrainingExperiment(ExperimentTask):
 
         # convert model epochs to history epochs
         fit_history[self.keys.epoch] = model_epochs + training_epoch.epoch
-
-        # set retained column
-        retained = [True] * history_length
-        fit_history[self.keys.retained] = retained
-
-        if early_stopping_callback is not None and early_stopping_callback.stopped_epoch > 0:
-            last_retained_epoch = (
-                len(fit_history[self.keys.epoch]) -
-                early_stopping_callback.patience
-            )
-            for i in range(last_retained_epoch + 1, history_length):
-                retained[i] = False
 
         if experiment_history is None:
             return fit_history

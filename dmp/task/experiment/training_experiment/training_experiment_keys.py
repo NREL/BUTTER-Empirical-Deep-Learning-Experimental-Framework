@@ -79,6 +79,7 @@ class TrainingExperimentKeys():
         self.model_number: str = 'model_number'
         self.model_epoch:str = 'model_epoch'
         self.retained: str = 'retained'
+        self.seed_change: str = 'seed_change'
 
         def cmax(a):
             # Thanks: https://stackoverflow.com/questions/40672186/cumulative-argmax-of-a-numpy-array

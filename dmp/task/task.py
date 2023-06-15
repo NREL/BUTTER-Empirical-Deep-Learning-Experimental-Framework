@@ -21,7 +21,7 @@ class Task(ABC):
 
     @property
     def version(self) -> int:
-        return -1
+        return 0
 
     
     def summary(self) -> None:
