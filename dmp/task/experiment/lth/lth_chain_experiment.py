@@ -15,6 +15,7 @@ from dmp.parquet_util import make_dataframe_from_dict
 from dmp.task.experiment.delegating_experiment import DelegatingExperiment
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.experiment.lth.pruning_config import PruningConfig
+from dmp.task.experiment.pruning_experiment.lth_seed_change_experiment import LTHSeedChangeExperiment
 from dmp.task.experiment.pruning_experiment.pruning_iteration_experiment import PruningIterationExperiment
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import PruningMethod
 from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
@@ -59,24 +60,15 @@ from dmp.worker import Worker
 
 
 '''
-Chain goes: 
-    + Regular training run
-        + savepoints at possible restart points, and then along the training trajectory
-        + for each (early?) savepoint:
-            + for [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
-                + do IMP with savepoints at end of each training cycle (before pruning), maybe along the way too
-                + same as above, but with a different data order
 
-+ save file custom paths
-    + edit DB
-    + edit table class
-    + edit save procedure
-    + add configuration to SaveMode
-    + add support to experiments
-        + {experiment group}/{model}/{stage (full network, IMP_pct_0, IMP_pct_1)}/{model number}/{root run id}/{model epochs}/{run id}
-+ LTH chain experiment
-    + implement structure
-    + implement ID passing / parent / base ID
+TODO:
+    + how to record seed-change epoch
+    + writing child jobs into database
+    + making sure model save & resume behavior is consistent
+    + parent experiment history appending
+    + model save custom paths?
+    + test run
+    + first batch
 
     [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration 
         to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
@@ -149,7 +141,7 @@ class LTHChainExperiment(DelegatingExperiment):
         # TODO: add this experiment's flags, etc to the result record
 
         from dmp.marshaling import marshal
-        
+
         child_jobs = []
         for rewind_epoch in self.rewind_epochs:
             rewind_config = ModelStateResumeConfig(
@@ -170,24 +162,33 @@ class LTHChainExperiment(DelegatingExperiment):
                         # queue up a PruningIterationExperiment
                         child_experiment = PruningIterationExperiment(
                             **vars(self.baseline_experiment),
-                            pruning=pruning_config,
+                            pruning=dataclass.replace(
+                                pruning_config,
+                                pruning_iteration=pruning_config.pruning_iteration+1,
+                            ),
                             rewind=rewind_config,
                         )
                     else:
-                        pass
+                        child_experiment = LTHSeedChangeExperiment(
+                            **vars(self.baseline_experiment),
+                            pruning=pruning_config,
+                            rewind=rewind_config,
+                        )
 
                     child_id = uuid.uuid4()
                     child_experiment.record = dataclass.replace(
                         child_experiment.record,
                         root_run=job.id,
                         parent_run=child_id,
-                        )
+                    )
                     child_job = Job(
                         id=child_id,
                         parent=job.id,
-                        priority=job.priority - 1,
+                        priority=job.priority -
+                        1 if isinstance(job.priority, int) else job.priority,
                         command=marshal.marshal(child_experiment),
                     )
                     child_jobs.append(child_job)
+                    
 
         return result_record
