@@ -3,12 +3,11 @@ from typing import Tuple
 from uuid import UUID
 from dmp.model.model_info import ModelInfo
 
-from dmp.task.experiment.training_experiment.resume_config import ResumeConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 
 @dataclass
-class ModelStateResumeConfig(ResumeConfig):
+class ModelStateResumeConfig():
     run_id: UUID
     load_mask: bool
     load_optimizer: bool

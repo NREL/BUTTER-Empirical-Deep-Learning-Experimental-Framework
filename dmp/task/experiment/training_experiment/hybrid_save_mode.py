@@ -8,6 +8,7 @@ from dmp.task.experiment.experiment_task import ExperimentTask
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.worker import Worker
 from dmp.task.experiment.training_experiment.save_mode import SaveMode
+from dmp.worker_task_context import WorkerTaskContext
 
 
 @dataclass
@@ -24,28 +25,19 @@ class HybridSaveMode(SaveMode):
 
     save_epochs: List[int]  # specific global epochs to save at
     save_model_epochs: List[int]
-    
+
     fixed_interval: int
     fixed_threshold: int
     exponential_rate: float
 
     # specific model epochs to save at for every model
-    
 
     def make_save_model_callback(
         self,
-        worker: Worker,
-        job: Job,
-        task: ExperimentTask,
-        training_epoch:TrainingEpoch,
+        context: WorkerTaskContext,
+        training_epoch: TrainingEpoch,
     ):
-        import os
-        import tensorflow.keras as keras
-        import dmp.keras_interface.model_serialization as model_serialization
-        from jobqueue.connection_manager import ConnectionManager
-        from dmp.task.experiment.training_experiment.model_saving_callback import (
-            ModelSavingCallback,
-        )
+        from dmp.task.experiment.training_experiment.model_saving_callback import ModelSavingCallback
 
         class SaveCallback(ModelSavingCallback):
             def __init__(self, parent: HybridSaveMode):
@@ -54,21 +46,22 @@ class HybridSaveMode(SaveMode):
                 self.save_model_epochs: Set[int] = set(
                     parent.save_model_epochs)
                 self.save_epochs: Set[int] = set(parent.save_epochs)
-                
-                self.training_epoch : TrainingEpoch = dataclass.replace(training_epoch)
+
+                self.training_epoch: TrainingEpoch = dataclass.replace(
+                    training_epoch)
                 self.training_epoch.model_number -= 1
 
-                self.last_saved_epoch : TrainingEpoch = dataclass.replace(self.training_epoch)
+                self.last_saved_epoch: TrainingEpoch = dataclass.replace(
+                    self.training_epoch)
                 self.last_saved_epoch.epoch -= 1
                 self.last_saved_epoch.model_epoch -= 1
 
-                self.task: ExperimentTask = task
                 self.model_info: Optional[
                     ModelInfo
                 ] = None  # NB: must be set before calling to save model states
 
                 # self.history : Dict[str, List] = {}
-                self.saved_epochs : List[TrainingEpoch] = []
+                self.saved_epochs: List[TrainingEpoch] = []
 
             def on_train_begin(self, logs=None) -> None:
                 self.training_epoch.count_new_model()
@@ -109,47 +102,8 @@ class HybridSaveMode(SaveMode):
                 if model_info is None or self.last_saved_epoch == self.training_epoch:
                     return
 
-                self.last_saved_epoch = dataclass.replace(self.epoch)
-
-                model_path = model_serialization.get_path_for_model_savepoint(
-                    job.id,
-                    self.model_number,
-                    self.model_epoch,
-                )
-
-                model_serialization.save_model_data(
-                    self.task, model_info, model_path)
-
-                if worker.schema is None:
-                    return
-
-                from psycopg.sql import SQL, Composed, Identifier
-
-                with ConnectionManager(worker.schema.credentials) as connection:
-                    model_table = worker.schema.model
-                    columns = model_table.columns
-                    query = SQL(
-                        """
-INSERT INTO {model_table} ( {insert_columns} ) 
-    SELECT
-        {casting_clause}
-    FROM
-        ( VALUES ({placeholders}) ) AS V ({insert_columns})
-    ON CONFLICT DO NOTHING;
-"""
-                    ).format(
-                        model_table=model_table.identifier,
-                        insert_columns=model_table.columns.columns_sql,
-                        casting_clause=columns.casting_sql,
-                        placeholders=columns.placeholders,
-                    )
-                    print(query)
-                    connection.execute(
-                        query,
-                        (job.id, self.model_number, self.model_epoch, self.epoch),
-                        binary=True,
-                    )
-                
+                self.last_saved_epoch = dataclass.replace(self.training_epoch)
                 self.saved_epochs.append(dataclass.replace(self.epoch))
+                context.save_model(model_info, self.last_saved_epoch)
 
         return SaveCallback(self)

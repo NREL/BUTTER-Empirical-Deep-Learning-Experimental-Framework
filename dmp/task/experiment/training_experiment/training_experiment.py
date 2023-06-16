@@ -6,6 +6,7 @@ from uuid import UUID
 from jobqueue.job import Job
 import numpy
 import tensorflow
+import tensorflow.keras as keras
 from dmp import common
 from dmp.common import KerasConfig
 from dmp.model.network_info import NetworkInfo
@@ -25,9 +26,8 @@ from dmp.task.experiment.training_experiment.model_saving_callback import (
     ModelSavingCallback,
 )
 from dmp.task.experiment.training_experiment.model_state_resume_config import ModelStateResumeConfig
-from dmp.task.experiment.training_experiment.resume_config import ResumeConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
-import tensorflow.keras as keras
+
 
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
@@ -48,11 +48,14 @@ from dmp.model.model_info import ModelInfo
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
 
-from dmp.worker import Worker
+from dmp.worker_task_context import WorkerTaskContext
+
 
 
 @dataclass
 class TrainingExperiment(ExperimentTask):
+    
+
     seed: int  # RNG seed
 
     # floating point precision {'float16', 'float32', 'float64'}
@@ -86,33 +89,33 @@ class TrainingExperiment(ExperimentTask):
         return super().version + 13
 
     def __call__(
-        self, worker: Worker, job: Job, *args, **kwargs
+        self,
+        context: WorkerTaskContext,
     ) -> ExperimentResultRecord:
-        with worker.strategy.scope():
-            # tensorflow.config.optimizer.set_jit(True)
-            self._set_random_seeds()
-            dataset, metrics = self._load_and_prepare_dataset()
-            network = self._make_network(self.model)
-            model = self._make_model_from_network(network, metrics)
-            self._resume_model(model, self.record.resume_from)
-            print(model.network.structure.summary())
-            model.keras_model.summary()
+        # tensorflow.config.optimizer.set_jit(True)
+        self._set_random_seeds()
+        dataset, metrics = self._load_and_prepare_dataset()
+        network = self._make_network(self.model)
+        model = self._make_model_from_network(network, metrics)
+        experiment_history = self._resume_model(context, model, self.record.resume_from)
+        print(model.network.structure.summary())
+        model.keras_model.summary()
 
-            history = self._fit_model(
-                worker,
-                job,
-                self.fit,
-                dataset,
-                model,
-                [self._make_early_stopping_callback()],
-            )
-            return self._make_result_record(
-                worker.worker_info,
-                job.id,
-                dataset,
-                model.network,
-                history,
-            )
+        self._fit_model(
+            context,
+            self.fit,
+            dataset,
+            model,
+            [self._make_early_stopping_callback()],
+            experiment_history=experiment_history,
+        )
+        
+        return self._make_result_record(
+            context,
+            dataset,
+            model.network,
+            experiment_history,
+        )
 
     @classmethod
     def summarize(
@@ -277,21 +280,28 @@ class TrainingExperiment(ExperimentTask):
 
     def _resume_model(
         self,
+        context:WorkerTaskContext,
         model: ModelInfo,
-        checkpoint: Optional[ResumeConfig],
-    ) -> None:
+        checkpoint: Optional[ModelStateResumeConfig],
+    ) -> Dict[str, Any]:
         if checkpoint is None:
-            return
+            return {}
         optimizer = model.keras_model.optimizer
         grad_vars = model.keras_model.trainable_weights
         zero_grads = [tensorflow.zeros_like(w) for w in grad_vars]
         optimizer.apply_gradients(zip(zero_grads, grad_vars))
         checkpoint.resume(model)
+        # TODO: load checkpoint history
+        run_history = context.schema.get_run_history(checkpoint.run_id)
+        if run_history is None:
+            return {}
+        run_history = run_history[run_history['epoch'] <= checkpoint.epoch]
+        return run_history.to_dict(orient='list') # type: ignore
+        
 
     def _fit_model(
         self,
-        worker: Worker,
-        job: Job,
+        context: WorkerTaskContext,
         fit_config: Dict[str, Any],
         dataset: PreparedDataset,
         model: ModelInfo,
@@ -318,8 +328,7 @@ class TrainingExperiment(ExperimentTask):
 
         # setup model saving callback
         self._setup_model_saving_callback(
-            worker,
-            job,
+            context,
             callbacks,
             experiment_history,
         )
@@ -400,7 +409,7 @@ class TrainingExperiment(ExperimentTask):
             fit_history[self.keys.retained] = retained
 
             early_stopping_callback = next((cb for cb in callbacks if isinstance(cb, keras.callbacks.EarlyStopping)),
-                                        None,)
+                                           None,)
 
             if early_stopping_callback is not None and early_stopping_callback.stopped_epoch > 0:
                 last_retained_epoch = (
@@ -526,17 +535,16 @@ class TrainingExperiment(ExperimentTask):
 
     def _make_result_record(
         self,
-        worker_info: Dict[str, Any],
-        job_id: UUID,
+        context : WorkerTaskContext,
         dataset: PreparedDataset,
         network: NetworkInfo,
-        history: Dict[str, Any],
+        experiment_history: Dict[str, Any],
     ) -> ExperimentResultRecord:
         import platform
 
         run_data = {
-            'job_id': job_id,
-            'run_id': job_id,
+            'job_id': context.id,
+            'run_id': context.id,
             'python_version': str(platform.python_version()),
             'platform': str(platform.platform()),
             'tensorflow_version': str(tensorflow.__version__),
@@ -544,7 +552,7 @@ class TrainingExperiment(ExperimentTask):
             'slurm_job_id': common.get_slurm_job_id(),
             'git_hash': common.get_git_hash(),
         }
-        run_data.update(worker_info)
+        run_data.update(context.info)
 
         experiment_attrs: FlatParameterDict = self.get_parameters()
         experiment_tags = {}
@@ -583,13 +591,13 @@ class TrainingExperiment(ExperimentTask):
         for k, v in network.description.items():
             experiment_attrs[f'model_{k}'] = v
 
-        extended_history = self._extract_extended_history(history)
+        extended_history = self._extract_extended_history(experiment_history)
 
         return ExperimentResultRecord(
             experiment_attrs,
             experiment_tags,
             run_data,
-            make_dataframe_from_dict(history),
+            make_dataframe_from_dict(experiment_history),
             None
             if len(extended_history) == 0
             else make_dataframe_from_dict(extended_history),  # type: ignore
@@ -612,8 +620,7 @@ class TrainingExperiment(ExperimentTask):
 
     def _setup_model_saving_callback(
         self,
-        worker: Worker,
-        job: Job,
+        context: WorkerTaskContext,
         callbacks: List[Optional[keras.callbacks.Callback]],
         experiment_history: Optional[Dict[str, Any]] = None,
     ) -> Optional[keras.callbacks.Callback]:
@@ -631,9 +638,7 @@ class TrainingExperiment(ExperimentTask):
 
         # if no model saving callback, create one
         model_saving_callback = model_saving.make_save_model_callback(
-            worker,
-            job,
-            self,
+            context,
             self._get_current_epoch(experiment_history),
         )
         callbacks.append(model_saving_callback)

@@ -7,6 +7,7 @@ from dmp.task.experiment.experiment_task import ExperimentTask
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.worker import Worker
 from dmp.model.model_info import ModelInfo
+from dmp.worker_task_context import WorkerTaskContext
 
 
 class SaveMode(ABC):
@@ -17,9 +18,7 @@ class SaveMode(ABC):
     @abstractmethod
     def make_save_model_callback(
         self,
-        worker: Worker,
-        job: Job,
-        task: ExperimentTask,
+        context: WorkerTaskContext,
         training_epoch: TrainingEpoch,
     ):
         pass

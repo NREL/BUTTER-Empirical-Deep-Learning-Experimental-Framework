@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 import io
 import uuid
 import hashlib
+from jobqueue.connection_manager import ConnectionManager
 import numpy
 import pandas
 
@@ -16,6 +17,7 @@ from dmp import parquet_util
 
 from dmp.parquet_util import make_pyarrow_table_from_dataframe
 from dmp.postgres_interface.attribute_value_type import AttributeValueType
+from dmp.postgres_interface.element.column_group import ColumnGroup
 
 from dmp.postgres_interface.postgres_interface_common import json_dump_function
 from dmp.postgres_interface.schema.attr_table import AttrTable
@@ -115,5 +117,39 @@ class PostgresSchema:
             return None
         with io.BytesIO(data) as buffer:
             return parquet_util.read_parquet_table(buffer).to_pandas()
+        
+    def get_run_history(
+            self,
+            run_id:uuid.UUID,
+    )->Optional[pandas.DataFrame]:
+        run = self.run
+
+        query = SQL("""
+SELECT
+    {run_history}
+FROM
+    {run}
+WHERE
+    {run}.{run_id_column} = {run_id_value}
+LIMIT 1
+;""").format(
+            run_history=run.run_history.identifier,
+            run=run.identifier,
+            run_id_column=run.run_id.identifier,
+            run_id_value= run_id,
+)
+        with ConnectionManager(self.credentials) as connection:
+            with connection.cursor(binary=True) as cursor:
+                cursor.execute(query)
+                row = cursor.fetchone()
+                if row is None:
+                    return None
+                history_df = self.convert_bytes_to_dataframe(row[0])
+                if history_df is None:
+                    return None
+                history_df.sort_values(['epoch', 'model_number', 'model_epoch'], inplace=True)
+                return history_df
+
+
 
 from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap

@@ -24,13 +24,13 @@ from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import
     PruningMethod,
 )
 from dmp.task.experiment.training_experiment.model_state_resume_config import ModelStateResumeConfig
-from dmp.task.experiment.training_experiment.resume_config import ResumeConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
 from dmp.task.task import Task
 from dmp.worker import Worker
+from dmp.worker_task_context import WorkerTaskContext
 
 
 @dataclass
@@ -44,32 +44,27 @@ class LTHSeedChangeExperiment(PruningIterationExperiment):
 
     def __call__(
         self,
-        worker: Worker,
-        job: Job,
-        *args,
-        **kwargs,
+        context: WorkerTaskContext,
     ) -> ExperimentResultRecord:
-        result_record = super(TrainingExperiment, self)(
-            worker, job, *args, **kwargs)
+        result_record: ExperimentResultRecord = super(
+            TrainingExperiment, self)(context)  # type: ignore
 
         # TODO: mark seed change epoch somehow
 
-        # TODO: enqueue pruning iteration experiment
-
-        child = PruningIterationExperiment(
-            **vars(self),
-        )
+        # enqueue pruning iteration experiment
+        child = PruningIterationExperiment(**vars(self))
         child.record = dataclass.replace(
             child.record,
             resume_from=ModelStateResumeConfig(
-                run_id=job.id,
+                run_id=context.id,
                 load_mask=True,
                 load_optimizer=False,
                 epoch=TrainingEpoch(
                     # epoch=resume_p
                 )
             ),
-            parent_run=job.id,
+            parent_run=context.id,
         )
+        context.push_task(child)
 
         return result_record

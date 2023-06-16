@@ -30,7 +30,6 @@ from dmp.task.experiment.training_experiment.model_saving_callback import (
     ModelSavingCallback,
 )
 from dmp.task.experiment.training_experiment.model_state_resume_config import ModelStateResumeConfig
-from dmp.task.experiment.training_experiment.resume_config import ResumeConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
 import tensorflow.keras as keras
@@ -56,16 +55,18 @@ from dmp.model.model_spec import ModelSpec
 from dmp.task.task import Task
 from dmp.task.task_result import TaskResult
 
-from dmp.worker import Worker
+from dmp.worker_task_context import WorkerTaskContext
 
 
 '''
 
-TODO:
-    + how to record seed-change epoch
+DONE:
     + writing child jobs into database
-    + making sure model save & resume behavior is consistent
     + parent experiment history appending
+
+TODO:
+    + making sure model save & resume behavior is consistent
+    + how to record seed-change epoch -> add a column and make sure it is extended
     + model save custom paths?
     + test run
     + first batch
@@ -132,20 +133,20 @@ class LTHChainExperiment(DelegatingExperiment):
     def version(self) -> int:
         return super().version + 1
 
-    def __call__(self, worker: Worker, job: Job,
-                 *args,
-                 **kwargs,
-                 ) -> ExperimentResultRecord:
+    def __call__(
+        self, 
+        context: WorkerTaskContext,
+    ) -> ExperimentResultRecord:
 
-        result_record = self.baseline_experiment(worker, job, *args, **kwargs)
+        result_record = self.baseline_experiment(context)
         # TODO: add this experiment's flags, etc to the result record
 
         from dmp.marshaling import marshal
 
-        child_jobs = []
+        child_tasks = []
         for rewind_epoch in self.rewind_epochs:
             rewind_config = ModelStateResumeConfig(
-                run_id=job.id,
+                run_id=context.id,
                 load_mask=False,
                 load_optimizer=True,
                 epoch=TrainingEpoch(
@@ -160,35 +161,31 @@ class LTHChainExperiment(DelegatingExperiment):
                     # TODO: enqueue prune and train experiments
                     if seed == self.baseline_experiment.seed:
                         # queue up a PruningIterationExperiment
-                        child_experiment = PruningIterationExperiment(
+                        child_task = PruningIterationExperiment(
                             **vars(self.baseline_experiment),
                             pruning=dataclass.replace(
                                 pruning_config,
-                                pruning_iteration=pruning_config.pruning_iteration+1,
+                                pruning_iteration=pruning_config.iteration+1,
                             ),
                             rewind=rewind_config,
                         )
                     else:
-                        child_experiment = LTHSeedChangeExperiment(
+                        child_task = LTHSeedChangeExperiment(
                             **vars(self.baseline_experiment),
                             pruning=pruning_config,
                             rewind=rewind_config,
                         )
 
                     child_id = uuid.uuid4()
-                    child_experiment.record = dataclass.replace(
-                        child_experiment.record,
-                        root_run=job.id,
-                        parent_run=child_id,
+                    child_task.record = dataclass.replace(
+                        child_task.record,
+                        root_run=context.id,
+                        parent_run=context.id,
+                        sequence_run=child_id,
                     )
-                    child_job = Job(
-                        id=child_id,
-                        parent=job.id,
-                        priority=job.priority -
-                        1 if isinstance(job.priority, int) else job.priority,
-                        command=marshal.marshal(child_experiment),
-                    )
-                    child_jobs.append(child_job)
+                    child_tasks.append(child_task)
+        context.push_tasks(child_tasks)
+                    
                     
 
         return result_record

@@ -7,13 +7,14 @@ from jobqueue.job_queue import JobQueue
 from dmp import common
 
 
+
 @dataclass
 class Worker:
     _job_queue: JobQueue
     _schema: 'PostgresSchema'
     _result_logger: 'ExperimentResultLogger'
     _strategy: tensorflow.distribute.Strategy
-    _worker_info: Dict[str, Any]
+    _info: Dict[str, Any]
     _max_jobs: Optional[int] = None
 
     @property
@@ -21,12 +22,16 @@ class Worker:
         return self._strategy
 
     @property
-    def worker_info(self) -> Dict[str, Any]:
-        return self._worker_info
+    def info(self) -> Dict[str, Any]:
+        return self._info
 
     @property
     def schema(self) -> 'PostgresSchema':
         return self._schema
+    
+    @property
+    def job_queue(self) -> JobQueue:
+        return self._job_queue
 
     def __call__(self):
         git_hash = common.get_git_hash()
@@ -42,14 +47,16 @@ class Worker:
         from dmp.marshaling import marshal
         from dmp.task.task import Task
         from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
+        from dmp.worker_task_context import WorkerTaskContext
 
-        self._worker_info['worker_id'] = worker_id
+        self._info['worker_id'] = worker_id
 
         # demarshal task from job.command
         task: Task = marshal.demarshal(job.command)  # type: ignore
 
         # run task
-        result = task(self, job)
+        with self.strategy.scope():
+            result = task(WorkerTaskContext(self, job, task))
 
         # log task run
         if isinstance(result, ExperimentResultRecord):

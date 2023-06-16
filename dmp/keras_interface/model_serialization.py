@@ -5,16 +5,14 @@ from uuid import UUID
 
 import numpy
 import dmp.keras_interface.access_model_parameters as access_model_parameters
-from dmp.layer.input import Input
 from dmp.layer.layer import Layer
 from dmp.model.keras_layer_info import KerasLayerInfo
-from dmp.model.keras_network_info import KerasNetworkInfo
 
 from dmp.model.model_info import ModelInfo
-from dmp.model.network_info import NetworkInfo
-from dmp.task.experiment.experiment_task import ExperimentTask
 import dmp.parquet_util as parquet_util
 import pyarrow
+
+from dmp.task.task import Task
 
 model_data_path = os.path.join(os.getcwd(), 'model_data')
 
@@ -33,7 +31,7 @@ saved_optimizer_members = (
 
 
 def save_model_data(
-    task: ExperimentTask,
+    task: Task,
     model: ModelInfo,
     model_path: str,
 ):

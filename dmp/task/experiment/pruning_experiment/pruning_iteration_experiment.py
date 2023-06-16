@@ -29,6 +29,7 @@ from dmp.task.experiment.training_experiment.training_experiment import (
 )
 from dmp.task.task import Task
 from dmp.worker import Worker
+from dmp.worker_task_context import WorkerTaskContext
 
 
 @dataclass
@@ -47,64 +48,65 @@ class PruningIterationExperiment(TrainingExperiment):
 
     def __call__(
         self,
-        worker: Worker,
-        job: Job,
-        *args,
-        **kwargs,
+        context: WorkerTaskContext,
     ) -> ExperimentResultRecord:
-        with worker.strategy.scope():
-            # tensorflow.config.optimizer.set_jit(True)
-            self._set_random_seeds()
-            dataset, metrics = self._load_and_prepare_dataset()
-            network = self._make_network(self.model)
-            model = self._make_model_from_network(network, metrics)
+        # tensorflow.config.optimizer.set_jit(True)
+        self._set_random_seeds()
+        dataset, metrics = self._load_and_prepare_dataset()
+        network = self._make_network(self.model)
+        model = self._make_model_from_network(network, metrics)
 
-            # load pruning weights
-            self._resume_model(model, self.record.resume_from)
+        # load pruning weights
+        experiment_history = self._resume_model(
+            context,
+            model,
+            self.record.resume_from
+        )
 
-            # prune network
-            self.pruning.method.prune(
-                model.network.structure,
-                model.keras_network.layer_to_keras_map,
-            )
+        # prune network
+        self.pruning.method.prune(
+            model.network.structure,
+            model.keras_network.layer_to_keras_map,
+        )
 
-            # load rewind point
-            self.rewind.resume(model)
+        # load rewind point
+        self.rewind.resume(model)
 
-            print(model.network.structure.summary())
-            model.keras_model.summary()
+        print(model.network.structure.summary())
+        model.keras_model.summary()
 
-            history = self._fit_model(
-                worker,
-                job,
-                self.fit,
-                dataset,
-                model,
-                [self._make_early_stopping_callback()],
-            )
+        self._fit_model(
+            context,
+            self.fit,
+            dataset,
+            model,
+            [self._make_early_stopping_callback()],
+            experiment_history=experiment_history,
+        )
 
-            # TODO: enqueue next pruning iteration
+        # TODO: enqueue next pruning iteration
 
-            child = PruningIterationExperiment(
+        if self.pruning.iteration < self.pruning.num_iterations:
+            child_task = PruningIterationExperiment(
                 **vars(self),
             )
-            child.record = dataclass.replace(
-                child.record,
+            child_task.record = dataclass.replace(
+                child_task.record,
                 resume_from=ModelStateResumeConfig(
-                    run_id=job.id,
+                    run_id=context.id,
                     load_mask=True,
                     load_optimizer=False,
                     epoch=TrainingEpoch(
                         # epoch=resume_p
                     )
                 ),
-                parent_run=job.id,
+                parent_run=context.id,
             )
+            context.push_task(child_task)
 
-            return self._make_result_record(
-                worker.worker_info,
-                job.id,
-                dataset,
-                model.network,
-                history,
-            )
+        return self._make_result_record(
+            context,
+            dataset,
+            model.network,
+            experiment_history,
+        )

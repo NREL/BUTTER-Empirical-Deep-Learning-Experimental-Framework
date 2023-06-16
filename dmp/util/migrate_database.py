@@ -578,7 +578,7 @@ def convert_run(old_parameter_map, result_logger, row,
             job_id=get_cell('job_id'),
             dataset=prepared_dataset,  # type: ignore
             network=network,
-            history=history,
+            experiment_history=history,
         )
 
         result_record.experiment_attrs['old_experiment_id'] = get_cell(

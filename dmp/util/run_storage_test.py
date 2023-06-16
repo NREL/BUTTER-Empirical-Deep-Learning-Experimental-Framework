@@ -390,7 +390,7 @@ def main():
                 job_id=get_cell('job_id'),
                 dataset=prepared_dataset,  # type: ignore
                 network=network,
-                history=history,
+                experiment_history=history,
             )
 
             result_record.run_data.update({
