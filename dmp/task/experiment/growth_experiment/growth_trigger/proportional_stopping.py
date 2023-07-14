@@ -4,24 +4,23 @@ from tensorflow.python.platform import tf_logging as logging
 
 
 class ProportionalStopping(keras.callbacks.EarlyStopping):
-    """
-    """
+    """ """
 
     def __init__(
         self,
         min_delta=0.1,
-        mode='min',
+        mode="min",
         **kwargs,
     ):
-        super().__init__(mode=mode,**kwargs)
+        super().__init__(mode=mode, **kwargs)
         self.best = None
 
-        if mode == 'min':
+        if mode == "min":
             self.min_delta = 1.0 - min_delta
-        elif mode == 'max':
+        elif mode == "max":
             self.min_delta = 1.0 + min_delta
         else:
-            raise ValueError(f'Invalid mode {mode}.')
+            raise ValueError(f"Invalid mode {mode}.")
 
     def on_train_begin(self, logs=None):
         super().on_train_begin(logs=logs)

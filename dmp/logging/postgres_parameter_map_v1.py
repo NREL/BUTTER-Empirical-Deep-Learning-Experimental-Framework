@@ -4,34 +4,37 @@ from psycopg import sql
 
 
 class PostgresParameterMapV1:
-
     _parameter_table: sql.Identifier
     _select_parameter: sql.Composed
     _parameter_to_id_map: Dict[str, Dict[Any, int]]
     _id_to_parameter_map: Dict[int, Tuple[str, Any]]
 
-    _key_columns = sql.SQL(',').join(
-        map(sql.Identifier, [
-            'kind',
-            'bool_value',
-            'integer_value',
-            'real_value',
-            'string_value',
-        ]))
+    _key_columns = sql.SQL(",").join(
+        map(
+            sql.Identifier,
+            [
+                "kind",
+                "bool_value",
+                "integer_value",
+                "real_value",
+                "string_value",
+            ],
+        )
+    )
 
     def __init__(
         self,
         cursor,
-        parameter_table='parameter_',
+        parameter_table="parameter_",
     ) -> None:
         super().__init__()
 
         self._parameter_table = sql.Identifier(parameter_table)
-        self._select_parameter = \
-            sql.SQL("""
+        self._select_parameter = sql.SQL(
+            """
 SELECT id, {}
 FROM {}"""
-                    ).format(self._key_columns, self._parameter_table)
+        ).format(self._key_columns, self._parameter_table)
         self._parameter_to_id_map = {}
         self._id_to_parameter_map = {}
 
@@ -47,9 +50,10 @@ FROM {}"""
                 typed_values = self._make_typed_values(value)
 
                 cursor.execute(
-                    sql.SQL("""
+                    sql.SQL(
+                        """
 WITH v as (
-    SELECT 
+    SELECT
         (
             SELECT id from {_parameter_table}
             WHERE
@@ -61,7 +65,7 @@ WITH v as (
             LIMIT 1
         ) id,
         *
-    FROM 
+    FROM
     (
         SELECT
         kind,
@@ -79,18 +83,21 @@ i as (
     RETURNING id, {_key_columns}
 )
 SELECT * from v WHERE id IS NOT NULL
-UNION ALL 
+UNION ALL
 SELECT * from i
-;""").format(
+;"""
+                    ).format(
                         _parameter_table=self._parameter_table,
                         _key_columns=self._key_columns,
-                    ), ((kind, *typed_values), ))
+                    ),
+                    ((kind, *typed_values),),
+                )
                 result = cursor.fetchone()
 
                 if result is not None:
                     self._register_parameter(kind, value, result[0])
                     return self.to_parameter_id(kind, value, None)
-            raise KeyError(f'Unable to translate parameter {kind} : {value}.')
+            raise KeyError(f"Unable to translate parameter {kind} : {value}.")
 
     def get_all_kinds(self) -> Sequence[str]:
         return tuple(self._parameter_to_id_map.keys())
@@ -108,9 +115,7 @@ SELECT * from i
     ) -> Sequence[int]:
         if isinstance(kvl, dict):
             kvl = kvl.items()  # type: ignore
-        return [
-            self.to_parameter_id(kind, value, cursor) for kind, value in kvl
-        ]
+        return [self.to_parameter_id(kind, value, cursor) for kind, value in kvl]
 
     def to_sorted_parameter_ids(
         self,
@@ -129,8 +134,7 @@ SELECT * from i
         return self._id_to_parameter_map[i]
 
     def _register_parameter_from_row(self, row) -> None:
-        value = next(
-            (v for v in (row[i + 2] for i in range(4)) if v is not None), None)
+        value = next((v for v in (row[i + 2] for i in range(4)) if v is not None), None)
         self._register_parameter(row[1], value, row[0])
 
     def _register_parameter(

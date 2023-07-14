@@ -6,9 +6,9 @@ from dmp.model.network_info import NetworkInfo
 
 
 class LayerFactoryModel(ModelSpec):
-    '''
+    """
     Adaptor class that allows a LayerFactory to act as a ModelSpec
-    '''
+    """
 
     def __init__(
         self,

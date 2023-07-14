@@ -25,6 +25,7 @@ recovered_epoch = marshal.demarshal(deserialized)
 
 """
 
+
 @dataclass(order=True)
 class TrainingEpoch:
     epoch: int
@@ -38,4 +39,3 @@ class TrainingEpoch:
     def count_new_epoch(self) -> None:
         self.epoch += 1
         self.model_epoch += 1
-

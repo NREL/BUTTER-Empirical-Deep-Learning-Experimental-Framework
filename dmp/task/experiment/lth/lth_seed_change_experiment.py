@@ -36,7 +36,12 @@ from dmp.worker_task_context import WorkerTaskContext
 @dataclass
 class LTHSeedChangeExperiment(PruningIterationExperiment):
     """
+
     """
+
+    pruning: PruningConfig  # contains run-specific num_iterations...
+    rewind: ModelStateResumeConfig  # run-specific id
+    # TODO: what is run vs experiment attributes here?
 
     @property
     def version(self) -> int:
@@ -46,10 +51,10 @@ class LTHSeedChangeExperiment(PruningIterationExperiment):
         self,
         context: WorkerTaskContext,
     ) -> ExperimentResultRecord:
-        result_record: ExperimentResultRecord = super(
-            TrainingExperiment, self)(context)  # type: ignore
-
-        # TODO: mark seed change epoch somehow
+        result_record: ExperimentResultRecord = super()(
+            context,
+            new_seed=True,
+        )  # type: ignore
 
         # enqueue pruning iteration experiment
         child = PruningIterationExperiment(**vars(self))
@@ -68,3 +73,18 @@ class LTHSeedChangeExperiment(PruningIterationExperiment):
         context.push_task(child)
 
         return result_record
+
+    def _append_fit_history_to_model_history(
+        self,
+        new_model_number: bool,
+        experiment_history: Optional[Dict[str, Any]],
+        fit_history: Dict[str, Any],
+    ) -> Dict[str, Any]:
+
+        fit_history[self.keys.seed_number] =
+
+        return super()._append_fit_history_to_model_history(
+            new_model_number,
+            experiment_history,
+            fit_history,
+        )

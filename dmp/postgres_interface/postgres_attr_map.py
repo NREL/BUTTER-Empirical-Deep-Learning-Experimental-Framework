@@ -1,10 +1,27 @@
-from typing import Any, Dict, Hashable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type, Union, get_args
+from typing import (
+    Any,
+    Dict,
+    Hashable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    get_args,
+)
 
 import uuid
 from jobqueue.cursor_manager import CursorManager
 
 from dmp.postgres_interface.attr import Attr, ComparableValue
-from dmp.postgres_interface.attribute_value_type import AttributeValueType, get_attribute_value_type_for_type_code, get_attribute_value_type_for_value
+from dmp.postgres_interface.attribute_value_type import (
+    AttributeValueType,
+    get_attribute_value_type_for_type_code,
+    get_attribute_value_type_for_value,
+)
 
 from dmp.postgres_interface.element.column_group import ColumnGroup
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
@@ -14,18 +31,23 @@ from psycopg.types.json import Jsonb
 
 
 def _make_column_identifier_seq(
-    source: List[Tuple[str, str]], ) -> List[Tuple[str, Identifier, str]]:
-    return [(column_name, Identifier(column_name), column_type)
-            for column_name, column_type in source]
+    source: List[Tuple[str, str]],
+) -> List[Tuple[str, Identifier, str]]:
+    return [
+        (column_name, Identifier(column_name), column_type)
+        for column_name, column_type in source
+    ]
 
 
 class PostgresAttrMap:
     _schema: PostgresSchema
 
-    _kind_type_value_map: Dict[str, Dict[AttributeValueType, Dict[
-        ComparableValue, Attr]]]  # {kind:{type:{comparable_value:param}}}
-    _kind_value_map: Dict[str, Dict[ComparableValue,
-                                    Attr]]  # {kind:{comparable_value:param}}
+    _kind_type_value_map: Dict[
+        str, Dict[AttributeValueType, Dict[ComparableValue, Attr]]
+    ]  # {kind:{type:{comparable_value:param}}}
+    _kind_value_map: Dict[
+        str, Dict[ComparableValue, Attr]
+    ]  # {kind:{comparable_value:param}}
     _id_map: Dict[int, Attr]  # {id:param}
 
     _get_or_create_attr_query: Composed
@@ -44,18 +66,23 @@ class PostgresAttrMap:
 
         attr = self._schema.attr
 
-        matching_clause = SQL(' and ').join((SQL(
-            "{attr}.{column_id} IS NOT DISTINCT FROM t.{column_id}").format(
-                attr=attr.identifier,
-                column_id=column_id,
-            ) for column_id in attr.value.identifiers))
+        matching_clause = SQL(" and ").join(
+            (
+                SQL("{attr}.{column_id} IS NOT DISTINCT FROM t.{column_id}").format(
+                    attr=attr.identifier,
+                    column_id=column_id,
+                )
+                for column_id in attr.value.identifiers
+            )
+        )
 
-        input_table = Identifier('_input')
+        input_table = Identifier("_input")
         all_except_id = attr.all_except_id
 
-        self._get_or_create_attr_query = SQL("""
+        self._get_or_create_attr_query = SQL(
+            """
 WITH {input_table} as (
-    SELECT 
+    SELECT
         (   SELECT {attr_id}
             FROM {attr}
             WHERE {matching_clause}
@@ -74,13 +101,14 @@ WITH {input_table} as (
     WHERE {attr_id} IS NULL
     ON CONFLICT DO NOTHING
     RETURNING
-        {attr_id}, 
+        {attr_id},
         {key_columns}
 )
 SELECT {attr_id}, {key_columns} from {input_table} WHERE {attr_id} IS NOT NULL
 UNION ALL
 SELECT * from {inserted}
-;""").format(
+;"""
+        ).format(
             input_table=input_table,
             attr_id=attr.attr_id.columns_sql,
             attr=attr.identifier,
@@ -88,7 +116,7 @@ SELECT * from {inserted}
             casting_clause=all_except_id.casting_sql,
             values=all_except_id.placeholders,
             key_columns=all_except_id.columns_sql,
-            inserted=Identifier('_inserted'),
+            inserted=Identifier("_inserted"),
             query_values_key_columns=all_except_id.of(input_table),
         )
 
@@ -97,12 +125,10 @@ SELECT * from {inserted}
     def to_attr_id(self, kind: str, value: Any, c=None) -> int:
         value_type = get_attribute_value_type_for_value(value)
         database_value = self._make_database_value(value_type, value)
-        comparable_value = self._make_comparable_value(value_type,
-                                                       database_value)
+        comparable_value = self._make_comparable_value(value_type, database_value)
 
         try:
-            return self._kind_type_value_map[kind][value_type][
-                comparable_value].attr_id
+            return self._kind_type_value_map[kind][value_type][comparable_value].attr_id
 
         except KeyError:
             typed_values = [None] * len(AttributeValueType)
@@ -113,10 +139,9 @@ SELECT * from {inserted}
                 json_value = Jsonb(database_value)
 
             with CursorManager(
-                    self._schema.credentials,
-                    binary=True,
+                self._schema.credentials,
+                binary=True,
             ) as cursor:
-
                 cursor.execute(
                     self._get_or_create_attr_query,
                     (
@@ -139,7 +164,8 @@ SELECT * from {inserted}
                                 value_type,
                                 comparable_value,
                                 value,
-                            ))
+                            )
+                        )
             return self.to_attr_id(
                 kind,
                 value,
@@ -198,8 +224,7 @@ SELECT * from {inserted}
         digest_column_index = columns[attr.digest]
 
         value_type_to_index_map = {
-            t: columns[column]
-            for t, column in attr.attribute_value_type_map.items()
+            t: columns[column] for t, column in attr.attribute_value_type_map.items()
         }
 
         with CursorManager(self._schema.credentials, binary=True) as cursor:
@@ -207,11 +232,13 @@ SELECT * from {inserted}
                 SQL("SELECT {columns} FROM {attr}").format(
                     columns=columns.columns_sql,
                     attr=attr.identifier,
-                ))
+                )
+            )
 
             for row in cursor.fetchall():
                 value_type = get_attribute_value_type_for_type_code(
-                    row[type_column_index])
+                    row[type_column_index]
+                )
 
                 comparable_value = None
                 value = None
@@ -231,16 +258,17 @@ SELECT * from {inserted}
                         value_type,
                         comparable_value,  # type: ignore
                         value,
-                    ))
+                    )
+                )
 
     def _register_attribute(
         self,
         attr: Attr,
     ) -> None:
         self._kind_type_value_map.setdefault(attr.kind, {}).setdefault(
-            attr.value_type, {})[attr.comparable_value] = attr
-        self._kind_value_map.setdefault(attr.kind,
-                                        {})[attr.comparable_value] = attr
+            attr.value_type, {}
+        )[attr.comparable_value] = attr
+        self._kind_value_map.setdefault(attr.kind, {})[attr.comparable_value] = attr
         self._id_map[attr.attr_id] = attr
 
     def _make_comparable_value(
@@ -262,6 +290,7 @@ SELECT * from {inserted}
     ) -> Any:
         if value_type == AttributeValueType.JSON:
             from dmp.marshaling import marshal
+
             return marshal.marshal(value)
         return value
 
@@ -272,5 +301,6 @@ SELECT * from {inserted}
     ) -> Any:
         if value_type == AttributeValueType.JSON:
             from dmp.marshaling import marshal
+
             return marshal.demarshal(database_value)
         return database_value

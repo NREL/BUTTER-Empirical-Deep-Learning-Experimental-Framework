@@ -45,13 +45,13 @@ from dmp.worker_task_context import WorkerTaskContext
 class GrowthExperiment(TrainingExperiment):
     growth_trigger: dict = field(
         default_factory=lambda: make_keras_kwcfg(
-            'EarlyStopping',
+            "EarlyStopping",
             restore_best_weights=True,
-            monitor='val_loss',
+            monitor="val_loss",
             min_delta=0,
             patience=0,
             verbose=0,
-            mode='auto',
+            mode="auto",
             baseline=None,
             # start_from_epoch=0,
         )
@@ -72,8 +72,8 @@ class GrowthExperiment(TrainingExperiment):
         return super().version + 2
 
     def __call__(
-        self, 
-        context: WorkerTaskContext, 
+        self,
+        context: WorkerTaskContext,
     ) -> ExperimentResultRecord:
         self._set_random_seeds()
         dataset, metrics = self._load_and_prepare_dataset()
@@ -90,7 +90,7 @@ class GrowthExperiment(TrainingExperiment):
         #     marshal.marshal(
         #         goal_network.structure))
 
-        max_total_epochs: int = self.fit['epochs']
+        max_total_epochs: int = self.fit["epochs"]
         experiment_history: Dict[str, Any] = {}
         model_number: int = 0
         epoch_parameters: int = 0
@@ -107,8 +107,8 @@ class GrowthExperiment(TrainingExperiment):
             #     f'target_size {target_size}, self.initial_size {self.initial_size}, growth_step {model_number}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}'
             # )
 
-            max_epochs_at_this_iteration = max_total_epochs - self._get_last_epoch(
-                experiment_history
+            max_epochs_at_this_iteration = (
+                max_total_epochs - self._get_current_epoch(experiment_history).epoch
             )
 
             # if we topped out at the maximum size, this is the last iteration
@@ -150,7 +150,7 @@ class GrowthExperiment(TrainingExperiment):
                     model_number += 1
                     continue
 
-                print(f'Growing to {target_size} {network.num_free_parameters}')
+                print(f"Growing to {target_size} {network.num_free_parameters}")
 
             max_epochs_at_this_iteration = min(
                 max_epochs_at_this_iteration,
@@ -194,13 +194,13 @@ class GrowthExperiment(TrainingExperiment):
             src_model = model
             model_number += 1
             epoch_parameters += (
-                self._get_last_epoch(experiment_history)
+                self._get_current_epoch(experiment_history).model_epoch
                 * model.network.num_free_parameters
             )
             continue  # just put this here for better readability
 
         if src_model is None:
-            raise RuntimeError(f'No result record generated for task {self}.')
+            raise RuntimeError(f"No result record generated for task {self}.")
 
         src_model.network.description = goal_network.description
         return self._make_result_record(
@@ -237,14 +237,14 @@ class GrowthExperiment(TrainingExperiment):
             model.network.description[self.keys.layer_map_key],
             model.keras_network.layer_to_keras_map,
         )
-        '''
+        """
         + aggregate statistics:
-            + median, iqr growth points 
+            + median, iqr growth points
                 -> model number
             + median, iqr parameter count -> parameter count
             + median, iqr losses for retained epochs
                 -> 'discarded' bool
                 -> 'source model', 'source epoch'?
-            + "overshoot" burden? 
+            + "overshoot" burden?
                 + cumulative # of discarded epochs?
-        '''
+        """

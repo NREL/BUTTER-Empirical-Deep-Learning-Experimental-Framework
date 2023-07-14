@@ -1,6 +1,6 @@
-'''
+"""
 Enqueues jobs from stdin into the JobQueue
-'''
+"""
 
 import sys
 
@@ -14,22 +14,26 @@ from dmp.model.dense_by_size import DenseBySize
 from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
-    WidthScaler, )
+    WidthScaler,
+)
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    RunSpecificConfig, )
+    RunSpecificConfig,
+)
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
-    OverlayTransfer, )
+    OverlayTransfer,
+)
 
-sys.path.insert(0, './')
+sys.path.insert(0, "./")
 
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.layer.dense import Dense
 
 from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment, )
+    TrainingExperiment,
+)
 from pprint import pprint
 
 from dmp.marshaling import marshal
@@ -61,34 +65,34 @@ def main():
         growth_scale,
         min_delta,
     ):
-        if optimizer == 'Adam' and momentum != 0.0:
+        if optimizer == "Adam" and momentum != 0.0:
             return None
 
         optimizer = {
-            'class': optimizer,
-            'learning_rate': learning_rate,
-            'momentum': momentum,
+            "class": optimizer,
+            "learning_rate": learning_rate,
+            "momentum": momentum,
         }
 
-        if optimizer == 'Adam':
-            del optimizer['momentum']
+        if optimizer == "Adam":
+            del optimizer["momentum"]
 
         return GrowthExperiment(
             seed=seed,
             tags={
-                'optimizer_butter_growth_1': True,
-                'butter_growth': True,
+                "optimizer_butter_growth_1": True,
+                "butter_growth": True,
             },
             run_tags={
-                'make_batch_optimizer_butter_growth_eagle_cpu_1': True,
-                'cpu_energy': True,
+                "make_batch_optimizer_butter_growth_eagle_cpu_1": True,
+                "cpu_energy": True,
             },
-            batch='make_batch_optimizer_butter_growth_eagle_cpu_1',
-            precision='float32',
+            batch="make_batch_optimizer_butter_growth_eagle_cpu_1",
+            precision="float32",
             dataset=DatasetSpec(
                 dataset,
-                'pmlb',
-                'shuffled_train_test_split',
+                "pmlb",
+                "shuffled_train_test_split",
                 0.2,
                 0.05,
                 0.0,
@@ -96,27 +100,27 @@ def main():
             model=DenseBySize(
                 input=None,
                 output=None,
-                shape='rectangle',
+                shape="rectangle",
                 size=size,
                 depth=depth,
-                search_method='integer',
+                search_method="integer",
                 inner=Dense.make(
                     -1,
                     {
-                        'activation': 'relu',
-                        'kernel_initializer': 'GlorotUniform',
+                        "activation": "relu",
+                        "kernel_initializer": "GlorotUniform",
                     },
                 ),
             ),
             fit={
-                'batch_size': batch_size,
-                'epochs': 3000 * 100,
+                "batch_size": batch_size,
+                "epochs": 3000 * 100,
             },
             optimizer=optimizer,
             loss=None,
             early_stopping=make_keras_kwcfg(
-                'EarlyStopping',
-                monitor='val_loss',
+                "EarlyStopping",
+                monitor="val_loss",
                 min_delta=0,
                 patience=16,
                 restore_best_weights=True,
@@ -128,13 +132,13 @@ def main():
                 metrics=None,
             ),
             growth_trigger=make_keras_kwcfg(
-                'ProportionalStopping',
+                "ProportionalStopping",
                 restore_best_weights=True,
-                monitor='val_loss',
+                monitor="val_loss",
                 min_delta=min_delta,
                 patience=0,
                 verbose=0,
-                mode='min',
+                mode="min",
                 baseline=None,
                 # start_from_epoch=0,
             ),
@@ -146,23 +150,35 @@ def main():
             max_equivalent_epoch_budget=6000,
         )
 
-    sweep_config = list({
-        # 'dataset': ['mnist'],
-        'dataset': [
-            '201_pol', '529_pollen', '537_houses', 'connect_4', 'sleep',
-            'wine_quality_white', 'adult', 'nursery', 'splice',
-            '294_satellite_image', 'banana', '505_tecator', 'poker'
-        ],
-        # ['201_pol', '529_pollen', '537_houses',  'connect_4', 'mnist', 'sleep', 'wine_quality_white', 'adult', 'nursery', 'splice', '294_satellite_image', 'banana', '505_tecator', 'poker'],
-        'size': [16777216],
-        'depth': [2, 3, 4, 5, 6],
-        'batch_size': [32, 64, 128, 256],
-        'optimizer': ['Adam', 'SGD', 'RMSprop', 'Adagrad'],
-        'learning_rate': [1e-2, 1e-3, 1e-4, 1e-5],
-        'momentum': [0.0, 0.9],
-        'min_delta': [0.1, 0.01, 0.001],
-        'growth_scale': [2.0],
-    }.items())
+    sweep_config = list(
+        {
+            # 'dataset': ['mnist'],
+            "dataset": [
+                "201_pol",
+                "529_pollen",
+                "537_houses",
+                "connect_4",
+                "sleep",
+                "wine_quality_white",
+                "adult",
+                "nursery",
+                "splice",
+                "294_satellite_image",
+                "banana",
+                "505_tecator",
+                "poker",
+            ],
+            # ['201_pol', '529_pollen', '537_houses',  'connect_4', 'mnist', 'sleep', 'wine_quality_white', 'adult', 'nursery', 'splice', '294_satellite_image', 'banana', '505_tecator', 'poker'],
+            "size": [16777216],
+            "depth": [2, 3, 4, 5, 6],
+            "batch_size": [32, 64, 128, 256],
+            "optimizer": ["Adam", "SGD", "RMSprop", "Adagrad"],
+            "learning_rate": [1e-2, 1e-3, 1e-4, 1e-5],
+            "momentum": [0.0, 0.9],
+            "min_delta": [0.1, 0.01, 0.001],
+            "growth_scale": [2.0],
+        }.items()
+    )
 
     jobs = []
     seed = int(time.time())
@@ -178,7 +194,8 @@ def main():
                         Job(
                             priority=base_priority + len(jobs),
                             command=marshal.marshal(experiment),
-                        ))
+                        )
+                    )
         else:
             key, values = sweep_config[i]
             for v in values:
@@ -187,13 +204,13 @@ def main():
 
     do_sweep(len(sweep_config) - 1, {})
 
-    print(f'Generated {len(jobs)} jobs.')
+    print(f"Generated {len(jobs)} jobs.")
     # pprint(jobs)
-    credentials = jobqueue.load_credentials('dmp')
+    credentials = jobqueue.load_credentials("dmp")
     job_queue = JobQueue(credentials, queue_id, check_table=False)
     job_queue.push(jobs)
-    print(f'Enqueued {len(jobs)} jobs.')
+    print(f"Enqueued {len(jobs)} jobs.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

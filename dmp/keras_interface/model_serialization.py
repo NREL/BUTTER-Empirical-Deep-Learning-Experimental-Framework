@@ -14,18 +14,18 @@ import pyarrow
 
 from dmp.task.task import Task
 
-model_data_path = os.path.join(os.getcwd(), 'model_data')
+model_data_path = os.path.join(os.getcwd(), "model_data")
 
-task_filename = 'task.json'
-network_filename = 'network.json'
-parameters_filename = 'parameters.pq'
-optimizer_filename = 'optimizer.pq'
+task_filename = "task.json"
+network_filename = "network.json"
+parameters_filename = "parameters.pq"
+optimizer_filename = "optimizer.pq"
 
 saved_optimizer_members = (
-    '_momentums',
-    '_velocities',
-    '_velocity_hats',
-    'momentums',
+    "_momentums",
+    "_velocities",
+    "_velocity_hats",
+    "momentums",
 )
 # keras_model_dirname = 'keras_model'
 
@@ -36,7 +36,7 @@ def save_model_data(
     model_path: str,
 ):
     # print(f'smd: {task}\n\n{model}\n\n{model_path}\n\n')
-    '''
+    """
     + save file manifest
         + version [int 32]
         + item type [int 32], item version [int 32], item size [int 64]
@@ -49,7 +49,7 @@ def save_model_data(
         + save layer graph
         + save keras model
         + use layer graph naming scheme to map layers to keras layers
-    '''
+    """
 
     from dmp.marshaling import marshal
     import simplejson
@@ -68,16 +68,16 @@ def save_model_data(
 
     # print(f'1 {relative_path} {model_path} {network_path} {keras_model_path}')
 
-    with open(task_path, 'w') as task_file:
-        print(f'Writing task to {task_path}...')
+    with open(task_path, "w") as task_file:
+        print(f"Writing task to {task_path}...")
         simplejson.dump(marshal.marshal(task), task_file)
 
-    with open(network_path, 'w') as network_file:
-        print(f'Writing network to {network_path}...')
+    with open(network_path, "w") as network_file:
+        print(f"Writing network to {network_path}...")
         simplejson.dump(marshal.marshal(model.network), network_file)
 
-    with open(parameters_path, 'wb') as parameters_file:
-        print(f'Writing parameters to {parameters_file}...')
+    with open(parameters_path, "wb") as parameters_file:
+        print(f"Writing parameters to {parameters_file}...")
         save_parameters(
             model.network.structure,
             model.keras_network.layer_to_keras_map,
@@ -85,8 +85,8 @@ def save_model_data(
             parameters_file,
         )
 
-    with open(optimizer_path, 'wb') as optimizer_file:
-        print(f'Writing model state to {optimizer_path}...')
+    with open(optimizer_path, "wb") as optimizer_file:
+        print(f"Writing model state to {optimizer_path}...")
         save_parameters(
             model.network.structure,
             model.keras_network.layer_to_keras_map,
@@ -133,7 +133,7 @@ def load_model_from_file(
         optimizer_path,
     ) = get_paths(model_path)
 
-    with open(optimizer_path, 'rb') as file:
+    with open(optimizer_path, "rb") as file:
         return load_model(
             model,
             file,
@@ -177,20 +177,24 @@ def load_parameters(
     load_mask: bool = True,
 ) -> None:
     table = parquet_util.read_parquet_table(file)
-    table.sort_by([('sequence', 'ascending')])
-    parameters_table = {column: table[column].to_numpy()
-                        for column in table.column_names}
+    table.sort_by([("sequence", "ascending")])
+    parameters_table = {
+        column: table[column].to_numpy() for column in table.column_names
+    }
     print(f'first values: {table["value"][0:4]}')
     del table
 
     optimizer_members = [
         member
         for member in saved_optimizer_members
-        if optimizer is not None and member in parameters_table and hasattr(optimizer, member)
+        if optimizer is not None
+        and member in parameters_table
+        and hasattr(optimizer, member)
     ]
 
     print(
-        f'Loading model with optimizer type: {type(optimizer)} with members {optimizer_members}.')
+        f"Loading model with optimizer type: {type(optimizer)} with members {optimizer_members}."
+    )
 
     row_index = 0
 
@@ -199,32 +203,31 @@ def load_parameters(
 
         shape = variable.value().shape
         size = numpy.prod(shape)
-        print(f'loading variable: {variable.name} {size} {shape} {row_index}')
-        constraint = access_model_parameters.get_mask_constraint(
-            keras_layer, variable)
+        print(f"loading variable: {variable.name} {size} {shape} {row_index}")
+        constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None
         if load_mask and constraint is not None:
-            column = parameters_table['value']
-            chunk = column[row_index: row_index + size]
+            column = parameters_table["value"]
+            chunk = column[row_index : row_index + size]
             # mask = numpy.logical_not(pyarrow.compute.is_null(chunk).to_numpy())
             mask = numpy.logical_not(numpy.isnan(chunk))
             constraint.mask.assign(mask.reshape(shape))
 
         def load_value(name, variable):
             column = parameters_table[name]
-            prepared = column[row_index: row_index + size]
+            prepared = column[row_index : row_index + size]
 
             if mask is not None:
                 prepared = numpy.where(mask, prepared, 0)
-            print(
-                f'{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}')
+            print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
             prepared = prepared.reshape(shape)
             variable.assign(prepared)
 
-        load_value('value', variable)
+        load_value("value", variable)
         for member in optimizer_members:
-            variable_index = optimizer._index_dict[optimizer._var_key(
-                variable)]  # type: ignore
+            variable_index = optimizer._index_dict[
+                optimizer._var_key(variable)
+            ]  # type: ignore
             load_value(member, getattr(optimizer, member)[variable_index])
 
         row_index += size
@@ -249,9 +252,10 @@ def save_parameters(
     ]
 
     print(
-        f'Saving model with optimizer type: {type(optimizer)} with members {optimizer_members}.')
+        f"Saving model with optimizer type: {type(optimizer)} with members {optimizer_members}."
+    )
 
-    data: dict = {column: [] for column in ['value'] + optimizer_members}
+    data: dict = {column: [] for column in ["value"] + optimizer_members}
     row_index = 0
 
     def visit_variable(layer, keras_layer, i, variable):
@@ -259,24 +263,25 @@ def save_parameters(
 
         shape = variable.value().shape
         size = numpy.prod(shape)
-        constraint = access_model_parameters.get_mask_constraint(
-            keras_layer, variable)
+        constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None if constraint is None else constraint.mask.numpy().flatten()
-        print(f'saving variable: {variable.name} {size} {shape}')
+        print(f"saving variable: {variable.name} {size} {shape}")
 
         def accumulate_value(name, variable):
             value = variable.numpy().flatten()
             if mask is not None:
                 value = numpy.where(mask, value, numpy.nan)
             print(
-                f'{name}, {row_index}, {len(data[name])}, {size}, {shape}, values: {value[0:4]}')
+                f"{name}, {row_index}, {len(data[name])}, {size}, {shape}, values: {value[0:4]}"
+            )
             data[name].append(value)
 
-        accumulate_value('value', variable)
+        accumulate_value("value", variable)
         for member in optimizer_members:
             optimizer_member = getattr(optimizer, member)
-            variable_index = optimizer._index_dict[optimizer._var_key(
-                variable)]  # type: ignore
+            variable_index = optimizer._index_dict[
+                optimizer._var_key(variable)
+            ]  # type: ignore
             accumulate_value(member, optimizer_member[variable_index])
 
         row_index += size
@@ -288,7 +293,7 @@ def save_parameters(
     )
 
     data = {k: numpy.concatenate(v) for k, v in data.items()}
-    data['sequence'] = numpy.arange(0, row_index)
+    data["sequence"] = numpy.arange(0, row_index)
     cols = sorted(data.keys())
 
     table, use_byte_stream_split = parquet_util.make_pyarrow_table_from_numpy(
@@ -311,4 +316,4 @@ def get_path_for_model_savepoint(
     model_number: int,
     model_epoch: int,
 ) -> str:
-    return os.path.join(str(run_id), f'{model_number}_{model_epoch}')
+    return os.path.join(str(run_id), f"{model_number}_{model_epoch}")

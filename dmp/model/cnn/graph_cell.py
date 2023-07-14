@@ -12,17 +12,17 @@ class GraphCell(LayerFactory):
     def make_layer(
         self,
         config: LayerConfig,
-        inputs: Union['Layer', List['Layer']],
+        inputs: Union["Layer", List["Layer"]],
     ) -> Layer:
-        '''
+        """
         + first serial layer is the input
         + each serial layer is the sum of operations applied to the previous serial layers
         + last serial layer is the output
         + operations should be triangle structured: [[op], [op, op], [op,op,op], ...]
-        '''
+        """
         if isinstance(inputs, Layer):
             inputs = [inputs]
-            
+
         serial_layers: List[Layer] = inputs
         for cell_layer_operations in self.operations:
             parallel_operation_layers = []

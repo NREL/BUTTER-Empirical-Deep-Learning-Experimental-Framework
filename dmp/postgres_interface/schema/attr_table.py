@@ -9,16 +9,16 @@ from dmp.postgres_interface.element.table import Table
 
 @dataclass(frozen=True)
 class AttrTable(Table):
-    name: str = 'attr'
-    attr_id: Column = Column('attr_id', 'integer')
-    value_type: Column = Column('value_type', 'smallint')
-    kind: Column = Column('kind', 'text')
-    value_bool: Column = Column('value_bool', 'boolean')
-    value_int: Column = Column('value_int', 'bigint')
-    value_float: Column = Column('value_float', 'double precision')
-    value_str: Column = Column('value_str', 'text')
-    digest: Column = Column('digest', 'uuid')
-    value_json: Column = Column('value_json', 'jsonb')
+    name: str = "attr"
+    attr_id: Column = Column("attr_id", "integer")
+    value_type: Column = Column("value_type", "smallint")
+    kind: Column = Column("kind", "text")
+    value_bool: Column = Column("value_bool", "boolean")
+    value_int: Column = Column("value_int", "bigint")
+    value_float: Column = Column("value_float", "double precision")
+    value_str: Column = Column("value_str", "text")
+    digest: Column = Column("digest", "uuid")
+    value_json: Column = Column("value_json", "jsonb")
 
     @property
     def index(self) -> ColumnGroup:
@@ -68,7 +68,8 @@ class AttrTable(Table):
     def attribute_value_type_map(self) -> Mapping[AttributeValueType, Column]:
         return {
             attribute_type: column
-            for attribute_type, column in zip(AttributeValueType,
-                                              chain((None, ), self.value))
+            for attribute_type, column in zip(
+                AttributeValueType, chain((None,), self.value)
+            )
             if attribute_type is not AttributeValueType.Null
-        } # type: ignore
+        }  # type: ignore

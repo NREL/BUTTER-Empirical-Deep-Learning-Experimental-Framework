@@ -43,7 +43,7 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
     RunSpecificConfig,
 )
-from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveMode
+from dmp.task.experiment.training_experiment.model_saving_config import ModelSavingConfig
 from dmp.task.experiment.training_experiment.model_state_resume_config import (
     ModelStateResumeConfig,
 )
@@ -167,7 +167,7 @@ def test_mnist_lenet():
             times=True,
             model=None,
             metrics=None,
-            model_saving=HybridSaveMode(
+            model_saving=ModelSavingConfig(
                 save_initial_model=False,
                 save_trained_model=False,
                 save_model_epochs=[],
@@ -258,7 +258,7 @@ def test_resume():
             times=True,
             model=None,
             metrics=None,
-            model_saving=HybridSaveMode(
+            model_saving=ModelSavingConfig(
                 save_initial_model=True,
                 save_trained_model=True,
                 save_model_epochs=[],

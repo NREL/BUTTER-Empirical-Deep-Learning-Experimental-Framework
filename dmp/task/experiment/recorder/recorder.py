@@ -4,11 +4,10 @@ import tensorflow.keras as keras
 
 
 class Recorder(keras.callbacks.Callback, ABC):
-
     def __init__(self):
         super().__init__()
         self.epoch: List[int] = []
-        self.history : Dict[str, List] = {}
+        self.history: Dict[str, List] = {}
 
     def _record_metric(self, metric: str, value: Any) -> None:
         self.history.setdefault(metric, []).append(value)

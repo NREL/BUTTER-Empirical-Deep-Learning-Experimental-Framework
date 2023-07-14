@@ -25,13 +25,14 @@ psycopg.extras.register_uuid()
 
 
 class SchemaUpdate:
-
     def __init__(self, credentials, logger, ids) -> None:
         with CursorManager(credentials) as cursor:
             self.cursor = cursor
             self.logger = logger
 
-            cursor.execute(sql.SQL("""
+            cursor.execute(
+                sql.SQL(
+                    """
     SELECT
         j.uuid,
         j.config,
@@ -50,13 +51,17 @@ class SchemaUpdate:
         j.retry_count
     FROM jobqueue j
     WHERE j.uuid IN %s
-;"""), (ids,))
+;"""
+                ),
+                (ids,),
+            )
             rows = list(cursor.fetchall())
             values = [self.convert_row(row) for row in rows]
 
             psycopg.extras.execute_values(
                 cursor,
-                sql.SQL("""
+                sql.SQL(
+                    """
 WITH v as (
     SELECT
         queue::smallint,
@@ -101,7 +106,7 @@ INSERT INTO job_status (
     error_count,
     error
 )
-    SELECT 
+    SELECT
         queue,
         status,
         priority,
@@ -113,10 +118,11 @@ INSERT INTO job_status (
         error
     FROM v
 ON CONFLICT DO NOTHING
-"""),
+"""
+                ),
                 values,
                 template=None,
-                page_size=128
+                page_size=128,
             )
 
             # pprint(values)
@@ -141,7 +147,7 @@ ON CONFLICT DO NOTHING
         queue = -1
 
         status = JobStatus.Queued.value
-        if row[5] == 'done':
+        if row[5] == "done":
             status = JobStatus.Complete.value
 
         priority = row[14] * 1000000 + random.randint(0, 100000)
@@ -170,40 +176,41 @@ ON CONFLICT DO NOTHING
 
     def make_task(self, config):
         kwargs = {
-            'seed': config['seed'],
-            'dataset': config['dataset'],
-            'input_activation': config['activation'],
-            'activation': config['activation'],
-            'optimizer': config['optimizer'],
-            'shape': config['topology'],
-            'size': config['budget'],
-            'depth': config['depth'],
-            'validation_split': config['run_config']['validation_split'],
-            'validation_split_method': config['validation_split_method'],
-            'run_config': config['run_config'],
-            'label_noise': config['label_noise'],
-            'early_stopping': config.get('early_stopping', None),
-            'save_every_epochs': None,
+            "seed": config["seed"],
+            "dataset": config["dataset"],
+            "input_activation": config["activation"],
+            "activation": config["activation"],
+            "optimizer": config["optimizer"],
+            "shape": config["topology"],
+            "size": config["budget"],
+            "depth": config["depth"],
+            "validation_split": config["run_config"]["validation_split"],
+            "validation_split_method": config["validation_split_method"],
+            "run_config": config["run_config"],
+            "label_noise": config["label_noise"],
+            "early_stopping": config.get("early_stopping", None),
+            "save_every_epochs": None,
         }
 
-        kwargs['batch'] = 'fixed_3k_1'
+        kwargs["batch"] = "fixed_3k_1"
 
-        if not isinstance(kwargs['early_stopping'], dict):
-            kwargs['early_stopping'] = None
+        if not isinstance(kwargs["early_stopping"], dict):
+            kwargs["early_stopping"] = None
 
-        if config.get('residual_mode', None) == 'full':
-            kwargs['shape'] = kwargs['shape'] + '_' + 'residual'
+        if config.get("residual_mode", None) == "full":
+            kwargs["shape"] = kwargs["shape"] + "_" + "residual"
 
-        if kwargs['label_noise'] == 'none':
-            kwargs['label_noise'] = 0.0
+        if kwargs["label_noise"] == "none":
+            kwargs["label_noise"] = 0.0
 
         return AspectTestTask(**kwargs)
 
 
 if __name__ == "__main__":
-    credentials = connect.load_credentials('dmp')
+    credentials = connect.load_credentials("dmp")
 
     import simplejson
+
     # extras.register_default_json(loads=ujson.loads, globally=True)
     # extras.register_default_jsonb(loads=ujson.loads, globally=True)
     extras.register_default_json(loads=simplejson.loads, globally=True)
@@ -219,29 +226,34 @@ if __name__ == "__main__":
     with CursorManager(credentials) as cursor:
         # parameter_map = PostgresParameterMap(cursor)
 
-        cursor.execute(sql.SQL("""
-    SELECT 
+        cursor.execute(
+            sql.SQL(
+                """
+    SELECT
         j.uuid
     FROM jobqueue j
     WHERE j.groupname = 'fixed_3k_1'
     AND (
         NOT EXISTS (SELECT id from job_status where id = j.uuid) OR
         NOT EXISTS (SELECT id from job_data where id = j.uuid))
-;"""))
+;"""
+            )
+        )
 
         ids = [row[0] for row in cursor.fetchall()]
 
-    print(f'loaded {len(ids)}.')
+    print(f"loaded {len(ids)}.")
 
     num_readers = 12
     chunk_size = 1024
     chunks = [
-        tuple(ids[c*chunk_size: min(len(ids), (c+1)*chunk_size)])
-        for c in range(int(ceil(len(ids)/chunk_size)))]
+        tuple(ids[c * chunk_size : min(len(ids), (c + 1) * chunk_size)])
+        for c in range(int(ceil(len(ids) / chunk_size)))
+    ]
 
     from pathos.multiprocessing import Pool
 
-    print(f'created {len(chunks)} chunks')
+    print(f"created {len(chunks)} chunks")
     # SchemaUpdate(credentials, logger, chunks[0])
 
     def func(c):

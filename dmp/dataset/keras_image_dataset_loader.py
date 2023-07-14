@@ -15,13 +15,12 @@ from dmp.dataset.ml_task import MLTask
 
 
 class KerasImageDatasetLoader(DatasetLoader):
-
     def __init__(
         self,
         dataset_name: str,
         keras_load_data_function: Callable,
     ) -> None:
-        super().__init__('keras', dataset_name, MLTask.classification)
+        super().__init__("keras", dataset_name, MLTask.classification)
         self._keras_load_data_function: Callable = keras_load_data_function
 
     def _fetch_from_source(self):

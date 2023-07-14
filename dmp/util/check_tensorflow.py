@@ -13,7 +13,8 @@ def get_mkl_enabled_flag():
             from tensorflow.python import _pywrap_util_port  # type: ignore
         else:
             from tensorflow.python.util import _pywrap_util_port
-            onednn_enabled = int(os.environ.get('TF_ENABLE_ONEDNN_OPTS', '0'))
+
+            onednn_enabled = int(os.environ.get("TF_ENABLE_ONEDNN_OPTS", "0"))
         mkl_enabled = _pywrap_util_port.IsMklEnabled() or (onednn_enabled == 1)
     else:
         mkl_enabled = tensorflow.pywrap_tensorflow.IsMklEnabled()  # type: ignore

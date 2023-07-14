@@ -21,7 +21,9 @@ from dmp.postgres_interface.element.column_group import ColumnGroup
 
 from dmp.postgres_interface.postgres_interface_common import json_dump_function
 from dmp.postgres_interface.schema.attr_table import AttrTable
-from dmp.postgres_interface.schema.experiment_summary_table import ExperimentSummaryTable
+from dmp.postgres_interface.schema.experiment_summary_table import (
+    ExperimentSummaryTable,
+)
 from dmp.postgres_interface.schema.experiment_table import ExperimentTable
 from dmp.postgres_interface.schema.model_table import ModelTable
 from dmp.postgres_interface.schema.run_table import RunTable
@@ -35,11 +37,11 @@ class PostgresSchema:
     run: RunTable
     attr: AttrTable
     experiment: ExperimentTable
-    model : ModelTable
+    model: ModelTable
     experiment_summary: ExperimentSummaryTable
 
     log_query_suffix: Composed
-    attribute_map: 'PostgresAttrMap'
+    attribute_map: "PostgresAttrMap"
 
     def __init__(
         self,
@@ -57,18 +59,17 @@ class PostgresSchema:
 
         # initialize parameter map
         from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
+
         self.attribute_map = PostgresAttrMap(self)
 
     def str_to_uuid(self, target: str) -> uuid.UUID:
-        return uuid.UUID(hashlib.md5(target.encode('utf-8')).hexdigest())
+        return uuid.UUID(hashlib.md5(target.encode("utf-8")).hexdigest())
 
     def json_to_uuid(self, target: Any) -> uuid.UUID:
         return self.str_to_uuid(json_dump_function(target))
 
     def make_experiment_id(self, experiment_attrs: Iterable[int]) -> uuid.UUID:
-        return self.str_to_uuid('{' +
-                                ','.join(str(i)
-                                         for i in experiment_attrs) + '}')
+        return self.str_to_uuid("{" + ",".join(str(i) for i in experiment_attrs) + "}")
 
     def convert_dataframe_to_bytes(
         self,
@@ -117,14 +118,15 @@ class PostgresSchema:
             return None
         with io.BytesIO(data) as buffer:
             return parquet_util.read_parquet_table(buffer).to_pandas()
-        
+
     def get_run_history(
-            self,
-            run_id:uuid.UUID,
-    )->Optional[pandas.DataFrame]:
+        self,
+        run_id: uuid.UUID,
+    ) -> Optional[pandas.DataFrame]:
         run = self.run
 
-        query = SQL("""
+        query = SQL(
+            """
 SELECT
     {run_history}
 FROM
@@ -132,12 +134,13 @@ FROM
 WHERE
     {run}.{run_id_column} = {run_id_value}
 LIMIT 1
-;""").format(
+;"""
+        ).format(
             run_history=run.run_history.identifier,
             run=run.identifier,
             run_id_column=run.run_id.identifier,
-            run_id_value= run_id,
-)
+            run_id_value=run_id,
+        )
         with ConnectionManager(self.credentials) as connection:
             with connection.cursor(binary=True) as cursor:
                 cursor.execute(query)
@@ -147,9 +150,10 @@ LIMIT 1
                 history_df = self.convert_bytes_to_dataframe(row[0])
                 if history_df is None:
                     return None
-                history_df.sort_values(['epoch', 'model_number', 'model_epoch'], inplace=True)
+                history_df.sort_values(
+                    ["epoch", "model_number", "model_epoch"], inplace=True
+                )
                 return history_df
-
 
 
 from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap

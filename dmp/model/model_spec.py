@@ -5,7 +5,7 @@ from typing import List, Optional, Sequence, Any, Tuple, Dict, TypeVar
 from dmp.layer.layer import Layer
 from dmp.model.network_info import NetworkInfo
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @dataclass

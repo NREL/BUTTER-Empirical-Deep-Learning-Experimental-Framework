@@ -342,7 +342,7 @@ def main():
             if network.num_free_parameters != get_cell('num_free_parameters'):
                 if shape.startswith('wide_first') and shape != :
                     # rety with wide first 2x
-                    
+
                 print(
                     f'num_free_parameters {network.num_free_parameters} != {get_cell("num_free_parameters")}'
                 )

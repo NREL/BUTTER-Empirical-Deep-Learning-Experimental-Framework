@@ -1,22 +1,34 @@
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 import os
 import subprocess
 
-tensorflow_type_key: str = 'class_name'
-tensorflow_config_key: str = 'config'
-keras_type_key: str = 'class'
-marshal_type_key: str = 'type'
+tensorflow_type_key: str = "class_name"
+tensorflow_config_key: str = "config"
+keras_type_key: str = "class"
+marshal_type_key: str = "type"
 
-K = TypeVar('K')
-V = TypeVar('V')
+K = TypeVar("K")
+V = TypeVar("V")
 
 KerasConfig = Dict[str, Any]
 
 
 def dispatch(
-        dispatch_name: str,
-        dispatch_table: Dict[K, V],
-        key: K,  # key to dispatch on
+    dispatch_name: str,
+    dispatch_table: Dict[K, V],
+    key: K,  # key to dispatch on
 ) -> V:
     try:
         return dispatch_table[key]
@@ -28,7 +40,6 @@ def make_dispatcher(
     dispatch_name: str,  # used when raising an exception
     dispatch_table: Dict[K, V],
 ) -> Callable[[K], V]:
-
     def dispatch_function(key: K) -> V:
         return dispatch(dispatch_name, dispatch_table, key)
 
@@ -75,21 +86,20 @@ def binary_search_float(
 
 
 def flatten(items, levels: int = -1):
-    '''
+    """
     Generator that recursively flattens nested Iterables
-    '''
+    """
     for x in items:
-        if levels != 0 and isinstance(
-                x, Iterable) and not isinstance(x, (str, bytes)):
+        if levels != 0 and isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
             yield from flatten(x, levels=levels - 1)
         else:
             yield x
 
 
 def flatten_dict(items: Mapping, connector: str):
-    '''
+    """
     Generator that recursively flattens dicts
-    '''
+    """
 
     def do_flatten(prefix, target):
         if isinstance(target, Mapping):
@@ -98,18 +108,24 @@ def flatten_dict(items: Mapping, connector: str):
         else:
             yield (prefix, target)
 
-    yield from do_flatten('', items)
+    yield from do_flatten("", items)
+
 
 def get_slurm_job_id() -> Optional[int]:
-        try:
-            return int(os.getenv("SLURM_JOB_ID"))  # type: ignore
-        except:
-            return None
+    try:
+        return int(os.getenv("SLURM_JOB_ID"))  # type: ignore
+    except:
+        return None
+
 
 def get_git_hash() -> Optional[str]:
     try:
-        return subprocess.check_output(
-            ["git", "describe", "--always"],
-            cwd=os.path.dirname(__file__)).strip().decode()
+        return (
+            subprocess.check_output(
+                ["git", "describe", "--always"], cwd=os.path.dirname(__file__)
+            )
+            .strip()
+            .decode()
+        )
     except:
         return None

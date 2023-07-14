@@ -1,8 +1,8 @@
 from abc import ABC, abstractproperty
 from psycopg.sql import Identifier
 
-class Identifiable(ABC):
 
+class Identifiable(ABC):
     @abstractproperty
     def name(self) -> str:
         raise NotImplementedError()

@@ -6,7 +6,6 @@ from dmp.task.experiment.recorder.recorder import Recorder
 
 
 class TimestampRecorder(Recorder):
-
     def __init__(
         self,
         time_suffix: str,

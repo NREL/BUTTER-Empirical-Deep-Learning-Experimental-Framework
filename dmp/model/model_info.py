@@ -7,10 +7,10 @@ from dmp.model.network_info import NetworkInfo
 
 
 @dataclass
-class ModelInfo():
-    '''
+class ModelInfo:
+    """
     Holds information about a model that has been instantiated as a keras model.
-    '''
+    """
 
     network: NetworkInfo  # information about the structure and configuration of the network layers
     keras_network: KerasNetworkInfo  # cooresponding keras model and associated mapping

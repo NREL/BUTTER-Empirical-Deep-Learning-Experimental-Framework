@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable
 from uuid import UUID, uuid4
@@ -34,15 +33,16 @@ class WorkerTaskContext:
         from jobqueue.job import Job
         from dmp.marshaling import marshal
 
-        self.worker.job_queue.push((
-            Job(
-                parent=self.id,
-                priority=(
-                    self.job.priority - 1 if isinstance(self.job.priority, int) else self.job.priority),
-                command=marshal.marshal(task),
+        self.worker.job_queue.push(
+            (
+                Job(
+                    parent=self.id,
+                    priority=self.job.priority,
+                    command=marshal.marshal(task),
+                )
+                for task in tasks
             )
-            for task in tasks
-        ))
+        )
 
     def push_task(self, task: Task) -> None:
         self.push_tasks((task,))
@@ -62,8 +62,7 @@ class WorkerTaskContext:
             training_epoch.model_epoch,
         )
 
-        model_serialization.save_model_data(
-            self.task, model, model_path)
+        model_serialization.save_model_data(self.task, model, model_path)
 
         if self.schema is None:
             return
@@ -73,7 +72,7 @@ class WorkerTaskContext:
             columns = model_table.columns
             query = SQL(
                 """
-INSERT INTO {model_table} ( {insert_columns} ) 
+INSERT INTO {model_table} ( {insert_columns} )
 SELECT
 {casting_clause}
 FROM
@@ -89,7 +88,11 @@ ON CONFLICT DO NOTHING;
             print(query)
             connection.execute(
                 query,
-                (self.id, training_epoch.model_number,
-                 training_epoch.model_epoch, training_epoch.epoch),
+                (
+                    self.id,
+                    training_epoch.model_number,
+                    training_epoch.model_epoch,
+                    training_epoch.epoch,
+                ),
                 binary=True,
             )

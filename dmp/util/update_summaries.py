@@ -3,7 +3,9 @@ import os
 from jobqueue.job import Job
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
-from dmp.postgres_interface.update_experiment_summary_result import UpdateExperimentSummaryResult
+from dmp.postgres_interface.update_experiment_summary_result import (
+    UpdateExperimentSummaryResult,
+)
 
 from dmp.worker import Worker
 
@@ -27,12 +29,16 @@ from jobqueue.cursor_manager import CursorManager
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.layer.dense import Dense
-from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
+from dmp.postgres_interface.postgres_compressed_result_logger import (
+    PostgresCompressedResultLogger,
+)
 
 from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
 
-from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
 
 from dmp.marshaling import marshal
 
@@ -40,9 +46,8 @@ import pathos.multiprocessing as multiprocessing
 
 
 def main():
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('num_workers', type=int)
+    parser.add_argument("num_workers", type=int)
     # parser.add_argument('block_size', type=int)
     args = parser.parse_args()
 
@@ -50,19 +55,19 @@ def main():
     # block_size = args.block_size
 
     pool = multiprocessing.ProcessPool(num_workers)
-    results = pool.uimap(do_work, ((i, ) for i in range(num_workers)))
+    results = pool.uimap(do_work, ((i,) for i in range(num_workers)))
     total_updated = sum(results)
-    print(f'Done. Summarized {total_updated} experiments.')
+    print(f"Done. Summarized {total_updated} experiments.")
     pool.close()
     pool.join()
-    print('Complete.')
+    print("Complete.")
     do_work((0, 0))
 
 
 def do_work(args):
     worker_number = args[0]
 
-    credentials = load_credentials('dmp')
+    credentials = load_credentials("dmp")
 
     worker = Worker(
         None,
@@ -79,11 +84,10 @@ def do_work(args):
 
         task = UpdateExperimentSummary()
 
-        result: UpdateExperimentSummaryResult = task(worker,
-                                                     job)  # type: ignore
+        result: UpdateExperimentSummaryResult = task(worker, job)  # type: ignore
         num_updated = result.num_experiments_updated
         total_updated += num_updated
-        print(f'Updated {num_updated}.')
+        print(f"Updated {num_updated}.")
         if num_updated == 0:
             num_tries += 1
         else:

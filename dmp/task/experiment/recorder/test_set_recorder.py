@@ -10,7 +10,6 @@ from dmp.task.experiment.training_experiment import training_experiment_keys
 
 
 class TestSetRecorder(Recorder, ABC):
-
     def __init__(
         self,
         test_sets: List[TestSetInfo],
@@ -18,8 +17,7 @@ class TestSetRecorder(Recorder, ABC):
     ):
         super().__init__()
         self._test_sets: List[TestSetInfo] = test_sets
-        self._timestamp_recorder: Optional[
-            TimestampRecorder] = timestamp_recorder
+        self._timestamp_recorder: Optional[TimestampRecorder] = timestamp_recorder
 
     def accumulate_metrics(self, epoch: int) -> None:
         self._record_epoch(epoch)
@@ -34,7 +32,8 @@ class TestSetRecorder(Recorder, ABC):
             end_time = time.time()
             if self._timestamp_recorder is not None:
                 self._timestamp_recorder.record_time(
-                    test_set.history_key, end_time - start_time)
+                    test_set.history_key, end_time - start_time
+                )
             for metric, result in zip(model.metrics_names, results):
                 self._accumulate_test_set_metric(test_set, metric, result)
 
@@ -54,6 +53,6 @@ class TestSetRecorder(Recorder, ABC):
         result,
     ) -> None:
         self._record_metric(
-            test_set.history_key + '_' + metric,
+            test_set.history_key + "_" + metric,
             result,
         )

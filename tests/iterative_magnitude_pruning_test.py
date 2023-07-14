@@ -36,7 +36,7 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
     RunSpecificConfig,
 )
-from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveMode
+from dmp.task.experiment.training_experiment.model_saving_config import ModelSavingConfig
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
@@ -134,7 +134,7 @@ def test_pruning_experiment():
             times=True,
             model=None,
             metrics=None,
-            model_saving=HybridSaveMode(
+            model_saving=ModelSavingConfig(
                 save_initial_model=True,
                 save_trained_model=True,
                 save_epochs=[],

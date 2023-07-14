@@ -7,11 +7,11 @@ from dmp.postgres_interface.element.table import Table
 
 @dataclass(frozen=True)
 class ExperimentTable(Table):
-    name: str = 'experiment'
-    experiment_id: Column = Column('experiment_id', 'uuid')
-    experiment_attrs: Column = Column('experiment_attrs', 'integer[]')
-    experiment_tags: Column = Column('experiment_tags', 'integer[]')
-    old_experiment_id: Column = Column('old_experiment_id', 'integer')
+    name: str = "experiment"
+    experiment_id: Column = Column("experiment_id", "uuid")
+    experiment_attrs: Column = Column("experiment_attrs", "integer[]")
+    experiment_tags: Column = Column("experiment_tags", "integer[]")
+    old_experiment_id: Column = Column("old_experiment_id", "integer")
 
     @property
     def values(self) -> AColumnGroup:
@@ -25,4 +25,3 @@ class ExperimentTable(Table):
             self.experiment_tags,
             self.values,
         )
-

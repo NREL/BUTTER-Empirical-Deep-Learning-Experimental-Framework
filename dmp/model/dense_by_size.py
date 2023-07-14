@@ -15,22 +15,22 @@ from dmp.layer import *
 
 @dataclass
 class DenseBySize(ModelSpec):
-    shape: str = 'rectangle'  # (migrate) convert 'wide_first' to 'wide_first_10x'
+    shape: str = "rectangle"  # (migrate) convert 'wide_first' to 'wide_first_10x'
     size: int = 4096  # (migrate)
     depth: int = 2  # (migrate)
     # input_layer : dict
     # input_layer.activation (migrate from input_activation)
-    search_method: str = 'float'  # use 'integer' or 'float' network width search method
+    search_method: str = "float"  # use 'integer' or 'float' network width search method
     inner: Dense = field(
         default_factory=lambda: Dense.make(16)
     )  # config of all but output layer (no units here)
-    '''
+    """
         + activation (migrate)
         + kernel_regularizer (migrate)
         + bias_regularizer (migrate)
         + activity_regularizer (migrate)
         + batch_norm (new?)
-    '''
+    """
 
     # output: dict  # output layer config (include units here)
     # residual: str  # (migrate from shape)
@@ -43,22 +43,22 @@ class DenseBySize(ModelSpec):
 
     def make_network(self) -> NetworkInfo:
         shape = self.shape
-        if isinstance(self.input, Input) and len(self.input['shape']) > 1:
+        if isinstance(self.input, Input) and len(self.input["shape"]) > 1:
             self.input = Flatten({}, [self.input])
 
         # TODO: make it so we don't need this hack?
-        residual_mode = 'none'
-        residual_suffix = '_residual'
+        residual_mode = "none"
+        residual_suffix = "_residual"
         if shape.endswith(residual_suffix):
-            residual_mode = 'full'
+            residual_mode = "full"
             shape = shape[0 : -len(residual_suffix)]
 
         widths_factory = _get_widths_factory(shape)
 
         if type(self.output) is not Dense:
-            raise NotImplementedError('Invalid output type for model.')
+            raise NotImplementedError("Invalid output type for model.")
 
-        num_outputs = self.output['units']
+        num_outputs = self.output["units"]
 
         def make_network_with_scale(scale):
             widths = widths_factory(self, num_outputs, scale)
@@ -73,12 +73,12 @@ class DenseBySize(ModelSpec):
             ).make_network()
 
         search_func = find_closest_network_to_target_size_int
-        if self.search_method == 'integer':
+        if self.search_method == "integer":
             search_func = find_closest_network_to_target_size_int
-        elif self.search_method == 'float':
+        elif self.search_method == "float":
             search_func = find_closest_network_to_target_size_float
         else:
-            raise NotImplementedError(f'Unknown search method {self.search_method}.')
+            raise NotImplementedError(f"Unknown search method {self.search_method}.")
 
         delta, network = search_func(self.size, make_network_with_scale)
 
@@ -87,7 +87,7 @@ class DenseBySize(ModelSpec):
         relative_error = delta / self.size
         if abs(relative_error) >= 0.5:
             raise ValueError(
-                f'Could not find conformant network error : {100 * relative_error}%, delta : {delta}, size: {self.size}, actual: {network.num_free_parameters}.'
+                f"Could not find conformant network error : {100 * relative_error}%, delta : {delta}, size: {self.size}, actual: {network.num_free_parameters}."
             )
 
         return network
@@ -131,17 +131,17 @@ def _make_wide_first(
 
 
 _get_widths_factory = make_dispatcher(
-    'shape',
+    "shape",
     {
-        'rectangle': _get_rectangular_widths,
-        'trapezoid': _get_trapezoidal_widths,
-        'exponential': _get_exponential_widths,
-        'wide_first_2x': _make_wide_first(2),
-        'wide_first_4x': _make_wide_first(4),
-        'wide_first_5x': _make_wide_first(5),
-        'wide_first_8x': _make_wide_first(8),
-        'wide_first_10x': _make_wide_first(10),
-        'wide_first_16x': _make_wide_first(16),
-        'wide_first_20x': _make_wide_first(20),
+        "rectangle": _get_rectangular_widths,
+        "trapezoid": _get_trapezoidal_widths,
+        "exponential": _get_exponential_widths,
+        "wide_first_2x": _make_wide_first(2),
+        "wide_first_4x": _make_wide_first(4),
+        "wide_first_5x": _make_wide_first(5),
+        "wide_first_8x": _make_wide_first(8),
+        "wide_first_10x": _make_wide_first(10),
+        "wide_first_16x": _make_wide_first(16),
+        "wide_first_20x": _make_wide_first(20),
     },
 )

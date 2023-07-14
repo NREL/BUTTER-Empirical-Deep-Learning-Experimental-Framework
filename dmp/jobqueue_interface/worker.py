@@ -4,7 +4,9 @@ import uuid
 from jobqueue.job_queue import JobQueue
 from jobqueue import load_credentials
 from dmp import common
-from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
+from dmp.postgres_interface.postgres_compressed_result_logger import (
+    PostgresCompressedResultLogger,
+)
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.worker import Worker
 
@@ -20,7 +22,8 @@ def make_strategy(num_cores, gpus, gpu_mem):
 
     if num_cores is None:
         import multiprocessing
-        num_cores = max(1, multiprocessing.cpu_count()-1)
+
+        num_cores = max(1, multiprocessing.cpu_count() - 1)
 
     if gpus is None:
         gpus = []
@@ -28,15 +31,13 @@ def make_strategy(num_cores, gpus, gpu_mem):
     if gpu_mem is None:
         gpu_mem = 4096
 
-    tf_gpus = tensorflow.config.experimental.list_physical_devices('GPU')
-    print(
-        f'Found GPUs: {len(tf_gpus)} {tf_gpus}.\nUsing: {gpus}.'
-    )
+    tf_gpus = tensorflow.config.experimental.list_physical_devices("GPU")
+    print(f"Found GPUs: {len(tf_gpus)} {tf_gpus}.\nUsing: {gpus}.")
     gpu_set = set(gpus)
     gpu_devices = []
     for gpu in tf_gpus:
         tensorflow.config.experimental.set_memory_growth(gpu, True)
-        number = int(gpu.name.split(':')[-1])
+        number = int(gpu.name.split(":")[-1])
         if number in gpu_set:
             gpu_devices.append(gpu)
 
@@ -47,7 +48,7 @@ def make_strategy(num_cores, gpus, gpu_mem):
             #             memory_limit=gpu_mem)
             #     ])
 
-    cpus = tensorflow.config.experimental.list_physical_devices('CPU')
+    cpus = tensorflow.config.experimental.list_physical_devices("CPU")
     # print(f'cpus: {cpus}')
     visible_devices = gpu_devices.copy()
     visible_devices.extend(cpus)
@@ -61,7 +62,8 @@ def make_strategy(num_cores, gpus, gpu_mem):
         print(visible_devices)
         print(gpu_devices)
         strategy = tensorflow.distribute.MirroredStrategy(
-            devices=[d.name[len('/physical_device:'):] for d in gpu_devices])
+            devices=[d.name[len("/physical_device:") :] for d in gpu_devices]
+        )
         #   cross_device_ops=tensorflow.contrib.distribute.AllReduceCrossDeviceOps(
         #      all_reduce_alg="hierarchical_copy")
     else:
@@ -79,30 +81,29 @@ if __name__ == "__main__":
     database = a[1]
     queue_id = int(a[2])
 
-    nodes = [int(e) for e in a[3].split(',')]
-    cpus = [int(e) for e in a[4].split(',')]
-    gpus = [int(e) for e in a[5].split(',')] if len(
-        a[5]) > 0 and a[5] != '-' else []
+    nodes = [int(e) for e in a[3].split(",")]
+    cpus = [int(e) for e in a[4].split(",")]
+    gpus = [int(e) for e in a[5].split(",")] if len(a[5]) > 0 and a[5] != "-" else []
     gpu_memory = int(a[6]) if len(a[6]) > 0 else 0
 
-    tensorflow.keras.backend.set_floatx('float32')
+    tensorflow.keras.backend.set_floatx("float32")
 
     worker_id = uuid.uuid4()
-    print(f'Worker id {worker_id} starting...')
-    print('\n', flush=True)
+    print(f"Worker id {worker_id} starting...")
+    print("\n", flush=True)
 
     if not isinstance(queue_id, int):
         queue_id = 1
 
-    print(f'Worker id {worker_id} load credentials...\n', flush=True)
+    print(f"Worker id {worker_id} load credentials...\n", flush=True)
     credentials = load_credentials(database)
-    print(f'Worker id {worker_id} initialize database schema...\n', flush=True)
+    print(f"Worker id {worker_id} initialize database schema...\n", flush=True)
     schema = PostgresSchema(credentials)
-    print(f'Worker id {worker_id} create job queue...\n', flush=True)
+    print(f"Worker id {worker_id} create job queue...\n", flush=True)
     job_queue = JobQueue(credentials, int(queue_id), check_table=False)
-    print(f'Worker id {worker_id} create result logger..\n', flush=True)
+    print(f"Worker id {worker_id} create result logger..\n", flush=True)
     result_logger = PostgresCompressedResultLogger(schema)
-    print(f'Worker id {worker_id} create Worker object..\n', flush=True)
+    print(f"Worker id {worker_id} create Worker object..\n", flush=True)
 
     strategy = make_strategy(
         len(cpus),
@@ -116,17 +117,17 @@ if __name__ == "__main__":
         result_logger,
         strategy,
         {
-            'nodes': nodes,
-            'cpus': cpus,
-            'gpus': gpus,
-            'num_cpus': len(cpus),
-            'num_gpus': len(gpus),
-            'num_nodes': len(nodes),
-            'gpu_memory': gpu_memory,
-            'tensorflow_strategy': str(type(strategy)),
-            'queue_id': queue_id,
+            "nodes": nodes,
+            "cpus": cpus,
+            "gpus": gpus,
+            "num_cpus": len(cpus),
+            "num_gpus": len(gpus),
+            "num_nodes": len(nodes),
+            "gpu_memory": gpu_memory,
+            "tensorflow_strategy": str(type(strategy)),
+            "queue_id": queue_id,
         },
     )
-    print(f'Worker id {worker_id} start Worker object...\n', flush=True)
+    print(f"Worker id {worker_id} start Worker object...\n", flush=True)
     worker()  # runs the work loop on the worker
-    print(f'Worker id {worker_id} Worker exited.\n', flush=True)
+    print(f"Worker id {worker_id} Worker exited.\n", flush=True)

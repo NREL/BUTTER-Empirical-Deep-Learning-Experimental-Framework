@@ -7,12 +7,11 @@ from jobqueue.job_queue import JobQueue
 from dmp import common
 
 
-
 @dataclass
 class Worker:
     _job_queue: JobQueue
-    _schema: 'PostgresSchema'
-    _result_logger: 'ExperimentResultLogger'
+    _schema: "PostgresSchema"
+    _result_logger: "ExperimentResultLogger"
     _strategy: tensorflow.distribute.Strategy
     _info: Dict[str, Any]
     _max_jobs: Optional[int] = None
@@ -26,9 +25,9 @@ class Worker:
         return self._info
 
     @property
-    def schema(self) -> 'PostgresSchema':
+    def schema(self) -> "PostgresSchema":
         return self._schema
-    
+
     @property
     def job_queue(self) -> JobQueue:
         return self._job_queue
@@ -36,7 +35,8 @@ class Worker:
     def __call__(self):
         git_hash = common.get_git_hash()
         self._job_queue.work_loop(
-            lambda worker_id, job: self._handler(worker_id, job, git_hash))
+            lambda worker_id, job: self._handler(worker_id, job, git_hash)
+        )
 
     def _handler(
         self,
@@ -49,7 +49,17 @@ class Worker:
         from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
         from dmp.worker_task_context import WorkerTaskContext
 
-        self._info['worker_id'] = worker_id
+        """
+        + save resume task
+        + save history
+        + save model
+        ---
+        + load resume task
+        + resume from saved history
+        + resume from saved model
+        """
+
+        self._info["worker_id"] = worker_id
 
         # demarshal task from job.command
         task: Task = marshal.demarshal(job.command)  # type: ignore
@@ -66,7 +76,9 @@ class Worker:
             self._max_jobs -= 1
 
         second_git_hash = common.get_git_hash()
-        return (self._max_jobs is None or self._max_jobs > 0) and (git_hash is second_git_hash or git_hash == second_git_hash)
+        return (self._max_jobs is None or self._max_jobs > 0) and (
+            git_hash is second_git_hash or git_hash == second_git_hash
+        )
 
 
 from dmp.logging.experiment_result_logger import ExperimentResultLogger

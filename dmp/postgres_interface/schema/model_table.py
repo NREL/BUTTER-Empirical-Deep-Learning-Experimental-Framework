@@ -7,11 +7,11 @@ from dmp.postgres_interface.element.table import Table
 
 @dataclass(frozen=True)
 class ModelTable(Table):
-    name: str = 'model'
-    run_id: Column = Column('run_id', 'uuid')
-    epoch: Column = Column('epoch', 'integer')
-    model_number: Column = Column('model_number', 'integer')
-    model_epoch: Column = Column('model_epoch', 'integer')
+    name: str = "model"
+    run_id: Column = Column("run_id", "uuid")
+    epoch: Column = Column("epoch", "integer")
+    model_number: Column = Column("model_number", "integer")
+    model_epoch: Column = Column("model_epoch", "integer")
 
     @property
     def columns(self) -> AColumnGroup:

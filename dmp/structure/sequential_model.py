@@ -5,16 +5,16 @@ from dmp.layer.layer import Layer, LayerConfig, LayerFactory
 
 @dataclass
 class SequentialModel(LayerFactory):
-    '''
+    """
     Defines a sequence of serially connected layers.
-    '''
+    """
 
-    layer_factories: List[LayerFactory] # layers from input to output
+    layer_factories: List[LayerFactory]  # layers from input to output
 
     def make_layer(
         self,
-        config: 'LayerConfig',
-        inputs: Union['Layer', List['Layer']],
+        config: "LayerConfig",
+        inputs: Union["Layer", List["Layer"]],
     ) -> Layer:
         layer_input = inputs
         for layer_factory in self.layer_factories:

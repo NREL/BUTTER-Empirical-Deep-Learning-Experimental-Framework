@@ -10,10 +10,10 @@ from dmp.dataset.ml_task import MLTask
 from .dataset_spec import DatasetSpec
 
 
-class PreparedDataset():
-
+class PreparedDataset:
     def __init__(self, spec: DatasetSpec, batch_size: int) -> None:
         from dmp.dataset.dataset_util import load_dataset
+
         dataset: Dataset = load_dataset(spec.source, spec.name)
         split_dataset(spec, dataset)
 
@@ -50,7 +50,7 @@ class PreparedDataset():
 
 def split_dataset(spec: DatasetSpec, dataset: Dataset) -> None:
     method = spec.method
-    if method == 'shuffled_train_test_split':
+    if method == "shuffled_train_test_split":
         # combine all splits and resplit the dataset
 
         splits = dataset.splits
@@ -62,33 +62,37 @@ def split_dataset(spec: DatasetSpec, dataset: Dataset) -> None:
         dataset.test = None
         dataset.validation = None
 
-        train_inputs, test_inputs, train_outputs, test_outputs = \
-                sklearn.model_selection.train_test_split(
-                    inputs,
-                    outputs,
-                    test_size=spec.test_split,
-                    shuffle=True,
-                )
+        (
+            train_inputs,
+            test_inputs,
+            train_outputs,
+            test_outputs,
+        ) = sklearn.model_selection.train_test_split(
+            inputs,
+            outputs,
+            test_size=spec.test_split,
+            shuffle=True,
+        )
         dataset.train = DatasetGroup(train_inputs, train_outputs)
 
         make_validation_split(spec, dataset)
         add_label_noise(spec.label_noise, dataset.ml_task, train_outputs)
         dataset.test = DatasetGroup(test_inputs, test_outputs)
-    elif method == 'default':
+    elif method == "default":
         set_spec_splits_to_actuals(spec, dataset)
-    elif method == 'default_shuffled':
+    elif method == "default_shuffled":
         for name, group in dataset.splits:
             sklearn.utils.shuffle(group.inputs, group.outputs)
         set_spec_splits_to_actuals(spec, dataset)
-    elif method == 'default_test':
+    elif method == "default_test":
         make_validation_split(spec, dataset)
-    elif method == 'swap_test_and_validation':
+    elif method == "swap_test_and_validation":
         temp = dataset.validation
         dataset.validation = dataset.test
         dataset.test = temp
         set_spec_splits_to_actuals(spec, dataset)
     else:
-        raise NotImplementedError(f'Unknown test_split_method {method}.')
+        raise NotImplementedError(f"Unknown test_split_method {method}.")
 
 
 def set_spec_splits_to_actuals(spec: DatasetSpec, dataset: Dataset):
@@ -111,13 +115,17 @@ def make_validation_split(spec: DatasetSpec, dataset: Dataset) -> None:
         spec.validation_split = 0.0
         return
 
-    train_inputs, validation_inputs, train_outputs, validation_outputs = \
-            sklearn.model_selection.train_test_split(
-                dataset.train.inputs,
-                dataset.train.outputs,
-                test_size=(validation_split/(1.0-spec.test_split)),
-                shuffle=False,
-            )
+    (
+        train_inputs,
+        validation_inputs,
+        train_outputs,
+        validation_outputs,
+    ) = sklearn.model_selection.train_test_split(
+        dataset.train.inputs,
+        dataset.train.outputs,
+        test_size=(validation_split / (1.0 - spec.test_split)),
+        shuffle=False,
+    )
     dataset.train = DatasetGroup(train_inputs, train_outputs)
     dataset.validation = DatasetGroup(validation_inputs, validation_outputs)
 
@@ -132,9 +140,11 @@ def make_tensorflow_dataset(
     datasets = (group.inputs, group.outputs)
 
     import tensorflow
+
     dataset_options = tensorflow.data.Options()
-    dataset_options.experimental_distribute.auto_shard_policy = \
+    dataset_options.experimental_distribute.auto_shard_policy = (
         tensorflow.data.experimental.AutoShardPolicy.DATA
+    )
 
     tf_datasets = tensorflow.data.Dataset.from_tensor_slices(datasets)
 
@@ -152,9 +162,9 @@ def add_label_noise(label_noise: float, ml_task: MLTask, train_outputs: Any):
     # print(f'sample\n{outputs_train[0:20, :]}')
     if ml_task == MLTask.classification:
         num_to_perturb = int(train_size * label_noise)
-        noisy_labels_idx = numpy.random.choice(train_size,
-                                               size=num_to_perturb,
-                                               replace=False)
+        noisy_labels_idx = numpy.random.choice(
+            train_size, size=num_to_perturb, replace=False
+        )
 
         num_outputs = train_outputs.shape[1]
         if num_outputs == 1:
@@ -163,10 +173,12 @@ def add_label_noise(label_noise: float, ml_task: MLTask, train_outputs: Any):
         else:
             # one-hot response variable...
             rolls = numpy.random.choice(
-                numpy.arange(num_outputs - 1) + 1, noisy_labels_idx.size)
+                numpy.arange(num_outputs - 1) + 1, noisy_labels_idx.size
+            )
             for i, idx in enumerate(noisy_labels_idx):
                 train_outputs[noisy_labels_idx] = numpy.roll(
-                    train_outputs[noisy_labels_idx], rolls[i])
+                    train_outputs[noisy_labels_idx], rolls[i]
+                )
             # noisy_labels_new_idx = numpy.random.choice(train_size, size=num_to_perturb, replace=True)
             # outputs_train[noisy_labels_idx] = outputs_train[noisy_labels_new_idx]
     elif ml_task == MLTask.regression:
@@ -176,7 +188,9 @@ def add_label_noise(label_noise: float, ml_task: MLTask, train_outputs: Any):
         noise_std = std_dev * label_noise
         for i in range(train_outputs.shape[1]):
             train_outputs[:, i] += numpy.random.normal(
-                loc=0, scale=noise_std[i], size=train_outputs[:, i].shape)
+                loc=0, scale=noise_std[i], size=train_outputs[:, i].shape
+            )
     else:
         raise ValueError(
-            f'Do not know how to add label noise to dataset task {ml_task}.')
+            f"Do not know how to add label noise to dataset task {ml_task}."
+        )

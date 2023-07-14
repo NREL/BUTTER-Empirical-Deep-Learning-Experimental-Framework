@@ -43,8 +43,8 @@ class IterativePruningExperiment(TrainingExperiment):
         return 1
 
     def __call__(
-        self, 
-        context: WorkerTaskContext, 
+        self,
+        context: WorkerTaskContext,
     ) -> ExperimentResultRecord:
         # http://proceedings.mlr.press/v119/frankle20a/frankle20a.pdf Algorithim 2
 
@@ -63,7 +63,7 @@ class IterativePruningExperiment(TrainingExperiment):
             context,
             model,
             self.record.resume_from,
-            )
+        )
 
         # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
         num_free_parameters = model.network.num_free_parameters
@@ -82,7 +82,7 @@ class IterativePruningExperiment(TrainingExperiment):
         # save weights at this point for rewinding
         restore_point = io.BytesIO()
         model_serialization.save_model(model, restore_point)
-        model_serialization.save_model_data(self, model, f'test_base')
+        model_serialization.save_model_data(self, model, f"test_base")
 
         # 4: for n ∈ {1, . . . , N} do
         for iteration_n in range(self.num_pruning_iterations):
@@ -100,7 +100,7 @@ class IterativePruningExperiment(TrainingExperiment):
             )
 
             model_serialization.save_model_data(
-                self, model, f'test_{iteration_n}_unpruned'
+                self, model, f"test_{iteration_n}_unpruned"
             )
 
             # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
@@ -110,7 +110,7 @@ class IterativePruningExperiment(TrainingExperiment):
             )
 
             model_serialization.save_model_data(
-                self, model, f'test_{iteration_n}_pruned'
+                self, model, f"test_{iteration_n}_pruned"
             )
 
             model.keras_model.summary()
@@ -129,4 +129,3 @@ class IterativePruningExperiment(TrainingExperiment):
             model.network,
             experiment_history,
         )
-        

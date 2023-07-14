@@ -4,17 +4,17 @@ from typing import Any, Sequence, Type, Union, get_args
 from dmp.postgres_interface.attribute_value_type import AttributeValueType
 
 ComparableValue = Union[None, bool, int, float, str]
-value_types: Sequence[Type] = get_args(ComparableValue) + (dict, )
+value_types: Sequence[Type] = get_args(ComparableValue) + (dict,)
 
 
-#@dataclass(frozen=True, slots=True)
-class Attr():
+# @dataclass(frozen=True, slots=True)
+class Attr:
     __slots__ = (
-        'attr_id',
-        'kind',
-        'value_type',
-        'comparable_value',
-        'value',
+        "attr_id",
+        "kind",
+        "value_type",
+        "comparable_value",
+        "value",
     )
 
     attr_id: int

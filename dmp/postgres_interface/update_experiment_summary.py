@@ -9,7 +9,9 @@ from psycopg.sql import SQL, Composed, Identifier, Literal
 from dmp.postgres_interface.element.column import Column
 from dmp.postgres_interface.element.column_group import ColumnGroup
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
-from dmp.postgres_interface.update_experiment_summary_result import UpdateExperimentSummaryResult
+from dmp.postgres_interface.update_experiment_summary_result import (
+    UpdateExperimentSummaryResult,
+)
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.task import Task
@@ -19,13 +21,13 @@ from dmp.postgres_interface.postgres_interface_common import sql_comma
 from dmp.common import flatten, marshal_type_key
 from dmp.worker_task_context import WorkerTaskContext
 
-_summarizer_map: Dict[str, Callable[[Sequence[ExperimentResultRecord]],
-                                    ExperimentSummaryRecord]] = {}
+_summarizer_map: Dict[
+    str, Callable[[Sequence[ExperimentResultRecord]], ExperimentSummaryRecord]
+] = {}
 
 
 @dataclass
 class UpdateExperimentSummary(Task):
-
     @staticmethod
     def register_types(types: Iterable[Type]) -> None:
         for target_type in types:
@@ -39,7 +41,7 @@ class UpdateExperimentSummary(Task):
     def __call__(
         self,
         context: WorkerTaskContext,
-        ) -> TaskResult:
+    ) -> TaskResult:
         num_summaries = 0
         experiment_limit = 512
 
@@ -54,7 +56,7 @@ class UpdateExperimentSummary(Task):
         # )
 
         #                             AND experiment_properties @> array[2568] and experiment_attrs @> array[75, 224]
-        selection = Identifier('_selection')
+        selection = Identifier("_selection")
         # last_updated = Identifier('last_updated')
 
         experiment_columns = ColumnGroup(
@@ -85,7 +87,7 @@ class UpdateExperimentSummary(Task):
             summary.by_progress,
             summary.epoch_subset,
         )
-        _values = Identifier('_values')
+        _values = Identifier("_values")
 
         format_args = dict(
             experiment_selection=experiment_columns.of(experiment.identifier),
@@ -101,25 +103,29 @@ class UpdateExperimentSummary(Task):
             _selection=selection,
             summary_columns=summary_columns.columns_sql,
             update_clause=sql_comma.join(
-                (SQL('{c}=EXCLUDED.{c}').format(c=c)
-                 for c in summary_columns.identifiers)),
+                (
+                    SQL("{c}=EXCLUDED.{c}").format(c=c)
+                    for c in summary_columns.identifiers
+                )
+            ),
             experiment_limit=Literal(experiment_limit),
             most_recent_run=summary.most_recent_run.identifier,
-            summary_exists=Identifier('summary_exists'),
-            experiment_locked=Identifier('_experiment_locked'),
-            summary_locked=Identifier('_summary_locked'),
-            _claim=Identifier('_claim'),
-            _updated=Identifier('_updated'),
+            summary_exists=Identifier("summary_exists"),
+            experiment_locked=Identifier("_experiment_locked"),
+            summary_locked=Identifier("_summary_locked"),
+            _claim=Identifier("_claim"),
+            _updated=Identifier("_updated"),
         )
 
-        claim_and_get_query = SQL("""
-WITH {_selection} AS 
+        claim_and_get_query = SQL(
+            """
+WITH {_selection} AS
 (
-    SELECT DISTINCT ON ({_selection}.{experiment_id}) 
+    SELECT DISTINCT ON ({_selection}.{experiment_id})
         *
     FROM
     (
-        SELECT 
+        SELECT
             {_selection}.{run_timestamp},
             {experiment_selection}
         FROM
@@ -139,14 +145,14 @@ WITH {_selection} AS
                         {experiment_summary}.{experiment_id} = {run}.{experiment_id}
                         AND {experiment_summary}.{most_recent_run} >= {run}.{run_timestamp}
                 )
-            ORDER BY 
+            ORDER BY
                 {run}.{run_timestamp} DESC, {run}.{experiment_id}
         ) {_selection}
         CROSS JOIN LATERAL
         (
-            SELECT 
+            SELECT
                 {experiment_selection}
-            FROM 
+            FROM
                 {experiment}
             WHERE
                 {experiment}.{experiment_id} = {_selection}.{experiment_id}
@@ -162,11 +168,11 @@ WITH {_selection} AS
         {most_recent_run},
         {last_updated}
     )
-    SELECT 
+    SELECT
         {_selection}.{experiment_id} {experiment_id},
         {_selection}.{run_timestamp} {most_recent_run},
         CURRENT_TIMESTAMP
-    FROM 
+    FROM
         {_selection}
     ON CONFLICT ({experiment_id}) DO UPDATE SET
         {most_recent_run} = EXCLUDED.{most_recent_run},
@@ -182,14 +188,16 @@ FROM
         {run}.{experiment_id} = {_selection}.{experiment_id}
     )
 ORDER BY {_selection}.{experiment_id}
-;""").format(**format_args)
+;"""
+        ).format(**format_args)
 
         def make_update_progress_query(num_summaries: int) -> Composed:
-            return SQL("""
+            return SQL(
+                """
 UPDATE {experiment_summary} SET
     {set_clause},
     {last_updated} = NULL
-FROM 
+FROM
     (
         SELECT {summary_casting_clause}
         FROM (VALUES {summary_column_placeholders} ) AS {_values} ({summary_columns})
@@ -197,20 +205,25 @@ FROM
 WHERE
     {_values}.{experiment_id} = {experiment_summary}.{experiment_id}
     AND {experiment_summary}.{most_recent_run} <= {_values}.{most_recent_run}
-;""").format(
+;"""
+            ).format(
                 _values=_values,
                 summary_casting_clause=summary_columns.casting_sql,
-                set_clause=sql_comma.join([SQL('{c} = {_values}.{c}').format(
-                    _values=_values,
-                    c=c,
-                ) for c in summary_columns.identifiers]),
+                set_clause=sql_comma.join(
+                    [
+                        SQL("{c} = {_values}.{c}").format(
+                            _values=_values,
+                            c=c,
+                        )
+                        for c in summary_columns.identifiers
+                    ]
+                ),
                 summary_column_placeholders=sql_comma.join(
-                    [SQL('({})').format(summary_columns.placeholders)] *
-                    num_summaries),
+                    [SQL("({})").format(summary_columns.placeholders)] * num_summaries
+                ),
                 **format_args,
             )
 
-        
         rows = []
         with ConnectionManager(schema.credentials) as connection:
             # with ClientCursor(connection) as cursor:
@@ -229,15 +242,17 @@ WHERE
         def make_summary():
             nonlocal most_recent_run, experiment_id, runs, summary_rows
             if len(runs) > 0:
-                summary_rows.append((
-                    experiment_id,
-                    most_recent_run,
-                    *self._summary_to_bytes(
-                        schema, self._compute_summary(runs)),
-                ))
+                summary_rows.append(
+                    (
+                        experiment_id,
+                        most_recent_run,
+                        *self._summary_to_bytes(schema, self._compute_summary(runs)),
+                    )
+                )
             runs.clear()
-            
+
         for row in rows:
+
             def value_of(column: Column) -> Any:
                 return row[result_columns[column]]
 
@@ -246,9 +261,11 @@ WHERE
                 make_summary()
                 experiment_id = row_uid
                 experiment_attrs = schema.attribute_map.attribute_map_from_ids(
-                    value_of(experiment.experiment_attrs))
+                    value_of(experiment.experiment_attrs)
+                )
                 experiment_properties = schema.attribute_map.attribute_map_from_ids(
-                    value_of(experiment.experiment_tags))
+                    value_of(experiment.experiment_tags)
+                )
                 most_recent_run = value_of(run.run_timestamp)
 
             most_recent_run = max(
@@ -261,8 +278,7 @@ WHERE
             for c in run.values:
                 run_data[c] = value_of(c)
 
-            run_history = schema.convert_bytes_to_dataframe(
-                value_of(run.run_history))
+            run_history = schema.convert_bytes_to_dataframe(value_of(run.run_history))
 
             runs.append(
                 ExperimentResultRecord(
@@ -271,7 +287,8 @@ WHERE
                     run_data,
                     run_history,  # type: ignore
                     None,
-                ))
+                )
+            )
 
         make_summary()
 
@@ -284,10 +301,17 @@ WHERE
                 connection.execute(
                     make_update_progress_query(num_summaries),
                     list(
-                        chain(*((
-                            # last_updated,
-                            *summary_cols,
-                        ) for summary_cols in summary_rows))))
+                        chain(
+                            *(
+                                (
+                                    # last_updated,
+                                    *summary_cols,
+                                )
+                                for summary_cols in summary_rows
+                            )
+                        )
+                    ),
+                )
 
         return UpdateExperimentSummaryResult(num_summaries)
 
@@ -301,7 +325,8 @@ WHERE
         summary: ExperimentSummaryRecord,
     ) -> Sequence[Optional[bytes]]:
         return [
-            schema.convert_dataframe_to_bytes(df) for df in (
+            schema.convert_dataframe_to_bytes(df)
+            for df in (
                 summary.by_epoch,
                 summary.by_loss,
                 summary.by_progress,
@@ -310,7 +335,7 @@ WHERE
         ]
 
 
-'''
+"""
 SELECT
     *
 FROM
@@ -321,17 +346,17 @@ FROM
             SELECT experiment.experiment_id
             FROM
             (
-                SELECT run.experiment_id, run.run_timestamp FROM 
+                SELECT run.experiment_id, run.run_timestamp FROM
                 run
-                WHERE NOT EXISTS 
+                WHERE NOT EXISTS
                 (
-                    SELECT (1) FROM "experiment_summary" 
+                    SELECT (1) FROM "experiment_summary"
                     WHERE
-                        "experiment_summary"."most_recent_run" >= "run"."run_timestamp" 
+                        "experiment_summary"."most_recent_run" >= "run"."run_timestamp"
                         AND "experiment_summary"."experiment_id" = "run"."experiment_id"
                 )
             ) "selection"
-            CROSS JOIN LATERAL 
+            CROSS JOIN LATERAL
             (
                 SELECT
                     *
@@ -347,65 +372,65 @@ FROM
     ) "_selection"
     CROSS JOIN LATERAL (SELECT * FROM "run" WHERE "run"."experiment_id" = "_selection"."experiment_id") run
     ;
-'''
+"""
 
-'''
+"""
 SELECT
     "_selection"."last_updated","_selection"."last_experiment_id",
     "_selection"."experiment_id","_selection"."experiment_attrs","_selection"."experiment_properties",
     "run"."run_timestamp","run"."run_id","run"."job_id","run"."seed","run"."slurm_job_id","run"."task_version","run"."num_nodes","run"."num_cpus","run"."num_gpus","run"."gpu_memory","run"."host_name","run"."batch","run"."run_data","run"."run_history"
 FROM
     (
-        SELECT 
+        SELECT
             "_bound".*,
             "experiment".*
-        FROM 
+        FROM
             (
                 SELECT "run_timestamp" "last_updated", "experiment_id" "last_experiment_id"
-                FROM "run" 
-                WHERE "run_timestamp" >= 
+                FROM "run"
+                WHERE "run_timestamp" >=
                 (
-                    SELECT COALESCE(MAX("last_updated"), '1960-01-01'::timestamp) 
+                    SELECT COALESCE(MAX("last_updated"), '1960-01-01'::timestamp)
                     FROM "experiment_summary"
                 )
-                AND 
+                AND
 NOT EXISTS
 (
-    SELECT 1 
+    SELECT 1
     FROM "experiment_summary"
-    WHERE 
+    WHERE
         "experiment_summary"."experiment_id" = "run"."experiment_id"
         AND "experiment_summary"."most_recent_run" >= "run"."run_timestamp"
 )
-                
+
 ORDER BY "run_timestamp" ASC, "experiment_id" ASC, "run_id" ASC
                 LIMIT 1
             ) "_bound"
-            INNER JOIN "run" ON 
+            INNER JOIN "run" ON
             (
-                "run"."run_timestamp" >= "_bound"."last_updated" 
-                AND "run"."experiment_id" >= "_bound"."last_experiment_id" 
-                AND 
+                "run"."run_timestamp" >= "_bound"."last_updated"
+                AND "run"."experiment_id" >= "_bound"."last_experiment_id"
+                AND
 NOT EXISTS
 (
-    SELECT 1 
+    SELECT 1
     FROM "experiment_summary"
-    WHERE 
+    WHERE
         "experiment_summary"."experiment_id" = "run"."experiment_id"
         AND "experiment_summary"."most_recent_run" >= "run"."run_timestamp"
 )
-                AND NOT EXISTS 
+                AND NOT EXISTS
                 (
-                    SELECT 1 
+                    SELECT 1
                     FROM "run" "_run_backselect"
-                    WHERE 
-                        "_run_backselect"."experiment_id" = "run"."experiment_id" 
-                        AND "_run_backselect"."run_timestamp" <= "run"."run_timestamp" 
-                        AND "_run_backselect"."run_timestamp" >= "_bound"."last_updated" 
+                    WHERE
+                        "_run_backselect"."experiment_id" = "run"."experiment_id"
+                        AND "_run_backselect"."run_timestamp" <= "run"."run_timestamp"
+                        AND "_run_backselect"."run_timestamp" >= "_bound"."last_updated"
                         AND "_run_backselect"."run_id" < "run"."run_id"
                 )
             )
-            CROSS JOIN LATERAL 
+            CROSS JOIN LATERAL
             (
                 SELECT
                     *
@@ -417,10 +442,10 @@ NOT EXISTS
                 LIMIT 1
             ) "experiment"
         WHERE "experiment"."experiment_id" IS NOT NULL
-        
+
 ORDER BY "run_timestamp" ASC, "experiment_id" ASC, "run_id" ASC
         LIMIT 4
     ) "_selection"
     LEFT JOIN "run" ON ("run"."experiment_id" = "_selection"."experiment_id")
     ORDER BY "_selection"."experiment_id";
-'''
+"""

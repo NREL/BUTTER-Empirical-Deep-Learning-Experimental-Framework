@@ -31,7 +31,9 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
 from dmp.layer.dense import Dense
-from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
+from dmp.postgres_interface.postgres_compressed_result_logger import (
+    PostgresCompressedResultLogger,
+)
 
 from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
 import sys
@@ -39,23 +41,27 @@ from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
 
 from dmp.parquet_util import make_pyarrow_schema
-from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
 
 from dmp.marshaling import marshal
 
 pmlb_index_path = os.path.join(
-    os.path.realpath(os.path.join(
-        os.getcwd(),
-        os.path.dirname(__file__),
-    )),
-    'pmlb.csv',
+    os.path.realpath(
+        os.path.join(
+            os.getcwd(),
+            os.path.dirname(__file__),
+        )
+    ),
+    "pmlb.csv",
 )
 dataset_index = pandas.read_csv(pmlb_index_path)
-dataset_index.set_index('Dataset', inplace=True, drop=False)
+dataset_index.set_index("Dataset", inplace=True, drop=False)
 
 
 @dataclass
-class PsuedoPreparedDataset():
+class PsuedoPreparedDataset:
     ml_task: MLTask
     input_shape: List[int]
     output_shape: List[int]
@@ -68,20 +74,20 @@ class PsuedoPreparedDataset():
 
 
 status_columns = [
-    'id',
-    'queue',
-    'status',
-    'priority',
-    'start_time',
-    'update_time',
-    'worker',
-    'error_count',
-    'error',
+    "id",
+    "queue",
+    "status",
+    "priority",
+    "start_time",
+    "update_time",
+    "worker",
+    "error_count",
+    "error",
 ]
 
 data_columns = [
-    'command',
-    'parent',
+    "command",
+    "parent",
 ]
 
 columns = status_columns + data_columns
@@ -90,36 +96,34 @@ column_index_map = {name: i for i, name in enumerate(columns)}
 
 
 def main():
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('num_workers', type=int)
-    parser.add_argument('block_size', type=int)
+    parser.add_argument("num_workers", type=int)
+    parser.add_argument("block_size", type=int)
     args = parser.parse_args()
 
     num_workers = args.num_workers
     block_size = args.block_size
 
     pool = multiprocessing.ProcessPool(num_workers)
-    results = pool.uimap(do_work,
-                         ((i, block_size) for i in range(num_workers)))
+    results = pool.uimap(do_work, ((i, block_size) for i in range(num_workers)))
     total_num_converted = sum(results)
-    print(f'Done. Converted {total_num_converted} runs.')
+    print(f"Done. Converted {total_num_converted} runs.")
     pool.close()
     pool.join()
-    print('Complete.')
+    print("Complete.")
 
 
 def do_work(args):
     worker_number, block_size = args
 
-    credentials = load_credentials('dmp')
+    credentials = load_credentials("dmp")
 
     result_logger = PostgresCompressedResultLogger(credentials)
 
     worker_id = str(worker_number) + str(uuid.uuid4())
     total_num_converted = 0
     total_num_excepted = 0
-    print(f'Worker {worker_number} : {worker_id} started...')
+    print(f"Worker {worker_number} : {worker_id} started...")
 
     while True:  #  binary=True, scrollable=True
         num_converted = 0
@@ -129,34 +133,39 @@ def do_work(args):
             with connection.transaction():
                 # cursor.itersize = 8
 
-                column_selection = sql.SQL(', ').join([
-                    sql.SQL('s.{col} {col}').format(col=sql.Identifier(c))
-                    for c in status_columns
-                ] + [
-                    sql.SQL('d.{col} {col}').format(col=sql.Identifier(c))
-                    for c in data_columns
-                ])
+                column_selection = sql.SQL(", ").join(
+                    [
+                        sql.SQL("s.{col} {col}").format(col=sql.Identifier(c))
+                        for c in status_columns
+                    ]
+                    + [
+                        sql.SQL("d.{col} {col}").format(col=sql.Identifier(c))
+                        for c in data_columns
+                    ]
+                )
 
-                q = sql.SQL("""
+                q = sql.SQL(
+                    """
 SELECT {column_selection}
 FROM job_status s inner join job_data d using (id)
-WHERE 
+WHERE
     status < 0
     AND command @> {qp}
 FOR UPDATE
 SKIP LOCKED
 LIMIT {block_size}
-;""").format(
+;"""
+                ).format(
                     column_selection=column_selection,
                     block_size=sql.Literal(block_size),
-                    qp = sql.Literal(psycopg.types.json.Jsonb({'':'AspectTestTask'}))
+                    qp=sql.Literal(psycopg.types.json.Jsonb({"": "AspectTestTask"})),
                 )
                 with connection.cursor(binary=True) as cursor:
                     cursor.execute(q)
 
                     eids = set()
                     for row in cursor:
-                        eids.add(row[column_index_map['id']])
+                        eids.add(row[column_index_map["id"]])
                         try:
                             if convert_task(row, connection):
                                 num_converted += 1
@@ -164,23 +173,24 @@ LIMIT {block_size}
                                 num_excepted += 1
                         except Exception as e:
                             num_excepted += 1
-                            print(f'failed on Exception: {e}')
+                            print(f"failed on Exception: {e}")
                             traceback.print_exc()
 
                 if len(eids) > 0:
-                    eid_placeholders = sql.SQL(',').join(
-                        (sql.SQL('%s') for v in eids))
-                    q = sql.SQL("""
+                    eid_placeholders = sql.SQL(",").join((sql.SQL("%s") for v in eids))
+                    q = sql.SQL(
+                        """
 UPDATE job_status
-    SET status = -1 - status 
+    SET status = -1 - status
 WHERE
     id IN ({eid_placeholders})
-                    ;""").format(eid_placeholders=eid_placeholders)
+                    ;"""
+                    ).format(eid_placeholders=eid_placeholders)
                     connection.execute(q, sorted(eids))
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(
-            f'Worker {worker_number} : {worker_id} committed {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}.'
+            f"Worker {worker_number} : {worker_id} committed {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}."
         )
 
         if num_converted <= 0 and num_excepted <= 0:
@@ -190,7 +200,6 @@ WHERE
 
 
 def convert_task(row, connection) -> bool:
-
     def get_cell(column: str):
         return row[column_index_map[column]]
 
@@ -200,67 +209,66 @@ def convert_task(row, connection) -> bool:
             v = default
         return v
 
-    src = get_cell('command')
+    src = get_cell("command")
 
-    run_config = src.get('run_config')
-    if src.get('', None) != 'AspectTestTask':
+    run_config = src.get("run_config")
+    if src.get("", None) != "AspectTestTask":
         return False
 
     def migrate_keras_config(target):
         if target is None:
             return None
         config = target.copy()
-        keras_type = config.pop('type')
+        keras_type = config.pop("type")
         return make_keras_config(
             keras_type,
             config,
         )  # type: ignore
 
-    if src.get('early_stopping', None) is not None:
+    if src.get("early_stopping", None) is not None:
         return False
 
     experiment = TrainingExperiment(
-        seed=src['seed'],
-        batch=src['batch'],
-        precision='float32',
+        seed=src["seed"],
+        batch=src["batch"],
+        precision="float32",
         dataset=DatasetSpec(
-            name=src['dataset'],
-            source='pmlb',
-            method=src.get('test_split_method', 'shuffled_train_test_split'),
-            test_split=float(src.get('test_split', 0.2)),
+            name=src["dataset"],
+            source="pmlb",
+            method=src.get("test_split_method", "shuffled_train_test_split"),
+            test_split=float(src.get("test_split", 0.2)),
             validation_split=0.0,
-            label_noise=float(src.get('label_noise', 0.0)),
+            label_noise=float(src.get("label_noise", 0.0)),
         ),
         model=DenseBySize(
             input=None,
             output=None,
-            shape=src.get('shape'),
-            size=src.get('size'),
-            depth=src.get('depth'),
-            search_method='integer',
+            shape=src.get("shape"),
+            size=src.get("size"),
+            depth=src.get("depth"),
+            search_method="integer",
             inner=Dense.make(
-                -1, {
-                    'activation':
-                    src.get('activation', 'relu'),
-                    'kernel_initializer':
-                    'GlorotUniform',
-                    'kernel_regularizer':
-                    migrate_keras_config(src.get('kernel_regularizer', None)),
-                    'bias_regularizer':
-                    migrate_keras_config(src.get('bias_regularizer', None)),
-                    'activity_regularizer':
-                    migrate_keras_config(src.get('activity_regularizer',
-                                                 None)),
-                }),
+                -1,
+                {
+                    "activation": src.get("activation", "relu"),
+                    "kernel_initializer": "GlorotUniform",
+                    "kernel_regularizer": migrate_keras_config(
+                        src.get("kernel_regularizer", None)
+                    ),
+                    "bias_regularizer": migrate_keras_config(
+                        src.get("bias_regularizer", None)
+                    ),
+                    "activity_regularizer": migrate_keras_config(
+                        src.get("activity_regularizer", None)
+                    ),
+                },
+            ),
         ),
         fit={
-            'batch_size': run_config.get('batch_size'),
-            'epochs': run_config.get('epochs'),
+            "batch_size": run_config.get("batch_size"),
+            "epochs": run_config.get("epochs"),
         },
-        optimizer={
-            'class': 'Adam',
-            'learning_rate': 0.0001
-        },
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=None,
         record_post_training_metrics=False,
@@ -271,12 +279,17 @@ def convert_task(row, connection) -> bool:
 
     new_command = psycopg.types.json.Jsonb(marshal.marshal(experiment))
 
-    connection.execute(sql.SQL("""
+    connection.execute(
+        sql.SQL(
+            """
 UPDATE job_data d
     SET command = %b
 WHERE "id" = %b
-    """), (new_command, get_cell('id')),
-                       binary=True)
+    """
+        ),
+        (new_command, get_cell("id")),
+        binary=True,
+    )
 
     return True
 

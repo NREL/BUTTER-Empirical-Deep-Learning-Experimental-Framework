@@ -22,7 +22,9 @@ from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
 )
-from dmp.task.experiment.training_experiment.model_state_resume_config import ModelStateResumeConfig
+from dmp.task.experiment.training_experiment.model_state_resume_config import (
+    ModelStateResumeConfig,
+)
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
@@ -34,13 +36,11 @@ from dmp.worker_task_context import WorkerTaskContext
 
 @dataclass
 class PruningIterationExperiment(TrainingExperiment):
-    """
-    """
+    """ """
 
-    pruning: PruningConfig  # contains run-specific num_iterations...
-
-    # TODO: what is run vs experiment attributes here?
+    prune: PruningConfig  # contains run-specific num_iterations...
     rewind: ModelStateResumeConfig  # run-specific id
+    # TODO: what is run vs experiment attributes here?
 
     @property
     def version(self) -> int:
@@ -49,7 +49,11 @@ class PruningIterationExperiment(TrainingExperiment):
     def __call__(
         self,
         context: WorkerTaskContext,
+        new_seed: bool = False,
     ) -> ExperimentResultRecord:
+        # NB: must have a compatible save mode
+        self.record.save_trained_model = True  # type: ignore
+
         # tensorflow.config.optimizer.set_jit(True)
         self._set_random_seeds()
         dataset, metrics = self._load_and_prepare_dataset()
@@ -57,14 +61,10 @@ class PruningIterationExperiment(TrainingExperiment):
         model = self._make_model_from_network(network, metrics)
 
         # load pruning weights
-        experiment_history = self._resume_model(
-            context,
-            model,
-            self.record.resume_from
-        )
+        experiment_history = self._resume_model(context, model, self.record.resume_from)
 
         # prune network
-        self.pruning.method.prune(
+        self.prune.method.prune(
             model.network.structure,
             model.keras_network.layer_to_keras_map,
         )
@@ -75,6 +75,7 @@ class PruningIterationExperiment(TrainingExperiment):
         print(model.network.structure.summary())
         model.keras_model.summary()
 
+        # train the model
         self._fit_model(
             context,
             self.fit,
@@ -82,23 +83,22 @@ class PruningIterationExperiment(TrainingExperiment):
             model,
             [self._make_early_stopping_callback()],
             experiment_history=experiment_history,
+            new_seed=new_seed,
         )
 
-        # TODO: enqueue next pruning iteration
-
-        if self.pruning.iteration < self.pruning.num_iterations:
+        # enqueue next pruning iteration
+        if self.prune.iteration < self.prune.num_iterations:
             child_task = PruningIterationExperiment(
                 **vars(self),
             )
+
             child_task.record = dataclass.replace(
                 child_task.record,
                 resume_from=ModelStateResumeConfig(
                     run_id=context.id,
                     load_mask=True,
                     load_optimizer=False,
-                    epoch=TrainingEpoch(
-                        # epoch=resume_p
-                    )
+                    epoch=self._get_current_epoch(experiment_history),
                 ),
                 parent_run=context.id,
             )

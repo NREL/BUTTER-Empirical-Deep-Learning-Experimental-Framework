@@ -34,7 +34,11 @@ def get_parameters(
         if use_mask:
             constraint = get_mask_constraint(keras_layer, variable)
             if constraint is not None:
-                value = numpy.where(constraint.mask.numpy(), value, numpy.nan,)
+                value = numpy.where(
+                    constraint.mask.numpy(),
+                    value,
+                    numpy.nan,
+                )
         parameter_map.setdefault(layer, []).append(value)
 
     visit_parameters(
@@ -44,13 +48,13 @@ def get_parameters(
     )
     return parameter_map
 
+
 def set_parameters(
     root: Layer,
     layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     parameter_map: Dict[Layer, List[numpy.ndarray]],
-    restore_mask : bool,
+    restore_mask: bool,
 ) -> None:
-    
     def visit_variable(layer, keras_layer, i, variable):
         value_list = parameter_map.get(layer, None)
         if value_list is not None:
@@ -69,6 +73,7 @@ def set_parameters(
         visit_variable,
     )
 
+
 def visit_parameters(
     root: Layer,
     layer_to_keras_map: Dict[Layer, KerasLayerInfo],
@@ -78,27 +83,29 @@ def visit_parameters(
         layer_info = layer_to_keras_map.get(layer, None)
         if layer_info is None:
             continue
-        
+
         keras_layer = layer_info.keras_layer
         if keras_layer is None or not isinstance(keras_layer, keras.layers.Layer):
             continue
 
-        for i, variable in enumerate(keras_layer.variables): # type: ignore
+        for i, variable in enumerate(keras_layer.variables):  # type: ignore
             visit_variable(layer, keras_layer, i, variable)
+
 
 def get_mask_constraint(
     keras_layer,
     variable,
 ) -> Optional[Any]:
-    match = re.fullmatch('.*/(bias|kernel):\d+', variable.name)
+    match = re.fullmatch(".*/(bias|kernel):\d+", variable.name)
     if match is not None:
         match_str = match.group(1)
-        constraint_member_name =  f'{match_str}_constraint'
+        constraint_member_name = f"{match_str}_constraint"
         if hasattr(keras_layer, constraint_member_name):
             constraint = getattr(keras_layer, constraint_member_name)
             if isinstance(constraint, ParameterMask):
                 return constraint
     return None
+
 
 def lin_iterp_parameters(
     parameters_a: Dict[Layer, List[numpy.ndarray]],

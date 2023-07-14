@@ -6,6 +6,7 @@ from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_plac
 from dmp.postgres_interface.element.a_column_group import AColumnGroup
 from dmp.postgres_interface.element.column import Column
 
+
 class ColumnGroup(AColumnGroup):
     _columns: Sequence[Column]
     _index: Optional[Dict[Column, int]]
@@ -24,4 +25,3 @@ class ColumnGroup(AColumnGroup):
     @property
     def columns(self) -> Sequence[Column]:
         return self._columns
-

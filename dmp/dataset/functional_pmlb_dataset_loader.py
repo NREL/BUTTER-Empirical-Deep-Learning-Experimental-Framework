@@ -12,15 +12,13 @@ from dmp.dataset.pmlb_dataset_loader import PMLBDatasetLoader
 
 
 class FunctionalPMLBDatasetLoader(PMLBDatasetLoader):
-    _prepare_inputs_function: Callable[['FunctionalPMLBDatasetLoader', Any],
-                                       Any]
+    _prepare_inputs_function: Callable[["FunctionalPMLBDatasetLoader", Any], Any]
 
     def __init__(
         self,
         dataset_name: str,
         ml_task: MLTask,
-        prepare_inputs_function: Callable[['FunctionalPMLBDatasetLoader', Any],
-                                          Any],
+        prepare_inputs_function: Callable[["FunctionalPMLBDatasetLoader", Any], Any],
     ):
         super().__init__(dataset_name, ml_task)
         self._prepare_inputs_function = prepare_inputs_function

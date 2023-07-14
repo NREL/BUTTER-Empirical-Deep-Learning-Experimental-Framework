@@ -6,7 +6,6 @@ from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 
 
 class ZeroEpochRecorder(TestSetRecorder):
-
     def __init__(
         self,
         test_sets: List[TestSetInfo],
@@ -17,4 +16,4 @@ class ZeroEpochRecorder(TestSetRecorder):
     def on_train_begin(self, logs=None):
         super().on_train_begin(logs=logs)
         self.accumulate_metrics(-1)
-        print(f'ON TRAIN BEGIN ZERO EPOCH')
+        print(f"ON TRAIN BEGIN ZERO EPOCH")

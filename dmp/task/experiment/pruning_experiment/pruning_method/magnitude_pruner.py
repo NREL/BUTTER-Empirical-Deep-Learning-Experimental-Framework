@@ -30,7 +30,6 @@ from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import
 from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 
-
 @dataclass
 class MagnitudePruner(PruningMethod):
     prune_percent: float
@@ -46,18 +45,20 @@ class MagnitudePruner(PruningMethod):
             layer: Layer,
         ) -> bool:
             keras_layer = layer_to_keras_map[layer].keras_layer
-            res = hasattr(keras_layer, 'kernel_constraint') \
-                and isinstance(keras_layer.kernel_constraint, ParameterMask)
-        
-            print(f'is_prunable {layer} : { res} : {keras_layer}')
+            res = hasattr(keras_layer, "kernel_constraint") and isinstance(
+                keras_layer.kernel_constraint, ParameterMask
+            )
+
+            print(f"is_prunable {layer} : { res} : {keras_layer}")
             try:
-                print(f'kc: {keras_layer.kernel_constraint}')
+                print(f"kc: {keras_layer.kernel_constraint}")
             except:
-                print(f'except')
+                print(f"except")
 
             keras_layer = layer_to_keras_map[layer].keras_layer
-            return hasattr(keras_layer, 'kernel_constraint') \
-                and isinstance(keras_layer.kernel_constraint, ParameterMask)
+            return hasattr(keras_layer, "kernel_constraint") and isinstance(
+                keras_layer.kernel_constraint, ParameterMask
+            )
 
         def get_weights_and_mask(
             layer: Layer,
@@ -74,9 +75,7 @@ class MagnitudePruner(PruningMethod):
             weights, mask = get_weights_and_mask(layer)
             return (weights[mask]).flatten()  # type: ignore
 
-        prunable_layers = [
-            layer for layer in root.layers if is_prunable(layer)
-        ]
+        prunable_layers = [layer for layer in root.layers if is_prunable(layer)]
 
         prunable_weights = numpy.concatenate(
             [
@@ -99,7 +98,7 @@ class MagnitudePruner(PruningMethod):
         for layer in prunable_layers:
             weights, mask = get_weights_and_mask(layer)
             new_mask = numpy.logical_and(
-                mask,   # type: ignore
+                mask,  # type: ignore
                 weights > pruning_threshold,
             )
             total_pruned += new_mask.size - new_mask.sum()

@@ -182,12 +182,12 @@ def get_pyarrow_type_mapping(
             raise NotImplemented()
     else:
         false_types = {
-            'bool': lambda v: isinstance(v, bool),
-            'int': lambda v: isinstance(v, int),
-            'float': lambda v: isinstance(v, float),
-            'nan': lambda v: isinstance(v, float) and numpy.isnan(v),
-            'str': lambda v: isinstance(v, str),
-            'none': lambda v: v is None,
+            "bool": lambda v: isinstance(v, bool),
+            "int": lambda v: isinstance(v, int),
+            "float": lambda v: isinstance(v, float),
+            "nan": lambda v: isinstance(v, float) and numpy.isnan(v),
+            "str": lambda v: isinstance(v, str),
+            "none": lambda v: v is None,
         }
         true_types = set()
 
@@ -209,19 +209,19 @@ def get_pyarrow_type_mapping(
                 break
 
         nullable = (
-            nullable or ('none' in true_types) or ('nan' in true_types and nan_to_none)
+            nullable or ("none" in true_types) or ("nan" in true_types and nan_to_none)
         )
 
-        if 'str' in true_types:
+        if "str" in true_types:
             dst_type = pyarrow.string()
-        elif 'float' in true_types:
+        elif "float" in true_types:
             dst_type = pyarrow.float32()
             use_byte_stream_split = True
             if nan_to_none and nullable:
                 values = [None if v is None else v for v in values]
-        elif 'int' in true_types:
+        elif "int" in true_types:
             check_integer()
-        elif 'bool' in true_types:
+        elif "bool" in true_types:
             dst_type = pyarrow.bool_()
         else:
             raise NotImplementedError(f"Unhandled type {t}.")
@@ -261,11 +261,11 @@ def write_parquet_table(
     data_page_size=8 * 1024,
     # compression='BROTLI',
     # compression_level=8,
-    compression='ZSTD',
+    compression="ZSTD",
     # compression_level=12,
     compression_level=12,
-    version='2.6',
-    data_page_version='2.0',
+    version="2.6",
+    data_page_version="2.0",
     # existing_data_behavior='overwrite_or_ignore',
     # use_legacy_dataset=False,
     write_statistics=False,
@@ -290,5 +290,5 @@ def write_parquet_table(
 
 
 def read_parquet_table(file) -> pyarrow.Table:
-    pyarrow_file = pyarrow.PythonFile(file, mode='r')
+    pyarrow_file = pyarrow.PythonFile(file, mode="r")
     return pyarrow.parquet.read_table(pyarrow_file)

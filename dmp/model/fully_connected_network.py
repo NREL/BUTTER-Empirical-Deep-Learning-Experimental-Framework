@@ -15,7 +15,7 @@ from dmp.layer import *
 @dataclass
 class FullyConnectedNetwork(ModelSpec, LayerFactory):
     widths: List[int] = field(default_factory=lambda: [4096])
-    residual_mode: str = 'none'  # 'none' or 'full'
+    residual_mode: str = "none"  # 'none' or 'full'
     flatten_input: bool = True
     inner: Dense = field(
         default_factory=lambda: Dense.make(4096)
@@ -34,16 +34,16 @@ class FullyConnectedNetwork(ModelSpec, LayerFactory):
     def make_network(self) -> NetworkInfo:
         return NetworkInfo(
             self.make_layer(
-                {}, # type: ignore
+                {},  # type: ignore
                 [self.input],  # type: ignore
             ),
-            {'widths': self.widths},
+            {"widths": self.widths},
         )
 
     def make_layer(
         self,
-        config: 'LayerConfig',
-        inputs: Union['Layer', List['Layer']],
+        config: "LayerConfig",
+        inputs: Union["Layer", List["Layer"]],
     ) -> Layer:
         if isinstance(inputs, Layer):
             inputs = [inputs]
@@ -63,12 +63,12 @@ class FullyConnectedNetwork(ModelSpec, LayerFactory):
                 layer.insert_if_not_exists(config)
             else:
                 layer = self.inner.make_layer(config, [parent])
-            layer['units'] = width
+            layer["units"] = width
 
             # Skip connections for residual modes
-            if residual_mode == 'none':
+            if residual_mode == "none":
                 pass
-            elif residual_mode == 'full':
+            elif residual_mode == "full":
                 # If this isn't the first or last layer, and the previous layer is
                 # of the same width insert a residual sum between layers
                 # NB: Only works for rectangle

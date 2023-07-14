@@ -29,19 +29,22 @@ class PostgresCompressedResultLogger(ExperimentResultLogger):
         experiment_all = experiment.all
         insertion_columns = run.insertion_columns
         self._values_columns = experiment_all + insertion_columns
-        input_table = Identifier('_input')
+        input_table = Identifier("_input")
 
-        self._log_multiple_query_prefix = SQL("""
+        self._log_multiple_query_prefix = SQL(
+            """
 WITH {input_table} AS (
     SELECT
         {casting_clause}
     FROM
-        ( VALUES """).format(
+        ( VALUES """
+        ).format(
             input_table=input_table,
             casting_clause=self._values_columns.casting_sql,
         )
 
-        self._log_multiple_query_suffix = SQL("""
+        self._log_multiple_query_suffix = SQL(
+            """
 ) AS t (
             {experiment_columns},
             {run_value_columns}
@@ -53,13 +56,13 @@ WITH {input_table} AS (
     )
     SELECT
         {experiment_columns}
-    FROM 
+    FROM
         {input_table}
     WHERE
         NOT EXISTS (
             SELECT 1
             FROM {experiment} e
-            WHERE 
+            WHERE
                 e.{experiment_id} = {input_table}.{experiment_id}
                 AND e.{experiment_tags} @> {input_table}.{experiment_tags}
         )
@@ -67,14 +70,14 @@ WITH {input_table} AS (
         {experiment_tags} = (SELECT array_agg(attr_id) FROM (
             SELECT attr_id
             FROM (
-                SELECT 
+                SELECT
                     attr_id
-                FROM 
+                FROM
                     unnest({experiment}.{experiment_tags}) a(attr_id)
                 UNION ALL
-                SELECT 
+                SELECT
                     attr_id
-                FROM 
+                FROM
                     unnest(EXCLUDED.{experiment_tags}) a(attr_id)
                 ) _tmp
             GROUP BY attr_id
@@ -85,35 +88,37 @@ INSERT INTO {run} (
     {experiment_id},
     {run_value_columns}
     )
-SELECT 
+SELECT
     {experiment_id},
     {run_value_columns}
 FROM {input_table}
 ON CONFLICT DO NOTHING
-;""").format(
+;"""
+        ).format(
             experiment_tags=experiment.experiment_tags.identifier,
             experiment_columns=experiment_all.columns_sql,
             run_value_columns=insertion_columns.columns_sql,
-            _inserted=Identifier('_inserted'),
+            _inserted=Identifier("_inserted"),
             experiment=experiment.identifier,
             run=run.identifier,
             experiment_id=experiment.experiment_id.identifier,
             input_table=input_table,
         )
 
-    def log(self,
-            records: Union[Sequence[ExperimentResultRecord],
-                           ExperimentResultRecord],
-            connection=None) -> None:
+    def log(
+        self,
+        records: Union[Sequence[ExperimentResultRecord], ExperimentResultRecord],
+        connection=None,
+    ) -> None:
         if connection is None:
             with ConnectionManager(self._schema.credentials) as connection:
                 return self.log(records, connection)
 
         if isinstance(records, ExperimentResultRecord):
-            return self.log((records, ), connection)
+            return self.log((records,), connection)
 
         if not isinstance(records, Sequence):
-            raise ValueError(f'Invalid record type {type(records)}.')
+            raise ValueError(f"Invalid record type {type(records)}.")
 
         if len(records) <= 0:
             return
@@ -129,24 +134,25 @@ ON CONFLICT DO NOTHING
                 record.experiment_tags,
             )
 
-            experiment_attrs = attribute_map.to_sorted_attr_ids(
-                record.experiment_attrs)
+            experiment_attrs = attribute_map.to_sorted_attr_ids(record.experiment_attrs)
 
-            run_values.append([
-                schema.make_experiment_id(experiment_attrs),
-                experiment_attrs,
-                attribute_map.to_sorted_attr_ids(record.experiment_tags),
-                *experiment_column_values,
-                *run_value_columns.extract_column_values(record.run_data),
-                Jsonb(record.run_data),
-                schema.convert_dataframe_to_bytes(record.run_history),
-                schema.convert_dataframe_to_bytes(record.run_extended_history),
-            ])
+            run_values.append(
+                [
+                    schema.make_experiment_id(experiment_attrs),
+                    experiment_attrs,
+                    attribute_map.to_sorted_attr_ids(record.experiment_tags),
+                    *experiment_column_values,
+                    *run_value_columns.extract_column_values(record.run_data),
+                    Jsonb(record.run_data),
+                    schema.convert_dataframe_to_bytes(record.run_history),
+                    schema.convert_dataframe_to_bytes(record.run_extended_history),
+                ]
+            )
             print(record.run_data)
 
         placeholders = sql_comma.join(
-            [SQL('({})').format(self._values_columns.placeholders)] *
-            len(run_values))
+            [SQL("({})").format(self._values_columns.placeholders)] * len(run_values)
+        )
 
         query = SQL("""{}{}{}""").format(
             self._log_multiple_query_prefix,
@@ -154,7 +160,6 @@ ON CONFLICT DO NOTHING
             self._log_multiple_query_suffix,
         )
 
-        
         print(query)
         run_payload = tuple(chain(*run_values))
         print(run_payload)

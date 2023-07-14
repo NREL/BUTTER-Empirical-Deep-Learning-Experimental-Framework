@@ -1,4 +1,5 @@
 from dmp.layer.layer import Layer, LayerFactory, LayerConfig, empty_config, empty_inputs
+
 # from dmp.layer.layer_factory import LayerFactory
 
 from dmp.layer.spatitial_layer import SpatitialLayer
@@ -19,4 +20,3 @@ from dmp.layer.zeroize import Zeroize
 from dmp.layer.convolutional_layer import ConvolutionalLayer
 from dmp.layer.dense_conv import *
 from dmp.layer.separable_conv import *
-

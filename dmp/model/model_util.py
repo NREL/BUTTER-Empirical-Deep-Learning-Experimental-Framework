@@ -1,9 +1,21 @@
 import math
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 from dmp.common import binary_search_float, binary_search_int
 from dmp.model.network_info import NetworkInfo
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def _find_closest_network_to_target_size(
@@ -55,7 +67,3 @@ def find_closest_network_to_target_size_int(
             int(2**30),
         ),
     )
-
-
-
-

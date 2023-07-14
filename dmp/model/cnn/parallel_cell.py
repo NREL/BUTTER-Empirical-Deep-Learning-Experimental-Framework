@@ -13,12 +13,12 @@ class ParallelCell(LayerFactory):
     def make_layer(
         self,
         config: LayerConfig,
-        inputs: Union['Layer', List['Layer']],
+        inputs: Union["Layer", List["Layer"]],
     ) -> Layer:
-        '''
+        """
         + multiple parallel paths of serial ops are applied and then combined
-        '''
-        
+        """
+
         if isinstance(inputs, Layer):
             inputs = [inputs]
 

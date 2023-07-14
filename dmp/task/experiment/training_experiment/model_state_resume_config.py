@@ -7,7 +7,7 @@ from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 
 @dataclass
-class ModelStateResumeConfig():
+class ModelStateResumeConfig:
     run_id: UUID
     load_mask: bool
     load_optimizer: bool

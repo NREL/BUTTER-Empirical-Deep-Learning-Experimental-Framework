@@ -6,10 +6,9 @@ from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 
 class ExperimentResultLogger(ABC):
-
     @abstractmethod
     def log(
         self,
-        record: ExperimentResultRecord, # record to log
+        record: ExperimentResultRecord,  # record to log
     ) -> None:
         pass

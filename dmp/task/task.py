@@ -6,14 +6,15 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from dmp.task.task_result import TaskResult
 
+
 @dataclass
 class Task(ABC):
     from dmp.worker_task_context import WorkerTaskContext
 
     @abstractmethod
     def __call__(
-        self, 
-        context: WorkerTaskContext, 
+        self,
+        context: WorkerTaskContext,
     ) -> TaskResult:
         pass
 
@@ -22,9 +23,9 @@ class Task(ABC):
         return 1
 
     def summary(self) -> None:
-        '''
+        """
         Pretty-prints a description of this Task.
-        '''
+        """
 
         from dmp.marshaling import marshal
         from pprint import pprint

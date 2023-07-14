@@ -11,16 +11,18 @@ from dmp.layer.pooling_layer import PoolingLayer
 from dmp.keras_interface.layer_to_keras import KerasLayer
 from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.model.model_info import ModelInfo
-from dmp.task.experiment.growth_experiment.transfer_method.transfer_method import TransferMethod
+from dmp.task.experiment.growth_experiment.transfer_method.transfer_method import (
+    TransferMethod,
+)
 from dmp.task.experiment.growth_experiment.layer_growth_info import LayerGrowthInfo
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @dataclass
 class OverlayTransfer(TransferMethod):
     """
-    Visitor that fills one network with the values from another. 
+    Visitor that fills one network with the values from another.
     If the destination network is larger, this will 'grow' the src into
     the destination.
     """
@@ -32,8 +34,7 @@ class OverlayTransfer(TransferMethod):
     new_add_to_old_scale: float = 0.0
 
     def transfer(
-        self,
-        growth_map: List[LayerGrowthInfo]  # maps src layers to dst layers
+        self, growth_map: List[LayerGrowthInfo]  # maps src layers to dst layers
     ) -> None:
         for growth_info in growth_map:
             if growth_info.src is not None:
@@ -45,8 +46,9 @@ class OverlayTransfer(TransferMethod):
         src_layer: Layer,
         growth_info: LayerGrowthInfo,
     ) -> None:
-        raise NotImplementedError('Unsupported module of type "{}".'.format(
-            type(src_layer)))
+        raise NotImplementedError(
+            'Unsupported module of type "{}".'.format(type(src_layer))
+        )
 
     @_do_visit.register
     def _(
@@ -123,20 +125,22 @@ class OverlayTransfer(TransferMethod):
         num_params = len(src_params)
         if num_params != len(dst_params):
             raise NotImplementedError(
-                f'Layer parameter group numbers do not match {num_params}, {len(dst_params)}'
+                f"Layer parameter group numbers do not match {num_params}, {len(dst_params)}"
             )
 
         if num_params <= 0:
             return
 
-        print(f'overlay standard layer : {[s.shape for s in src_params]}  -> {[s.shape for s in dst_params]} {type(src_layer)} {type(dst_layer)} {src_layer.config} {dst_layer.config}')
+        print(
+            f"overlay standard layer : {[s.shape for s in src_params]}  -> {[s.shape for s in dst_params]} {type(src_layer)} {type(dst_layer)} {src_layer.config} {dst_layer.config}"
+        )
 
         num_weight_dims = len(src_params[0].shape)
         for src_weights, dst_weights in zip(src_params, dst_params):
             num_dims = len(src_weights.shape)
             if num_dims != len(dst_weights.shape):
                 raise ValueError(
-                    f'Mismatched weight shapes {src_weights.shape}, {dst_weights.shape}'
+                    f"Mismatched weight shapes {src_weights.shape}, {dst_weights.shape}"
                 )
 
             if num_dims == num_weight_dims:
@@ -160,7 +164,7 @@ class OverlayTransfer(TransferMethod):
                 )
             else:
                 raise NotImplementedError(
-                    f'Weight group dimension not supported {num_weight_dims} {num_dims} {src_weights.shape} {dst_weights.shape} {src_layer.config} {src_params[0].shape}'
+                    f"Weight group dimension not supported {num_weight_dims} {num_dims} {src_weights.shape} {dst_weights.shape} {src_layer.config} {src_params[0].shape}"
                 )
 
         dst_keras_layer.set_weights(dst_params)  # type: ignore
@@ -256,7 +260,7 @@ def _as_same_type(
 ) -> T:
     if type(src_layer) != type(dst_layer):
         raise TypeError(
-            f'src and destination Layer are not the same type {src_layer} != {dst_layer}.'
+            f"src and destination Layer are not the same type {src_layer} != {dst_layer}."
         )
     return dst_layer  # type: ignore
 
@@ -265,7 +269,7 @@ def _get_layers(
     src_layer: T,
     src: KerasLayerInfo,
     dst: KerasLayerInfo,
-) -> Tuple[KerasLayer, Any, T, KerasLayer, Any, ]:
+) -> Tuple[KerasLayer, Any, T, KerasLayer, Any,]:
     src_keras_layer = src.keras_layer
     if not isinstance(src_keras_layer, keras.layers.Layer):
         raise ValueError()

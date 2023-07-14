@@ -18,7 +18,6 @@ from dmp.dataset.ml_task import MLTask
 
 @dataclass
 class ImageNetDatasetLoader(DatasetLoader):
-
     size: int
     crop: Optional[int]
 
@@ -29,7 +28,7 @@ class ImageNetDatasetLoader(DatasetLoader):
         size: int,
         crop: Optional[int],
     ):
-        super().__init__('imagenet', dataset_name, ml_task)
+        super().__init__("imagenet", dataset_name, ml_task)
         self.size = size
         self.crop = crop
 
@@ -37,10 +36,9 @@ class ImageNetDatasetLoader(DatasetLoader):
     #     return self._fetch_from_source() # bypass local caching
 
     def _fetch_from_source(self) -> Dataset:
-
         def load_data_from_npz(npz_file):
-            inputs = npz_file['data']
-            outputs = npz_file['labels']
+            inputs = npz_file["data"]
+            outputs = npz_file["labels"]
             outputs -= 1  # subtract 1 to make labels start at 0
 
             if self.crop is not None:
@@ -61,27 +59,29 @@ class ImageNetDatasetLoader(DatasetLoader):
             source_files.append(
                 os.path.join(
                     dataset_cache_directory,
-                    f'Imagenet{self.size}_train_npz',
-                    f'train_data_batch_{batch}.npz',
-                ))
+                    f"Imagenet{self.size}_train_npz",
+                    f"train_data_batch_{batch}.npz",
+                )
+            )
 
         source_files.append(
             os.path.join(
                 dataset_cache_directory,
-                f'Imagenet{self.size}_val_npz',
-                'val_data.npz',
-            ))
+                f"Imagenet{self.size}_val_npz",
+                "val_data.npz",
+            )
+        )
 
-        print(f' source files : {source_files}')
+        print(f" source files : {source_files}")
         for file_path in source_files:
             with numpy.load(file_path) as file:
                 arrays.append(load_data_from_npz(file))
 
-        print(f'loaded {len(arrays)} arrays')
+        print(f"loaded {len(arrays)} arrays")
 
         for inputs, outputs in arrays:
             print(
-                f's: {inputs.shape} {inputs.dtype} : {outputs.shape} {outputs.dtype} {outputs.max()}'
+                f"s: {inputs.shape} {inputs.dtype} : {outputs.shape} {outputs.dtype} {outputs.max()}"
             )
 
         inputs = numpy.concatenate([i for i, o in arrays], axis=0)
@@ -91,7 +91,7 @@ class ImageNetDatasetLoader(DatasetLoader):
         # concatenated = numpy.vstack(arrays)
 
         print(
-            f'inputs: {inputs.shape} {inputs.dtype}, outputs: {outputs.shape} {outputs.dtype}'
+            f"inputs: {inputs.shape} {inputs.dtype}, outputs: {outputs.shape} {outputs.dtype}"
         )
 
         return Dataset(

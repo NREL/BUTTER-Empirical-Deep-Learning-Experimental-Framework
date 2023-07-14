@@ -7,18 +7,17 @@ from dmp.model.model_info import ModelInfo
 from dmp.task.experiment.experiment_task import ExperimentTask
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.worker import Worker
-from dmp.task.experiment.training_experiment.save_mode import SaveMode
 from dmp.worker_task_context import WorkerTaskContext
 
 
 @dataclass
-class HybridSaveMode(SaveMode):
-    '''
+class ModelSavingConfig:
+    """
     Saves every fixed_interval steps, up to the fixed_threshold step, and then saves every exponential_rate ^ i steps, where i is a positive integer and exponential_rate ^ i >= fixed_threshold.
     To only save initial and/or final models, set fixed_threshold = 0, and exponential_rate = 0.0.
     To disable fixed savepoint spacing set fixed_threshold = 0.
     To disable exponential savepoint spacing set exponential_rate = 0.0.
-    '''
+    """
 
     save_initial_model: bool
     save_trained_model: bool
@@ -36,32 +35,38 @@ class HybridSaveMode(SaveMode):
         self,
         context: WorkerTaskContext,
         training_epoch: TrainingEpoch,
+        model_info: ModelInfo,
+        # checkpoint_interval: float,
     ):
-        from dmp.task.experiment.training_experiment.model_saving_callback import ModelSavingCallback
+        import time
+        from dmp.task.experiment.training_experiment.model_saving_callback import (
+            ModelSavingCallback,
+        )
 
         class SaveCallback(ModelSavingCallback):
-            def __init__(self, parent: HybridSaveMode):
+            def __init__(self, parent: ModelSavingConfig):
                 super().__init__()
-                self.parent: HybridSaveMode = parent
-                self.save_model_epochs: Set[int] = set(
-                    parent.save_model_epochs)
+                self.parent: ModelSavingConfig = parent
+                self.save_model_epochs: Set[int] = set(parent.save_model_epochs)
                 self.save_epochs: Set[int] = set(parent.save_epochs)
 
-                self.training_epoch: TrainingEpoch = dataclass.replace(
-                    training_epoch)
+                self.training_epoch: TrainingEpoch = dataclass.replace(training_epoch)
                 self.training_epoch.model_number -= 1
 
                 self.last_saved_epoch: TrainingEpoch = dataclass.replace(
-                    self.training_epoch)
+                    self.training_epoch
+                )
                 self.last_saved_epoch.epoch -= 1
                 self.last_saved_epoch.model_epoch -= 1
 
-                self.model_info: Optional[
-                    ModelInfo
-                ] = None  # NB: must be set before calling to save model states
+                self.last_save_time: float = time.time()
 
                 # self.history : Dict[str, List] = {}
-                self.saved_epochs: List[TrainingEpoch] = []
+                self._saved_epochs: List[TrainingEpoch] = []
+
+            @property
+            def saved_epochs(self) -> List[TrainingEpoch]:
+                return self._saved_epochs
 
             def on_train_begin(self, logs=None) -> None:
                 self.training_epoch.count_new_model()
@@ -73,14 +78,19 @@ class HybridSaveMode(SaveMode):
 
                 model_epoch = self.training_epoch.model_epoch
                 parent = self.parent
-                if self.training_epoch.epoch in self.save_epochs or model_epoch in self.save_model_epochs:
+                if (
+                    self.training_epoch.epoch in self.save_epochs
+                    or model_epoch in self.save_model_epochs
+                ):
                     # specified epoch
                     pass
-                elif parent.fixed_threshold > 0 and model_epoch <= parent.fixed_threshold:
+                elif (
+                    parent.fixed_threshold > 0 and model_epoch <= parent.fixed_threshold
+                ):
                     # fixed regime
                     if model_epoch % parent.fixed_interval != 0:
                         return
-                elif parent.exponential_rate == 0.0:
+                elif parent.exponential_rate <= 0.0:
                     # exponential regime disabled
                     return
                 else:
@@ -98,12 +108,11 @@ class HybridSaveMode(SaveMode):
                     self.save_model()
 
             def save_model(self) -> None:
-                model_info = self.model_info
-                if model_info is None or self.last_saved_epoch == self.training_epoch:
+                if self.last_saved_epoch == self.training_epoch:
                     return
 
                 self.last_saved_epoch = dataclass.replace(self.training_epoch)
-                self.saved_epochs.append(dataclass.replace(self.epoch))
+                self._saved_epochs.append(dataclass.replace(self.epoch))
                 context.save_model(model_info, self.last_saved_epoch)
 
         return SaveCallback(self)

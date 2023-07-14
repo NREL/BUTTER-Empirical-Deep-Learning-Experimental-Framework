@@ -11,7 +11,6 @@ from dmp.dataset.keras_image_dataset_loader import KerasImageDatasetLoader
 
 
 class KerasMNISTDatasetLoader(KerasImageDatasetLoader):
-
     def __init__(
         self,
         dataset_name: str,

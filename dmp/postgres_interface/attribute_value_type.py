@@ -1,5 +1,19 @@
-from typing import Any, Dict, Hashable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type, Union, get_args
+from typing import (
+    Any,
+    Dict,
+    Hashable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    get_args,
+)
 from enum import Enum
+
 
 class AttributeValueType(Enum):
     Null = (0, type(None))
@@ -21,14 +35,16 @@ class AttributeValueType(Enum):
         # self.sql_column: Optional[str] = sql_column
         # self.sql_type: str = sql_type
 
+
 _attribute_type_code_map = tuple(vt for vt in AttributeValueType)
 
-def get_attribute_value_type_for_type_code(
-        type_code: int) -> AttributeValueType:
+
+def get_attribute_value_type_for_type_code(type_code: int) -> AttributeValueType:
     return _attribute_type_code_map[type_code]
 
 
 _attribute_type_map = {vt.python_type: vt for vt in AttributeValueType}
+
 
 def get_attribute_value_type_for_type(type_: Type) -> AttributeValueType:
     return _attribute_type_map.get(type_, AttributeValueType.JSON)

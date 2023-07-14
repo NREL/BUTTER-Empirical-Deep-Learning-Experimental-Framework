@@ -9,7 +9,9 @@ from dmp.postgres_interface.element.column_group import ColumnGroup
 
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.training_experiment import training_experiment_keys
-from dmp.task.experiment.training_experiment.training_experiment_keys import TrainingExperimentKeys
+from dmp.task.experiment.training_experiment.training_experiment_keys import (
+    TrainingExperimentKeys,
+)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -31,12 +33,16 @@ from jobqueue.cursor_manager import CursorManager
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.layer.dense import Dense
-from dmp.postgres_interface.postgres_compressed_result_logger import PostgresCompressedResultLogger
+from dmp.postgres_interface.postgres_compressed_result_logger import (
+    PostgresCompressedResultLogger,
+)
 
 from dmp.logging.postgres_parameter_map_v1 import PostgresParameterMapV1
 from dmp.model.dense_by_size import DenseBySize
 
-from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
 
 from dmp.marshaling import marshal
 
@@ -44,36 +50,33 @@ import pathos.multiprocessing as multiprocessing
 
 
 def main():
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('num_workers', type=int)
-    parser.add_argument('block_size', type=int)
+    parser.add_argument("num_workers", type=int)
+    parser.add_argument("block_size", type=int)
     args = parser.parse_args()
 
     num_workers = int(args.num_workers)
     block_size = int(args.block_size)
 
     pool = multiprocessing.ProcessPool(num_workers)
-    results = pool.uimap(do_work,
-                         ((i, block_size) for i in range(num_workers)))
+    results = pool.uimap(do_work, ((i, block_size) for i in range(num_workers)))
     total_num_converted = sum(results)
-    print(f'Done. Converted {total_num_converted} runs.')
+    print(f"Done. Converted {total_num_converted} runs.")
     pool.close()
     pool.join()
-    print('Complete.')
+    print("Complete.")
 
 
 def do_work(args):
-
     worker_number, block_size = args
 
-    credentials = jobqueue.load_credentials('dmp')
+    credentials = jobqueue.load_credentials("dmp")
     schema = PostgresSchema(credentials)
 
     worker_id = str(worker_number) + str(uuid.uuid4())
     total_num_converted = 0
     total_num_excepted = 0
-    print(f'Worker {worker_number} : {worker_id} started...')
+    print(f"Worker {worker_number} : {worker_id} started...")
 
     while True:  #  binary=True, scrollable=True
         num_converted = 0
@@ -89,22 +92,21 @@ def do_work(args):
             run.run_history,
         )
 
-        update_columns = ColumnGroup(
-            select_columns,
-            run.extended_history
-        )
+        update_columns = ColumnGroup(select_columns, run.extended_history)
 
-        get_and_lock_query = SQL("""
-SELECT 
+        get_and_lock_query = SQL(
+            """
+SELECT
     {columns}
-FROM 
+FROM
     {run}
-WHERE 
+WHERE
     {extended_history} IS NULL
 FOR UPDATE
 SKIP LOCKED
 LIMIT {block_size}
-;""").format(
+;"""
+        ).format(
             columns=select_columns.columns_sql,
             run=run.identifier,
             extended_history=run.extended_history.identifier,
@@ -121,11 +123,14 @@ LIMIT {block_size}
                     cursor.execute(get_and_lock_query, binary=True)
                     rows = list(cursor.fetchall())
                     for row in rows:
+
                         def value(col):
                             return row[select_columns[col]]
+
                         run_id = value(run.run_id)
-                        run_history :pandas.DataFrame = schema.convert_bytes_to_dataframe(
-                            value(run.run_history)) # type: ignore
+                        run_history: pandas.DataFrame = (
+                            schema.convert_bytes_to_dataframe(value(run.run_history))
+                        )  # type: ignore
                         extended_history = run_history.copy()
 
                         for k in list(run_history.columns):
@@ -136,11 +141,13 @@ LIMIT {block_size}
 
                         extended_history[keys.epoch] = run_history[keys.epoch]
 
-                        run_updates.append((
-                            run_id,
-                            schema.convert_dataframe_to_bytes(run_history),
-                            schema.convert_dataframe_to_bytes(extended_history),
-                        ))
+                        run_updates.append(
+                            (
+                                run_id,
+                                schema.convert_dataframe_to_bytes(run_history),
+                                schema.convert_dataframe_to_bytes(extended_history),
+                            )
+                        )
                         # raise Exception('asdf')
                         # except Exception as e:
                         #     num_excepted += 1
@@ -150,7 +157,8 @@ LIMIT {block_size}
 
                     if len(run_updates) > 0:
                         cursor.execute(
-                            SQL("""
+                            SQL(
+                                """
 UPDATE {run} SET
     {history} = {values}.{history},
     {extended_history} = {values}.{extended_history}
@@ -158,14 +166,16 @@ FROM
     (VALUES {placeholders}) {values} ({update_columns})
 WHERE
     {run}.{run_id} = {values}.{run_id}
-                        ;""").format(
+                        ;"""
+                            ).format(
                                 run=run.identifier,
                                 history=run.run_history.identifier,
                                 extended_history=run.extended_history.identifier,
-                                values=Identifier('_values'),
+                                values=Identifier("_values"),
                                 placeholders=sql_comma.join(
-                                    [SQL('({})').format(update_columns.placeholders)
-                                     ] * len(run_updates)),
+                                    [SQL("({})").format(update_columns.placeholders)]
+                                    * len(run_updates)
+                                ),
                                 update_columns=update_columns.columns_sql,
                                 run_id=run.run_id.identifier,
                             ),
@@ -176,7 +186,7 @@ WHERE
         total_num_converted += num_converted
         total_num_excepted += num_excepted
         print(
-            f'Worker {worker_number} : {worker_id} committed {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}.'
+            f"Worker {worker_number} : {worker_id} committed {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}."
         )
 
         if num_converted <= 0 and num_excepted <= 0:

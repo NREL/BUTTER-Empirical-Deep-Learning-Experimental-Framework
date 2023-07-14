@@ -6,9 +6,9 @@ from dmp.layer.visitor.count_free_parameters import count_free_parameters
 
 
 class NetworkInfo:
-    '''
+    """
     Describes a network's structure and configuration.
-    '''
+    """
 
     def __init__(
         self,
@@ -21,10 +21,10 @@ class NetworkInfo:
         self.num_free_parameters: int = count_free_parameters(structure)
 
     def summary(self) -> None:
-        '''
+        """
         Pretty-prints a description of this object.
-        '''
-        
+        """
+
         from dmp.marshaling import marshal
         from pprint import pprint
 

@@ -7,12 +7,12 @@ import dmp.task.experiment.training_experiment.training_experiment_keys as train
 
 
 @dataclass
-class Dataset():
-    '''
+class Dataset:
+    """
     Represents a ML dataset.
-    '''
+    """
 
-    ml_task: MLTask # task that this dataset is intended for
+    ml_task: MLTask  # task that this dataset is intended for
     train: Optional[DatasetGroup] = None
     test: Optional[DatasetGroup] = None
     validation: Optional[DatasetGroup] = None
@@ -31,12 +31,12 @@ class Dataset():
         return splits
 
     @property
-    def full_splits(self)->Sequence[Tuple[str, Optional[DatasetGroup]]]:
+    def full_splits(self) -> Sequence[Tuple[str, Optional[DatasetGroup]]]:
         return (
-                (training_experiment_keys.keys.train, self.train),
-                (training_experiment_keys.keys.test, self.test),
-                (training_experiment_keys.keys.validation, self.validation),
-            )
+            (training_experiment_keys.keys.train, self.train),
+            (training_experiment_keys.keys.test, self.test),
+            (training_experiment_keys.keys.validation, self.validation),
+        )
 
     @property
     def input_shape(self) -> List[int]:

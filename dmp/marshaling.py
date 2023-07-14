@@ -6,21 +6,20 @@ from dmp.keras_interface.keras_utils import (
 from dmp.common import marshal_type_key
 
 
-
 from lmarshal.src.marshal import Marshal
 from lmarshal.src.marshal_config import MarshalConfig
 
 marshal_settings = {
-    'type_key': marshal_type_key,
-    'label_key': 'label',
-    'reference_prefix': '*',
-    'escape_prefix': '\\',
-    'flat_dict_key': ':',
-    'enum_value_key': 'value',
-    'label_all': False,
-    'label_referenced': True,
-    'circular_references_only': True,
-    'reference_strings': False,
+    "type_key": marshal_type_key,
+    "label_key": "label",
+    "reference_prefix": "*",
+    "escape_prefix": "\\",
+    "flat_dict_key": ":",
+    "enum_value_key": "value",
+    "label_all": False,
+    "label_referenced": True,
+    "circular_references_only": True,
+    "reference_strings": False,
 }
 
 marshal_config = MarshalConfig(**marshal_settings)
@@ -28,7 +27,7 @@ marshal_config = MarshalConfig(**marshal_settings)
 flat_marshal_settings = marshal_settings.copy()
 flat_marshal_settings.update(
     {
-        'circular_references_only': True,
+        "circular_references_only": True,
     }
 )
 
@@ -65,9 +64,9 @@ import uuid
 
 register_type(
     uuid.UUID,
-    'UUID',
-    lambda m, s: {m.marshal_key('value'): str(s)},
-    lambda d, s: uuid.UUID(s[d.marshal_key('value')]),
+    "UUID",
+    lambda m, s: {m.marshal_key("value"): str(s)},
+    lambda d, s: uuid.UUID(s[d.marshal_key("value")]),
     lambda d, s, r: r,
 )
 
@@ -168,8 +167,8 @@ from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 register_custom_keras_types(
     {
-        'ProportionalStopping': ProportionalStopping,
-        'ParameterMask': ParameterMask,
+        "ProportionalStopping": ProportionalStopping,
+        "ParameterMask": ParameterMask,
     }
 )
 
@@ -205,7 +204,9 @@ from dmp.task.experiment.recorder.test_set_history_recorder import (
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.model.network_info import NetworkInfo
-from dmp.task.experiment.training_experiment.hybrid_save_mode import HybridSaveMode
+from dmp.task.experiment.training_experiment.model_saving_config import (
+    ModelSavingConfig,
+)
 from dmp.task.experiment.training_experiment.model_state_resume_config import (
     ModelStateResumeConfig,
 )
@@ -220,7 +221,7 @@ register_types(
         DatasetSpec,
         MLTask,
         NetworkInfo,
-        HybridSaveMode,
+        ModelSavingConfig,
         ModelStateResumeConfig,
         TrainingEpoch,
         PruningConfig,

@@ -24,16 +24,16 @@ class BatchNormBlock(LayerFactory):
     def make_layer(
         self,
         config: LayerConfig,
-        inputs: Union['Layer', List['Layer']],
+        inputs: Union["Layer", List["Layer"]],
     ) -> Layer:
         output = self.normalized_layer.make_layer(config, inputs)
-        activation_function = output.config.pop('activation')
-        output['activation'] = 'linear'
+        activation_function = output.config.pop("activation")
+        output["activation"] = "linear"
 
         if self.batch_normalization is not None:
             output = self.batch_normalization.make_layer(config, output)
 
-        if activation_function is not None and activation_function != 'linear':
+        if activation_function is not None and activation_function != "linear":
             output = OpLayer.make(activation_function, {}, output)
 
         return output

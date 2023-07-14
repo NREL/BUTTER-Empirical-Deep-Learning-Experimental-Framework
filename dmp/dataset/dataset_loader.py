@@ -28,29 +28,29 @@ from dmp.dataset.dataset_group import DatasetGroup
 from dmp.dataset.dataset import Dataset
 from dmp.dataset.ml_task import MLTask
 
-dataset_cache_directory = os.path.join(os.getcwd(), '.dataset_cache')
+dataset_cache_directory = os.path.join(os.getcwd(), ".dataset_cache")
 
 
 @dataclass
 class DatasetLoader(ABC):
-    '''
+    """
     Responsible for returning a Dataset object when called.
     Contains convience functions for assisting in dataset loading and preprocessing.
-    '''
+    """
 
-    source : str
+    source: str
     dataset_name: str
     ml_task: MLTask
 
-    feature_prefix = 'f'
-    response_prefix = 'r'
-    index_delimiter = 'x'
-    _group_column = 'g'
+    feature_prefix = "f"
+    response_prefix = "r"
+    index_delimiter = "x"
+    _group_column = "g"
 
     def __call__(self) -> Dataset:
-        '''
+        """
         Generates a Dataset object (ususally by loading the dataset and preparing it for use)
-        '''
+        """
         data = self._load_dataset()
         data = self._prepare_dataset_data(data)
         return data
@@ -63,31 +63,34 @@ class DatasetLoader(ABC):
         return data
 
     def _get_cache_path(self, name):
-        filename = self.source + '_' + self.dataset_name + name
+        filename = self.source + "_" + self.dataset_name + name
         return os.path.join(dataset_cache_directory, filename)
 
     def _try_read_from_cache(self) -> Optional[Dataset]:
         # filename = self._get_cache_path('.pkl.bz2')
         # try:
         #     import bz2
-        #     with bz2.BZ2File(filename, 'rb') as file: 
+        #     with bz2.BZ2File(filename, 'rb') as file:
         #         return pickle.load(file)
-        filename = self._get_cache_path('.pkl.lz4')
+        filename = self._get_cache_path(".pkl.lz4")
         try:
             import lz4
-            with lz4.frame.open(filename, mode='rb') as file:
+
+            with lz4.frame.open(filename, mode="rb") as file:
                 return pickle.load(file)
 
         except FileNotFoundError:
-            print(f'Dataset cache file {filename} not found while reading from dataset cache for {self}.')
+            print(
+                f"Dataset cache file {filename} not found while reading from dataset cache for {self}."
+            )
             return None
         except:
-            print(f'Error reading from dataset cache for {self}:')
+            print(f"Error reading from dataset cache for {self}:")
             traceback.print_exc()
             try:
                 os.remove(filename)
             except:
-                print(f'Error removing bad cache file for {self}:')
+                print(f"Error removing bad cache file for {self}:")
                 traceback.print_exc()
         return None
 
@@ -104,17 +107,18 @@ class DatasetLoader(ABC):
             # with bz2.BZ2File(filename, 'wb', compresslevel=1) as file:
             #     pickle.dump(data, file)
 
-            filename = self._get_cache_path('.pkl.lz4')
-            print(f'Writing dataset cache file {filename} for {self}.')
+            filename = self._get_cache_path(".pkl.lz4")
+            print(f"Writing dataset cache file {filename} for {self}.")
 
             import lz4
-            with lz4.frame.open(filename, mode='wb') as file:
+
+            with lz4.frame.open(filename, mode="wb") as file:
                 pickle.dump(data, file)
 
-            print(f'Done writing dataset cache file {filename} for {self}.')
-            
+            print(f"Done writing dataset cache file {filename} for {self}.")
+
         except Exception as e:
-            print(f'Error writing to dataset cache for {self}:')
+            print(f"Error writing to dataset cache for {self}:")
             traceback.print_exc()
 
     def _prepare_dataset_data(self, data: Dataset) -> Dataset:
@@ -145,7 +149,7 @@ class DatasetLoader(ABC):
             return self.prepare_value(value, transform)  # type: ignore
         elif len(shape) > 1:
             return self.prepare_matrix(value, transform)  # type: ignore
-        raise Exception('Invalid shape {}.'.format(shape))
+        raise Exception("Invalid shape {}.".format(shape))
 
     @staticmethod
     def dynamic_value_transform(
@@ -162,8 +166,7 @@ class DatasetLoader(ABC):
             return None  # ignore it
         if num_distinct_values <= 2:
             return self.binary(value)
-        if num_distinct_values <= 20 or \
-            not isinstance(value[0][0], numbers.Number):
+        if num_distinct_values <= 20 or not isinstance(value[0][0], numbers.Number):
             return self.one_hot(value)
         return self.min_max(value)
 
@@ -185,7 +188,7 @@ class DatasetLoader(ABC):
     def prepare_value(
         self,
         value: ndarray,
-        value_transform: Callable[['DatasetLoader', ndarray], ndarray],
+        value_transform: Callable[["DatasetLoader", ndarray], ndarray],
     ) -> Optional[ndarray]:
         value = numpy.reshape(value, (-1, 1))
         return value_transform(self, value)
@@ -193,7 +196,7 @@ class DatasetLoader(ABC):
     def prepare_matrix(
         self,
         values: ndarray,
-        value_transform: Callable[['DatasetLoader', ndarray], ndarray],
+        value_transform: Callable[["DatasetLoader", ndarray], ndarray],
     ) -> Optional[ndarray]:
         transformed_list = []
         for i in range(values.shape[1]):
@@ -206,7 +209,7 @@ class DatasetLoader(ABC):
     def prepare_tensor(
         self,
         values: ndarray,
-        value_transform: Callable[['DatasetLoader', ndarray], ndarray],
+        value_transform: Callable[["DatasetLoader", ndarray], ndarray],
     ) -> ndarray:
         # apply value_transform to all entries
         return value_transform(self, values)
@@ -217,7 +220,7 @@ class DatasetLoader(ABC):
         return preprocessor.transform(value).astype(numpy.float32)
 
     def one_hot(self, value: ndarray) -> ndarray:
-        preprocessor = OneHotEncoder(handle_unknown='ignore', sparse=False)
+        preprocessor = OneHotEncoder(handle_unknown="ignore", sparse=False)
         preprocessor.fit(value)
         return preprocessor.transform(value).astype(numpy.int8)  # type: ignore
 
@@ -226,10 +229,12 @@ class DatasetLoader(ABC):
         return (value == value[0]).astype(numpy.int8)  # type: ignore
 
     def _prepare_image(self, data: ndarray) -> ndarray:
-        return (data.astype(numpy.float16) / numpy.array(255.0, dtype=numpy.float16)).astype(numpy.float16)
+        return (
+            data.astype(numpy.float16) / numpy.array(255.0, dtype=numpy.float16)
+        ).astype(numpy.float16)
 
 
 def load_dataset_index(path: str) -> pandas.DataFrame:
     datasets = pandas.read_csv(path)
-    datasets.set_index('Dataset', inplace=True, drop=False)
+    datasets.set_index("Dataset", inplace=True, drop=False)
     return datasets

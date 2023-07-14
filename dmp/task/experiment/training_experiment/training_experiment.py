@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import itertools
 from operator import index
 import random
 from typing import Any, Dict, Iterable, Optional, Set, Type
@@ -13,7 +14,9 @@ from dmp.model.network_info import NetworkInfo
 from dmp.parquet_util import make_dataframe_from_dict
 from dmp.task.experiment.a_experiment_task import FlatParameterDict, ParameterDict
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
-from dmp.task.experiment.pruning_experiment.count_masked_parameters import count_masked_parameters
+from dmp.task.experiment.pruning_experiment.count_masked_parameters import (
+    count_masked_parameters,
+)
 from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 from dmp.task.experiment.training_experiment import (
     training_experiment_keys,
@@ -25,7 +28,9 @@ from dmp.task.experiment.training_experiment.experiment_record_settings import (
 from dmp.task.experiment.training_experiment.model_saving_callback import (
     ModelSavingCallback,
 )
-from dmp.task.experiment.training_experiment.model_state_resume_config import ModelStateResumeConfig
+from dmp.task.experiment.training_experiment.model_state_resume_config import (
+    ModelStateResumeConfig,
+)
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 
@@ -51,11 +56,8 @@ from dmp.model.model_spec import ModelSpec
 from dmp.worker_task_context import WorkerTaskContext
 
 
-
 @dataclass
 class TrainingExperiment(ExperimentTask):
-    
-
     seed: int  # RNG seed
 
     # floating point precision {'float16', 'float32', 'float64'}
@@ -91,6 +93,7 @@ class TrainingExperiment(ExperimentTask):
     def __call__(
         self,
         context: WorkerTaskContext,
+        new_seed: bool = False,
     ) -> ExperimentResultRecord:
         # tensorflow.config.optimizer.set_jit(True)
         self._set_random_seeds()
@@ -101,6 +104,28 @@ class TrainingExperiment(ExperimentTask):
         print(model.network.structure.summary())
         model.keras_model.summary()
 
+        """
+        + for resumable checkpointing:
+            + always:
+                + save checkpoint (weights, optimizer, epoch numbers)
+                + experiment history
+            + some cases:
+                + model structure
+                + experiment state
+                    + maybe overwrite / new Task
+            + save_checkpoint function passed to fit
+                + saves these things in a way that can be resumed
+            -> so:
+                + save checkpoint
+                    + to disk
+                    + to db
+                + save history to db
+                + update Job & Task to resume on failure
+                + add attr to track job/task execution history?
+
+                + when running, must be able to resume
+        """
+
         self._fit_model(
             context,
             self.fit,
@@ -108,8 +133,9 @@ class TrainingExperiment(ExperimentTask):
             model,
             [self._make_early_stopping_callback()],
             experiment_history=experiment_history,
+            new_seed=new_seed,
         )
-        
+
         return self._make_result_record(
             context,
             dataset,
@@ -117,9 +143,22 @@ class TrainingExperiment(ExperimentTask):
             experiment_history,
         )
 
+    def save_checkpoint(
+        self,
+        context: WorkerTaskContext,
+    ):
+        # + save checkpoint
+        #     + to disk
+        #     + to db
+        # + save history to db
+        # + update Job & Task to resume on failure
+        # + add table to track job/task execution history?
+
+        pass
+
     @classmethod
     def summarize(
-        cls: Type['TrainingExperiment'],
+        cls: Type["TrainingExperiment"],
         results: Sequence[ExperimentResultRecord],
     ) -> ExperimentSummaryRecord:
         return cls.summarizer.summarize(cls, results)
@@ -128,7 +167,7 @@ class TrainingExperiment(ExperimentTask):
         import os
 
         seed: int = self.seed
-        os.environ['PYTHONHASHSEED'] = str(seed)
+        os.environ["PYTHONHASHSEED"] = str(seed)
         numpy.random.seed(seed)
         tensorflow.random.set_seed(seed)
         random.seed(seed)
@@ -145,7 +184,7 @@ class TrainingExperiment(ExperimentTask):
     ) -> Tuple[PreparedDataset, List[Union[str, keras.metrics.Metric]]]:
         dataset = PreparedDataset(
             self.dataset,
-            self.fit['batch_size'],
+            self.fit["batch_size"],
         )
         metrics = self._autoconfigure_for_dataset(dataset)
         return dataset, metrics
@@ -162,13 +201,13 @@ class TrainingExperiment(ExperimentTask):
             keras.metrics.CosineSimilarity(),
             keras.metrics.KLDivergence(),
         ]
-        output_kernel_initializer = 'HeUniform'
-        output_activation = 'relu'
-        loss = 'MeanSquaredError'
+        output_kernel_initializer = "HeUniform"
+        output_activation = "relu"
+        loss = "MeanSquaredError"
         if ml_task == MLTask.regression:
-            output_activation = 'sigmoid'
-            output_kernel_initializer = 'GlorotUniform'
-            loss = 'MeanSquaredError'
+            output_activation = "sigmoid"
+            output_kernel_initializer = "GlorotUniform"
+            loss = "MeanSquaredError"
             metrics.extend(
                 [
                     keras.metrics.MeanSquaredError(),
@@ -179,13 +218,13 @@ class TrainingExperiment(ExperimentTask):
             )
         elif ml_task == MLTask.classification:
             if num_outputs == 1:
-                output_activation = 'sigmoid'
-                output_kernel_initializer = 'GlorotUniform'
-                loss = 'BinaryCrossentropy'
+                output_activation = "sigmoid"
+                output_kernel_initializer = "GlorotUniform"
+                loss = "BinaryCrossentropy"
                 metrics.extend(
                     [
                         keras.metrics.BinaryCrossentropy(),
-                        'accuracy',
+                        "accuracy",
                         keras.metrics.Hinge(),
                         keras.metrics.SquaredHinge(),
                         keras.metrics.Precision(),
@@ -194,13 +233,13 @@ class TrainingExperiment(ExperimentTask):
                     ]
                 )
             else:
-                output_activation = 'softmax'
-                output_kernel_initializer = 'GlorotUniform'
-                loss = 'CategoricalCrossentropy'
+                output_activation = "softmax"
+                output_kernel_initializer = "GlorotUniform"
+                loss = "CategoricalCrossentropy"
                 metrics.extend(
                     [
                         keras.metrics.CategoricalCrossentropy(),
-                        'accuracy',
+                        "accuracy",
                         keras.metrics.CategoricalHinge(),
                     ]
                 )
@@ -210,9 +249,9 @@ class TrainingExperiment(ExperimentTask):
         model = self.model
         if model.input is None:
             model.input = Input()
-        if model.input.get('shape', None) is None:
+        if model.input.get("shape", None) is None:
             input_shape = dataset.input_shape
-            model.input['shape'] = input_shape
+            model.input["shape"] = input_shape
 
             # input_dim = len(input_shape)
             # print(f'input shape: {input_shape}')
@@ -229,20 +268,20 @@ class TrainingExperiment(ExperimentTask):
             model.output = Dense.make(
                 int(dataset.output_shape[0]),
                 {
-                    'activation': None,
-                    'kernel_initializer': None,
+                    "activation": None,
+                    "kernel_initializer": None,
                 },
             )
 
         output = model.output
         if isinstance(output, Dense):
-            if output.get('units', None) is None:
-                output['units'] = int(dataset.output_shape[0])
-            if output.get('activation', None) is None:
+            if output.get("units", None) is None:
+                output["units"] = int(dataset.output_shape[0])
+            if output.get("activation", None) is None:
                 # output['activation'] = make_keras_config(output_activation)
-                output['activation'] = output_activation
-            if output.get('kernel_initializer', None) is None:
-                output['kernel_initializer'] = make_keras_config(
+                output["activation"] = output_activation
+            if output.get("kernel_initializer", None) is None:
+                output["kernel_initializer"] = make_keras_config(
                     output_kernel_initializer
                 )
 
@@ -260,8 +299,8 @@ class TrainingExperiment(ExperimentTask):
         # pprint(marshal.marshal(network.structure))
         print(network.structure.summary())
 
-        if self.precision in {'mixed_float16', 'mixed_bfloat16'}:
-            keras.backend.set_floatx('float32')
+        if self.precision in {"mixed_float16", "mixed_bfloat16"}:
+            keras.backend.set_floatx("float32")
             keras.mixed_precision.set_global_policy(
                 keras.mixed_precision.Policy(self.precision)
             )
@@ -280,7 +319,7 @@ class TrainingExperiment(ExperimentTask):
 
     def _resume_model(
         self,
-        context:WorkerTaskContext,
+        context: WorkerTaskContext,
         model: ModelInfo,
         checkpoint: Optional[ModelStateResumeConfig],
     ) -> Dict[str, Any]:
@@ -295,9 +334,8 @@ class TrainingExperiment(ExperimentTask):
         run_history = context.schema.get_run_history(checkpoint.run_id)
         if run_history is None:
             return {}
-        run_history = run_history[run_history['epoch'] <= checkpoint.epoch]
-        return run_history.to_dict(orient='list') # type: ignore
-        
+        run_history = run_history[run_history["epoch"] <= checkpoint.epoch]
+        return run_history.to_dict(orient="list")  # type: ignore
 
     def _fit_model(
         self,
@@ -309,21 +347,21 @@ class TrainingExperiment(ExperimentTask):
         new_model_number: bool = True,
         epochs: Optional[int] = None,
         experiment_history: Optional[Dict[str, Any]] = None,
-    ) -> Dict:
+        new_seed=False,
+    ) -> Dict[str, Any]:
         # filter None's out of callbacks
         callbacks = [cb for cb in callbacks if cb is not None]
 
         # setup training, validation, and test datasets
         fit_config = fit_config.copy()
-        fit_config['x'] = dataset.train
-        fit_config['validation_data'] = dataset.validation
+        fit_config["x"] = dataset.train
+        fit_config["validation_data"] = dataset.validation
 
         if epochs is not None:
-            fit_config['epochs'] = epochs
+            fit_config["epochs"] = epochs
 
         test_set_info = TestSetInfo(self.keys.test, dataset.test)
-        validation_set_info = TestSetInfo(
-            self.keys.validation, dataset.validation)
+        validation_set_info = TestSetInfo(self.keys.validation, dataset.validation)
         train_set_info = TestSetInfo(self.keys.train, dataset.train)
 
         # setup model saving callback
@@ -331,12 +369,13 @@ class TrainingExperiment(ExperimentTask):
             context,
             callbacks,
             experiment_history,
+            model,
         )
 
-        # setup history statitics recorders
+        # setup history statistics recorders
         timestamp_recorder = (
             TimestampRecorder(
-                '_' + self.keys.interval_suffix,
+                "_" + self.keys.interval_suffix,
                 self.keys.epoch_start_time_ms,
                 self.keys.epoch_time_ms,
             )
@@ -349,8 +388,7 @@ class TrainingExperiment(ExperimentTask):
 
         additional_test_sets = [test_set_info]
         if self.record.post_training_metrics:
-            additional_test_sets.append(
-                TestSetInfo(self.keys.trained, dataset.train))
+            additional_test_sets.append(TestSetInfo(self.keys.trained, dataset.train))
 
         history_callbacks = [
             timestamp_recorder,
@@ -370,9 +408,9 @@ class TrainingExperiment(ExperimentTask):
         self.remap_key_prefixes(
             history.history,
             [
-                ('val_', self.keys.validation + '_', True),
+                ("val_", self.keys.validation + "_", True),
                 # (test_history_key + '_', 'test_'),
-                ('', self.keys.train + '_', True),
+                ("", self.keys.train + "_", True),
             ],
         )
         history_callbacks.append(history)
@@ -382,18 +420,19 @@ class TrainingExperiment(ExperimentTask):
             self.remap_key_prefixes(
                 zero_epoch_recorder.history,
                 [
-                    (self.keys.train + '_', self.keys.trained + '_', False),
+                    (self.keys.train + "_", self.keys.trained + "_", False),
                 ],
             )
 
         # Add test set history into history dict.
-        fit_history = self._merge_histories(history_callbacks)
+        fit_history = self._merge_callback_histories(history_callbacks)
 
         # set free parameter count history
-        history_length = len(fit_history[self.keys.epoch])
+        fit_history_length = len(fit_history[self.keys.epoch])
         if self.keys.free_parameter_count_key not in fit_history:
             fit_history[self.keys.free_parameter_count_key] = [
-                model.network.num_free_parameters] * history_length
+                model.network.num_free_parameters
+            ] * fit_history_length
 
         # set masked parameter count history
         if self.keys.maked_parameter_count_key not in fit_history:
@@ -401,35 +440,45 @@ class TrainingExperiment(ExperimentTask):
                 count_masked_parameters(
                     model.network.structure,
                     model.keras_network.layer_to_keras_map,
-                )] * history_length
+                )
+            ] * fit_history_length
 
         # set retained column
         if self.keys.retained not in fit_history:
-            retained = [True] * history_length
+            retained = [True] * fit_history_length
             fit_history[self.keys.retained] = retained
 
-            early_stopping_callback = next((cb for cb in callbacks if isinstance(cb, keras.callbacks.EarlyStopping)),
-                                           None,)
+            early_stopping_callback = next(
+                (
+                    cb
+                    for cb in callbacks
+                    if isinstance(cb, keras.callbacks.EarlyStopping)
+                ),
+                None,
+            )
 
-            if early_stopping_callback is not None and early_stopping_callback.stopped_epoch > 0:
+            if (
+                early_stopping_callback is not None
+                and early_stopping_callback.stopped_epoch > 0
+            ):
                 last_retained_epoch = (
-                    len(fit_history[self.keys.epoch]) -
-                    early_stopping_callback.patience
+                    len(fit_history[self.keys.epoch]) - early_stopping_callback.patience
                 )
-                for i in range(last_retained_epoch + 1, history_length):
+                for i in range(last_retained_epoch + 1, fit_history_length):
                     retained[i] = False
 
         # if experiment_history was supplied, merge this call to fit into it and return it
         # if experiment_history is not None:
         return self._append_fit_history_to_model_history(
             new_model_number,
+            new_seed,
             experiment_history,
             fit_history,
         )
 
         # return fit_history
 
-    def _merge_histories(
+    def _merge_callback_histories(
         self,
         histories: Iterable[Union[keras.callbacks.History, TestSetRecorder]],
     ) -> Dict[str, Any]:
@@ -447,15 +496,8 @@ class TrainingExperiment(ExperimentTask):
         epochs = sorted(epoch_set)
         merged_history = {self.keys.epoch: epochs}
         for metric, epoch_map in metric_map.items():
-            merged_history[metric] = [epoch_map.get(
-                epoch, None) for epoch in epochs]
+            merged_history[metric] = [epoch_map.get(epoch, None) for epoch in epochs]
         return merged_history
-
-    def _get_last_epoch(
-        self,
-        history: Dict[str, Any],
-    ) -> int:
-        return self._get_last_value_of(history, self.keys.epoch, 0)
 
     def _get_last_value_of(
         self,
@@ -469,9 +511,9 @@ class TrainingExperiment(ExperimentTask):
         return default_value
 
     def _get_current_epoch(
-            self,
-            experiment_history: Optional[Dict[str, Any]],
-    ):
+        self,
+        experiment_history: Optional[Dict[str, Any]],
+    ) -> TrainingEpoch:
         if self.record.resume_from is None:
             initial_epoch = TrainingEpoch(0, -1, 0)
         else:
@@ -503,20 +545,21 @@ class TrainingExperiment(ExperimentTask):
     def _append_fit_history_to_model_history(
         self,
         new_model_number: bool,
+        new_seed: bool,
         experiment_history: Optional[Dict[str, Any]],
         fit_history: Dict[str, Any],
     ) -> Dict[str, Any]:
-        training_epoch = self._get_current_epoch(
-            experiment_history)
+        training_epoch = self._get_current_epoch(experiment_history)
 
         if new_model_number:
             training_epoch.count_new_model()
 
-        history_length = len(fit_history[self.keys.epoch])
+        fit_history_length = len(fit_history[self.keys.epoch])
 
         # set model number column
         fit_history[self.keys.model_number] = [
-            training_epoch.model_number] * history_length
+            training_epoch.model_number
+        ] * fit_history_length
 
         # set model epoch column
         model_epochs = numpy.array(fit_history[self.keys.epoch])
@@ -526,16 +569,31 @@ class TrainingExperiment(ExperimentTask):
         # convert model epochs to history epochs
         fit_history[self.keys.epoch] = model_epochs + training_epoch.epoch
 
+        # set seed number column
+        if self.keys.seed_number not in fit_history:
+            seed_number = (
+                self._get_last_value_of(fit_history, self.keys.seed_number, 0)
+                + new_seed
+            )
+            fit_history[self.keys.seed_number] = [seed_number] * fit_history_length
+
         if experiment_history is None:
             return fit_history
 
-        for metric, metric_history in fit_history.items():
-            experiment_history.setdefault(metric, []).extend(metric_history)
+        experiment_history_length = len(experiment_history.get(self.keys.epoch, []))
+        metrics = set(itertools.chain(experiment_history.keys(), fit_history.keys()))
+        for metric in metrics:
+            if metric not in experiment_history:
+                experiment_history[metric] = [None] * experiment_history_length
+            if metric not in fit_history:
+                fit_history[metric] = [None] * fit_history_length
+            experiment_history[metric].extend(fit_history[metric])
+
         return experiment_history
 
     def _make_result_record(
         self,
-        context : WorkerTaskContext,
+        context: WorkerTaskContext,
         dataset: PreparedDataset,
         network: NetworkInfo,
         experiment_history: Dict[str, Any],
@@ -543,53 +601,58 @@ class TrainingExperiment(ExperimentTask):
         import platform
 
         run_data = {
-            'job_id': context.id,
-            'run_id': context.id,
-            'python_version': str(platform.python_version()),
-            'platform': str(platform.platform()),
-            'tensorflow_version': str(tensorflow.__version__),
-            'host_name': str(platform.node()),
-            'slurm_job_id': common.get_slurm_job_id(),
-            'git_hash': common.get_git_hash(),
+            "job_id": context.id,
+            "run_id": context.id,
+            "python_version": str(platform.python_version()),
+            "platform": str(platform.platform()),
+            "tensorflow_version": str(tensorflow.__version__),
+            "host_name": str(platform.node()),
+            "slurm_job_id": common.get_slurm_job_id(),
+            "git_hash": common.get_git_hash(),
         }
         run_data.update(context.info)
 
         experiment_attrs: FlatParameterDict = self.get_parameters()
         experiment_tags = {}
 
-        run_data_set = {'seed', 'precision', 'task_version', 'batch'}
-        tag_prefix = 'tags_'
-        run_tags_prefix = 'run_tags_'
-        for key in list(experiment_attrs.keys()):
-            if key in run_data_set or key.startswith('record_'):
+        run_data_set = {
+            "seed",
+            "precision",
+            "task_version",
+            "batch",
+            "prune_num_iterations",
+        }
+        tag_prefix = "tags_"
+        run_tags_prefix = "run_tags_"
+        for key in tuple(experiment_attrs.keys()):
+            if key in run_data_set or key.startswith("record_"):
                 run_data[key] = experiment_attrs.pop(key, None)
             elif key.startswith(tag_prefix):
-                experiment_tags[key[len(tag_prefix):]] = experiment_attrs.pop(
+                experiment_tags[key[len(tag_prefix) :]] = experiment_attrs.pop(
                     key, None
                 )
             elif key.startswith(run_tags_prefix):
-                run_data[key[len(run_tags_prefix):]
-                         ] = experiment_attrs.pop(key, None)
+                run_data[key[len(run_tags_prefix) :]] = experiment_attrs.pop(key, None)
 
         experiment_attrs.update(
             {
-                'ml_task': dataset.ml_task.value,
-                'num_free_parameters': network.num_free_parameters,
+                "ml_task": dataset.ml_task.value,
+                "num_free_parameters": network.num_free_parameters,
                 # 'model_structure':
                 # network.structure,
-                'input_shape': dataset.input_shape,
-                'output_shape': dataset.output_shape,
-                'train_set_size': dataset.train_size,
-                'test_set_size': dataset.test_size,
-                'validation_set_size': dataset.validation_size,
-                'data_set_size': dataset.train_size
+                "input_shape": dataset.input_shape,
+                "output_shape": dataset.output_shape,
+                "train_set_size": dataset.train_size,
+                "test_set_size": dataset.test_size,
+                "validation_set_size": dataset.validation_size,
+                "data_set_size": dataset.train_size
                 + dataset.test_size
                 + dataset.validation_size,
             }  # type: ignore
         )
 
         for k, v in network.description.items():
-            experiment_attrs[f'model_{k}'] = v
+            experiment_attrs[f"model_{k}"] = v
 
         extended_history = self._extract_extended_history(experiment_history)
 
@@ -622,7 +685,8 @@ class TrainingExperiment(ExperimentTask):
         self,
         context: WorkerTaskContext,
         callbacks: List[Optional[keras.callbacks.Callback]],
-        experiment_history: Optional[Dict[str, Any]] = None,
+        experiment_history: Optional[Dict[str, Any]],
+        model: ModelInfo,
     ) -> Optional[keras.callbacks.Callback]:
         if self.record is None or self.record.model_saving is None:
             return None
@@ -640,6 +704,7 @@ class TrainingExperiment(ExperimentTask):
         model_saving_callback = model_saving.make_save_model_callback(
             context,
             self._get_current_epoch(experiment_history),
+            model,
         )
         callbacks.append(model_saving_callback)
         return model_saving_callback

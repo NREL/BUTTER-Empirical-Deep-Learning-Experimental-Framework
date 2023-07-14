@@ -71,9 +71,9 @@ CREATE TABLE IF NOT EXISTS run
     start_time timestamp WITH TIME ZONE,
     end_time timestamp WITH TIME ZONE,
     record_time timestamp WITH TIME ZONE DEFAULT NOW(),
-    
+
     duration_in_ms INTEGER,
-    
+
     task_version SMALLINT,
     queue_id SMALLINT,
     save_every_epochs SMALLINT,
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS run
     num_nodes SMALLINT,
     num_cpus SMALLINT,
     gpu_memory INTEGER,
-    
+
     batch TEXT,
     system_name TEXT,
     host_name TEXT,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS run
 
     run_data jsonb NOT NULL,
     run_history bytes[] NOT NULL,
-    
+
     CONSTRAINT PRIMARY KEY (run_id)
 );
 
@@ -256,7 +256,7 @@ create index on experiment_summary_ (update_timestamp, experiment_id);
 
 
 
-update experiment_ e set 
+update experiment_ e set
     "size" = size_.integer_value,
     "relative_size_error" = (abs( (size_.integer_value - e.num_free_parameters) / (size_.integer_value)::float))::real
 FROM
@@ -266,14 +266,14 @@ WHERE
 e.experiment_parameters @> array[size_.id] and size_.kind = 'size';
 
 update experiment_summary_ s
-set 
+set
     "size" = e.size,
     relative_size_error = e.relative_size_error
 from
     experiment_ e
-where 
-    s.experiment_id = e.experiment_id and 
-    e.size is not null and 
+where
+    s.experiment_id = e.experiment_id and
+    e.size is not null and
     e.relative_size_error is not null and
     (s.size is null or s.relative_size_error is null);
 
@@ -298,7 +298,7 @@ where
     s.queue = 1 and
     (s.status = 0 or s.status = 3) and
     exists (
-        select 
+        select
             size_.integer_value size,
             shape_.string_value shape,
             depth_.integer_value depth,

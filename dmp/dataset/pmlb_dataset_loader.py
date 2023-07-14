@@ -14,23 +14,27 @@ from dmp.dataset.dataset_loader import DatasetLoader, dataset_cache_directory
 
 import copy
 
-from dmp.dataset.ml_task import MLTask 
+from dmp.dataset.ml_task import MLTask
+
 
 class Foo:
-    last : Any = ('', None)
+    last: Any = ("", None)
+
 
 class PMLBDatasetLoader(DatasetLoader):
-    '''
+    """
     Loads PMLB datasets
     see: https://github.com/EpistasisLab/pmlb
     https://epistasislab.github.io/pmlb/
-    '''
+    """
+
     def __init__(
         self,
         dataset_name: str,
         ml_task: MLTask,
     ):
-        super().__init__('pmlb', dataset_name, ml_task)
+        super().__init__("pmlb", dataset_name, ml_task)
+
     # def _load_dataset(self):
     #     return self._fetch_from_source()
 
@@ -41,15 +45,14 @@ class PMLBDatasetLoader(DatasetLoader):
             d = Foo.last[1]
         else:
             d = pmlb.fetch_data(
-                            self.dataset_name,
-                            return_X_y=True,
-                            local_cache_dir=dataset_cache_directory,
-                        )
+                self.dataset_name,
+                return_X_y=True,
+                local_cache_dir=dataset_cache_directory,
+            )
             Foo.last = (self.dataset_name, d)
         d = copy.deepcopy(d)
-        
-        return Dataset(self.ml_task,
-                       DatasetGroup(*d))  # type: ignore
+
+        return Dataset(self.ml_task, DatasetGroup(*d))  # type: ignore
 
     # def _get_cache_path(self, name):
     #     return os.path.join(self.dataset_cache_directory, self.dataset_name, name)

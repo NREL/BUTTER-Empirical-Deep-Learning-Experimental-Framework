@@ -4,7 +4,7 @@ import pandas
 
 
 @dataclass
-class ExperimentSummaryRecord():
+class ExperimentSummaryRecord:
     by_epoch: Optional[pandas.DataFrame]
     by_loss: Optional[pandas.DataFrame]
     by_progress: Optional[pandas.DataFrame]
