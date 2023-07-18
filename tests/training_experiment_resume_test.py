@@ -1,6 +1,6 @@
 from dmp.marshaling import marshal
 from pprint import pprint
-from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
@@ -43,9 +43,11 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
     RunSpecificConfig,
 )
-from dmp.task.experiment.training_experiment.model_saving_config import ModelSavingConfig
-from dmp.task.experiment.training_experiment.model_state_resume_config import (
-    ModelStateResumeConfig,
+from dmp.task.experiment.training_experiment.model_saving_config import (
+    ModelSavingConfig,
+)
+from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+    TrainingExperimentCheckpoint,
 )
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
@@ -54,10 +56,10 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
     OverlayTransfer,
 )
 
-sys.path.insert(0, './')
+sys.path.insert(0, "./")
 
 
-credentials = load_credentials('dmp')
+credentials = load_credentials("dmp")
 schema = PostgresSchema(credentials)
 strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
 worker = Worker(
@@ -85,32 +87,32 @@ def run_experiment(experiment, job_id=None):
 
     results = experiment(worker, job)
 
-    print('experiment_attrs\n')
+    print("experiment_attrs\n")
     pprint(results.experiment_attrs)
-    print('experiment_tags\n')
+    print("experiment_tags\n")
     pprint(results.experiment_tags)
-    print('run_data\n', results.run_data)
-    print('run_history\n', results.run_history)
-    print('run_extended_history\n', results.run_extended_history)
+    print("run_data\n", results.run_data)
+    print("run_history\n", results.run_history)
+    print("run_extended_history\n", results.run_extended_history)
     return results
 
 
 def test_mnist_lenet():
     experiment = TrainingExperiment(
         seed=100,
-        batch='test',
-        tags={
-            'model_family': 'lenet',
-            'model_name': 'lenet_relu',
+        batch="test",
+        experiment_tags={
+            "model_family": "lenet",
+            "model_name": "lenet_relu",
         },
         run_tags={
-            'test': True,
+            "test": True,
         },
-        precision='float32',
+        precision="float32",
         dataset=DatasetSpec(
-            'mnist',
-            'keras',
-            'shuffled_train_test_split',
+            "mnist",
+            "keras",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -123,10 +125,10 @@ def test_mnist_lenet():
                         [5, 5],
                         [1, 1],
                         {
-                            'padding': 'same',
-                            'use_bias': True,
-                            'activation': 'sigmoid',
-                            'kernel_constraint': make_keras_kwcfg('ParameterMask'),
+                            "padding": "same",
+                            "use_bias": True,
+                            "activation": "sigmoid",
+                            "kernel_constraint": make_keras_kwcfg("ParameterMask"),
                         },
                     ),
                     AvgPool.make([2, 2], [2, 2]),
@@ -135,9 +137,9 @@ def test_mnist_lenet():
                         [5, 5],
                         [1, 1],
                         {
-                            'padding': 'valid',
-                            'use_bias': True,
-                            'kernel_constraint': make_keras_kwcfg('ParameterMask'),
+                            "padding": "valid",
+                            "use_bias": True,
+                            "kernel_constraint": make_keras_kwcfg("ParameterMask"),
                         },
                     ),
                     AvgPool.make([2, 2], [2, 2]),
@@ -150,14 +152,14 @@ def test_mnist_lenet():
             )
         ),
         fit={
-            'batch_size': 32,
-            'epochs': 1,
+            "batch_size": 32,
+            "epochs": 1,
         },
-        optimizer={'class': 'Adam', 'learning_rate': 0.0001},
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=50,
             restore_best_weights=True,
@@ -175,33 +177,32 @@ def test_mnist_lenet():
                 fixed_interval=0,
                 fixed_threshold=0,
                 exponential_rate=0,
-
             ),
             resume_from=None,
         ),
     )
 
-    job_id = uuid.UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3')
+    job_id = uuid.UUID("355d6326-aaf4-4d11-bfbe-d7ae667298f3")
     run_experiment(experiment, job_id=job_id)
 
 
 def test_resume():
-    job_id = uuid.UUID('355d6326-aaf4-4d11-bfbe-d7ae667298f3')
+    job_id = uuid.UUID("355d6326-aaf4-4d11-bfbe-d7ae667298f3")
     resume_experiment = experiment = TrainingExperiment(
         seed=100,
-        batch='test',
-        tags={
-            'model_family': 'lenet',
-            'model_name': 'lenet_relu',
+        batch="test",
+        experiment_tags={
+            "model_family": "lenet",
+            "model_name": "lenet_relu",
         },
         run_tags={
-            'test': True,
+            "test": True,
         },
-        precision='float32',
+        precision="float32",
         dataset=DatasetSpec(
-            'mnist',
-            'keras',
-            'shuffled_train_test_split',
+            "mnist",
+            "keras",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -214,10 +215,10 @@ def test_resume():
                         [5, 5],
                         [1, 1],
                         {
-                            'padding': 'same',
-                            'use_bias': True,
-                            'activation': 'sigmoid',
-                            'kernel_constraint': make_keras_kwcfg('ParameterMask'),
+                            "padding": "same",
+                            "use_bias": True,
+                            "activation": "sigmoid",
+                            "kernel_constraint": make_keras_kwcfg("ParameterMask"),
                         },
                     ),
                     AvgPool.make([2, 2], [2, 2]),
@@ -226,9 +227,9 @@ def test_resume():
                         [5, 5],
                         [1, 1],
                         {
-                            'padding': 'valid',
-                            'use_bias': True,
-                            'kernel_constraint': make_keras_kwcfg('ParameterMask'),
+                            "padding": "valid",
+                            "use_bias": True,
+                            "kernel_constraint": make_keras_kwcfg("ParameterMask"),
                         },
                     ),
                     AvgPool.make([2, 2], [2, 2]),
@@ -241,14 +242,14 @@ def test_resume():
             )
         ),
         fit={
-            'batch_size': 32,
-            'epochs': 10,
+            "batch_size": 32,
+            "epochs": 10,
         },
-        optimizer={'class': 'Adam', 'learning_rate': 0.0001},
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=50,
             restore_best_weights=True,
@@ -266,9 +267,8 @@ def test_resume():
                 fixed_interval=0,
                 fixed_threshold=0,
                 exponential_rate=0,
-
             ),
-            resume_from=ModelStateResumeConfig(
+            resume_from=TrainingExperimentCheckpoint(
                 run_id=job_id,
                 load_mask=True,
                 load_optimizer=True,
@@ -279,11 +279,10 @@ def test_resume():
                 ),
             ),
         ),
-
     )
     run_experiment(resume_experiment)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # test_mnist_lenet()
     test_resume()

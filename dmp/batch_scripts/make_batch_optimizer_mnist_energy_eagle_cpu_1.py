@@ -88,7 +88,7 @@ def main():
         return TrainingExperiment(
             seed=seed,
             batch="optimizer_cnn_mnist_energy_eagle_cpu_1",
-            tags=tags,
+            experiment_tags=tags,
             run_tags={
                 "optimizer_cnn_mnist_energy_eagle_cpu_1": True,
                 "energy_run": True,

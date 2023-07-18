@@ -1,4 +1,5 @@
 import sys
+
 # working with paper_param.py
 from jobqueue.job import Job
 import numpy
@@ -36,7 +37,7 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
     OverlayTransfer,
 )
 
-sys.path.insert(0, './')
+sys.path.insert(0, "./")
 
 import tensorflow
 import dmp.jobqueue_interface.worker
@@ -66,40 +67,41 @@ worker = Worker(
 )  # type: ignore
 params = get_paper_param("Linear_Mode_Connectivity", "VGG16", "Standard")
 
+
 def run_experiment(experiment):
     results = experiment(worker, Job())
-    print('experiment_attrs\n')
+    print("experiment_attrs\n")
     pprint(results.experiment_attrs)
-    print('experiment_tags\n')
+    print("experiment_tags\n")
     pprint(results.experiment_tags)
-    print('run_data\n', results.run_data)
-    print('run_history\n', results.run_history)
-    print('run_extended_history\n', results.run_extended_history)
+    print("run_data\n", results.run_data)
+    print("run_history\n", results.run_history)
+    print("run_extended_history\n", results.run_extended_history)
     return results
 
 
 def test_vgg16():
     conv_config = {
-        'padding': 'same',
-        'use_bias': True,
+        "padding": "same",
+        "use_bias": True,
     }
     experiment = TrainingExperiment(
         seed=0,
-        batch='test',
-        tags={
-            'model_family': 'vgg',
-            'model_name': 'vgg16',
+        batch="test",
+        experiment_tags={
+            "model_family": "vgg",
+            "model_name": "vgg16",
         },
         run_tags={
-            'test': True,
+            "test": True,
         },
-        precision='float32',
+        precision="float32",
         dataset=DatasetSpec(
             # 'mnist',
             # 'keras',
-            'cifar10',
-            'keras',
-            'shuffled_train_test_split',
+            "cifar10",
+            "keras",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -135,18 +137,20 @@ def test_vgg16():
             )
         ),
         fit={
-            'batch_size': params['batch'],
-            'epochs': params['batch']*params['train_Step']//60000, # 60000 is the number of training images in CIFAR10
+            "batch_size": params["batch"],
+            "epochs": params["batch"]
+            * params["train_Step"]
+            // 60000,  # 60000 is the number of training images in CIFAR10
         },
         optimizer={
-            'class': params['optimizer'],
-            'momentum': params['momentum'],
-            'learning_rate': params['learning_rate']
+            "class": params["optimizer"],
+            "momentum": params["momentum"],
+            "learning_rate": params["learning_rate"],
         },
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=50,
             restore_best_weights=True,
@@ -162,5 +166,5 @@ def test_vgg16():
     run_experiment(experiment)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_vgg16()

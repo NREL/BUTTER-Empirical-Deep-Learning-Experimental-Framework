@@ -28,10 +28,10 @@ from dmp.task.experiment.training_experiment.experiment_record_settings import (
 from dmp.task.experiment.training_experiment.model_saving_callback import (
     ModelSavingCallback,
 )
-from dmp.task.experiment.training_experiment.model_state_resume_config import (
-    ModelStateResumeConfig,
+from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+    TrainingExperimentCheckpoint,
 )
-from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
 
 
 from dmp.dataset.ml_task import MLTask
@@ -69,16 +69,20 @@ class TrainingExperiment(ExperimentTask):
 
     model: ModelSpec  # defines network
 
-    fit: dict  # contains batch size, epochs, shuffle (migrate from run_config)
+    # contains batch size, epochs, shuffle
+    fit: Dict[str, Any]
 
     # contains learning rate (migrate converting to typed config from keras serialization)
-    optimizer: dict
+    optimizer: Dict[str, Any]
 
     # The loss function to use. Set to None for runtime determination.
     loss: Optional[KerasConfig]
 
     # keras config for early stopping callback
     early_stopping: Optional[KerasConfig]
+
+    # point to resume from (None means to start fresh)
+    resume_from: Optional[TrainingExperimentCheckpoint]
 
     # defines important strings and collections of strings for this experiment class
     keys = training_experiment_keys.keys
@@ -100,7 +104,7 @@ class TrainingExperiment(ExperimentTask):
         dataset, metrics = self._load_and_prepare_dataset()
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
-        experiment_history = self._resume_model(context, model, self.record.resume_from)
+        experiment_history = self._restore_checkpoint(context, model)
         print(model.network.structure.summary())
         model.keras_model.summary()
 
@@ -142,19 +146,6 @@ class TrainingExperiment(ExperimentTask):
             model.network,
             experiment_history,
         )
-
-    def save_checkpoint(
-        self,
-        context: WorkerTaskContext,
-    ):
-        # + save checkpoint
-        #     + to disk
-        #     + to db
-        # + save history to db
-        # + update Job & Task to resume on failure
-        # + add table to track job/task execution history?
-
-        pass
 
     @classmethod
     def summarize(
@@ -317,12 +308,34 @@ class TrainingExperiment(ExperimentTask):
         )
         return model
 
-    def _resume_model(
+    def _save_checkpoint(
         self,
         context: WorkerTaskContext,
         model: ModelInfo,
-        checkpoint: Optional[ModelStateResumeConfig],
+        history: Dict[str, Any],
+    ) -> TrainingExperimentCheckpoint:
+        # + save checkpoint
+        #     + to disk
+        #     + to db
+        self.resume_from = context.save_model(
+            model,
+            epoch,
+        )
+
+        # + save history to db
+
+        # + update Job & Task to resume on failure
+        # + add table to track job/task execution history?
+        context.checkpoint_task(model, epoch, history)
+
+        return self.resume_from
+
+    def _restore_checkpoint(
+        self,
+        context: WorkerTaskContext,
+        model: ModelInfo,
     ) -> Dict[str, Any]:
+        checkpoint = self.resume_from
         if checkpoint is None:
             return {}
         optimizer = model.keras_model.optimizer
@@ -499,7 +512,7 @@ class TrainingExperiment(ExperimentTask):
             merged_history[metric] = [epoch_map.get(epoch, None) for epoch in epochs]
         return merged_history
 
-    def _get_last_value_of(
+    def get_last_value_of(
         self,
         history: Dict[str, Any],
         key: str,
@@ -510,30 +523,30 @@ class TrainingExperiment(ExperimentTask):
             return vals[-1]
         return default_value
 
-    def _get_current_epoch(
+    def get_current_epoch(
         self,
         experiment_history: Optional[Dict[str, Any]],
     ) -> TrainingEpoch:
-        if self.record.resume_from is None:
+        if self.resume_from is None:
             initial_epoch = TrainingEpoch(0, -1, 0)
         else:
-            initial_epoch = self.record.resume_from.get_epoch()
+            initial_epoch = self.resume_from.get_epoch()
 
         if experiment_history is None:
             return initial_epoch
 
         history_epoch = TrainingEpoch(
-            self._get_last_value_of(
+            self.get_last_value_of(
                 experiment_history,
                 self.keys.epoch,
                 0,
             ),
-            self._get_last_value_of(
+            self.get_last_value_of(
                 experiment_history,
                 self.keys.model_number,
                 0,
             ),
-            self._get_last_value_of(
+            self.get_last_value_of(
                 experiment_history,
                 self.keys.model_epoch,
                 0,
@@ -549,30 +562,28 @@ class TrainingExperiment(ExperimentTask):
         experiment_history: Optional[Dict[str, Any]],
         fit_history: Dict[str, Any],
     ) -> Dict[str, Any]:
-        training_epoch = self._get_current_epoch(experiment_history)
+        epoch = self.get_current_epoch(experiment_history)
 
         if new_model_number:
-            training_epoch.count_new_model()
+            epoch.count_new_model()
 
         fit_history_length = len(fit_history[self.keys.epoch])
 
         # set model number column
-        fit_history[self.keys.model_number] = [
-            training_epoch.model_number
-        ] * fit_history_length
+        fit_history[self.keys.model_number] = [epoch.model_number] * fit_history_length
 
         # set model epoch column
         model_epochs = numpy.array(fit_history[self.keys.epoch])
-        model_epochs += training_epoch.model_epoch
+        model_epochs += epoch.model_epoch
         fit_history[self.keys.model_epoch] = model_epochs
 
         # convert model epochs to history epochs
-        fit_history[self.keys.epoch] = model_epochs + training_epoch.epoch
+        fit_history[self.keys.epoch] = model_epochs + epoch.epoch
 
         # set seed number column
         if self.keys.seed_number not in fit_history:
             seed_number = (
-                self._get_last_value_of(fit_history, self.keys.seed_number, 0)
+                self.get_last_value_of(fit_history, self.keys.seed_number, 0)
                 + new_seed
             )
             fit_history[self.keys.seed_number] = [seed_number] * fit_history_length
@@ -703,7 +714,7 @@ class TrainingExperiment(ExperimentTask):
         # if no model saving callback, create one
         model_saving_callback = model_saving.make_save_model_callback(
             context,
-            self._get_current_epoch(experiment_history),
+            self.get_current_epoch(experiment_history),
             model,
         )
         callbacks.append(model_saving_callback)

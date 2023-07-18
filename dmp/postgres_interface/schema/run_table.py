@@ -24,6 +24,7 @@ class RunTable(Table):
     run_data: Column = Column("run_data", "jsonb")
     run_history: Column = Column("run_history", "bytea")
     extended_history: Column = Column("run_extended_history", "bytea")
+    task: Column = Column("task", "jsonb")
 
     @property
     def values(self) -> AColumnGroup:
@@ -39,6 +40,7 @@ class RunTable(Table):
             self.gpu_memory,
             self.host_name,
             self.batch,
+            self.task,
         )
 
     @property
@@ -48,4 +50,5 @@ class RunTable(Table):
             self.run_data,
             self.run_history,
             self.extended_history,
+            self.task,
         )

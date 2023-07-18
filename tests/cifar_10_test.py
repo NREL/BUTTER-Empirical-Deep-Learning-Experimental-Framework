@@ -31,7 +31,7 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
     OverlayTransfer,
 )
 
-sys.path.insert(0, './')
+sys.path.insert(0, "./")
 
 import tensorflow
 import dmp.jobqueue_interface.worker
@@ -61,34 +61,34 @@ worker = Worker(
 
 def run_experiment(experiment):
     results = experiment(worker, Job())
-    print('experiment_attrs\n')
+    print("experiment_attrs\n")
     pprint(results.experiment_attrs)
-    print('experiment_tags\n')
+    print("experiment_tags\n")
     pprint(results.experiment_tags)
-    print('run_data\n', results.run_data)
-    print('run_history\n', results.run_history)
-    print('run_extended_history\n', results.run_extended_history)
+    print("run_data\n", results.run_data)
+    print("run_history\n", results.run_history)
+    print("run_extended_history\n", results.run_extended_history)
     return results
 
 
 def test_cifar_10_lenet():
     experiment = TrainingExperiment(
         seed=0,
-        batch='test',
-        tags={
-            'model_family': 'lenet',
-            'model_name': 'lenet_relu',
+        batch="test",
+        experiment_tags={
+            "model_family": "lenet",
+            "model_name": "lenet_relu",
         },
         run_tags={
-            'test': True,
+            "test": True,
         },
-        precision='float32',
+        precision="float32",
         dataset=DatasetSpec(
             # 'mnist',
             # 'keras',
-            'cifar10',
-            'keras',
-            'shuffled_train_test_split',
+            "cifar10",
+            "keras",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -98,14 +98,14 @@ def test_cifar_10_lenet():
             output=None,
             num_stacks=2,
             cells_per_stack=1,
-            stem='conv_5x5_1x1_same',
-            downsample='max_pool_2x2_2x2_valid',
-            cell='conv_5x5_1x1_valid',
+            stem="conv_5x5_1x1_same",
+            downsample="max_pool_2x2_2x2_valid",
+            cell="conv_5x5_1x1_valid",
             final=FullyConnectedNetwork(
                 input=None,
                 output=None,
                 widths=[120, 84],
-                residual_mode='none',
+                residual_mode="none",
                 flatten_input=True,
                 inner=Dense.make(-1, {}),
             ),
@@ -115,14 +115,14 @@ def test_cifar_10_lenet():
             cell_width_scale_factor=1.0,
         ),
         fit={
-            'batch_size': 256,
-            'epochs': 1,
+            "batch_size": 256,
+            "epochs": 1,
         },
-        optimizer={'class': 'Adam', 'learning_rate': 0.0001},
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=50,
             restore_best_weights=True,
@@ -138,5 +138,6 @@ def test_cifar_10_lenet():
 
     run_experiment(experiment)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test_cifar_10_lenet()

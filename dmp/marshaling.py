@@ -207,10 +207,10 @@ from dmp.model.network_info import NetworkInfo
 from dmp.task.experiment.training_experiment.model_saving_config import (
     ModelSavingConfig,
 )
-from dmp.task.experiment.training_experiment.model_state_resume_config import (
-    ModelStateResumeConfig,
+from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+    TrainingExperimentCheckpoint,
 )
-from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 
 register_types(
@@ -222,7 +222,7 @@ register_types(
         MLTask,
         NetworkInfo,
         ModelSavingConfig,
-        ModelStateResumeConfig,
+        TrainingExperimentCheckpoint,
         TrainingEpoch,
         PruningConfig,
     )

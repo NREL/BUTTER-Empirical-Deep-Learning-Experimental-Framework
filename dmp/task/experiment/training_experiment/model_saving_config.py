@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set
 from jobqueue.job import Job
 from dmp.model.model_info import ModelInfo
 from dmp.task.experiment.experiment_task import ExperimentTask
-from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
 from dmp.worker import Worker
 from dmp.worker_task_context import WorkerTaskContext
 
@@ -34,7 +34,7 @@ class ModelSavingConfig:
     def make_save_model_callback(
         self,
         context: WorkerTaskContext,
-        training_epoch: TrainingEpoch,
+        epoch: TrainingEpoch,
         model_info: ModelInfo,
         # checkpoint_interval: float,
     ):
@@ -50,12 +50,10 @@ class ModelSavingConfig:
                 self.save_model_epochs: Set[int] = set(parent.save_model_epochs)
                 self.save_epochs: Set[int] = set(parent.save_epochs)
 
-                self.training_epoch: TrainingEpoch = dataclass.replace(training_epoch)
-                self.training_epoch.model_number -= 1
+                self.epoch: TrainingEpoch = dataclass.replace(epoch)
+                self.epoch.model_number -= 1
 
-                self.last_saved_epoch: TrainingEpoch = dataclass.replace(
-                    self.training_epoch
-                )
+                self.last_saved_epoch: TrainingEpoch = dataclass.replace(self.epoch)
                 self.last_saved_epoch.epoch -= 1
                 self.last_saved_epoch.model_epoch -= 1
 
@@ -69,17 +67,17 @@ class ModelSavingConfig:
                 return self._saved_epochs
 
             def on_train_begin(self, logs=None) -> None:
-                self.training_epoch.count_new_model()
+                self.epoch.count_new_model()
                 if self.parent.save_initial_model:
                     self.save_model()
 
             def on_epoch_end(self, epoch, logs=None) -> None:
-                self.training_epoch.count_new_epoch()
+                self.epoch.count_new_epoch()
 
-                model_epoch = self.training_epoch.model_epoch
+                model_epoch = self.epoch.model_epoch
                 parent = self.parent
                 if (
-                    self.training_epoch.epoch in self.save_epochs
+                    self.epoch.epoch in self.save_epochs
                     or model_epoch in self.save_model_epochs
                 ):
                     # specified epoch
@@ -108,10 +106,10 @@ class ModelSavingConfig:
                     self.save_model()
 
             def save_model(self) -> None:
-                if self.last_saved_epoch == self.training_epoch:
+                if self.last_saved_epoch == self.epoch:
                     return
 
-                self.last_saved_epoch = dataclass.replace(self.training_epoch)
+                self.last_saved_epoch = dataclass.replace(self.epoch)
                 self._saved_epochs.append(dataclass.replace(self.epoch))
                 context.save_model(model_info, self.last_saved_epoch)
 

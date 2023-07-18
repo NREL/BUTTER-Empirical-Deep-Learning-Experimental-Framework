@@ -13,7 +13,9 @@ from dmp.common import keras_type_key, marshal_type_key
 @dataclass
 class ExperimentTask(AExperimentTask):
     batch: str  # the batch of experiments this one belongs to
-    tags: Optional[Dict[str, ParameterValue]]  # extra tags related to this experiment
+    experiment_tags: Optional[
+        Dict[str, ParameterValue]
+    ]  # extra tags related to this experiment
     run_tags: Optional[
         Dict[str, ParameterValue]
     ]  # extra tags related to this run of this experiment

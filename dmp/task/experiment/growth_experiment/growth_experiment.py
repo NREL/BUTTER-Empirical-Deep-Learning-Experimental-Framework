@@ -108,7 +108,7 @@ class GrowthExperiment(TrainingExperiment):
             # )
 
             max_epochs_at_this_iteration = (
-                max_total_epochs - self._get_current_epoch(experiment_history).epoch
+                max_total_epochs - self.get_current_epoch(experiment_history).epoch
             )
 
             # if we topped out at the maximum size, this is the last iteration
@@ -194,7 +194,7 @@ class GrowthExperiment(TrainingExperiment):
             src_model = model
             model_number += 1
             epoch_parameters += (
-                self._get_current_epoch(experiment_history).model_epoch
+                self.get_current_epoch(experiment_history).model_epoch
                 * model.network.num_free_parameters
             )
             continue  # just put this here for better readability

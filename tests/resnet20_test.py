@@ -44,7 +44,7 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
     OverlayTransfer,
 )
 
-sys.path.insert(0, './')
+sys.path.insert(0, "./")
 
 import tensorflow
 import dmp.jobqueue_interface.worker
@@ -75,13 +75,13 @@ worker = Worker(
 
 def run_experiment(experiment):
     results = experiment(worker, Job())
-    print('experiment_attrs\n')
+    print("experiment_attrs\n")
     pprint(results.experiment_attrs)
-    print('experiment_tags\n')
+    print("experiment_tags\n")
     pprint(results.experiment_tags)
-    print('run_data\n', results.run_data)
-    print('run_history\n', results.run_history)
-    print('run_extended_history\n', results.run_extended_history)
+    print("run_data\n", results.run_data)
+    print("run_history\n", results.run_history)
+    print("run_extended_history\n", results.run_extended_history)
     return results
 
 
@@ -105,15 +105,17 @@ def test_resenet20():
     model = LayerFactoryModel(
         layer_factory=SequentialModel(
             [
-                BatchNormBlock(DenseConv.make(
-                    16,
-                    [7, 7],
-                    [2, 2],
-                    {
-                        'padding': 'same',
-                        'use_bias': False,
-                    },
-                )),
+                BatchNormBlock(
+                    DenseConv.make(
+                        16,
+                        [7, 7],
+                        [2, 2],
+                        {
+                            "padding": "same",
+                            "use_bias": False,
+                        },
+                    )
+                ),
                 ResNetBlock(16, 1),
                 ResNetBlock(16, 1),
                 ResNetBlock(16, 1),
@@ -131,36 +133,36 @@ def test_resenet20():
 
     experiment = TrainingExperiment(
         seed=0,
-        batch='test',
-        tags={
-            'model_family': 'resnet',
-            'model_name': f'resnet20',
-            'resnet_depth': 20,
+        batch="test",
+        experiment_tags={
+            "model_family": "resnet",
+            "model_name": f"resnet20",
+            "resnet_depth": 20,
         },
         run_tags={
-            'test': True,
+            "test": True,
         },
-        precision='float32',
+        precision="float32",
         dataset=DatasetSpec(
             # 'mnist',
             # 'keras',
-            'cifar10',
-            'keras',
-            'shuffled_train_test_split',
+            "cifar10",
+            "keras",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
         ),
         model=model,
         fit={
-            'batch_size': 16,
-            'epochs': 1,
+            "batch_size": 16,
+            "epochs": 1,
         },
-        optimizer={'class': 'Adam', 'learning_rate': 0.0001},
+        optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=50,
             restore_best_weights=True,
@@ -177,5 +179,5 @@ def test_resenet20():
     run_experiment(experiment)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_resenet20()

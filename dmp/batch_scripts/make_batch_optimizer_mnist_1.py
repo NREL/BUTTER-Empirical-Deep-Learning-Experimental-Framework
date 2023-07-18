@@ -88,7 +88,7 @@ def main():
         return TrainingExperiment(
             seed=seed,
             batch="optimizer_cnn_mnist_1",
-            tags=tags,
+            experiment_tags=tags,
             run_tags={},
             precision="float32",
             dataset=DatasetSpec(

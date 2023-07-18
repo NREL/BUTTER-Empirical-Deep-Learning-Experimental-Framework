@@ -23,8 +23,8 @@ from dmp.task.experiment.pruning_experiment.pruning_iteration_experiment import 
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
 )
-from dmp.task.experiment.training_experiment.model_state_resume_config import ModelStateResumeConfig
-from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.training_experiment_checkpoint import TrainingExperimentCheckpoint
+from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
@@ -40,7 +40,7 @@ class LTHSeedChangeExperiment(PruningIterationExperiment):
     """
 
     pruning: PruningConfig  # contains run-specific num_iterations...
-    rewind: ModelStateResumeConfig  # run-specific id
+    rewind: TrainingExperimentCheckpoint  # run-specific id
     # TODO: what is run vs experiment attributes here?
 
     @property
@@ -60,7 +60,7 @@ class LTHSeedChangeExperiment(PruningIterationExperiment):
         child = PruningIterationExperiment(**vars(self))
         child.record = dataclass.replace(
             child.record,
-            resume_from=ModelStateResumeConfig(
+            resume_from=TrainingExperimentCheckpoint(
                 run_id=context.id,
                 load_mask=True,
                 load_optimizer=False,

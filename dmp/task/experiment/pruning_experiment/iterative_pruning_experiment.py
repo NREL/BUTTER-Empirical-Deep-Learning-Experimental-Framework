@@ -59,7 +59,7 @@ class IterativePruningExperiment(TrainingExperiment):
         # 2: Initialize pruning mask to m = 1d.
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
-        experiment_history = self._resume_model(
+        experiment_history = self._restore_checkpoint(
             context,
             model,
             self.record.resume_from,

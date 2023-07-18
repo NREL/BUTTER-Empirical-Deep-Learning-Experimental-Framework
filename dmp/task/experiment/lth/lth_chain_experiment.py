@@ -33,10 +33,10 @@ from dmp.task.experiment.training_experiment.experiment_record_settings import (
 from dmp.task.experiment.training_experiment.model_saving_callback import (
     ModelSavingCallback,
 )
-from dmp.task.experiment.training_experiment.model_state_resume_config import (
-    ModelStateResumeConfig,
+from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+    TrainingExperimentCheckpoint,
 )
-from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
@@ -73,6 +73,9 @@ DONE:
     + parent experiment history appending
 
 TODO:
+    + refactor tasks in DB:
+        + record.resume_from -> resume_from
+    + saving model -- do we need model as param in restore_checkpoint?
     + making sure model save & resume behavior is consistent
 
     + move run data into run attrs
@@ -181,7 +184,7 @@ class LTHChainExperiment(TrainingExperiment):
 
         child_tasks = []
         for rewind_epoch in self.rewind_epochs:
-            rewind_config = ModelStateResumeConfig(
+            rewind_config = TrainingExperimentCheckpoint(
                 run_id=context.id,
                 load_mask=False,
                 load_optimizer=True,

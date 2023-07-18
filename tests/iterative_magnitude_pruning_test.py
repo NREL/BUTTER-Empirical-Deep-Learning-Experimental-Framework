@@ -36,7 +36,9 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 from dmp.task.experiment.training_experiment.experiment_record_settings import (
     RunSpecificConfig,
 )
-from dmp.task.experiment.training_experiment.model_saving_config import ModelSavingConfig
+from dmp.task.experiment.training_experiment.model_saving_config import (
+    ModelSavingConfig,
+)
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
@@ -44,12 +46,12 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
     OverlayTransfer,
 )
 
-sys.path.insert(0, './')
+sys.path.insert(0, "./")
 
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
 strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
-credentials = load_credentials('dmp')
+credentials = load_credentials("dmp")
 schema = PostgresSchema(credentials)
 worker = Worker(
     None,
@@ -62,34 +64,34 @@ worker = Worker(
 
 def run_experiment(experiment):
     results = experiment(worker, Job())
-    print('experiment_attrs\n')
+    print("experiment_attrs\n")
     pprint(results.experiment_attrs)
-    print('experiment_tags\n')
+    print("experiment_tags\n")
     pprint(results.experiment_tags)
-    print('run_data\n', results.run_data)
-    print('run_history\n', results.run_history)
-    print('run_extended_history\n', results.run_extended_history)
+    print("run_data\n", results.run_data)
+    print("run_history\n", results.run_history)
+    print("run_extended_history\n", results.run_extended_history)
     return results
 
 
 def test_pruning_experiment():
     experiment = IterativePruningExperiment(
         seed=0,
-        batch='test',
-        tags={
-            'simple': True,
+        batch="test",
+        experiment_tags={
+            "simple": True,
         },
         run_tags={
-            'test': True,
+            "test": True,
         },
-        precision='float32',
+        precision="float32",
         dataset=DatasetSpec(
             # 'titanic',
             # 'pmlb',
-            'GaussianClassificationDataset_2_10_100',
+            "GaussianClassificationDataset_2_10_100",
             # # 'GaussianRegressionDataset_20_100',
-            'synthetic',
-            'shuffled_train_test_split',
+            "synthetic",
+            "shuffled_train_test_split",
             0.2,
             0.05,
             0.0,
@@ -97,34 +99,34 @@ def test_pruning_experiment():
         model=DenseBySize(
             input=None,
             output=None,
-            shape='rectangle',
+            shape="rectangle",
             size=16384,
             depth=4,
-            search_method='integer',
+            search_method="integer",
             inner=Dense.make(
                 -1,
                 {
-                    'activation': 'relu',
-                    'kernel_initializer': 'GlorotUniform',
-                    'kernel_constraint': make_keras_kwcfg(
-                        'ParameterMask',
+                    "activation": "relu",
+                    "kernel_initializer": "GlorotUniform",
+                    "kernel_constraint": make_keras_kwcfg(
+                        "ParameterMask",
                     ),
                 },
             ),
         ),
         fit={
-            'batch_size': 256,
-            'epochs': 5,
+            "batch_size": 256,
+            "epochs": 5,
         },
         optimizer={
-            'class': 'SGD',
-            'learning_rate': 0.01,
-            'momentum': 0.9,
+            "class": "SGD",
+            "learning_rate": 0.01,
+            "momentum": 0.9,
         },
         loss=None,
         early_stopping=make_keras_kwcfg(
-            'EarlyStopping',
-            monitor='val_loss',
+            "EarlyStopping",
+            monitor="val_loss",
             min_delta=0,
             patience=1,
             restore_best_weights=True,
@@ -154,13 +156,12 @@ def test_pruning_experiment():
         pruning_trigger=None,
         max_pruning_epochs=5,
         rewind=True,
-
     )
 
     run_experiment(experiment)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # test_growth_experiment()
     # test_simple()
     # test_mnist()

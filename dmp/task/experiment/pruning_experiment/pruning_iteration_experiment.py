@@ -22,10 +22,10 @@ from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
 )
-from dmp.task.experiment.training_experiment.model_state_resume_config import (
-    ModelStateResumeConfig,
+from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+    TrainingExperimentCheckpoint,
 )
-from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
@@ -39,7 +39,7 @@ class PruningIterationExperiment(TrainingExperiment):
     """ """
 
     prune: PruningConfig  # contains run-specific num_iterations...
-    rewind: ModelStateResumeConfig  # run-specific id
+    rewind: TrainingExperimentCheckpoint  # run-specific id
     # TODO: what is run vs experiment attributes here?
 
     @property
@@ -61,7 +61,9 @@ class PruningIterationExperiment(TrainingExperiment):
         model = self._make_model_from_network(network, metrics)
 
         # load pruning weights
-        experiment_history = self._resume_model(context, model, self.record.resume_from)
+        experiment_history = self._restore_checkpoint(
+            context, model, self.record.resume_from
+        )
 
         # prune network
         self.prune.method.prune(
@@ -94,11 +96,11 @@ class PruningIterationExperiment(TrainingExperiment):
 
             child_task.record = dataclass.replace(
                 child_task.record,
-                resume_from=ModelStateResumeConfig(
+                resume_from=TrainingExperimentCheckpoint(
                     run_id=context.id,
                     load_mask=True,
                     load_optimizer=False,
-                    epoch=self._get_current_epoch(experiment_history),
+                    epoch=self.get_current_epoch(experiment_history),
                 ),
                 parent_run=context.id,
             )

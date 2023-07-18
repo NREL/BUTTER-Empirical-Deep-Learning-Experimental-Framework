@@ -79,7 +79,7 @@ def main():
 
         return GrowthExperiment(
             seed=seed,
-            tags={
+            experiment_tags={
                 "optimizer_butter_growth_1": True,
                 "butter_growth": True,
             },

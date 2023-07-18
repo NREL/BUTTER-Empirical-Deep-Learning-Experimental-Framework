@@ -76,7 +76,7 @@ def main():
 
         return GrowthExperiment(
             seed=seed,
-            tags={
+            experiment_tags={
                 "mnist_cnn": True,
                 "mnist_simple_cnn_growth_v1": True,
             },

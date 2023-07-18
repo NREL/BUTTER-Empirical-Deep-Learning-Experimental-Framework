@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 import collections as collections
 import collections.abc
@@ -6,11 +8,11 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from dmp.task.task_result import TaskResult
 
+from dmp.worker_task_context import WorkerTaskContext
+
 
 @dataclass
 class Task(ABC):
-    from dmp.worker_task_context import WorkerTaskContext
-
     @abstractmethod
     def __call__(
         self,
