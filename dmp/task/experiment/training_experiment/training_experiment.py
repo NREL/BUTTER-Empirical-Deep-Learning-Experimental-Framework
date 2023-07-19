@@ -5,6 +5,7 @@ import itertools
 import random
 from typing import Any, Dict, Iterable, Optional, Set, Type
 import numpy
+import pandas
 import tensorflow
 import tensorflow.keras as keras
 from dmp import common
@@ -40,7 +41,6 @@ from dmp.task.experiment.recorder.test_set_history_recorder import (
     TestSetHistoryRecorder,
 )
 from dmp.task.experiment.recorder.zero_epoch_recorder import ZeroEpochRecorder
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.experiment import Experiment
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
 from dmp.model.model_info import ModelInfo
@@ -141,12 +141,11 @@ class TrainingExperiment(Experiment):
             experiment_history,
         )
 
-    @classmethod
     def summarize(
-        cls: Type["TrainingExperiment"],
-        results: Sequence[ExperimentResultRecord],
+        self,
+        results: List[pandas.DataFrame],
     ) -> ExperimentSummaryRecord:
-        return cls.summarizer.summarize(cls, results)
+        return self.summarizer.summarize(self, results)
 
     def _setup_environment(self, run: RunSpec) -> None:
         seed = run.seed
@@ -641,12 +640,16 @@ class TrainingExperiment(Experiment):
 
         extended_history = self._extract_extended_history(history)
 
-        context.record_result(
-            self,
-            run,
-            history,
-            extended_history,
+        from dmp.parquet_util import make_dataframe_from_dict
+
+        context.record_history(
+            make_dataframe_from_dict(history),
+            make_dataframe_from_dict(extended_history),  # type: ignore
         )
+
+        context.update_summary()
+
+        # self.summarizer.summarize(self)
         # return ExperimentResultRecord(
         #     experiment_attrs,
         #     experiment_tags,
@@ -662,7 +665,14 @@ class TrainingExperiment(Experiment):
         history: Dict[str, Union[List, numpy.ndarray]],
     ) -> Dict[str, Union[List, numpy.ndarray]]:
         keys = self.keys
-        extended_history = {keys.epoch: history[keys.epoch]}
+        extended_history = {
+            key: history[key]
+            for key in (
+                keys.epoch,
+                keys.model_number,
+                keys.model_epoch,
+            )
+        }
         for column in keys.extended_history_columns:
             v = history.pop(column, None)
             if v is not None:
@@ -700,25 +710,25 @@ class TrainingExperiment(Experiment):
         callbacks.append(model_saving_callback)
         return model_saving_callback
 
-    def _save_checkpoint(
-        self,
-        context: Context,
-        run: RunSpec,
-        model: ModelInfo,
-        history: Dict[str, Any],
-    ) -> TrainingExperimentCheckpoint:
-        # + save checkpoint
-        #     + to disk
-        #     + to db
-        self.resume_from = context.save_model(
-            model,
-            epoch,
-        )  # TODO
+    # def _save_checkpoint(
+    #     self,
+    #     context: Context,
+    #     run: RunSpec,
+    #     model: ModelInfo,
+    #     history: Dict[str, Any],
+    # ) -> TrainingExperimentCheckpoint:
+    #     # + save checkpoint
+    #     #     + to disk
+    #     #     + to db
+    #     self.resume_from = context.save_model(
+    #         model,
+    #         epoch,
+    #     )  # TODO
 
-        # + save history to db
+    #     # + save history to db
 
-        # + update Job & Task to resume on failure
-        # + add table to track job/task execution history?
-        context.checkpoint_task(model, epoch, history)
+    #     # + update Job & Task to resume on failure
+    #     # + add table to track job/task execution history?
+    #     context.checkpoint_task(model, epoch, history)
 
-        return self.resume_from
+    #     return self.resume_from

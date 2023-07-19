@@ -8,8 +8,8 @@ from dmp.postgres_interface.element.table import Table
 class HistoryTable(Table):
     id: Column = Column("id", "uuid")
     experiment_id: Column = Column("experiment_id", "uuid")
-    run_history: Column = Column("run_history", "bytea")
-    extended_history: Column = Column("run_extended_history", "bytea")
+    history: Column = Column("history", "bytea")
+    extended_history: Column = Column("extended_history", "bytea")
 
     def __init__(self) -> None:
         super().__init__("history")

@@ -1,4 +1,5 @@
-from typing import Dict, Iterable, Sequence, Tuple, Type, Union, List
+import io
+from typing import Dict, Iterable, Optional, Sequence, Tuple, Type, Union, List
 import pandas
 import pyarrow
 from numpy import issubdtype, ndarray
@@ -54,6 +55,54 @@ def make_pyarrow_table_from_dataframe(
         [str(column) for column in columns],
         [to_numpy(column) for column in columns],
     )
+
+
+def convert_dataframe_to_bytes(
+    dataframe: Optional[pandas.DataFrame],
+) -> Optional[bytes]:
+    if dataframe is None:
+        return None
+
+    # for column in dataframe.columns:
+    #     print(f'col: {column} type: {dataframe[column].dtype} nptype: {dataframe[column].to_numpy().dtype} ')
+
+    # Must do this to avoid a bug in pyarrow reading nulls in
+    # byte stream split columns.
+    # see https://github.com/apache/arrow/issues/28737
+    # and https://issues.apache.org/jira/browse/ARROW-13024
+    # for c in use_byte_stream_split:
+    #     dataframe[c].fillna(value=numpy.nan, inplace=True)
+
+    # print(f'convert_dataframe_to_bytes')
+    # print(dataframe)
+    # print([dataframe[c].to_numpy().dtype for c in dataframe.columns])
+
+    table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
+
+    data = None
+    with io.BytesIO() as buffer:
+        write_parquet_table(
+            table,
+            buffer,
+            use_byte_stream_split,
+        )
+        data = buffer.getvalue()
+
+    # try:
+    #     df = self.convert_bytes_to_dataframe(data)
+    # except Exception as e:
+    #     print(table, flush=True)
+    #     raise e
+    return data
+
+
+def convert_bytes_to_dataframe(
+    data: Optional[bytes],
+) -> Optional[pandas.DataFrame]:
+    if data is None:
+        return None
+    with io.BytesIO(data) as buffer:
+        return read_parquet_table(buffer).to_pandas()
 
 
 def make_dataframe_from_dict(data: Dict[str, Iterable]) -> pandas.DataFrame:

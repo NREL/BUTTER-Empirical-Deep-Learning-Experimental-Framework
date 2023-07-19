@@ -3,15 +3,15 @@ CREATE TABLE IF NOT EXISTS history
 (
 	run_id uuid NOT NULL PRIMARY KEY,
     experiment_id uuid NOT NULL,
-    run_history bytea,
-    run_extended_history bytea
+    history bytea,
+    extended_history bytea
 );
 
 ALTER TABLE history
-    ALTER COLUMN run_history SET STORAGE PLAIN;
+    ALTER COLUMN history SET STORAGE PLAIN;
 
 ALTER TABLE history
-    ALTER COLUMN run_extended_history SET STORAGE EXTERNAL;
+    ALTER COLUMN extended_history SET STORAGE EXTERNAL;
 
 
 CREATE INDEX on history using btree (experiment_id);

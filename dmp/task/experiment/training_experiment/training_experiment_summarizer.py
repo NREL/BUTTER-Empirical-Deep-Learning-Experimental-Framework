@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from itertools import chain
-from typing import Any, Iterable, Sequence, Set, Type
+from typing import Any, Iterable, Sequence, Set, Type, List
 from numbers import Number
 
 import numpy
@@ -11,6 +13,13 @@ from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecor
 from dmp.task.experiment.training_experiment.training_experiment_keys import (
     TrainingExperimentKeys,
 )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dmp.task.experiment.training_experiment.training_experiment import (
+        TrainingExperiment,
+    )
 
 for k, v in {
     "display.max_rows": 9000,
@@ -24,17 +33,19 @@ for k, v in {
 class TrainingExperimentSummarizer:
     def summarize(
         self,
-        cls: Type["TrainingExperiment"],
-        results: Sequence[ExperimentResultRecord],
+        experiment: TrainingExperiment,
+        results: List[pandas.DataFrame],
     ) -> ExperimentSummaryRecord:
-        keys: TrainingExperimentKeys = cls.keys
+        keys: TrainingExperimentKeys = experiment.keys
         sources = []
-        for i, r in enumerate(results):
-            run_history = r.run_history
+        for i, run_history in enumerate(results):
             run_history[keys.run] = i
             sources.append(run_history)
+        num_sources = len(sources)
         history = pandas.concat(sources, ignore_index=True, axis=0)
-        runs = numpy.arange(len(sources))
+        runs = numpy.arange(num_sources)
+        del sources
+        del results
 
         # remove duplicate loss columns
         for metric in keys.loss_metrics:
@@ -81,21 +92,24 @@ class TrainingExperimentSummarizer:
         )
         history.loc[(slice(None), selected_epochs), keys.canonical_epoch] = True
 
-        epoch_subset = self._summarize_epoch_subset(cls, history, selected_epochs)
+        epoch_subset = self._summarize_epoch_subset(
+            experiment, history, selected_epochs
+        )
         # print(epoch_subset.describe())
         # print(epoch_subset)
 
         # remove epoch start times from summary
         if keys.epoch_start_time_ms in history:
             del history[keys.epoch_start_time_ms]
-        by_epoch = self._summarize_by_epoch(cls, history, selected_epochs)
+        by_epoch = self._summarize_by_epoch(experiment, history, selected_epochs)
 
         # print(by_epoch.head(200))
         # print(by_epoch.describe())
 
-        by_loss = self._summarize_by_loss(cls, runs, history)
+        by_loss = self._summarize_by_loss(experiment, runs, history)
 
         return ExperimentSummaryRecord(
+            num_sources,
             by_epoch,
             by_loss,
             None,
@@ -120,16 +134,16 @@ class TrainingExperimentSummarizer:
 
     def _summarize_by_epoch(
         self,
-        cls: Type["TrainingExperiment"],
+        experiment: TrainingExperiment,
         history: pandas.DataFrame,
         selected_epochs: numpy.ndarray,
     ) -> pandas.DataFrame:
-        keys: TrainingExperimentKeys = cls.keys
+        keys: TrainingExperimentKeys = experiment.keys
         epoch_samples = history.loc[(slice(None), selected_epochs), :]
 
         skip_set = {keys.run, keys.epoch}
         by_epoch = self._summarize_group(
-            cls,
+            experiment,
             epoch_samples.groupby(keys.epoch, sort=True),
             keys.epoch,
             {k for k in keys.simple_summarize_keys if k not in skip_set},
@@ -140,11 +154,11 @@ class TrainingExperimentSummarizer:
 
     def _summarize_epoch_subset(
         self,
-        cls: Type["TrainingExperiment"],
+        experiment: TrainingExperiment,
         history: pandas.DataFrame,
         selected_epochs: numpy.ndarray,
     ) -> pandas.DataFrame:
-        keys: TrainingExperimentKeys = cls.keys
+        keys: TrainingExperimentKeys = experiment.keys
 
         run_groups = history.groupby(keys.run)
         selection = [history.loc[(slice(None), selected_epochs), :].index.values]
@@ -166,11 +180,11 @@ class TrainingExperimentSummarizer:
 
     def _summarize_by_loss(
         self,
-        cls: Type["TrainingExperiment"],
+        experiment: TrainingExperiment,
         runs: numpy.ndarray,
         history: pandas.DataFrame,
     ) -> pandas.DataFrame:
-        keys: TrainingExperimentKeys = cls.keys
+        keys: TrainingExperimentKeys = experiment.keys
         loss_levels = numpy.flip(
             self.make_summary_points(
                 history[keys.test_loss_cmin].groupby(keys.run).min().median(),
@@ -256,7 +270,7 @@ class TrainingExperimentSummarizer:
 
         skip_set = {keys.run, keys.test_loss_cmin}
         by_loss = self._summarize_group(
-            cls,
+            experiment,
             pandas.DataFrame(interpolated_loss_points).groupby(
                 keys.test_loss_cmin, sort=True
             ),
@@ -292,13 +306,13 @@ class TrainingExperimentSummarizer:
 
     def _summarize_group(
         self,
-        cls: Type["TrainingExperiment"],
+        experiment: TrainingExperiment,
         groups: pandas.core.groupby.groupby.GroupBy,
         group_column: str,  #: Union[numpy.ndarray, pandas.Series],
         simple_metrics: Set[str],
         quantile_metrics: Iterable,
     ) -> pandas.DataFrame:
-        keys: TrainingExperimentKeys = cls.keys
+        keys: TrainingExperimentKeys = experiment.keys
         by_loss = pandas.DataFrame(
             {
                 group_column: [group for group, _ in groups],
@@ -344,5 +358,3 @@ class TrainingExperimentSummarizer:
 
 
 summarizer = TrainingExperimentSummarizer()
-
-# from dmp.task.experiment.training_experiment.training_experiment import TrainingExperiment

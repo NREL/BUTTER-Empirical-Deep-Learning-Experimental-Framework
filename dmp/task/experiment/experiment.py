@@ -3,8 +3,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
 from dataclasses import dataclass
 
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
-
 
 # ParameterPrimitive = Union[None, bool, int, float, str]
 # ParameterValue = Union[ParameterPrimitive, List["ParameterValue"]]
@@ -16,6 +14,9 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from dmp.context import Context
+    import pandas
+    from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
+    from dmp.task.experiment.training_experiment.run_spec import RunSpec
 
 
 @dataclass
@@ -32,6 +33,13 @@ class Experiment(ABC):
         context: Context,
         run: RunSpec,
     ) -> None:
+        pass
+
+    @abstractmethod
+    def summarize(
+        self,
+        results: List[pandas.DataFrame],
+    ) -> ExperimentSummaryRecord:
         pass
 
     # def get_parameters(self) -> FlatParameterDict:

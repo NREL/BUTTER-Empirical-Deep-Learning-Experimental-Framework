@@ -1,12 +1,18 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Sequence, Tuple
 from uuid import UUID, uuid4
 
 from typing import TYPE_CHECKING
 
 from jobqueue.connection_manager import ConnectionManager
-from psycopg.sql import SQL
+import pandas
+from psycopg.sql import SQL, Identifier
+from dmp.parquet_util import make_dataframe_from_dict
+
+from dmp.postgres_interface.element.column_group import ColumnGroup
+from dmp.task.run import Run
+from dmp.uuid_tools import object_to_uuid
 
 if TYPE_CHECKING:
     from dmp.task.experiment.experiment import Experiment
@@ -43,6 +49,16 @@ class Context:
     def info(self) -> Dict[str, Any]:
         return self.worker.info
 
+    @property
+    def run(self) -> Run:
+        if not isinstance(self.task, Run):
+            raise TypeError()
+        return self.task
+
+    @property
+    def experiment(self) -> Experiment:
+        return self.run.experiment
+
     def push_tasks(self, tasks: Iterable[Task]) -> None:
         from jobqueue.job import Job
         from dmp.marshaling import marshal
@@ -61,64 +77,35 @@ class Context:
     def push_task(self, task: Task) -> None:
         self.push_tasks((task,))
 
-    def checkpoint_task(
+    def get_experiment_id(self) -> UUID:
+        return object_to_uuid(self.experiment)
+
+    def record_history(
         self,
-        task: TrainingExperiment,
-        model: ModelInfo,
-        experiment_history: Dict[str, Any],
-    ) -> TrainingExperimentCheckpoint:
-        # + save checkpoint
-        #     + to disk
-        #     + to db
-        task.resume_from = self.save_model(
-            model, task.get_current_epoch(experiment_history)
-        )
-
-        # + save history to db
-        self.worker._result_logger.log()
-
-        # + update Job & Task to resume on failure
-        # + add table to track job/task execution history?
-
-        return task.resume_from
-
-    def record_result(
-        self,
-        run: RunSpec,
-        experiment: Experiment,
-        history: dict,
-        extended_history: dict,
+        history: pandas.DataFrame,
+        extended_history: pandas.DataFrame,
     ) -> None:
         if self.schema is not None:
-            with ConnectionManager(self.schema.credentials) as connection:
-                model_table = self.schema.model
-                columns = model_table.columns
-                query = SQL(
-                    """
-    INSERT INTO {history} ( {insert_columns} )
-    SELECT
-    {casting_clause}
-    FROM
-    ( VALUES ({placeholders}) ) AS V ({insert_columns})
-    ON CONFLICT DO NOTHING;
-    """
-                ).format(
-                    model_table=model_table.identifier,
-                    insert_columns=model_table.columns.columns_sql,
-                    casting_clause=columns.casting_sql,
-                    placeholders=columns.placeholders,
-                )
-                print(query)
-                connection.execute(
-                    query,
+            self.schema.record_history(
+                [
                     (
-                        self.id,
-                        epoch.model_number,
-                        epoch.model_epoch,
-                        epoch.epoch,
-                    ),
-                    binary=True,
-                )
+                        self.job.id,
+                        self.get_experiment_id(),
+                        history,
+                        extended_history,
+                    )
+                ]
+            )
+
+    def update_summary(
+        self,
+    ) -> None:
+        if self.schema is not None:
+            experiment_id = self.get_experiment_id()
+            summary = self.experiment.summarize(
+                self.schema.get_experiment_run_histories(experiment_id)
+            )
+            self.schema.store_summary(self.run.experiment, experiment_id, summary)  # type: ignore
 
     def save_model(
         self,
@@ -133,38 +120,10 @@ class Context:
             epoch.model_epoch,
         )
 
-        model_serialization.save_model_data(self.task, model, model_path)
+        model_serialization.save_model_data(self.run, model, model_path)
 
         if self.schema is not None:
-            with ConnectionManager(self.schema.credentials) as connection:
-                model_table = self.schema.model
-                columns = model_table.columns
-                query = SQL(
-                    """
-    INSERT INTO {model_table} ( {insert_columns} )
-    SELECT
-    {casting_clause}
-    FROM
-    ( VALUES ({placeholders}) ) AS V ({insert_columns})
-    ON CONFLICT DO NOTHING;
-    """
-                ).format(
-                    model_table=model_table.identifier,
-                    insert_columns=model_table.columns.columns_sql,
-                    casting_clause=columns.casting_sql,
-                    placeholders=columns.placeholders,
-                )
-                print(query)
-                connection.execute(
-                    query,
-                    (
-                        self.id,
-                        epoch.model_number,
-                        epoch.model_epoch,
-                        epoch.epoch,
-                    ),
-                    binary=True,
-                )
+            self.schema.save_model(self.id, epoch)
 
         return TrainingExperimentCheckpoint(
             self.id,
@@ -172,3 +131,24 @@ class Context:
             True,
             epoch,
         )
+
+    # def checkpoint_task(
+    #     self,
+    #     task: TrainingExperiment,
+    #     model: ModelInfo,
+    #     experiment_history: Dict[str, Any],
+    # ) -> TrainingExperimentCheckpoint:
+    #     # + save checkpoint
+    #     #     + to disk
+    #     #     + to db
+    #     task.resume_from = self.save_model(
+    #         model, task.get_current_epoch(experiment_history)
+    #     )
+
+    #     # + save history to db
+    #     self.worker._result_logger.log()
+
+    #     # + update Job & Task to resume on failure
+    #     # + add table to track job/task execution history?
+
+    #     return task.resume_from

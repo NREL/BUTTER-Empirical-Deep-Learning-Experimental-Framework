@@ -5,19 +5,11 @@ from dmp.postgres_interface.element.column_group import ColumnGroup
 from dmp.postgres_interface.element.table import Table
 
 
-@dataclass(frozen=True)
-class ModelTable(Table):
-    name: str = "model"
+class CheckpointTable(Table):
     run_id: Column = Column("run_id", "uuid")
-    epoch: Column = Column("epoch", "integer")
     model_number: Column = Column("model_number", "integer")
     model_epoch: Column = Column("model_epoch", "integer")
+    epoch: Column = Column("epoch", "integer")
 
-    @property
-    def columns(self) -> AColumnGroup:
-        return ColumnGroup(
-            self.run_id,
-            self.model_number,
-            self.model_epoch,
-            self.epoch,
-        )
+    def __init__(self) -> None:
+        super().__init__("checkpoint")

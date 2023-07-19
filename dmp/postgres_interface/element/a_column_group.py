@@ -14,13 +14,15 @@ if TYPE_CHECKING:
     from dmp.postgres_interface.element.column_group import ColumnGroup
 
 
-class AColumnGroup(Iterable[Column]):
+class AColumnGroup(Iterable["Column"]):
     def __add__(self, other: AColumnGroup) -> ColumnGroup:
         from dmp.postgres_interface.element.column_group import ColumnGroup
 
         return ColumnGroup(self, other)
 
-    def __getitem__(self, key: Union[Column, int]) -> Union[Column, int]:
+    def __getitem__(self, key: Union["Column", int]) -> Union["Column", int]:
+        from dmp.postgres_interface.element.column import Column
+
         if isinstance(key, Column):
             return self.get_index_of(key)
         return self.get_column(key)
@@ -37,7 +39,7 @@ class AColumnGroup(Iterable[Column]):
         return self.columns.__iter__()
 
     @abstractproperty
-    def columns(self) -> Sequence[Column]:
+    def columns(self) -> Sequence["Column"]:
         raise NotImplementedError()
 
     @property
@@ -70,6 +72,9 @@ class AColumnGroup(Iterable[Column]):
     @property
     def placeholders(self) -> Composed:
         return sql_comma.join([sql_placeholder] * len(self.columns))
+
+    def placeholders_for_values(self, num_values: int) -> Composed:
+        return sql_comma.join([SQL("({})").format(self.placeholders)] * num_values)
 
     def of(self, table_name: Identifier) -> Composed:
         return sql_comma.join(

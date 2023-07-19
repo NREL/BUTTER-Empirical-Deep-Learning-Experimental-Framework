@@ -1,32 +1,39 @@
 from dataclasses import dataclass
+from itertools import chain
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 
-import io
-import uuid
-import hashlib
+from uuid import UUID
 from jobqueue.connection_manager import ConnectionManager
-import numpy
 import pandas
 
 # import psycopg
 from psycopg.sql import Identifier, SQL, Composed, Literal
 from psycopg.types.json import Jsonb, Json
-import pyarrow
 import pyarrow.parquet
-from dmp import parquet_util
+from dmp.model.model_info import ModelInfo
+from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
 
-from dmp.parquet_util import make_pyarrow_table_from_dataframe
-from dmp.postgres_interface.attribute_value_type import AttributeValueType
+from dmp.parquet_util import (
+    convert_bytes_to_dataframe,
+    convert_dataframe_to_bytes,
+    make_dataframe_from_dict,
+    make_pyarrow_table_from_dataframe,
+)
 from dmp.postgres_interface.element.column_group import ColumnGroup
 
 from dmp.postgres_interface.postgres_interface_common import json_dump_function
-from dmp.postgres_interface.schema.attr_table import AttrTable
-from dmp.postgres_interface.schema.experiment_summary_table import (
-    ExperimentSummaryTable,
-)
 from dmp.postgres_interface.schema.experiment_table import ExperimentTable
-from dmp.postgres_interface.schema.model_table import ModelTable
+from dmp.postgres_interface.schema.checkpoint_table import CheckpointTable
 from dmp.postgres_interface.schema.history_table import HistoryTable
+from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.experiment.training_experiment.training_experiment import (
+    TrainingExperiment,
+)
+from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+    TrainingExperimentCheckpoint,
+)
+from dmp.task.run import Run
 
 
 class PostgresSchema:
@@ -34,125 +41,268 @@ class PostgresSchema:
 
     experiment_id_column: str
 
-    history: HistoryTable
-    experiment: ExperimentTable
-    model: ModelTable
-    experiment_summary: ExperimentSummaryTable
+    history: HistoryTable = HistoryTable()
+    experiment: ExperimentTable = ExperimentTable()
+    checkpoint: CheckpointTable = CheckpointTable()
 
     log_query_suffix: Composed
-    attribute_map: "PostgresAttrMap"
 
     def __init__(
         self,
         credentials: Dict[str, Any],
     ) -> None:
         super().__init__()
-
         self.credentials = credentials
 
-        self.run = HistoryTable()
-        self.attr = AttrTable()
-        self.experiment = ExperimentTable()
-        self.model = ModelTable()
-        self.experiment_summary = ExperimentSummaryTable()
-
-        # initialize parameter map
-        from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
-
-        self.attribute_map = PostgresAttrMap(self)
-
-    def str_to_uuid(self, target: str) -> uuid.UUID:
-        return uuid.UUID(hashlib.md5(target.encode("utf-8")).hexdigest())
-
-    def json_to_uuid(self, target: Any) -> uuid.UUID:
-        return self.str_to_uuid(json_dump_function(target))
-
-    def make_experiment_id(self, experiment_attrs: Iterable[int]) -> uuid.UUID:
-        return self.str_to_uuid("{" + ",".join(str(i) for i in experiment_attrs) + "}")
-
-    def convert_dataframe_to_bytes(
+    def record_history(
         self,
-        dataframe: Optional[pandas.DataFrame],
-    ) -> Optional[bytes]:
-        if dataframe is None:
-            return None
+        results: Iterable[Tuple[UUID, UUID, pandas.DataFrame, pandas.DataFrame]],
+    ) -> None:
+        from dmp.marshaling import marshal
 
-        # for column in dataframe.columns:
-        #     print(f'col: {column} type: {dataframe[column].dtype} nptype: {dataframe[column].to_numpy().dtype} ')
-
-        # Must do this to avoid a bug in pyarrow reading nulls in
-        # byte stream split columns.
-        # see https://github.com/apache/arrow/issues/28737
-        # and https://issues.apache.org/jira/browse/ARROW-13024
-        # for c in use_byte_stream_split:
-        #     dataframe[c].fillna(value=numpy.nan, inplace=True)
-
-        # print(f'convert_dataframe_to_bytes')
-        # print(dataframe)
-        # print([dataframe[c].to_numpy().dtype for c in dataframe.columns])
-
-        table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
-
-        data = None
-        with io.BytesIO() as buffer:
-            parquet_util.write_parquet_table(
-                table,
-                buffer,
-                use_byte_stream_split,
+        # prepare histories:
+        prepared_results = [
+            (
+                run_id,
+                experiment_id,
+                convert_dataframe_to_bytes(history),
+                convert_dataframe_to_bytes(extended_history),
             )
-            data = buffer.getvalue()
+            for run_id, experiment_id, history, extended_history in results
+        ]
 
-        # try:
-        #     df = self.convert_bytes_to_dataframe(data)
-        # except Exception as e:
-        #     print(table, flush=True)
-        #     raise e
-        return data
-
-    def convert_bytes_to_dataframe(
-        self,
-        data: Optional[bytes],
-    ) -> Optional[pandas.DataFrame]:
-        if data is None:
-            return None
-        with io.BytesIO(data) as buffer:
-            return parquet_util.read_parquet_table(buffer).to_pandas()
-
-    def get_run_history(
-        self,
-        run_id: uuid.UUID,
-    ) -> Optional[pandas.DataFrame]:
-        run = self.run
+        history_table = self.history
+        input_colums = ColumnGroup(
+            history_table.id,
+            history_table.experiment_id,
+            history_table.run_history,
+            history_table.extended_history,
+        )
 
         query = SQL(
             """
+INSERT INTO {history_table} ( {input_colums} )
 SELECT
-    {run_history}
+{casting_clause}
 FROM
-    {run}
+( VALUES {input_placeholders} ) AS {input_table} ({input_colums})
+ON CONFLICT DO NOTHING
+;"""
+        ).format(
+            history_table=history_table.identifier,
+            input_colums=input_colums.identifiers,
+            casting_clause=input_colums.casting_sql,
+            input_placeholders=input_colums.placeholders_for_values(
+                len(prepared_results)
+            ),
+            input_table=Identifier("input_table"),
+        )
+        print(query)
+
+        with ConnectionManager(self.credentials) as connection:
+            connection.execute(
+                query,
+                tuple(chain(*prepared_results)),
+                binary=True,
+            )
+
+    def get_history(
+        self,
+        run_id: UUID,
+    ) -> Optional[pandas.DataFrame]:
+        history_table = self.history
+        columns = ColumnGroup(
+            history_table.history,
+            history_table.extended_history,
+        )
+        query = SQL(
+            """
+SELECT
+    {columns}
+FROM
+    {history_table}
 WHERE
-    {run}.{run_id_column} = {run_id_value}
+    {history_table}.{id} = {run_id_value}
 LIMIT 1
 ;"""
         ).format(
-            run_history=run.run_history.identifier,
-            run=run.identifier,
-            run_id_column=run.run_id.identifier,
-            run_id_value=run_id,
+            columns=columns.identifiers,
+            history_table=history_table.identifier,
+            id=history_table.id.identifier,
+            run_id_value=Literal(run_id),
         )
+
+        history_bytes = None
+        extended_history_bytes = None
         with ConnectionManager(self.credentials) as connection:
             with connection.cursor(binary=True) as cursor:
                 cursor.execute(query)
                 row = cursor.fetchone()
                 if row is None:
                     return None
-                history_df = self.convert_bytes_to_dataframe(row[0])
-                if history_df is None:
-                    return None
+                history_bytes = row[0]
+                extended_history_bytes = row[1]
+
+        history_df = None
+        if history_bytes is not None:
+            history_df = convert_bytes_to_dataframe(history_bytes)
+            if history_df is not None:
                 history_df.sort_values(
                     ["epoch", "model_number", "model_epoch"], inplace=True
                 )
-                return history_df
 
+                if extended_history_bytes is not None:
+                    extended_history_df = convert_bytes_to_dataframe(
+                        extended_history_bytes
+                    )
+                    if extended_history_df is not None:
+                        merge_keys = ["epoch"]
+                        if "model_number" in extended_history_df:
+                            merge_keys.extend(["model_number", "model_epoch"])
 
-from dmp.postgres_interface.postgres_attr_map import PostgresAttrMap
+                        history_df = history_df.merge(
+                            extended_history_df,
+                            left_on=merge_keys,
+                            right_on=merge_keys,
+                            suffixes=(None, "_extended"),
+                        )
+
+        return history_df
+
+    def get_experiment_run_histories(
+        self,
+        experiment_id: UUID,
+    ) -> List[pandas.DataFrame]:
+        history_table = self.history
+        query = SQL(
+            """
+SELECT
+    {run_history}
+FROM
+    {history_table}
+WHERE
+    {experiment_id} = {experiment_id_value}
+    AND {run_history} IS NOT NULL
+;"""
+        ).format(
+            run_history=history_table.run_history.identifier,
+            history_table=history_table.identifier,
+            experiment_id=history_table.experiment_id.identifier,
+            experiment_id_value=Literal(experiment_id),
+        )
+
+        results = []
+        with ConnectionManager(self.credentials) as connection:
+            with connection.cursor(binary=True) as cursor:
+                cursor.execute(query)
+                for row in cursor.fetchall():
+                    results.append(convert_bytes_to_dataframe(row[0]))
+        return results
+
+    def store_summary(
+        self,
+        experiment: TrainingExperiment,
+        experiment_id: UUID,
+        summary: ExperimentSummaryRecord,
+    ) -> None:
+        from dmp.marshaling import marshal
+
+        prepared_values = (
+            experiment_id,
+            marshal.marshal(experiment),
+            summary.num_runs,
+            convert_dataframe_to_bytes(summary.by_epoch),
+            convert_dataframe_to_bytes(summary.by_loss),
+            convert_dataframe_to_bytes(summary.by_progress),
+            convert_dataframe_to_bytes(summary.epoch_subset),
+        )
+
+        experiment_table = self.experiment
+        input_columns = ColumnGroup(
+            experiment_table.experiment_id,
+            experiment_table.experiment,
+            experiment_table.num_runs,
+            experiment_table.by_epoch,
+            experiment_table.by_loss,
+            experiment_table.by_progress,
+            experiment_table.epoch_subset,
+        )
+
+        query = SQL(
+            """
+INSERT INTO {experiment_table} ( {input_columns} )
+SELECT
+{casting_clause}
+FROM
+( VALUES {input_placeholders} ) AS {input_table} ({input_columns})
+ON CONFLICT {experiment_id} DO UPDATE SET {update_clause}
+;"""
+        ).format(
+            experiment_table=experiment_table.identifier,
+            input_columns=input_columns.identifiers,
+            casting_clause=input_columns.casting_sql,
+            input_placeholders=input_columns.placeholders,
+            input_table=Identifier("input_table"),
+            experiment_id=experiment_table.experiment_id.identifier,
+            update_clause=sql_comma.join(
+                (
+                    SQL("{column} = EXCLUDED.{column}").format(column=column.identifier)
+                    for column in (
+                        experiment_table.num_runs,
+                        experiment_table.by_epoch,
+                        experiment_table.by_loss,
+                        experiment_table.by_progress,
+                        experiment_table.epoch_subset,
+                    )
+                )
+            ),
+        )
+        print(query)
+
+        with ConnectionManager(self.credentials) as connection:
+            connection.execute(
+                query,
+                prepared_values,
+                binary=True,
+            )
+
+    def save_model(
+        self,
+        run_id: UUID,
+        epoch: TrainingEpoch,
+    ) -> None:
+        with ConnectionManager(self.credentials) as connection:
+            checkpoint_table = self.checkpoint
+            input_colums = ColumnGroup(
+                checkpoint_table.run_id,
+                checkpoint_table.model_number,
+                checkpoint_table.model_epoch,
+                checkpoint_table.epoch,
+            )
+
+            query = SQL(
+                """
+INSERT INTO {checkpoint_table} ( {input_colums} )
+SELECT
+{casting_clause}
+FROM
+( VALUES ({placeholders}) ) AS V ({input_colums})
+ON CONFLICT DO NOTHING;
+"""
+            ).format(
+                checkpoint_table=checkpoint_table.identifier,
+                input_colums=input_colums.columns,
+                casting_clause=input_colums.casting_sql,
+                placeholders=input_colums.placeholders,
+            )
+            print(query)
+            connection.execute(
+                query,
+                (
+                    run_id,
+                    epoch.model_number,
+                    epoch.model_epoch,
+                    epoch.epoch,
+                ),
+                binary=True,
+            )
