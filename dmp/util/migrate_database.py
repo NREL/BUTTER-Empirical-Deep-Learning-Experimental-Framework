@@ -3,8 +3,8 @@ from itertools import chain
 
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
-from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    RunSpecificConfig,
+from dmp.task.experiment.run_spec import (
+    RunSpec,
 )
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -452,7 +452,7 @@ def convert_run(
             optimizer=optimizer,
             loss=None,
             early_stopping=None,
-            record=RunSpecificConfig(
+            record=RunSpec(
                 post_training_metrics=False,
                 times=False,
                 model=None,
@@ -592,7 +592,7 @@ def convert_run(
             worker_info[key] = l
             worker_info["num_" + key] = num
 
-        result_record = experiment._make_result_record(
+        result_record = experiment._record_result(
             worker_info=worker_info,
             job_id=get_cell("job_id"),
             dataset=prepared_dataset,  # type: ignore

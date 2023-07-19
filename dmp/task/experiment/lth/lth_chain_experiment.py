@@ -27,8 +27,8 @@ from dmp.task.experiment.training_experiment import (
     training_experiment_keys,
     training_experiment_summarizer,
 )
-from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    RunSpecificConfig,
+from dmp.task.experiment.run_spec import (
+    RunSpec,
 )
 from dmp.task.experiment.training_experiment.model_saving_callback import (
     ModelSavingCallback,
@@ -54,7 +54,7 @@ from dmp.task.experiment.recorder.test_set_history_recorder import (
 )
 from dmp.task.experiment.recorder.zero_epoch_recorder import ZeroEpochRecorder
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
-from dmp.task.experiment.experiment_task import ExperimentTask
+from dmp.task.experiment.experiment import ExperimentTask
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
 from dmp.model.model_info import ModelInfo
 
@@ -63,7 +63,7 @@ from dmp.model.model_spec import ModelSpec
 from dmp.task.task import Task
 from dmp.task.task_result import TaskResult
 
-from dmp.worker_task_context import WorkerTaskContext
+from dmp.context import Context
 
 
 """
@@ -168,7 +168,7 @@ class LTHChainExperiment(TrainingExperiment):
 
     def __call__(
         self,
-        context: WorkerTaskContext,
+        context: Context,
     ) -> ExperimentResultRecord:
         # NB: must have a compatible save mode
         self.record.save_model_epochs.append(self.rewind_epochs)  # type: ignore

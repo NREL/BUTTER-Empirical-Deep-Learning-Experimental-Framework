@@ -5,23 +5,18 @@ from dmp.postgres_interface.element.column_group import ColumnGroup
 from dmp.postgres_interface.element.table import Table
 
 
-@dataclass(frozen=True)
 class ExperimentTable(Table):
-    name: str = "experiment"
     experiment_id: Column = Column("experiment_id", "uuid")
-    experiment_attrs: Column = Column("experiment_attrs", "integer[]")
-    experiment_tags: Column = Column("experiment_tags", "integer[]")
+    experiment: Column = Column("experiment", "jsonb")
+    most_recent_run: Column = Column("most_recent_run", "timestamptz")
+    num_runs: Column = Column("num_runs", "integer")
+
     old_experiment_id: Column = Column("old_experiment_id", "integer")
 
-    @property
-    def values(self) -> AColumnGroup:
-        return self.old_experiment_id
+    by_epoch: Column = Column("by_epoch", "bytea")
+    by_loss: Column = Column("by_loss", "bytea")
+    by_progress: Column = Column("by_progress", "bytea")
+    epoch_subset: Column = Column("epoch_subset", "bytea")
 
-    @property
-    def all(self) -> AColumnGroup:
-        return ColumnGroup(
-            self.experiment_id,
-            self.experiment_attrs,
-            self.experiment_tags,
-            self.values,
-        )
+    def __init__(self) -> None:
+        super().__init__("experiment2")

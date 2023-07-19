@@ -3,21 +3,30 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable
 from uuid import UUID, uuid4
 
+from typing import TYPE_CHECKING
 
-from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
-    TrainingExperimentCheckpoint,
-)
+from jobqueue.connection_manager import ConnectionManager
+from psycopg.sql import SQL
 
-
-@dataclass
-class WorkerTaskContext:
+if TYPE_CHECKING:
+    from dmp.task.experiment.experiment import Experiment
+    from dmp.task.experiment.training_experiment.run_spec import RunSpec
+    from dmp.task.experiment.training_experiment.training_experiment import (
+        TrainingExperiment,
+    )
     from dmp.worker import Worker
     from dmp.task.task import Task
     from dmp.model.model_info import ModelInfo
     from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
     from jobqueue.job import Job
     from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+    from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+        TrainingExperimentCheckpoint,
+    )
 
+
+@dataclass
+class Context:
     worker: Worker
     job: Job
     task: Task
@@ -73,13 +82,49 @@ class WorkerTaskContext:
 
         return task.resume_from
 
+    def record_result(
+        self,
+        run: RunSpec,
+        experiment: Experiment,
+        history: dict,
+        extended_history: dict,
+    ) -> None:
+        if self.schema is not None:
+            with ConnectionManager(self.schema.credentials) as connection:
+                model_table = self.schema.model
+                columns = model_table.columns
+                query = SQL(
+                    """
+    INSERT INTO {history} ( {insert_columns} )
+    SELECT
+    {casting_clause}
+    FROM
+    ( VALUES ({placeholders}) ) AS V ({insert_columns})
+    ON CONFLICT DO NOTHING;
+    """
+                ).format(
+                    model_table=model_table.identifier,
+                    insert_columns=model_table.columns.columns_sql,
+                    casting_clause=columns.casting_sql,
+                    placeholders=columns.placeholders,
+                )
+                print(query)
+                connection.execute(
+                    query,
+                    (
+                        self.id,
+                        epoch.model_number,
+                        epoch.model_epoch,
+                        epoch.epoch,
+                    ),
+                    binary=True,
+                )
+
     def save_model(
         self,
         model: ModelInfo,
         epoch: TrainingEpoch,
     ) -> TrainingExperimentCheckpoint:
-        from psycopg.sql import SQL, Composed, Identifier
-        from jobqueue.connection_manager import ConnectionManager
         import dmp.keras_interface.model_serialization as model_serialization
 
         model_path = model_serialization.get_path_for_model_savepoint(
@@ -127,8 +172,3 @@ class WorkerTaskContext:
             True,
             epoch,
         )
-
-
-from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment,
-)

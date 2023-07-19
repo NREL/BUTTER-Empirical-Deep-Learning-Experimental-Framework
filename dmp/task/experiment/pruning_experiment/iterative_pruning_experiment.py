@@ -22,7 +22,7 @@ from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
-from dmp.worker_task_context import WorkerTaskContext
+from dmp.context import Context
 
 
 @dataclass
@@ -44,7 +44,7 @@ class IterativePruningExperiment(TrainingExperiment):
 
     def __call__(
         self,
-        context: WorkerTaskContext,
+        context: Context,
     ) -> ExperimentResultRecord:
         # http://proceedings.mlr.press/v119/frankle20a/frankle20a.pdf Algorithim 2
 
@@ -52,14 +52,14 @@ class IterativePruningExperiment(TrainingExperiment):
             self.pruning_trigger = self.early_stopping
 
         # tensorflow.config.optimizer.set_jit(True)
-        self._set_random_seeds()
+        self._setup_environment()
         dataset, metrics = self._load_and_prepare_dataset()
 
         # 1: Create a network with randomly initialization W0 ∈ Rd.
         # 2: Initialize pruning mask to m = 1d.
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
-        experiment_history = self._restore_checkpoint(
+        experiment_history = self._try_restore_checkpoint(
             context,
             model,
             self.record.resume_from,
@@ -123,7 +123,7 @@ class IterativePruningExperiment(TrainingExperiment):
                 )
 
         # 7: Return Wk, m
-        return self._make_result_record(
+        return self._record_result(
             context,
             dataset,
             model.network,

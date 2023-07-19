@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 from dataclasses import dataclass
 from psycopg.sql import Identifier, SQL, Composed, Literal
@@ -18,14 +19,13 @@ class Column(AColumnGroup, Identifiable):
     def columns(self) -> Sequence["Column"]:
         return (self,)
 
-    def __getitem__(self, key: Union["Column", int]) -> Union["Column", int]:
-        if key == 0:
-            return self
-        if key == self:
-            return 0
-        raise KeyError()
+    def get_index_of(self, key: Column) -> int:
+        return 0
 
-    def column(self, key: Union[str, int]) -> "Column":
+    def get_column(self, index: int) -> Column:
+        return self
+
+    def column(self, key: Union[str, int]) -> Column:
         if key != 0 and key != self.name:
             raise KeyError()
         return self

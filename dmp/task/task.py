@@ -5,24 +5,23 @@ import collections as collections
 import collections.abc
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from uuid import UUID
 
 from dmp.task.task_result import TaskResult
 
-from dmp.worker_task_context import WorkerTaskContext
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dmp.context import Context
 
 
-@dataclass
 class Task(ABC):
     @abstractmethod
     def __call__(
         self,
-        context: WorkerTaskContext,
+        context: Context,
     ) -> TaskResult:
         pass
-
-    @property
-    def version(self) -> int:
-        return 1
 
     def summary(self) -> None:
         """

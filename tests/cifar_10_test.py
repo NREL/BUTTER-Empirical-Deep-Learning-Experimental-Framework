@@ -21,8 +21,8 @@ from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import 
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    RunSpecificConfig,
+from dmp.task.experiment.run_spec import (
+    RunSpec,
 )
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
@@ -127,7 +127,7 @@ def test_cifar_10_lenet():
             patience=50,
             restore_best_weights=True,
         ),
-        record=RunSpecificConfig(
+        record=RunSpec(
             post_training_metrics=True,
             times=True,
             model=None,

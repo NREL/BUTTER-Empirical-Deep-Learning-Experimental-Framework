@@ -40,10 +40,10 @@ from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import 
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    RunSpecificConfig,
+from dmp.task.experiment.run_spec import (
+    RunSpec,
 )
-from dmp.task.experiment.training_experiment.model_saving_config import (
+from dmp.task.experiment.model_saving.model_saving_config import (
     ModelSavingConfig,
 )
 from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
@@ -164,7 +164,7 @@ def test_mnist_lenet():
             patience=50,
             restore_best_weights=True,
         ),
-        record=RunSpecificConfig(
+        record=RunSpec(
             post_training_metrics=True,
             times=True,
             model=None,
@@ -254,7 +254,7 @@ def test_resume():
             patience=50,
             restore_best_weights=True,
         ),
-        record=RunSpecificConfig(
+        record=RunSpec(
             post_training_metrics=True,
             times=True,
             model=None,

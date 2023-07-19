@@ -15,12 +15,13 @@ class ColumnGroup(AColumnGroup):
         self._columns = tuple(chain(*groups))
         self._index = None
 
-    def __getitem__(self, key: Union[Column, int]) -> Union[Column, int]:
-        if isinstance(key, Column):
-            if self._index is None:
-                self._index = {column: i for i, column in enumerate(self._columns)}
-            return self._index[key]
-        return self._columns[key]
+    def get_index_of(self, key: Column) -> int:
+        if self._index is None:
+            self._index = {column: i for i, column in enumerate(self._columns)}
+        return self._index[key]
+
+    def get_column(self, index: int) -> Column:
+        return self._columns[index]
 
     @property
     def columns(self) -> Sequence[Column]:

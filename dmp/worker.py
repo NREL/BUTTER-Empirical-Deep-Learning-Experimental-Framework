@@ -47,7 +47,7 @@ class Worker:
         from dmp.marshaling import marshal
         from dmp.task.task import Task
         from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
-        from dmp.worker_task_context import WorkerTaskContext
+        from dmp.context import Context
 
         """
         + save resume task
@@ -66,7 +66,7 @@ class Worker:
 
         # run task
         with self.strategy.scope():
-            result = task(WorkerTaskContext(self, job, task))
+            result = task(Context(self, job, task))
 
         # log task run
         if isinstance(result, ExperimentResultRecord):

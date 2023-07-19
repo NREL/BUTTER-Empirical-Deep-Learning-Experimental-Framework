@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 from itertools import chain
 from abc import ABC, abstractproperty, abstractmethod
@@ -5,22 +7,37 @@ from psycopg.sql import Identifier, SQL, Composed, Literal
 from psycopg.types.json import Jsonb, Json
 from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
 
+from typing import TYPE_CHECKING
 
-class AColumnGroup(Iterable["Column"]):
-    def __add__(self, other: "AColumnGroup") -> "ColumnGroup":
+if TYPE_CHECKING:
+    from dmp.postgres_interface.element.column import Column
+    from dmp.postgres_interface.element.column_group import ColumnGroup
+
+
+class AColumnGroup(Iterable[Column]):
+    def __add__(self, other: AColumnGroup) -> ColumnGroup:
         from dmp.postgres_interface.element.column_group import ColumnGroup
 
         return ColumnGroup(self, other)
 
+    def __getitem__(self, key: Union[Column, int]) -> Union[Column, int]:
+        if isinstance(key, Column):
+            return self.get_index_of(key)
+        return self.get_column(key)
+
     @abstractmethod
-    def __getitem__(self, key: Union["Column", int]) -> Union["Column", int]:
-        raise NotImplementedError()
+    def get_index_of(self, key: Column) -> int:
+        pass
+
+    @abstractmethod
+    def get_column(self, index: int) -> Column:
+        pass
 
     def __iter__(self):
         return self.columns.__iter__()
 
     @abstractproperty
-    def columns(self) -> Sequence["Column"]:
+    def columns(self) -> Sequence[Column]:
         raise NotImplementedError()
 
     @property
@@ -44,8 +61,8 @@ class AColumnGroup(Iterable["Column"]):
         return sql_comma.join(
             (
                 SQL("{}::{}").format(
-                    Identifier(column.name), SQL(column.type_name)
-                )  # type: ignore
+                    Identifier(column.name), SQL(column.type_name)  # type: ignore
+                )
                 for column in self.columns
             )
         )
@@ -82,7 +99,3 @@ class AColumnGroup(Iterable["Column"]):
                 pass
             result.append(value)
         return result
-
-
-# from dmp.postgres_interface.element.column import Column
-# from dmp.postgres_interface.element.column_group import ColumnGroup

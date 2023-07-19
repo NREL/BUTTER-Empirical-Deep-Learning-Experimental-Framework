@@ -2,16 +2,13 @@ from dataclasses import dataclass
 import math
 from typing import Any, Dict, List, Optional, Sequence, Set
 
-from jobqueue.job import Job
 from dmp.model.model_info import ModelInfo
-from dmp.task.experiment.experiment_task import ExperimentTask
-from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
-from dmp.worker import Worker
-from dmp.worker_task_context import WorkerTaskContext
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.context import Context
 
 
 @dataclass
-class ModelSavingConfig:
+class ModelSavingSpec:
     """
     Saves every fixed_interval steps, up to the fixed_threshold step, and then saves every exponential_rate ^ i steps, where i is a positive integer and exponential_rate ^ i >= fixed_threshold.
     To only save initial and/or final models, set fixed_threshold = 0, and exponential_rate = 0.0.
@@ -33,20 +30,20 @@ class ModelSavingConfig:
 
     def make_save_model_callback(
         self,
-        context: WorkerTaskContext,
+        context: Context,
         epoch: TrainingEpoch,
         model_info: ModelInfo,
         # checkpoint_interval: float,
     ):
         import time
-        from dmp.task.experiment.training_experiment.model_saving_callback import (
+        from dmp.task.experiment.model_saving.model_saving_callback import (
             ModelSavingCallback,
         )
 
         class SaveCallback(ModelSavingCallback):
-            def __init__(self, parent: ModelSavingConfig):
+            def __init__(self, parent: ModelSavingSpec):
                 super().__init__()
-                self.parent: ModelSavingConfig = parent
+                self.parent: ModelSavingSpec = parent
                 self.save_model_epochs: Set[int] = set(parent.save_model_epochs)
                 self.save_epochs: Set[int] = set(parent.save_epochs)
 

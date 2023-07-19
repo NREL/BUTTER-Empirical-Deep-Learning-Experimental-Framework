@@ -16,7 +16,7 @@ from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 import dmp.keras_interface.access_model_parameters as access_model_parameters
-from dmp.task.experiment.experiment_task import ExperimentTask
+from dmp.task.experiment.experiment import ExperimentTask
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
@@ -31,7 +31,7 @@ from dmp.task.experiment.training_experiment.training_experiment import (
 )
 from dmp.task.task import Task
 from dmp.worker import Worker
-from dmp.worker_task_context import WorkerTaskContext
+from dmp.context import Context
 
 
 @dataclass
@@ -48,20 +48,20 @@ class PruningIterationExperiment(TrainingExperiment):
 
     def __call__(
         self,
-        context: WorkerTaskContext,
+        context: Context,
         new_seed: bool = False,
     ) -> ExperimentResultRecord:
         # NB: must have a compatible save mode
         self.record.save_trained_model = True  # type: ignore
 
         # tensorflow.config.optimizer.set_jit(True)
-        self._set_random_seeds()
+        self._setup_environment()
         dataset, metrics = self._load_and_prepare_dataset()
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
 
         # load pruning weights
-        experiment_history = self._restore_checkpoint(
+        experiment_history = self._try_restore_checkpoint(
             context, model, self.record.resume_from
         )
 
@@ -106,7 +106,7 @@ class PruningIterationExperiment(TrainingExperiment):
             )
             context.push_task(child_task)
 
-        return self._make_result_record(
+        return self._record_result(
             context,
             dataset,
             model.network,

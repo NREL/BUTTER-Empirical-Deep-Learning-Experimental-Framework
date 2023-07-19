@@ -587,7 +587,7 @@ def convert_run(
             worker_info[key] = l
             worker_info["num_" + key] = num
 
-        result_record = experiment._make_result_record(
+        result_record = experiment._record_result(
             worker_info=worker_info,
             job_id=get_cell("job_id"),
             dataset=prepared_dataset,  # type: ignore

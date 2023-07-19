@@ -4,6 +4,7 @@ from dmp.keras_interface.keras_utils import (
     register_custom_keras_types,
 )
 from dmp.common import marshal_type_key
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 
 from lmarshal.src.marshal import Marshal
@@ -194,8 +195,8 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 register_types((MagnitudePruner,))
 
 # Other types:
-from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    RunSpecificConfig,
+from dmp.task.experiment.run_spec import (
+    RunSpec,
 )
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.recorder.test_set_history_recorder import (
@@ -204,18 +205,18 @@ from dmp.task.experiment.recorder.test_set_history_recorder import (
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.model.network_info import NetworkInfo
-from dmp.task.experiment.training_experiment.model_saving_config import (
+from dmp.task.experiment.model_saving.model_saving_config import (
     ModelSavingConfig,
 )
 from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
     TrainingExperimentCheckpoint,
 )
-from dmp.task.experiment.training_experiment.epoch import TrainingEpoch
+
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 
 register_types(
     (
-        RunSpecificConfig,
+        RunSpec,
         ExperimentResultRecord,
         TestSetHistoryRecorder,
         DatasetSpec,

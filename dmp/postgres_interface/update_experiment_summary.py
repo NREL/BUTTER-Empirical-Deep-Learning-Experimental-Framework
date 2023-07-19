@@ -19,7 +19,7 @@ from dmp.task.task_result import TaskResult
 from dmp.worker import Worker
 from dmp.postgres_interface.postgres_interface_common import sql_comma
 from dmp.common import flatten, marshal_type_key
-from dmp.worker_task_context import WorkerTaskContext
+from dmp.context import Context
 
 _summarizer_map: Dict[
     str, Callable[[Sequence[ExperimentResultRecord]], ExperimentSummaryRecord]
@@ -40,7 +40,7 @@ class UpdateExperimentSummary(Task):
 
     def __call__(
         self,
-        context: WorkerTaskContext,
+        context: Context,
     ) -> TaskResult:
         num_summaries = 0
         experiment_limit = 512

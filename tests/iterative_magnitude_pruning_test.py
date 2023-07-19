@@ -33,10 +33,10 @@ from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import 
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    RunSpecificConfig,
+from dmp.task.experiment.run_spec import (
+    RunSpec,
 )
-from dmp.task.experiment.training_experiment.model_saving_config import (
+from dmp.task.experiment.model_saving.model_saving_config import (
     ModelSavingConfig,
 )
 from dmp.worker import Worker
@@ -131,7 +131,7 @@ def test_pruning_experiment():
             patience=1,
             restore_best_weights=True,
         ),
-        record=RunSpecificConfig(
+        record=RunSpec(
             post_training_metrics=True,
             times=True,
             model=None,

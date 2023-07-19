@@ -16,7 +16,7 @@ from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 import dmp.keras_interface.access_model_parameters as access_model_parameters
-from dmp.task.experiment.experiment_task import ExperimentTask
+from dmp.task.experiment.experiment import ExperimentTask
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.pruning_experiment.pruning_iteration_experiment import PruningIterationExperiment
 
@@ -30,7 +30,7 @@ from dmp.task.experiment.training_experiment.training_experiment import (
 )
 from dmp.task.task import Task
 from dmp.worker import Worker
-from dmp.worker_task_context import WorkerTaskContext
+from dmp.context import Context
 
 
 @dataclass
@@ -49,7 +49,7 @@ class LTHSeedChangeExperiment(PruningIterationExperiment):
 
     def __call__(
         self,
-        context: WorkerTaskContext,
+        context: Context,
     ) -> ExperimentResultRecord:
         result_record: ExperimentResultRecord = super()(
             context,

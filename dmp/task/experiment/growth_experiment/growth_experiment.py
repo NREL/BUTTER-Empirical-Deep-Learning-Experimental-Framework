@@ -38,7 +38,7 @@ from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
 from dmp.model.model_util import find_closest_network_to_target_size_float
-from dmp.worker_task_context import WorkerTaskContext
+from dmp.context import Context
 
 
 @dataclass
@@ -73,9 +73,9 @@ class GrowthExperiment(TrainingExperiment):
 
     def __call__(
         self,
-        context: WorkerTaskContext,
+        context: Context,
     ) -> ExperimentResultRecord:
-        self._set_random_seeds()
+        self._setup_environment()
         dataset, metrics = self._load_and_prepare_dataset()
 
         goal_network: NetworkInfo = self._make_network(self.model)
@@ -203,7 +203,7 @@ class GrowthExperiment(TrainingExperiment):
             raise RuntimeError(f"No result record generated for task {self}.")
 
         src_model.network.description = goal_network.description
-        return self._make_result_record(
+        return self._record_result(
             context,
             dataset,
             src_model.network,

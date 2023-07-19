@@ -26,7 +26,7 @@ from dmp.postgres_interface.schema.experiment_summary_table import (
 )
 from dmp.postgres_interface.schema.experiment_table import ExperimentTable
 from dmp.postgres_interface.schema.model_table import ModelTable
-from dmp.postgres_interface.schema.run_table import RunTable
+from dmp.postgres_interface.schema.history_table import HistoryTable
 
 
 class PostgresSchema:
@@ -34,8 +34,7 @@ class PostgresSchema:
 
     experiment_id_column: str
 
-    run: RunTable
-    attr: AttrTable
+    history: HistoryTable
     experiment: ExperimentTable
     model: ModelTable
     experiment_summary: ExperimentSummaryTable
@@ -51,7 +50,7 @@ class PostgresSchema:
 
         self.credentials = credentials
 
-        self.run = RunTable()
+        self.run = HistoryTable()
         self.attr = AttrTable()
         self.experiment = ExperimentTable()
         self.model = ModelTable()

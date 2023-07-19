@@ -16,8 +16,8 @@ from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
 )
-from dmp.task.experiment.training_experiment.experiment_record_settings import (
-    RunSpecificConfig,
+from dmp.task.experiment.run_spec import (
+    RunSpec,
 )
 from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import make_keras_kwcfg
@@ -135,7 +135,7 @@ def main():
                 patience=32,
                 restore_best_weights=True,
             ),
-            record=RunSpecificConfig(
+            record=RunSpec(
                 post_training_metrics=True,
                 times=True,
                 model=None,

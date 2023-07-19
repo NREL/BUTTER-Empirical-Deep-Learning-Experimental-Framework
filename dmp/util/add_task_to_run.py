@@ -159,7 +159,7 @@ WHERE
 	AND jsonb_typeof({job_data}.{command}) = 'object'
 ;"""
         ).format(
-            run_columns=run_columns.columns_sql,
+            run_columns=run_columns.of(run.identifier),
             job_data=Identifier("job_data"),
             experiment=experiment.identifier,
             command=Identifier("command"),
@@ -168,7 +168,7 @@ WHERE
             task=run.task.identifier,
             block_size=Literal(block_size),
             run=run.identifier,
-            experiment_id=experiment.experiment_id,
+            experiment_id=experiment.experiment_id.identifier,
             id=Identifier("id"),
             run_id=run.run_id.identifier,
         )
@@ -187,7 +187,19 @@ WHERE
                         experiment_attrs = row[select_columns[experiment_attrs_json]]
                         experiment_tags = row[select_columns[experiment_tags_json]]
 
+                        print("task:")
+                        pprint(task)
+                        print("\nrun data")
+                        pprint(run_data)
+                        print("\nexperiment_attrs")
+                        pprint(experiment_attrs)
+                        print("\nexperiment_tags")
+                        pprint(experiment_tags)
+
                         task["loss"] = experiment_attrs["loss"]
+
+                        if not isinstance(task["model"]["output"], dict):
+                            task["model"]["output"] = {}
                         task["model"]["output"] = task["model"]["inner"]
                         task["model"]["output"]["output_activation"] = experiment_attrs[
                             "model_output_activation"
@@ -198,36 +210,56 @@ WHERE
                         task["model"]["output"]["units"] = experiment_attrs[
                             "model_output_units"
                         ]
+
+                        if not isinstance(task["model"]["input"], dict):
+                            task["model"]["input"] = {}
                         task["model"]["input"]["type"] = experiment_attrs["model_input"]
                         task["model"]["input"]["shape"] = experiment_attrs[
                             "model_input_shape"
                         ]
-                        task["experiment_tags"] = experiment_tags
-                        task["runtime"] = {
-                            "task_version": row[select_columns[run.task_version]],
-                            "slurm_job_id": row[select_columns[run.slurm_job_id]],
-                            "num_nodes": row[select_columns[run.num_nodes]],
-                            "num_cpus": row[select_columns[run.num_cpus]],
-                            "num_gpus": row[select_columns[run.num_gpus]],
-                            "gpu_memory": row[select_columns[run.gpu_memory]],
-                            "host_name": row[select_columns[run.host_name]],
-                            "cpus": run_data["cpus"],
-                            "gpus": run_data["gpus"],
-                            "nodes": run_data["nodes"],
-                            "ml_task": run_data["ml_task"],
-                            "git_hash": run_data["git_hash"],
-                            "platform": run_data["platform"],
-                            "strategy": run_data["strategy"],
-                            "input_shape": run_data["input_shape"],
-                            "output_shape": run_data["output_shape"],
-                            "data_set_size": run_data["data_set_size"],
-                            "test_set_size": run_data["test_set_size"],
-                            "python_version": run_data["python_version"],
-                            "train_set_size": run_data["train_set_size"],
-                            "tensorflow_version": run_data["tensorflow_version"],
-                            "num_free_parameters": run_data["num_free_parameters"],
-                            "validation_set_size": run_data["validation_set_size"],
-                        }
+
+                        et = {}
+                        if "experiment_tags" in task:
+                            if isinstance(task["experiment_tags"], dict):
+                                et.update(task["experiment_tags"])
+                            del task["experiment_tags"]
+                        et.update(experiment_tags)
+                        task["tags"] = et
+
+                        run_config = task["record"]
+                        del task["record"]
+                        task["run_config"] = run_config
+
+                        run_data.update(
+                            {
+                                "task_version": row[select_columns[run.task_version]],
+                                "slurm_job_id": row[select_columns[run.slurm_job_id]],
+                                "num_nodes": row[select_columns[run.num_nodes]],
+                                "num_cpus": row[select_columns[run.num_cpus]],
+                                "num_gpus": row[select_columns[run.num_gpus]],
+                                "gpu_memory": row[select_columns[run.gpu_memory]],
+                                "host_name": row[select_columns[run.host_name]],
+                                "ml_task": experiment_attrs["ml_task"],
+                                "input_shape": experiment_attrs["input_shape"],
+                                "output_shape": experiment_attrs["output_shape"],
+                                "data_set_size": experiment_attrs["data_set_size"],
+                                "test_set_size": experiment_attrs["test_set_size"],
+                                "train_set_size": experiment_attrs["train_set_size"],
+                                "num_free_parameters": experiment_attrs[
+                                    "num_free_parameters"
+                                ],
+                                "validation_set_size": experiment_attrs[
+                                    "validation_set_size"
+                                ],
+                            }
+                        )
+
+                        if "run_tags" in task and isinstance(task["run_tags"], dict):
+                            run_data["tags"] = task["run_tags"]
+                        else:
+                            run_data["tags"] = None
+
+                        task["runtime"] = run_data
 
                         run_updates.append(
                             (
