@@ -102,6 +102,15 @@ class Context:
                 ]
             )
 
+    def update_task(self) -> None:
+        if self.worker is None or self.worker.job_queue is None:
+            return
+
+        from dmp.marshaling import marshal
+
+        self.job.command = marshal.marshal(self.task)
+        self.worker.job_queue.update_job_command(self.job)
+
     def update_summary(
         self,
     ) -> None:
@@ -139,24 +148,3 @@ class Context:
             True,
             epoch,
         )
-
-    # def checkpoint_task(
-    #     self,
-    #     task: TrainingExperiment,
-    #     model: ModelInfo,
-    #     experiment_history: Dict[str, Any],
-    # ) -> TrainingExperimentCheckpoint:
-    #     # + save checkpoint
-    #     #     + to disk
-    #     #     + to db
-    #     task.resume_from = self.save_model(
-    #         model, task.get_current_epoch(experiment_history)
-    #     )
-
-    #     # + save history to db
-    #     self.worker._result_logger.log()
-
-    #     # + update Job & Task to resume on failure
-    #     # + add table to track job/task execution history?
-
-    #     return task.resume_from

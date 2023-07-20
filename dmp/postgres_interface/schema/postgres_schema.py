@@ -8,7 +8,7 @@ import pandas
 
 # import psycopg
 from psycopg.sql import Identifier, SQL, Composed, Literal
-from psycopg.types.json import Jsonb, Json
+from psycopg.types.json import Jsonb
 import pyarrow.parquet
 from dmp.model.model_info import ModelInfo
 from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
@@ -36,7 +36,9 @@ from dmp.task.experiment.training_experiment.training_experiment_checkpoint impo
 from dmp.task.run import Run
 
 from psycopg.types.json import set_json_dumps
+
 set_json_dumps(json_dump_function)
+
 
 class PostgresSchema:
     credentials: Dict[str, Any]
@@ -56,6 +58,33 @@ class PostgresSchema:
         super().__init__()
         self.credentials = credentials
 
+    #     def update_job(self, job, run):
+    #         from dmp.marshaling import marshal
+    #         query = SQL(
+    # """
+    # UPDATE {job_data_table} SET
+    #     {command} = {command_value}
+    #     WHERE
+    #     {job_id} = {job_id_value}
+    # ;"""
+    #         ).format(
+    #             history_table=history_table.identifier,
+    #             input_colums=input_colums.columns_sql,
+    #             casting_clause=input_colums.casting_sql,
+    #             input_placeholders=input_colums.placeholders_for_values(
+    #                 len(results)
+    #             ),
+    #             input_table=Identifier("input_table"),
+    #         )
+    #         print(query)
+
+    #         with ConnectionManager(self.credentials) as connection:
+    #             connection.execute(
+    #                 query,
+    #                 prepared_results,
+    #                 binary=True,
+    #             )
+
     def record_history(
         self,
         results: Sequence[Tuple[UUID, UUID, pandas.DataFrame, pandas.DataFrame]],
@@ -63,15 +92,19 @@ class PostgresSchema:
         from dmp.marshaling import marshal
 
         # prepare histories:
-        prepared_results = list(chain(*(
-            (
-                run_id,
-                experiment_id,
-                convert_dataframe_to_bytes(history),
-                convert_dataframe_to_bytes(extended_history),
+        prepared_results = list(
+            chain(
+                *(
+                    (
+                        run_id,
+                        experiment_id,
+                        convert_dataframe_to_bytes(history),
+                        convert_dataframe_to_bytes(extended_history),
+                    )
+                    for run_id, experiment_id, history, extended_history in results
+                )
             )
-            for run_id, experiment_id, history, extended_history in results
-        )))
+        )
 
         history_table = self.history
         input_colums = ColumnGroup(
@@ -94,9 +127,7 @@ ON CONFLICT DO NOTHING
             history_table=history_table.identifier,
             input_colums=input_colums.columns_sql,
             casting_clause=input_colums.casting_sql,
-            input_placeholders=input_colums.placeholders_for_values(
-                len(results)
-            ),
+            input_placeholders=input_colums.placeholders_for_values(len(results)),
             input_table=Identifier("input_table"),
         )
         print(query)

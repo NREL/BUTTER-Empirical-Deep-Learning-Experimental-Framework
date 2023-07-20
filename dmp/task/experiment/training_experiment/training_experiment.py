@@ -1,4 +1,5 @@
 from __future__ import annotations
+import platform
 import os
 from dataclasses import dataclass
 import itertools
@@ -321,8 +322,12 @@ class TrainingExperiment(Experiment):
         if run_history is None:
             return {}
         run_history = run_history[run_history["epoch"] <= checkpoint.epoch.epoch]
-        run_history = run_history[run_history["model_number"] <= checkpoint.epoch.model_number]
-        run_history = run_history[run_history["model_epoch"] <= checkpoint.epoch.model_epoch]
+        run_history = run_history[
+            run_history["model_number"] <= checkpoint.epoch.model_number
+        ]
+        run_history = run_history[
+            run_history["model_epoch"] <= checkpoint.epoch.model_epoch
+        ]
         return run_history.to_dict(orient="list")  # type: ignore
 
     def _fit_model(
@@ -388,7 +393,9 @@ class TrainingExperiment(Experiment):
         if run.record_post_training_metrics:
             additional_test_sets.append(TestSetInfo(keys.trained, dataset.train))
 
-        history_callbacks.append(TestSetHistoryRecorder(additional_test_sets, timestamp_recorder))
+        history_callbacks.append(
+            TestSetHistoryRecorder(additional_test_sets, timestamp_recorder)
+        )
         callbacks.extend(history_callbacks)
 
         # fit the model
@@ -603,8 +610,94 @@ class TrainingExperiment(Experiment):
         network: NetworkInfo,
         history: Dict[str, Any],
     ) -> None:
-        import platform
+        self._record_history(context, history)
+        self._record_run(
+            context,
+            run,
+            dataset,
+            network,
+        )
+        context.update_summary()
 
+        # self.summarizer.summarize(self)
+        # return ExperimentResultRecord(
+        #     experiment_attrs,
+        #     experiment_tags,
+        #     run_data,
+        #     make_dataframe_from_dict(experiment_history),
+        #     None
+        #     if len(extended_history) == 0
+        #     else make_dataframe_from_dict(extended_history),  # type: ignore
+        # )
+
+    def _save_checkpoint(
+        self,
+        context: Context,
+        run: RunSpec,
+        dataset: PreparedDataset,
+        network: NetworkInfo,
+        history: Dict[str, Any],
+        model: ModelInfo,
+    ) -> TrainingExperimentCheckpoint:
+        # + save checkpoint
+        #     + to disk``
+        #     + to db
+        # + update Job & Task to resume on failure
+        self.resume_from = context.save_model(
+            model,
+            self.get_current_epoch(history),
+        )
+
+        # + save history to db
+        self._record_result(
+            context,
+            run,
+            dataset,
+            network,
+            history,
+        )
+
+        return self.resume_from
+
+    def _record_history(
+        self,
+        context: Context,
+        history: Dict[str, Any],
+    ) -> None:
+        history = history.copy()
+        extended_history = self._extract_extended_history(history)
+
+        context.record_history(
+            make_dataframe_from_dict(history),
+            make_dataframe_from_dict(extended_history),  # type: ignore
+        )
+
+    def _extract_extended_history(
+        self,
+        history: Dict[str, Union[List, numpy.ndarray]],
+    ) -> Dict[str, Union[List, numpy.ndarray]]:
+        keys = self.keys
+        extended_history = {
+            key: history[key]
+            for key in (
+                keys.epoch,
+                keys.model_number,
+                keys.model_epoch,
+            )
+        }
+        for column in keys.extended_history_columns:
+            v = history.pop(column, None)
+            if v is not None:
+                extended_history[column] = v
+        return extended_history
+
+    def _record_run(
+        self,
+        context: Context,
+        run: RunSpec,
+        dataset: PreparedDataset,
+        network: NetworkInfo,
+    ) -> None:
         # update run data
         run.data.update(
             {
@@ -639,46 +732,7 @@ class TrainingExperiment(Experiment):
             }
         )
 
-        extended_history = self._extract_extended_history(history)
-
-        from dmp.parquet_util import make_dataframe_from_dict
-
-        context.record_history(
-            make_dataframe_from_dict(history),
-            make_dataframe_from_dict(extended_history),  # type: ignore
-        )
-
-        context.update_summary()
-
-        # self.summarizer.summarize(self)
-        # return ExperimentResultRecord(
-        #     experiment_attrs,
-        #     experiment_tags,
-        #     run_data,
-        #     make_dataframe_from_dict(experiment_history),
-        #     None
-        #     if len(extended_history) == 0
-        #     else make_dataframe_from_dict(extended_history),  # type: ignore
-        # )
-
-    def _extract_extended_history(
-        self,
-        history: Dict[str, Union[List, numpy.ndarray]],
-    ) -> Dict[str, Union[List, numpy.ndarray]]:
-        keys = self.keys
-        extended_history = {
-            key: history[key]
-            for key in (
-                keys.epoch,
-                keys.model_number,
-                keys.model_epoch,
-            )
-        }
-        for column in keys.extended_history_columns:
-            v = history.pop(column, None)
-            if v is not None:
-                extended_history[column] = v
-        return extended_history
+        context.update_task()
 
     def _make_early_stopping_callback(self) -> Optional[keras.callbacks.EarlyStopping]:
         return make_keras_instance(self.early_stopping)
@@ -710,26 +764,3 @@ class TrainingExperiment(Experiment):
         )
         callbacks.append(model_saving_callback)
         return model_saving_callback
-
-    # def _save_checkpoint(
-    #     self,
-    #     context: Context,
-    #     run: RunSpec,
-    #     model: ModelInfo,
-    #     history: Dict[str, Any],
-    # ) -> TrainingExperimentCheckpoint:
-    #     # + save checkpoint
-    #     #     + to disk
-    #     #     + to db
-    #     self.resume_from = context.save_model(
-    #         model,
-    #         epoch,
-    #     )  # TODO
-
-    #     # + save history to db
-
-    #     # + update Job & Task to resume on failure
-    #     # + add table to track job/task execution history?
-    #     context.checkpoint_task(model, epoch, history)
-
-    #     return self.resume_from
