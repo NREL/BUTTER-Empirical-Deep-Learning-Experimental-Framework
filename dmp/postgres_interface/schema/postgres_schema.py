@@ -35,6 +35,8 @@ from dmp.task.experiment.training_experiment.training_experiment_checkpoint impo
 )
 from dmp.task.run import Run
 
+from psycopg.types.json import set_json_dumps
+set_json_dumps(json_dump_function)
 
 class PostgresSchema:
     credentials: Dict[str, Any]
@@ -56,12 +58,12 @@ class PostgresSchema:
 
     def record_history(
         self,
-        results: Iterable[Tuple[UUID, UUID, pandas.DataFrame, pandas.DataFrame]],
+        results: Sequence[Tuple[UUID, UUID, pandas.DataFrame, pandas.DataFrame]],
     ) -> None:
         from dmp.marshaling import marshal
 
         # prepare histories:
-        prepared_results = [
+        prepared_results = list(chain(*(
             (
                 run_id,
                 experiment_id,
@@ -69,13 +71,13 @@ class PostgresSchema:
                 convert_dataframe_to_bytes(extended_history),
             )
             for run_id, experiment_id, history, extended_history in results
-        ]
+        )))
 
         history_table = self.history
         input_colums = ColumnGroup(
             history_table.id,
             history_table.experiment_id,
-            history_table.run_history,
+            history_table.history,
             history_table.extended_history,
         )
 
@@ -90,10 +92,10 @@ ON CONFLICT DO NOTHING
 ;"""
         ).format(
             history_table=history_table.identifier,
-            input_colums=input_colums.identifiers,
+            input_colums=input_colums.columns_sql,
             casting_clause=input_colums.casting_sql,
             input_placeholders=input_colums.placeholders_for_values(
-                len(prepared_results)
+                len(results)
             ),
             input_table=Identifier("input_table"),
         )
@@ -102,11 +104,11 @@ ON CONFLICT DO NOTHING
         with ConnectionManager(self.credentials) as connection:
             connection.execute(
                 query,
-                tuple(chain(*prepared_results)),
+                prepared_results,
                 binary=True,
             )
 
-    def get_history(
+    def get_run_history(
         self,
         run_id: UUID,
     ) -> Optional[pandas.DataFrame]:
@@ -126,7 +128,7 @@ WHERE
 LIMIT 1
 ;"""
         ).format(
-            columns=columns.identifiers,
+            columns=columns.columns_sql,
             history_table=history_table.identifier,
             id=history_table.id.identifier,
             run_id_value=Literal(run_id),
@@ -177,15 +179,15 @@ LIMIT 1
         query = SQL(
             """
 SELECT
-    {run_history}
+    {history}
 FROM
     {history_table}
 WHERE
     {experiment_id} = {experiment_id_value}
-    AND {run_history} IS NOT NULL
+    AND {history} IS NOT NULL
 ;"""
         ).format(
-            run_history=history_table.run_history.identifier,
+            history=history_table.history.identifier,
             history_table=history_table.identifier,
             experiment_id=history_table.experiment_id.identifier,
             experiment_id_value=Literal(experiment_id),
@@ -209,7 +211,7 @@ WHERE
 
         prepared_values = (
             experiment_id,
-            marshal.marshal(experiment),
+            Jsonb(marshal.marshal(experiment)),
             summary.num_runs,
             convert_dataframe_to_bytes(summary.by_epoch),
             convert_dataframe_to_bytes(summary.by_loss),
@@ -234,12 +236,12 @@ INSERT INTO {experiment_table} ( {input_columns} )
 SELECT
 {casting_clause}
 FROM
-( VALUES {input_placeholders} ) AS {input_table} ({input_columns})
-ON CONFLICT {experiment_id} DO UPDATE SET {update_clause}
+( VALUES ({input_placeholders}) ) AS {input_table} ({input_columns})
+ON CONFLICT ({experiment_id}) DO UPDATE SET {update_clause}
 ;"""
         ).format(
             experiment_table=experiment_table.identifier,
-            input_columns=input_columns.identifiers,
+            input_columns=input_columns.columns_sql,
             casting_clause=input_columns.casting_sql,
             input_placeholders=input_columns.placeholders,
             input_table=Identifier("input_table"),
@@ -271,17 +273,16 @@ ON CONFLICT {experiment_id} DO UPDATE SET {update_clause}
         run_id: UUID,
         epoch: TrainingEpoch,
     ) -> None:
-        with ConnectionManager(self.credentials) as connection:
-            checkpoint_table = self.checkpoint
-            input_colums = ColumnGroup(
-                checkpoint_table.run_id,
-                checkpoint_table.model_number,
-                checkpoint_table.model_epoch,
-                checkpoint_table.epoch,
-            )
+        checkpoint_table = self.checkpoint
+        input_colums = ColumnGroup(
+            checkpoint_table.run_id,
+            checkpoint_table.model_number,
+            checkpoint_table.model_epoch,
+            checkpoint_table.epoch,
+        )
 
-            query = SQL(
-                """
+        query = SQL(
+            """
 INSERT INTO {checkpoint_table} ( {input_colums} )
 SELECT
 {casting_clause}
@@ -289,13 +290,15 @@ FROM
 ( VALUES ({placeholders}) ) AS V ({input_colums})
 ON CONFLICT DO NOTHING;
 """
-            ).format(
-                checkpoint_table=checkpoint_table.identifier,
-                input_colums=input_colums.columns,
-                casting_clause=input_colums.casting_sql,
-                placeholders=input_colums.placeholders,
-            )
-            print(query)
+        ).format(
+            checkpoint_table=checkpoint_table.identifier,
+            input_colums=input_colums.columns_sql,
+            casting_clause=input_colums.casting_sql,
+            placeholders=input_colums.placeholders,
+        )
+        print(query)
+
+        with ConnectionManager(self.credentials) as connection:
             connection.execute(
                 query,
                 (

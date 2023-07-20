@@ -21,9 +21,11 @@ def keras_to_config(target: Any) -> Optional[KerasConfig]:
 
     s = keras.utils.serialize_keras_object(target)
     if isinstance(s, dict):
-        return make_keras_config(s[tensorflow_type_key], s[tensorflow_config_key])
+        return make_keras_config_from_dict(
+            s[tensorflow_type_key], s[tensorflow_config_key]
+        )
     if isinstance(s, str):
-        return make_keras_config(s)
+        return make_keras_config_from_dict(s)
     raise NotImplementedError("Unknown keras serialization format {s}.")
 
 
@@ -65,7 +67,7 @@ def make_keras_instance(
     return factory(*params, **kwargs)
 
 
-def make_keras_config(
+def make_keras_config_from_dict(
     type_name: str,  # the name of the keras class
     params: Optional[KerasConfig] = None,  # the args to pass to the keras constructor
 ) -> KerasConfig:
@@ -87,7 +89,7 @@ def make_keras_config(
     return config
 
 
-def make_keras_kwcfg(type_name: str, **kwargs) -> KerasConfig:
+def keras_kwcfg(type_name: str, **kwargs) -> KerasConfig:
     """
     Makes a configuration dictionary that can be turned into a keras instance
     using make_keras_instance.
@@ -96,7 +98,7 @@ def make_keras_kwcfg(type_name: str, **kwargs) -> KerasConfig:
     key, 'class_name', with value equal to the classname.
     """
 
-    return make_keras_config(type_name, kwargs)
+    return make_keras_config_from_dict(type_name, kwargs)
 
 
 def __make_keras_dispatch_table() -> Dict[str, Callable]:

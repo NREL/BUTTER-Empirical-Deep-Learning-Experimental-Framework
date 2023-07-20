@@ -45,7 +45,10 @@ import tensorflow.keras as keras
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
 
-from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_config
+from dmp.keras_interface.keras_utils import (
+    make_keras_instance,
+    make_keras_config_from_dict,
+)
 from dmp.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder

@@ -8,7 +8,6 @@ import numpy
 import pandas
 import pandas.core.groupby.groupby
 
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.experiment.training_experiment.training_experiment_keys import (
     TrainingExperimentKeys,
@@ -185,15 +184,14 @@ class TrainingExperimentSummarizer:
         history: pandas.DataFrame,
     ) -> pandas.DataFrame:
         keys: TrainingExperimentKeys = experiment.keys
+        min_median = history[keys.test_loss_cmin].groupby(keys.run).min().median()
         loss_levels = numpy.flip(
             self.make_summary_points(
-                history[keys.test_loss_cmin].groupby(keys.run).min().median(),
-                history.loc[(slice(None), slice(0, 1)), :][
-                    keys.test_loss_cmin
-                ].median(),
-                1e-9,
-                1e-11,
-                numpy.log(1.0 / 0.1) / 500,
+                min_median,
+                history[keys.test_loss_cmin].groupby(keys.run).max().median(),
+                1e-5,
+                1e-4,
+                numpy.log(1.0 / 0.1) / 10,
             ).astype(numpy.float32)
         )
 

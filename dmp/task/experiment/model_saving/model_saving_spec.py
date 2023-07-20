@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 from typing import Any, Dict, List, Optional, Sequence, Set
 
@@ -47,10 +47,10 @@ class ModelSavingSpec:
                 self.save_model_epochs: Set[int] = set(parent.save_model_epochs)
                 self.save_epochs: Set[int] = set(parent.save_epochs)
 
-                self.epoch: TrainingEpoch = dataclass.replace(epoch)
+                self.epoch: TrainingEpoch = replace(epoch)
                 self.epoch.model_number -= 1
 
-                self.last_saved_epoch: TrainingEpoch = dataclass.replace(self.epoch)
+                self.last_saved_epoch: TrainingEpoch = replace(self.epoch)
                 self.last_saved_epoch.epoch -= 1
                 self.last_saved_epoch.model_epoch -= 1
 
@@ -106,8 +106,8 @@ class ModelSavingSpec:
                 if self.last_saved_epoch == self.epoch:
                     return
 
-                self.last_saved_epoch = dataclass.replace(self.epoch)
-                self._saved_epochs.append(dataclass.replace(self.epoch))
+                self.last_saved_epoch = replace(self.epoch)
+                self._saved_epochs.append(replace(self.epoch))
                 context.save_model(model_info, self.last_saved_epoch)
 
         return SaveCallback(self)

@@ -45,8 +45,10 @@ def make_pyarrow_table_from_dataframe(
                 elif has_float:
                     array = array.astype(numpy.float32)
                 elif has_int:
-                    array = array.astype(numpy.Int64)
+                    print(f'NULLABLE INT ----------------------------')
+                    array = array.astype(numpy.obj)
                 elif has_bool:
+                    print(f'NULLABLE Bool ----------------------------')
                     array = array.astype(numpy.B)
 
         return array
@@ -60,6 +62,8 @@ def make_pyarrow_table_from_dataframe(
 def convert_dataframe_to_bytes(
     dataframe: Optional[pandas.DataFrame],
 ) -> Optional[bytes]:
+
+    print(f'convert_dataframe_to_bytes\n{dataframe}')
     if dataframe is None:
         return None
 
@@ -78,6 +82,8 @@ def convert_dataframe_to_bytes(
     # print([dataframe[c].to_numpy().dtype for c in dataframe.columns])
 
     table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
+
+    print(f'convert_dataframe_to_bytes : pyarrow:\n{table}')
 
     data = None
     with io.BytesIO() as buffer:
@@ -101,8 +107,50 @@ def convert_bytes_to_dataframe(
 ) -> Optional[pandas.DataFrame]:
     if data is None:
         return None
+
+    import pyarrow.types as types
     with io.BytesIO(data) as buffer:
-        return read_parquet_table(buffer).to_pandas()
+        pqt = read_parquet_table(buffer)
+
+        cols = {}
+        schema = pqt.schema
+        for name in schema.names:
+            field = schema.field(name)
+            _type = field.type
+            column = pqt.column(name)
+
+            pandas_dtype = None
+            if field.nullable:
+                if types.is_integer(_type):
+                    pandas_dtype = pandas.Int64Dtype
+                    if types.is_int8(_type):
+                        pandas_dtype = pandas.Int8Dtype
+                    if types.is_int16(_type):
+                        pandas_dtype = pandas.Int8Dtype
+                    if types.is_int32(_type):
+                        pandas_dtype = pandas.Int8Dtype
+                elif types.is_boolean(_type):
+                    pandas_dtype = pandas.BooleanDtype
+
+                if pandas_dtype is not None:
+                    cols[name] = pandas.Series(pqt.column(name).to_pylist(), dtype=pandas_dtype)
+                else:
+                    cols[name] = pandas.Series(pqt.column(name).to_pylist())
+            else:
+                cols[name] = column.to_numpy()
+
+        df = pandas.DataFrame(cols)
+        print(f'-------------------------------------------------------------------\nconvert_bytes_to_dataframe:\n{pqt}\npandas:\n{df}')
+        return df
+
+        # def type_mapper(pq_dtype):
+        #     if types.is_integer(pq_dtype):
+        #         return pandas.Int64Dtype()
+        #     return None
+        # return read_parquet_table(buffer).to_pandas(
+        #     types_mapper=type_mapper,
+        #     integer_object_nulls=True,
+        # )
 
 
 def make_dataframe_from_dict(data: Dict[str, Iterable]) -> pandas.DataFrame:
@@ -166,11 +214,20 @@ def get_pyarrow_type_mapping(
     values: Union[list, ndarray],
     nan_to_none: bool = True,
 ) -> Tuple[pyarrow.DataType, bool, bool, Union[list, ndarray]]:
+
+    def is_null(v):
+        if v is None:
+            return True
+        if isinstance(v, float):
+            return nan_to_none and numpy.isnan(v)
+
+        return pandas.isna(v)
+
     nullable = False
-    if nan_to_none:
-        nullable = bool(numpy.any(numpy.isnan(values)))
-    if not nullable and not isinstance(values, ndarray):
-        nullable = any((v is None for v in values))
+    nullable = any(
+        is_null(v)
+        for v in values
+    )
 
     use_byte_stream_split = False
 
@@ -186,8 +243,8 @@ def get_pyarrow_type_mapping(
 
     def check_integer():
         nonlocal dst_type, nullable
-        hi = max(filter(lambda v: v is not None, values))
-        lo = min(filter(lambda v: v is not None, values))
+        hi = max(filter(lambda v: not is_null(v), values))
+        lo = min(filter(lambda v: not is_null(v), values))
         if hi < (2**7 - 1) and lo > (-(2**7)):
             dst_type = pyarrow.int8()
         elif hi < (2**15 - 1) and lo > (-(2**15)):

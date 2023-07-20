@@ -12,7 +12,6 @@ from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
 from dmp.postgres_interface.update_experiment_summary_result import (
     UpdateExperimentSummaryResult,
 )
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.task import Task
 from dmp.task.task_result import TaskResult
@@ -21,9 +20,7 @@ from dmp.postgres_interface.postgres_interface_common import sql_comma
 from dmp.common import flatten, marshal_type_key
 from dmp.context import Context
 
-_summarizer_map: Dict[
-    str, Callable[[Sequence[ExperimentResultRecord]], ExperimentSummaryRecord]
-] = {}
+_summarizer_map: Dict[str, Callable] = {}
 
 
 @dataclass

@@ -4,7 +4,7 @@ from uuid import UUID
 
 from traitlets import Any
 
-from dmp.task.experiment.model_saving.model_saving_config import (
+from dmp.task.experiment.model_saving.model_saving_spec import (
     ModelSavingSpec,
 )
 from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (

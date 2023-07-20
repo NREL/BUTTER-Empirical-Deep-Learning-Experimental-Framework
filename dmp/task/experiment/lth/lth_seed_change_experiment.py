@@ -11,7 +11,7 @@ from dmp.common import KerasConfig
 import dmp.keras_interface.model_serialization as model_serialization
 from dmp.layer.layer import Layer
 
-from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_kwcfg
+from dmp.keras_interface.keras_utils import make_keras_instance, keras_kwcfg
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord

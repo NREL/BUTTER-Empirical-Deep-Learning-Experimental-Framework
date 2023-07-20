@@ -15,7 +15,7 @@ from dmp.task.experiment.growth_experiment.scaling_method.scaling_method import 
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
 )
-from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_kwcfg
+from dmp.keras_interface.keras_utils import make_keras_instance, keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment_keys import (
     GrowthExperimentKeys,
 )
@@ -44,7 +44,7 @@ from dmp.context import Context
 @dataclass
 class GrowthExperiment(TrainingExperiment):
     growth_trigger: dict = field(
-        default_factory=lambda: make_keras_kwcfg(
+        default_factory=lambda: keras_kwcfg(
             "EarlyStopping",
             restore_best_weights=True,
             monitor="val_loss",

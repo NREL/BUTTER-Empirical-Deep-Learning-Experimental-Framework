@@ -16,4 +16,3 @@ class ZeroEpochRecorder(TestSetRecorder):
     def on_train_begin(self, logs=None):
         super().on_train_begin(logs=logs)
         self.accumulate_metrics(-1)
-        print(f"ON TRAIN BEGIN ZERO EPOCH")

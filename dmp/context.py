@@ -11,12 +11,13 @@ from psycopg.sql import SQL, Identifier
 from dmp.parquet_util import make_dataframe_from_dict
 
 from dmp.postgres_interface.element.column_group import ColumnGroup
-from dmp.task.run import Run
+
 from dmp.uuid_tools import object_to_uuid
 
 if TYPE_CHECKING:
     from dmp.task.experiment.experiment import Experiment
     from dmp.task.experiment.training_experiment.run_spec import RunSpec
+    from dmp.task.run import Run
     from dmp.task.experiment.training_experiment.training_experiment import (
         TrainingExperiment,
     )
@@ -51,6 +52,8 @@ class Context:
 
     @property
     def run(self) -> Run:
+        from dmp.task.run import Run
+
         if not isinstance(self.task, Run):
             raise TypeError()
         return self.task
@@ -85,6 +88,8 @@ class Context:
         history: pandas.DataFrame,
         extended_history: pandas.DataFrame,
     ) -> None:
+        print(f"record_history\n{history}\nextended:\n{extended_history}")
+
         if self.schema is not None:
             self.schema.record_history(
                 [
@@ -113,6 +118,9 @@ class Context:
         epoch: TrainingEpoch,
     ) -> TrainingExperimentCheckpoint:
         import dmp.keras_interface.model_serialization as model_serialization
+        from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+            TrainingExperimentCheckpoint,
+        )
 
         model_path = model_serialization.get_path_for_model_savepoint(
             self.id,

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 import uuid
@@ -6,12 +7,17 @@ from jobqueue.job import Job
 from jobqueue.job_queue import JobQueue
 from dmp import common
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+
 
 @dataclass
 class Worker:
     _job_queue: JobQueue
     _schema: "PostgresSchema"
-    _result_logger: "ExperimentResultLogger"
+    # _result_logger: "ExperimentResultLogger"
     _strategy: tensorflow.distribute.Strategy
     _info: Dict[str, Any]
     _max_jobs: Optional[int] = None
@@ -46,7 +52,8 @@ class Worker:
     ) -> bool:
         from dmp.marshaling import marshal
         from dmp.task.task import Task
-        from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
+
+        # from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
         from dmp.context import Context
 
         """
@@ -81,5 +88,5 @@ class Worker:
         )
 
 
-from dmp.logging.experiment_result_logger import ExperimentResultLogger
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+# from dmp.logging.experiment_result_logger import ExperimentResultLogger
+# from dmp.postgres_interface.schema.postgres_schema import PostgresSchema

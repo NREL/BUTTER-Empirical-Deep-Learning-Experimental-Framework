@@ -20,7 +20,7 @@ from dmp.task.experiment.run_spec import (
     RunSpec,
 )
 from dmp.worker import Worker
-from dmp.keras_interface.keras_utils import make_keras_kwcfg
+from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
     OverlayTransfer,
@@ -132,7 +132,7 @@ def main():
             },
             optimizer=optimizer,
             loss=None,
-            early_stopping=make_keras_kwcfg(
+            early_stopping=keras_kwcfg(
                 "EarlyStopping",
                 monitor="val_loss",
                 min_delta=0,

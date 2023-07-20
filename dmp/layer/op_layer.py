@@ -1,5 +1,5 @@
 from typing import List, Union
-from dmp.keras_interface.keras_utils import make_keras_config
+from dmp.keras_interface.keras_utils import make_keras_config_from_dict
 from dmp.layer.element_wise_operator_layer import ElementWiseOperatorLayer
 from dmp.layer.layer import Layer, LayerConfig, empty_config, empty_inputs
 
@@ -16,5 +16,5 @@ class OpLayer(Layer):
         config: LayerConfig = empty_config,  # keras class constructor kwargs
         inputs: Union["Layer", List["Layer"]] = empty_inputs,  # inputs to this Layer
     ) -> "OpLayer":
-        config = make_keras_config(type_name, config)
+        config = make_keras_config_from_dict(type_name, config)
         return OpLayer(config, inputs)

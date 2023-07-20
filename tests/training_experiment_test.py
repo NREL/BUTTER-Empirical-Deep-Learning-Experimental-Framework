@@ -1,4 +1,5 @@
 from dmp.context import Context
+from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.marshaling import marshal
 from pprint import pprint
 from dmp.task.experiment.training_experiment.run_spec import RunSpec
@@ -30,31 +31,7 @@ from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
 from dmp.task.run import Run
 from dmp.worker import Worker
 
-sys.path.insert(0, "./")
-
-
-# strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
-worker = Worker(
-    None,
-    None,
-    None,
-    strategy,
-    {},
-)  # type: ignore
-
-
-def run_experiment(run):
-    context = Context(worker, Job(), run)
-    run(context)
-    # print("experiment_attrs\n")
-    # pprint(results.experiment_attrs)
-    # print("experiment_tags\n")
-    # pprint(results.experiment_tags)
-    # print("run_data\n", results.run_data)
-    # print("run_history\n", results.run_history)
-    # print("run_extended_history\n", results.run_extended_history)
-    # return results
+import tests.experiment_test_util as experiment_test_util
 
 
 def test_simple():
@@ -89,15 +66,21 @@ def test_simple():
                 ),
             ),
             fit={
-                "batch_size": 256,
-                "epochs": 5,
+                "batch_size": 32,
+                "epochs": 100,
             },
             optimizer={
                 "class": "Adam",
-                "learning_rate": 0.001,
+                "learning_rate": 0.01,
             },
             loss=None,
-            early_stopping=None,
+            early_stopping=keras_kwcfg(
+                "EarlyStopping",
+                monitor="val_loss",
+                min_delta=0,
+                patience=5,
+                restore_best_weights=True,
+            ),
         ),
         run=RunSpec(
             seed=0,
@@ -111,8 +94,79 @@ def test_simple():
         ),
     )
 
-    run_experiment(run)
+    experiment_test_util.run_experiment(run)
+
+
+def test_mnist_lenet():
+    run = Run(
+        experiment=TrainingExperiment(
+            data={
+                "test": True,
+                "model_family": "lenet",
+                "model_name": "lenet_relu",
+            },
+            precision="float32",
+            dataset=DatasetSpec(
+                "mnist",
+                "keras",
+                "shuffled_train_test_split",
+                0.2,
+                0.05,
+                0.0,
+            ),
+            model=CNNStack(
+                input=None,
+                output=None,
+                num_stacks=2,
+                cells_per_stack=1,
+                stem="conv_5x5_1x1_same",
+                downsample="max_pool_2x2_2x2_valid",
+                cell="conv_5x5_1x1_valid",
+                final=FullyConnectedNetwork(
+                    input=None,
+                    output=None,
+                    widths=[120, 84],
+                    residual_mode="none",
+                    flatten_input=True,
+                    inner=Dense.make(-1, {}),
+                ),
+                stem_width=6,
+                stack_width_scale_factor=16.0 / 6.0,
+                downsample_width_scale_factor=1.0,
+                cell_width_scale_factor=1.0,
+            ),
+            fit={
+                "batch_size": 128,
+                "epochs": 15,
+            },
+            optimizer={
+                "class": "Adam",
+                "learning_rate": 0.01,
+            },
+            loss=None,
+            early_stopping=keras_kwcfg(
+                "EarlyStopping",
+                monitor="val_loss",
+                min_delta=0,
+                patience=2,
+                restore_best_weights=True,
+            ),
+        ),
+        run=RunSpec(
+            seed=0,
+            data={
+                "test": True,
+            },
+            record_post_training_metrics=False,
+            record_times=True,
+            model_saving=None,
+            resume_checkpoint=None,
+        ),
+    )
+
+    experiment_test_util.run_experiment(run)
 
 
 if __name__ == "__main__":
-    test_simple()
+    # test_simple()
+    test_mnist_lenet()

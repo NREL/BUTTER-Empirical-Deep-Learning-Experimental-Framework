@@ -36,7 +36,7 @@ from dmp.task.experiment.run_spec import (
     RunSpec,
 )
 from dmp.worker import Worker
-from dmp.keras_interface.keras_utils import make_keras_kwcfg
+from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
     OverlayTransfer,
@@ -167,7 +167,7 @@ def test_mnist():
         },
         optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
-        early_stopping=make_keras_kwcfg(
+        early_stopping=keras_kwcfg(
             "EarlyStopping",
             monitor="val_loss",
             min_delta=0,
@@ -233,7 +233,7 @@ def test_mnist_lenet():
         },
         optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
-        early_stopping=make_keras_kwcfg(
+        early_stopping=keras_kwcfg(
             "EarlyStopping",
             monitor="val_loss",
             min_delta=0,
@@ -298,7 +298,7 @@ def test_growth_experiment():
             metrics=None,
             resume_from=None,
         ),
-        growth_trigger=make_keras_kwcfg(
+        growth_trigger=keras_kwcfg(
             "ProportionalStopping",
             restore_best_weights=True,
             monitor="val_loss",
@@ -374,7 +374,7 @@ def test_growth_experiment_mnist():
         },
         optimizer=optimizer,
         loss=None,
-        early_stopping=make_keras_kwcfg(
+        early_stopping=keras_kwcfg(
             "EarlyStopping",
             monitor="val_loss",
             min_delta=0,
@@ -388,7 +388,7 @@ def test_growth_experiment_mnist():
             metrics=None,
             resume_from=None,
         ),
-        growth_trigger=make_keras_kwcfg(
+        growth_trigger=keras_kwcfg(
             "ProportionalStopping",
             restore_best_weights=True,
             monitor="val_loss",
@@ -546,7 +546,7 @@ def test_imagenet16():
         },
         optimizer={"class": "Adam", "learning_rate": 0.0001},
         loss=None,
-        early_stopping=make_keras_kwcfg(
+        early_stopping=keras_kwcfg(
             "EarlyStopping",
             monitor="val_loss",
             min_delta=0,
@@ -595,7 +595,7 @@ def test_pruning_experiment():
                 {
                     "activation": "relu",
                     "kernel_initializer": "GlorotUniform",
-                    "kernel_constraint": make_keras_kwcfg(
+                    "kernel_constraint": keras_kwcfg(
                         "ParameterMask",
                     ),
                 },
@@ -611,7 +611,7 @@ def test_pruning_experiment():
             "momentum": 0.9,
         },
         loss=None,
-        early_stopping=make_keras_kwcfg(
+        early_stopping=keras_kwcfg(
             "EarlyStopping",
             monitor="val_loss",
             min_delta=0,

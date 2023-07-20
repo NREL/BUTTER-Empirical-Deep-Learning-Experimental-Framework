@@ -14,8 +14,12 @@ class Table(ColumnGroup, Identifiable):
         self._name = name
 
         super().__init__(
-            *(value for key, value in vars(self) if isinstance(value, Column))
+            *(value for key, value in vars(self).items() if isinstance(value, Column))
         )
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     def get_index_of(self, key: Column) -> int:
         if self._index is None:

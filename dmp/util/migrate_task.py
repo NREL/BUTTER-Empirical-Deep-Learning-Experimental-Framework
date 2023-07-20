@@ -4,7 +4,7 @@ import psycopg
 
 from tensorflow.python import traceback
 
-from dmp.keras_interface.keras_utils import make_keras_config
+from dmp.keras_interface.keras_utils import make_keras_config_from_dict
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -220,7 +220,7 @@ def convert_task(row, connection) -> bool:
             return None
         config = target.copy()
         keras_type = config.pop("type")
-        return make_keras_config(
+        return make_keras_config_from_dict(
             keras_type,
             config,
         )  # type: ignore

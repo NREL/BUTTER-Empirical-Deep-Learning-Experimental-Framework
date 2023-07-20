@@ -33,7 +33,10 @@ from dmp.task.experiment.training_experiment.training_experiment_checkpoint impo
 from dmp.dataset.ml_task import MLTask
 from dmp.dataset.prepared_dataset import PreparedDataset
 
-from dmp.keras_interface.keras_utils import make_keras_instance, make_keras_config
+from dmp.keras_interface.keras_utils import (
+    make_keras_instance,
+    make_keras_config_from_dict,
+)
 from dmp.keras_interface.layer_to_keras import make_keras_model_from_network
 from dmp.layer import *
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
@@ -130,6 +133,7 @@ class TrainingExperiment(Experiment):
             model,
             [self._make_early_stopping_callback()],
             experiment_history=experiment_history,
+            new_model_number=False,
             new_seed=False,
         )
 
@@ -263,12 +267,12 @@ class TrainingExperiment(Experiment):
                 # output['activation'] = make_keras_config(output_activation)
                 output["activation"] = output_activation
             if output.get("kernel_initializer", None) is None:
-                output["kernel_initializer"] = make_keras_config(
+                output["kernel_initializer"] = make_keras_config_from_dict(
                     output_kernel_initializer
                 )
 
         if self.loss is None:
-            self.loss = make_keras_config(loss)
+            self.loss = make_keras_config_from_dict(loss)
 
         return metrics
 
@@ -316,7 +320,9 @@ class TrainingExperiment(Experiment):
         run_history = context.schema.get_run_history(checkpoint.run_id)
         if run_history is None:
             return {}
-        run_history = run_history[run_history["epoch"] <= checkpoint.epoch]
+        run_history = run_history[run_history["epoch"] <= checkpoint.epoch.epoch]
+        run_history = run_history[run_history["model_number"] <= checkpoint.epoch.model_number]
+        run_history = run_history[run_history["model_epoch"] <= checkpoint.epoch.model_epoch]
         return run_history.to_dict(orient="list")  # type: ignore
 
     def _fit_model(
@@ -327,7 +333,7 @@ class TrainingExperiment(Experiment):
         dataset: PreparedDataset,
         model: ModelInfo,
         callbacks: List[Optional[keras.callbacks.Callback]],
-        new_model_number: bool = True,
+        new_model_number: bool,
         epochs: Optional[int] = None,
         experiment_history: Optional[Dict[str, Any]] = None,
         new_seed=False,
@@ -359,6 +365,7 @@ class TrainingExperiment(Experiment):
         )
 
         # setup history statistics recorders
+        history_callbacks = []
         timestamp_recorder = (
             TimestampRecorder(
                 "_" + keys.interval_suffix,
@@ -368,19 +375,20 @@ class TrainingExperiment(Experiment):
             if run.record_times
             else None
         )
-        zero_epoch_recorder = ZeroEpochRecorder(
-            [train_set_info, validation_set_info, test_set_info], None
-        )
+        history_callbacks.append(timestamp_recorder)
+
+        zero_epoch_recorder = None
+        if new_model_number or experiment_history is None:
+            zero_epoch_recorder = ZeroEpochRecorder(
+                [train_set_info, validation_set_info, test_set_info], None
+            )
+            history_callbacks.append(zero_epoch_recorder)
 
         additional_test_sets = [test_set_info]
         if run.record_post_training_metrics:
             additional_test_sets.append(TestSetInfo(keys.trained, dataset.train))
 
-        history_callbacks = [
-            timestamp_recorder,
-            zero_epoch_recorder,
-            TestSetHistoryRecorder(additional_test_sets, timestamp_recorder),
-        ]
+        history_callbacks.append(TestSetHistoryRecorder(additional_test_sets, timestamp_recorder))
         callbacks.extend(history_callbacks)
 
         # fit the model
@@ -402,7 +410,7 @@ class TrainingExperiment(Experiment):
         history_callbacks.append(history)
 
         # copy zero epoch recorder's train_ metrics to trained_ metrics
-        if run.record_post_training_metrics:
+        if zero_epoch_recorder is not None and run.record_post_training_metrics:
             self.remap_key_prefixes(
                 zero_epoch_recorder.history,
                 [
@@ -448,8 +456,8 @@ class TrainingExperiment(Experiment):
                 and early_stopping_callback.stopped_epoch > 0
             ):
                 last_retained_epoch = (
-                    len(fit_history[keys.epoch]) - early_stopping_callback.patience
-                )
+                    len(fit_history[keys.epoch]) - 1
+                ) - early_stopping_callback.patience
                 for i in range(last_retained_epoch + 1, fit_history_length):
                     retained[i] = False
 
@@ -520,15 +528,10 @@ class TrainingExperiment(Experiment):
         self,
         experiment_history: Optional[Dict[str, Any]],
     ) -> TrainingEpoch:
-        if self.resume_from is None:
-            initial_epoch = TrainingEpoch(0, -1, 0)
-        else:
-            initial_epoch = self.resume_from.get_epoch()
-
         if experiment_history is None:
-            return initial_epoch
+            return TrainingEpoch(0, 0, 0)
 
-        history_epoch = TrainingEpoch(
+        return TrainingEpoch(
             self.get_last_value_of(
                 experiment_history,
                 self.keys.epoch,
@@ -545,8 +548,6 @@ class TrainingExperiment(Experiment):
                 0,
             ),
         )
-
-        return max(initial_epoch, history_epoch)
 
     def _append_fit_history_to_model_history(
         self,

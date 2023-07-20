@@ -34,7 +34,7 @@ class TimestampRecorder(Recorder):
         self._epoch_start_time = time.time()
         self.record_time(
             self._epoch_start_metric_name,
-            self._epoch_start_time,
+            self._epoch_start_time,# - 1689000000,
         )
 
     def on_epoch_end(self, epoch, logs=None):

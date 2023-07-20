@@ -36,11 +36,11 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 from dmp.task.experiment.run_spec import (
     RunSpec,
 )
-from dmp.task.experiment.model_saving.model_saving_config import (
+from dmp.task.experiment.model_saving.model_saving_spec import (
     ModelSavingConfig,
 )
 from dmp.worker import Worker
-from dmp.keras_interface.keras_utils import make_keras_kwcfg
+from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
     OverlayTransfer,
@@ -108,7 +108,7 @@ def test_pruning_experiment():
                 {
                     "activation": "relu",
                     "kernel_initializer": "GlorotUniform",
-                    "kernel_constraint": make_keras_kwcfg(
+                    "kernel_constraint": keras_kwcfg(
                         "ParameterMask",
                     ),
                 },
@@ -124,7 +124,7 @@ def test_pruning_experiment():
             "momentum": 0.9,
         },
         loss=None,
-        early_stopping=make_keras_kwcfg(
+        early_stopping=keras_kwcfg(
             "EarlyStopping",
             monitor="val_loss",
             min_delta=0,

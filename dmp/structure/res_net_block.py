@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Union
-from dmp.keras_interface.keras_utils import make_keras_kwcfg
+from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.layer.batch_normalization import BatchNormalization
 from dmp.layer.layer import Layer, LayerConfig, LayerFactory
 from dmp.layer.add import Add

@@ -5,6 +5,7 @@ from dmp.keras_interface.keras_utils import (
 )
 from dmp.common import marshal_type_key
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.run import Run
 
 
 from lmarshal.src.marshal import Marshal
@@ -110,32 +111,33 @@ register_types(
 )
 
 # Tasks:
-from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
-from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
+# from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
+# from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
-from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import (
-    IterativePruningExperiment,
-)
+
+# from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import (
+#     IterativePruningExperiment,
+# )
 
 register_types(
     [
-        UpdateExperimentSummary,
+        # UpdateExperimentSummary,
         TrainingExperiment,
-        GrowthExperiment,
-        IterativePruningExperiment,
+        # GrowthExperiment,
+        # IterativePruningExperiment,
     ]
 )
 
 # register summarization types
-UpdateExperimentSummary.register_types(
-    [
-        TrainingExperiment,
-        GrowthExperiment,
-        IterativePruningExperiment,
-    ]
-)
+# UpdateExperimentSummary.register_types(
+#     [
+#         TrainingExperiment,
+#         GrowthExperiment,
+#         IterativePruningExperiment,
+#     ]
+# )
 
 # ModelSpec's:
 from dmp.model.dense_by_size import DenseBySize
@@ -195,34 +197,32 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 register_types((MagnitudePruner,))
 
 # Other types:
-from dmp.task.experiment.run_spec import (
-    RunSpec,
-)
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.recorder.test_set_history_recorder import (
     TestSetHistoryRecorder,
 )
 from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.dataset.ml_task import MLTask
 from dmp.model.network_info import NetworkInfo
-from dmp.task.experiment.model_saving.model_saving_config import (
-    ModelSavingConfig,
-)
 from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
     TrainingExperimentCheckpoint,
 )
 
 from dmp.task.experiment.lth.pruning_config import PruningConfig
+from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.model_saving.model_saving_spec import (
+    ModelSavingSpec,
+)
 
 register_types(
     (
+        Run,
         RunSpec,
-        ExperimentResultRecord,
+        # ExperimentResultRecord,
         TestSetHistoryRecorder,
         DatasetSpec,
         MLTask,
         NetworkInfo,
-        ModelSavingConfig,
+        ModelSavingSpec,
         TrainingExperimentCheckpoint,
         TrainingEpoch,
         PruningConfig,

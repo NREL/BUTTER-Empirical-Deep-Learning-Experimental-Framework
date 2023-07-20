@@ -48,8 +48,8 @@ class TrainingExperimentKeys:
         self.train_start_timestamp: str = "train_start_timestamp"
 
         self.interval_suffix: str = "ms"
-        self.epoch_start_time_ms: str = "epoch_start"
-        self.epoch_time_ms: str = "train"
+        self.epoch_start_time_ms: str = "epoch_start" + self.interval_suffix
+        self.epoch_time_ms: str = "train" + self.interval_suffix
 
         self.extended_history_columns: Set[str] = set(
             make_with_data_set_prefixes(

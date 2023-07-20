@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Any, Dict, Optional, Sequence, Tuple, Callable, TypeVar, List, Union
-from dmp.keras_interface.keras_utils import make_keras_config
+from dmp.keras_interface.keras_utils import make_keras_config_from_dict
 from dmp.layer.layer import (
     Layer,
     LayerConfig,
