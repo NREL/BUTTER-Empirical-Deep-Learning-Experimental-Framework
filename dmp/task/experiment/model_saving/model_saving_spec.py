@@ -13,6 +13,7 @@ class ModelSavingSpec:
     Saves every fixed_interval steps, up to the fixed_threshold step, and then saves every exponential_rate ^ i steps, where i is a positive integer and exponential_rate ^ i >= fixed_threshold.
     To only save initial and/or final models, set fixed_threshold = 0, and exponential_rate = 0.0.
     To disable fixed savepoint spacing set fixed_threshold = 0.
+    To use only fixed spacing, set fixed_threshold = -1.
     To disable exponential savepoint spacing set exponential_rate = 0.0.
     """
 
@@ -79,7 +80,7 @@ class ModelSavingSpec:
                 ):
                     # specified epoch
                     pass
-                elif (
+                elif parent.fixed_threshold == -1 or (
                     parent.fixed_threshold > 0 and model_epoch <= parent.fixed_threshold
                 ):
                     # fixed regime

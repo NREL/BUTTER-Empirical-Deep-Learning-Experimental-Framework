@@ -19,7 +19,6 @@ from dmp.keras_interface.keras_utils import make_keras_instance, keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment_keys import (
     GrowthExperimentKeys,
 )
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.model.model_util import *
 from dmp.model.model_info import ModelInfo
 
@@ -33,7 +32,6 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
     OverlayTransfer,
 )
 
-from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )

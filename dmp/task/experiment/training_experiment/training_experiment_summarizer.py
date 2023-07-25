@@ -41,6 +41,10 @@ class TrainingExperimentSummarizer:
             run_history[keys.run] = i
             sources.append(run_history)
         num_sources = len(sources)
+        if num_sources <= 0:
+            print(f"No Sources!")
+            return
+
         history = pandas.concat(sources, ignore_index=True, axis=0)
         runs = numpy.arange(num_sources)
         del sources

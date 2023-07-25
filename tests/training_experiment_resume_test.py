@@ -45,8 +45,9 @@ from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
 
+
 def test_mnist_lenet():
-    save_id = UUID('a69b6248-9790-4641-9620-0942fd20a442')
+    save_id = UUID("a69b6248-9790-4641-9620-0942fd20a442")
     run = Run(
         experiment=TrainingExperiment(
             data={
@@ -126,10 +127,14 @@ def test_mnist_lenet():
     experiment_test_util.run_experiment(run, use_database=True, id=save_id)
 
     run.run.resume_checkpoint = TrainingExperimentCheckpoint(
-        save_id,
-        True,
-        True,
-        TrainingEpoch(3, 0, 3),
+        run_id=save_id,
+        load_mask=True,
+        load_optimizer=True,
+        epoch=TrainingEpoch(
+            epoch=3,
+            model_number=0,
+            model_epoch=3,
+        ),
     )
 
     run.run.model_saving = None

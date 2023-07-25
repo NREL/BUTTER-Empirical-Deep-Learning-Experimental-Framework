@@ -146,6 +146,8 @@ class TrainingExperiment(Experiment):
             experiment_history,
         )
 
+        context.update_summary()
+
     def summarize(
         self,
         results: List[pandas.DataFrame],
@@ -351,7 +353,11 @@ class TrainingExperiment(Experiment):
         fit_config["x"] = dataset.train
         fit_config["validation_data"] = dataset.validation
 
-        if epochs is not None:
+        if epochs is None and fit_config["epochs"] is not None:
+            fit_config["epochs"] = (
+                fit_config["epochs"] - self.get_current_epoch(experiment_history).epoch
+            )
+        else:
             fit_config["epochs"] = epochs
 
         keys = self.keys
@@ -610,14 +616,13 @@ class TrainingExperiment(Experiment):
         network: NetworkInfo,
         history: Dict[str, Any],
     ) -> None:
-        self._record_history(context, history)
         self._record_run(
             context,
             run,
             dataset,
             network,
         )
-        context.update_summary()
+        self._record_history(context, history)
 
         # self.summarizer.summarize(self)
         # return ExperimentResultRecord(
