@@ -66,6 +66,10 @@ class Worker:
         + resume from saved model
         """
 
+        second_git_hash = common.get_git_hash()
+        if second_git_hash is not git_hash and second_git_hash != git_hash:
+            return False
+
         self._info["worker_id"] = worker_id
 
         # demarshal task from job.command
