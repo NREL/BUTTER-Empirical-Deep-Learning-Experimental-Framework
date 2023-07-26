@@ -15,6 +15,7 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
     MagnitudePruner,
 )
 from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 from dmp.task.run import Run
 from dmp.keras_interface.keras_utils import keras_kwcfg
@@ -80,7 +81,7 @@ def main():
                     restore_best_weights=True,
                 ),
                 pruning_configs=pruning_configs,
-                num_additional_seeds_per_config=10,
+                num_additional_seeds_per_config=1,
             ),
             run=RunSpec(
                 seed=seed,
@@ -109,10 +110,8 @@ def main():
     #         to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
 
     pruning_target = 0.01
-
     pruning_configs = []
     for survival_rate in [
-        0.8**8,
         0.8**4,
         0.8**2,
         0.8,
@@ -120,24 +119,41 @@ def main():
         0.8 ** (1 / 4),
         0.8 ** (1 / 8),
     ]:
-        pruning_iterations = numpy.ceil(
+        pruning_iterations = float(numpy.ceil(
             numpy.log(pruning_target) / numpy.log(survival_rate)
-        )
+        ))
         pruning_rate = 1.0 - survival_rate
-        pruning_configs.append(
-            PruningConfig(
-                iterations=pruning_iterations,
-                method=MagnitudePruner(pruning_rate),
-                max_epochs_per_iteration=30,
-                rewind_epoch=rewind_epoch,
-                rewind_optimizer=True,
-                new_seed=False,
+
+        for rewind_epoch in [
+            0,
+            1,
+            2,
+            4,
+            6,
+            8,
+            10,
+            16,
+            32,
+        ]:
+            pruning_configs.append(
+                PruningConfig(
+                    iterations=pruning_iterations,
+                    method=MagnitudePruner(pruning_rate),
+                    max_epochs_per_iteration=30,
+                    rewind_epoch=TrainingEpoch(
+                        epoch=rewind_epoch,
+                        model_number=0,
+                        model_epoch=rewind_epoch,
+                    ),
+                    rewind_optimizer=True,
+                    new_seed=False,
+                )
             )
-        )
 
         for rep in range(repetitions):
             run = make_run(
                 seed + len(jobs),
+                pruning_configs,
             )
             jobs.append(
                 Job(

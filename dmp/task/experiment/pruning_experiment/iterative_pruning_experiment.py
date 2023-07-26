@@ -101,6 +101,7 @@ class IterativePruningExperiment(TrainingExperiment):
             # 7: Return Wk, m
             # save weights at this point
             run.prune_first_iteration = True
+            pruning.new_seed = False
             self._save_checkpoint(
                 context,
                 run,

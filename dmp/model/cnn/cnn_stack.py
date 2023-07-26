@@ -117,7 +117,7 @@ def add_size_and_stride(
 
 
 for padding in ("same", "valid"):
-    shared_config = {
+    conv_config = {
         "padding": padding,
         "kernel_constraint": keras_kwcfg(
             "ParameterMask",
@@ -126,27 +126,30 @@ for padding in ("same", "valid"):
     add_size_and_stride(
         "conv",
         padding,
-        lambda i, s: DenseConv.make(-1, [i, i], [s, s], shared_config),
+        lambda i, s: DenseConv.make(-1, [i, i], [s, s], conv_config),
         (1, 16, 1, 16),
     )
 
     add_size_and_stride(
         "sepconv",
         padding,
-        lambda i, s: SeparableConv.make(-1, [i, i], [s, s], shared_config),
+        lambda i, s: SeparableConv.make(-1, [i, i], [s, s], conv_config),
         (3, 16, 1, 16),
     )
 
+    pool_config = {
+        "padding": padding,
+    }
     add_size_and_stride(
         "max_pool",
         padding,
-        lambda i, s: MaxPool.make([i, i], [s, s], shared_config),
+        lambda i, s: MaxPool.make([i, i], [s, s], pool_config),
         (1, 16, 1, 16),
     )
 
     add_size_and_stride(
         "avg_pool",
         padding,
-        lambda i, s: AvgPool.make([i, i], [s, s], shared_config),
+        lambda i, s: AvgPool.make([i, i], [s, s], pool_config),
         (1, 16, 1, 16),
     )
