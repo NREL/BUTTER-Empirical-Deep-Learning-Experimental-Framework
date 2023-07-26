@@ -72,6 +72,7 @@ class LTHExperiment(TrainingExperiment):
 
         base_experiment_config = copy(vars(self))
         del base_experiment_config["pruning_configs"]
+        del base_experiment_config["num_additional_seeds_per_config"]
         # del base_experiment_config['data']
 
         base_run_config = copy(vars(run))
@@ -79,54 +80,48 @@ class LTHExperiment(TrainingExperiment):
         del base_run_config["resume_checkpoint"]
         # del base_run_config['data']
 
-
         child_tasks = []
 
         for i in range(self.num_additional_seeds_per_config + 1):
             seed = run.seed + i
             for pruning_config in self.pruning_configs:
+                child_pruning_config = copy(pruning_config)
 
-                    child_pruning_config = copy(pruning_config)
+                if i == 0:
+                    child_pruning_config.new_seed = False
+                    prune_first_iteration = True
 
-                    if i == 0:
-                        child_pruning_config.new_seed = False
-                        prune_first_iteration = True
+                    resume_checkpoint = TrainingExperimentCheckpoint(
+                        run_id=context.id,
+                        load_mask=True,
+                        load_optimizer=True,
+                        epoch=self.get_current_epoch(experiment_history),
+                    )
+                else:
+                    child_pruning_config.new_seed = True
+                    prune_first_iteration = False
 
-                        resume_checkpoint = TrainingExperimentCheckpoint(
-                            run_id=context.id,
-                            load_mask=True,
-                            load_optimizer=True,
-                            epoch=self.get_current_epoch(experiment_history),
-                        )
-                    else:
-                        child_pruning_config.new_seed = True
-                        prune_first_iteration = False
-
-                        resume_checkpoint = TrainingExperimentCheckpoint(
-                            run_id=context.id,
-                            load_mask=True,
-                            load_optimizer=True,
-                            epoch=pruning_config.rewind_epoch,
-                        )
-
-
-                    child_tasks.append(
-                        Run(
-                            experiment=IterativePruningExperiment(
-                                **base_experiment_config,
-                                pruning=child_pruning_config,
-                            ),
-                            run=IterativePruningRunSpec(
-                                **base_run_config,
-                                resume_checkpoint=resume_checkpoint,
-                                seed=seed,
-                                rewind_run_id=context.id,
-                                prune_first_iteration=prune_first_iteration,
-                            ),
-                        )
+                    resume_checkpoint = TrainingExperimentCheckpoint(
+                        run_id=context.id,
+                        load_mask=True,
+                        load_optimizer=True,
+                        epoch=pruning_config.rewind_epoch,
                     )
 
-
-
+                child_tasks.append(
+                    Run(
+                        experiment=IterativePruningExperiment(
+                            **base_experiment_config,
+                            pruning=child_pruning_config,
+                        ),
+                        run=IterativePruningRunSpec(
+                            **base_run_config,
+                            resume_checkpoint=resume_checkpoint,
+                            seed=seed,
+                            rewind_run_id=context.id,
+                            prune_first_iteration=prune_first_iteration,
+                        ),
+                    )
+                )
 
         context.push_tasks(child_tasks)
