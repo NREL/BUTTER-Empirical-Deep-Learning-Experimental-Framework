@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 from uuid import UUID
 
-from traitlets import Any
 
 from dmp.task.experiment.model_saving.model_saving_spec import (
     ModelSavingSpec,

@@ -94,7 +94,7 @@ class TrainingExperiment(Experiment):
         self,
         context: Context,
         run: RunSpec,
-    ) -> None:
+    ) -> Dict[str, Any]:
         # tensorflow.config.optimizer.set_jit(True)
         self._setup_environment(run)
         dataset, metrics = self._load_and_prepare_dataset()
@@ -147,6 +147,7 @@ class TrainingExperiment(Experiment):
         )
 
         context.update_summary()
+        return experiment_history
 
     def summarize(
         self,

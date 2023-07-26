@@ -4,16 +4,9 @@ Enqueues jobs from stdin into the JobQueue
 
 import sys
 
-import numpy
-
 
 from dmp.model.named.lenet import Lenet
-from dmp.task.experiment.lth.lth_experiment import LTHExperiment
-from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
-from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
-    MagnitudePruner,
-)
 from dmp.task.experiment.training_experiment.run_spec import RunSpec
 
 from dmp.task.run import Run
@@ -43,10 +36,9 @@ def main():
 
     def make_run(
         seed,
-        pruning_configs,
     ):
         return Run(
-            experiment=LTHExperiment(
+            experiment=TrainingExperiment(
                 data={
                     "lth": True,
                     "batch": "lth_mnist_lenet_1",
@@ -65,7 +57,7 @@ def main():
                 model=Lenet(),
                 fit={
                     "batch_size": 60,
-                    "epochs": 30,
+                    "epochs": 24,
                 },
                 optimizer={
                     "class": "Adam",
@@ -76,11 +68,9 @@ def main():
                     "EarlyStopping",
                     monitor="val_loss",
                     min_delta=0,
-                    patience=30,
+                    patience=24,
                     restore_best_weights=True,
                 ),
-                pruning_configs=pruning_configs,
-                num_additional_seeds_per_config=10,
             ),
             run=RunSpec(
                 seed=seed,
@@ -105,46 +95,14 @@ def main():
     repetitions = 20
     base_priority = 1000
 
-    # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration
-    #         to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
-
-    pruning_target = 0.01
-
-    pruning_configs = []
-    for survival_rate in [
-        0.8**8,
-        0.8**4,
-        0.8**2,
-        0.8,
-        0.8 ** (1 / 2),
-        0.8 ** (1 / 4),
-        0.8 ** (1 / 8),
-    ]:
-        pruning_iterations = numpy.ceil(
-            numpy.log(pruning_target) / numpy.log(survival_rate)
-        )
-        pruning_rate = 1.0 - survival_rate
-        pruning_configs.append(
-            PruningConfig(
-                iterations=pruning_iterations,
-                method=MagnitudePruner(pruning_rate),
-                max_epochs_per_iteration=30,
-                rewind_epoch=rewind_epoch,
-                rewind_optimizer=True,
-                new_seed=False,
+    for rep in range(repetitions):
+        run = make_run(seed + rep)
+        jobs.append(
+            Job(
+                priority=base_priority + len(jobs),
+                command=marshal.marshal(run),
             )
         )
-
-        for rep in range(repetitions):
-            run = make_run(
-                seed + len(jobs),
-            )
-            jobs.append(
-                Job(
-                    priority=base_priority + len(jobs),
-                    command=marshal.marshal(run),
-                )
-            )
 
     print(f"Generated {len(jobs)} jobs.")
     # pprint(jobs)

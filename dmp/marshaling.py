@@ -5,6 +5,11 @@ from dmp.keras_interface.keras_utils import (
 )
 from dmp.common import marshal_type_key
 from dmp.model.named.lenet import Lenet
+from dmp.task.experiment.lth.lth_experiment import LTHExperiment
+from dmp.task.experiment.lth.pruning_config import PruningConfig
+from dmp.task.experiment.pruning_experiment.pruning_run_spec import (
+    IterativePruningRunSpec,
+)
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.run import Run
 
@@ -128,6 +133,7 @@ register_types(
         TrainingExperiment,
         # GrowthExperiment,
         IterativePruningExperiment,
+        LTHExperiment,
     ]
 )
 
@@ -227,6 +233,7 @@ register_types(
         ModelSavingSpec,
         TrainingExperimentCheckpoint,
         TrainingEpoch,
-        # PruningConfig,
+        PruningConfig,
+        IterativePruningRunSpec,
     )
 )

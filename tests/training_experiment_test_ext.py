@@ -629,11 +629,11 @@ def test_pruning_experiment():
         pre_prune_epochs=2,
         pre_pruning_trigger=None,
         pruning_method=MagnitudePruner(
-            prune_percent=1.0 - 0.5 ** (1 / 4),
+            pruning_rate=1.0 - 0.5 ** (1 / 4),
         ),
         pruning_trigger=None,
         max_pruning_epochs=5,
-        rewind=True,
+        rewind_point=True,
     )
 
     run_experiment(experiment)

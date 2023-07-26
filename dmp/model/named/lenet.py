@@ -1,3 +1,4 @@
+from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.layer.dense import Dense
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.fully_connected_network import FullyConnectedNetwork
@@ -19,7 +20,14 @@ class Lenet(CNNStack):
                 widths=[120, 84],
                 residual_mode="none",
                 flatten_input=True,
-                inner=Dense.make(-1, {}),
+                inner=Dense.make(
+                    -1,
+                    {
+                        "kernel_constraint": keras_kwcfg(
+                            "ParameterMask",
+                        ),
+                    },
+                ),
             ),
             stem_width=6,
             stack_width_scale_factor=16.0 / 6.0,

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Sequence
+from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.cnn.parallel_cell import ParallelCell
 
@@ -116,7 +117,12 @@ def add_size_and_stride(
 
 
 for padding in ("same", "valid"):
-    shared_config = {"padding": padding}
+    shared_config = {
+        "padding": padding,
+        "kernel_constraint": keras_kwcfg(
+            "ParameterMask",
+        ),
+    }
     add_size_and_stride(
         "conv",
         padding,

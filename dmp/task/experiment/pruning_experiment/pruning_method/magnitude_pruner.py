@@ -32,7 +32,7 @@ from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 @dataclass
 class MagnitudePruner(PruningMethod):
-    prune_percent: float
+    pruning_rate: float  # proportion of additional weights to prune each time. (e.x. 0.10 means to prune 10% of the remaining weights on each call to prune())
 
     def prune(
         self,
@@ -89,7 +89,7 @@ class MagnitudePruner(PruningMethod):
 
         pruning_threshold = numpy.quantile(
             prunable_weights,
-            self.prune_percent,
+            self.pruning_rate,
         )
         del prunable_weights
 
