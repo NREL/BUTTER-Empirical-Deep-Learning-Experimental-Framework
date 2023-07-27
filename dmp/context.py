@@ -67,14 +67,14 @@ class Context:
         from dmp.marshaling import marshal
 
         self.worker.job_queue.push(
-            (
+            [
                 Job(
                     parent=self.id,
                     priority=self.job.priority,
                     command=marshal.marshal(task),
                 )
                 for task in tasks
-            )
+            ]
         )
 
     def push_task(self, task: Task) -> None:
