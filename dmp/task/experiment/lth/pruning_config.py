@@ -14,3 +14,4 @@ class PruningConfig:
     rewind_epoch: TrainingEpoch  # epoch to rewind to after pruning
     rewind_optimizer: bool  # rewind optimizer state too?
     new_seed: bool  # set to True iff the parent run used a different seed
+ 
