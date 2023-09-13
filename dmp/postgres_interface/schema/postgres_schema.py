@@ -120,7 +120,7 @@ class PostgresSchema:
                 {casting_clause}
                 FROM
                 ( VALUES {input_placeholders} ) AS {input_table} ({input_colums})
-                ON CONFLICT DO NOTHING
+                ON CONFLICT ({id}) DO UPDATE SET {update_clause}
                 ;"""
         ).format(
             history_table=history_table.identifier,
@@ -128,6 +128,17 @@ class PostgresSchema:
             casting_clause=input_colums.casting_sql,
             input_placeholders=input_colums.placeholders_for_values(len(results)),
             input_table=Identifier("input_table"),
+            id=history_table.id.identifier,
+            update_clause=sql_comma.join(
+                (
+                    SQL("{column} = EXCLUDED.{column}").format(column=column.identifier)
+                    for column in (
+                        history_table.experiment_id,
+                        history_table.history,
+                        history_table.extended_history,
+                    )
+                )
+            )
         )
         print(query)
 

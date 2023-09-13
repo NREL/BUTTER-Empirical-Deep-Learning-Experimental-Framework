@@ -314,7 +314,7 @@ def test_mnist_lenet():
 #                 fixed_threshold=0,
 #                 exponential_rate=0,
 #             ),
-#             resume_from=TrainingExperimentCheckpoint(
+#             resume_checkpoint=TrainingExperimentCheckpoint(
 #                 run_id=job_id,
 #                 load_mask=True,
 #                 load_optimizer=True,

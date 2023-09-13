@@ -173,7 +173,7 @@ def test_resenet20():
             model=None,
             metrics=None,
         ),
-        resume_from=None,
+        resume_checkpoint=None,
     )
 
     run_experiment(experiment)

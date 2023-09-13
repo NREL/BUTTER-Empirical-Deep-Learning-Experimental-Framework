@@ -145,7 +145,7 @@ def test_pruning_experiment():
                 fixed_threshold=32,
                 exponential_rate=2,
             ),
-            resume_from=None,
+            resume_checkpoint=None,
         ),
         num_pruning_iterations=4,
         pre_prune_epochs=2,

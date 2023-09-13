@@ -652,7 +652,7 @@ class TrainingExperiment(Experiment):
         #     + to disk``
         #     + to db
         # + update Job & Task to resume on failure
-        self.resume_from = context.save_model(
+        run.resume_checkpoint = context.save_model(
             model,
             self.get_current_epoch(history),
         )
@@ -666,7 +666,7 @@ class TrainingExperiment(Experiment):
             history,
         )
 
-        return self.resume_from
+        return run.resume_checkpoint
 
     def _record_history(
         self,

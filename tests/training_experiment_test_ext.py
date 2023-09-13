@@ -116,7 +116,7 @@ def test_simple():
             times=True,
             model=None,
             metrics=None,
-            resume_from=None,
+            resume_checkpoint=None,
         ),
     )
 
@@ -179,7 +179,7 @@ def test_mnist():
             times=True,
             model=None,
             metrics=None,
-            resume_from=None,
+            resume_checkpoint=None,
         ),
     )
 
@@ -245,7 +245,7 @@ def test_mnist_lenet():
             times=True,
             model=None,
             metrics=None,
-            resume_from=None,
+            resume_checkpoint=None,
         ),
     )
 
@@ -296,7 +296,7 @@ def test_growth_experiment():
             times=True,
             model=None,
             metrics=None,
-            resume_from=None,
+            resume_checkpoint=None,
         ),
         growth_trigger=keras_kwcfg(
             "ProportionalStopping",
@@ -386,7 +386,7 @@ def test_growth_experiment_mnist():
             times=True,
             model=None,
             metrics=None,
-            resume_from=None,
+            resume_checkpoint=None,
         ),
         growth_trigger=keras_kwcfg(
             "ProportionalStopping",
@@ -495,7 +495,7 @@ def test_from_optimizer():
             times=True,
             model=None,
             metrics=None,
-            resume_from=None,
+            resume_checkpoint=None,
         ),
     )
 
@@ -558,7 +558,7 @@ def test_imagenet16():
             times=True,
             model=None,
             metrics=None,
-            resume_from=None,
+            resume_checkpoint=None,
         ),
     )
 
@@ -623,7 +623,7 @@ def test_pruning_experiment():
             times=True,
             model=None,
             metrics=None,
-            resume_from=None,
+            resume_checkpoint=None,
         ),
         num_pruning_iterations=4,
         pre_prune_epochs=2,
