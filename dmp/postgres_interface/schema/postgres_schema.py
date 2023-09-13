@@ -5,6 +5,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 from uuid import UUID
 from jobqueue.connection_manager import ConnectionManager
 import pandas
+from psycopg import ClientCursor
 
 # import psycopg
 from psycopg.sql import Identifier, SQL, Composed, Literal
@@ -345,8 +346,8 @@ ON CONFLICT DO NOTHING;
         print(f"query running: {query}")
         # print(f"run_id: {run_id}, type: {type(run_id)}")
 
-        try:
-            with ConnectionManager(self.credentials) as connection:
+        with ConnectionManager(self.credentials) as connection:
+            try:
                 connection.execute(
                     query,
                     (
@@ -357,5 +358,18 @@ ON CONFLICT DO NOTHING;
                     ),
                     binary=True,
                 )
-        except Exception as e:
-            print(f"Exception: {e}")
+            except Exception as e:
+                print(f"Exception: {e}")
+                with ClientCursor(connection) as cursor:
+                    print(
+                        cursor.mogrify(
+                            query,
+                            (
+                                run_id,
+                                epoch.model_number,
+                                epoch.model_epoch,
+                                epoch.epoch,
+                            ),
+                        )
+                    )
+                raise e
