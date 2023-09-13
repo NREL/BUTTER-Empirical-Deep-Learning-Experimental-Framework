@@ -39,7 +39,7 @@ class Experiment(ABC):
     def summarize(
         self,
         results: List[pandas.DataFrame],
-    ) -> ExperimentSummaryRecord:
+    ) -> Optional[ExperimentSummaryRecord]:
         pass
 
     # def get_parameters(self) -> FlatParameterDict:

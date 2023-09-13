@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import Any, Iterable, Sequence, Set, Type, List
+from typing import Any, Iterable, Optional, Sequence, Set, Type, List
 from numbers import Number
 
 import numpy
@@ -34,7 +34,7 @@ class TrainingExperimentSummarizer:
         self,
         experiment: TrainingExperiment,
         results: List[pandas.DataFrame],
-    ) -> ExperimentSummaryRecord:
+    ) -> Optional[ExperimentSummaryRecord]:
         keys: TrainingExperimentKeys = experiment.keys
         sources = []
         for i, run_history in enumerate(results):
@@ -42,7 +42,7 @@ class TrainingExperimentSummarizer:
             sources.append(run_history)
         num_sources = len(sources)
         if num_sources <= 0:
-            print(f"No Sources!")
+            print(f"No Sources to summarize.")
             return
 
         history = pandas.concat(sources, ignore_index=True, axis=0)

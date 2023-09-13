@@ -291,21 +291,6 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET {update_clause}
                 )
             ),
         )
-
-        #         CREATE TABLE IF NOT EXISTS public.experiment2
-        # (
-        #     experiment_id uuid NOT NULL,
-        #     experiment jsonb NOT NULL,
-        #     most_recent_run timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        #     num_runs integer NOT NULL,
-        #     old_experiment_id integer,
-        #     by_epoch bytea,
-        #     by_loss bytea,
-        #     by_progress bytea,
-        #     epoch_subset bytea,
-        #     CONSTRAINT experiment2_pkey1 PRIMARY KEY (experiment_id)
-        # )
-        # missing most_recent_run
         print(query)
 
         with ConnectionManager(self.credentials) as connection:
