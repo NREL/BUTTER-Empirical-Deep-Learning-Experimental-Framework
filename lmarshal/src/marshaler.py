@@ -144,11 +144,13 @@ class Marshaler(CommonMarshaler):
     ) -> Any:
         def type_checked_object_marshaler(m: Marshaler, s: Any) -> dict:
             result = object_marshaler(m, s)
-            if type(result) is not dict:
-                raise TypeError(
-                    f"ObjectMarshaler for type {type(source)} returned a {type(result)} instead of a dict."
-                )
-            result[m._config.type_key] = type_code
+            if type(result) is dict:
+                result[m._config.type_key] = type_code
+                # return result
+            # raise TypeError(
+            #     f"ObjectMarshaler for type {type(source)} returned a {type(result)} instead of a dict."
+            # )
+            # result[m._config.type_key] = type_code
             return result
 
         return marshaler.marshal_untyped(
