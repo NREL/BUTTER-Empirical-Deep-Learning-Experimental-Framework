@@ -104,7 +104,7 @@ class Context:
                 ]
             )
             print(
-                f"*******************************************************\nstored run\n'{self.id}'\n experiment'{self.get_experiment_id()}' history..."
+                f"*******************************************************\nstored run\n'{self.id}'\n experiment'{experiment_id}' history..."
             )
             print(f"experiment marshalling: \n")
             import simplejson
