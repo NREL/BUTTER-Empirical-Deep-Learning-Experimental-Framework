@@ -352,9 +352,9 @@ ON CONFLICT DO NOTHING;
                     query,
                     (
                         run_id,
-                        epoch.model_number,
-                        epoch.model_epoch,
-                        epoch.epoch,
+                        int(epoch.model_number),
+                        int(epoch.model_epoch),
+                        int(epoch.epoch),
                     ),
                     binary=True,
                 )
@@ -366,9 +366,9 @@ ON CONFLICT DO NOTHING;
                             query,
                             (
                                 run_id,
-                                epoch.model_number,
-                                epoch.model_epoch,
-                                epoch.epoch,
+                                int(epoch.model_number),
+                                int(epoch.model_epoch),
+                                int(epoch.epoch),
                             ),
                         )
                     )
