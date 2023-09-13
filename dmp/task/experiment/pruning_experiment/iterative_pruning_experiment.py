@@ -113,4 +113,12 @@ class IterativePruningExperiment(TrainingExperiment):
 
             first_iteration = False
 
+        self._record_result(
+            context,
+            run,
+            dataset,
+            model.network,
+            experiment_history,
+        )
+
         context.update_summary()

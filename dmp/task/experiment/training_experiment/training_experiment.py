@@ -152,7 +152,7 @@ class TrainingExperiment(Experiment):
     def summarize(
         self,
         results: List[pandas.DataFrame],
-    ) -> ExperimentSummaryRecord:
+    ) -> Optional[ExperimentSummaryRecord]:
         return self.summarizer.summarize(self, results)
 
     def _setup_environment(self, run: RunSpec) -> None:
@@ -299,7 +299,7 @@ class TrainingExperiment(Experiment):
 
         #  print the model summary
         print(network.structure.summary())
-        
+
         model = make_keras_model_from_network(network)
         model.keras_model.compile(
             loss=make_keras_instance(self.loss),  # type: ignore
