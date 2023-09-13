@@ -1,4 +1,6 @@
 from typing import Iterable, Type
+
+import numpy
 from dmp.keras_interface.keras_utils import (
     register_custom_keras_type,
     register_custom_keras_types,
@@ -73,10 +75,36 @@ import uuid
 register_type(
     uuid.UUID,
     "UUID",
-    lambda m, s: {m.marshal_key("value"): str(s), m.marshal_key("int64"): int(s) },
+    lambda m, s: {m.marshal_key("value"): str(s), m.marshal_key("int64"): int(s)},
     lambda d, s: uuid.UUID(s[d.marshal_key("value")]),
     lambda d, s, r: r,
 )
+
+
+register_type(
+    numpy.int16,
+    "numpy.int16",
+    lambda m, v: int(v),
+    lambda d, v: int(v["v"]),
+    lambda d, v, r: r,
+)
+
+register_type(
+    numpy.int32,
+    "numpy.int32",
+    lambda m, v: int(v),
+    lambda d, v: int(v["v"]),
+    lambda d, v, r: r,
+)
+
+register_type(
+    numpy.int64,
+    "numpy.int64",
+    lambda m, v: int(v),
+    lambda d, v: int(v["v"]),
+    lambda d, v, r: r,
+)
+
 
 # Layers:
 from dmp.layer.max_pool import MaxPool

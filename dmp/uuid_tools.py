@@ -14,5 +14,5 @@ def json_to_uuid(target: Any) -> UUID:
 
 def object_to_uuid(target: Any) -> UUID:
     from dmp.marshaling import marshal
-
+    
     return json_to_uuid(marshal.marshal(target))
