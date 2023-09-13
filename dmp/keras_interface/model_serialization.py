@@ -13,6 +13,7 @@ import dmp.parquet_util as parquet_util
 import pyarrow
 
 from dmp.task.task import Task
+import re
 
 model_data_path = os.path.join(os.getcwd(), "model_data")
 
@@ -132,6 +133,8 @@ def load_model_from_file(
         parameters_path,
         optimizer_path,
     ) = get_paths(model_path)
+
+    optimizer_path = re.sub(r'(\d+)\.0', r'\1', optimizer_path)
 
     with open(optimizer_path, "rb") as file:
         return load_model(

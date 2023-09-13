@@ -297,6 +297,9 @@ class TrainingExperiment(Experiment):
         else:
             keras.backend.set_floatx(self.precision)
 
+        #  print the model summary
+        print(network.structure.summary())
+        
         model = make_keras_model_from_network(network)
         model.keras_model.compile(
             loss=make_keras_instance(self.loss),  # type: ignore

@@ -80,8 +80,8 @@ class Worker:
             result = task(Context(self, job, task))
 
         # log task run
-        if isinstance(result, ExperimentResultRecord):
-            self._result_logger.log(result)
+        # if isinstance(result, ExperimentResultRecord):
+        #     self._result_logger.log(result)
 
         if self._max_jobs is not None:
             self._max_jobs -= 1

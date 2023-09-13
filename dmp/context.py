@@ -138,6 +138,7 @@ class Context:
             epoch.model_epoch,
         )
 
+        print(f"\n\n\n========== saving model data run:{self.run} model_path:{model_path} model: {model} ==========\n\n\n")
         model_serialization.save_model_data(self.run, model, model_path)
 
         if self.schema is not None:

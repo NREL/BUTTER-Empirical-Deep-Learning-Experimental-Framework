@@ -116,13 +116,13 @@ class PostgresSchema:
 
         query = SQL(
             """
-INSERT INTO {history_table} ( {input_colums} )
-SELECT
-{casting_clause}
-FROM
-( VALUES {input_placeholders} ) AS {input_table} ({input_colums})
-ON CONFLICT DO NOTHING
-;"""
+                INSERT INTO {history_table} ( {input_colums} )
+                SELECT
+                {casting_clause}
+                FROM
+                ( VALUES {input_placeholders} ) AS {input_table} ({input_colums})
+                ON CONFLICT DO NOTHING
+                ;"""
         ).format(
             history_table=history_table.identifier,
             input_colums=input_colums.columns_sql,
@@ -290,6 +290,21 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET {update_clause}
                 )
             ),
         )
+
+#         CREATE TABLE IF NOT EXISTS public.experiment2
+# (
+#     experiment_id uuid NOT NULL,
+#     experiment jsonb NOT NULL,
+#     most_recent_run timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+#     num_runs integer NOT NULL,
+#     old_experiment_id integer,
+#     by_epoch bytea,
+#     by_loss bytea,
+#     by_progress bytea,
+#     epoch_subset bytea,
+#     CONSTRAINT experiment2_pkey1 PRIMARY KEY (experiment_id)
+# )
+        # missing most_recent_run
         print(query)
 
         with ConnectionManager(self.credentials) as connection:
@@ -327,16 +342,22 @@ ON CONFLICT DO NOTHING;
             casting_clause=input_colums.casting_sql,
             placeholders=input_colums.placeholders,
         )
-        print(query)
-
-        with ConnectionManager(self.credentials) as connection:
-            connection.execute(
-                query,
-                (
-                    run_id,
-                    epoch.model_number,
-                    epoch.model_epoch,
-                    epoch.epoch,
-                ),
-                binary=True,
-            )
+        print(f"query running: {query}")
+        # print(f"run_id: {run_id}, type: {type(run_id)}")
+        
+        try:
+            with ConnectionManager(self.credentials) as connection:
+                    connection.execute(
+                        query,
+                        (
+                            run_id,
+                            epoch.model_number,
+                            epoch.model_epoch,
+                            epoch.epoch,
+                        ),
+                        binary=True,
+                    )
+        except Exception as e:
+            print(f"Exception: {e}")
+            import pdb; pdb.set_trace()
+            

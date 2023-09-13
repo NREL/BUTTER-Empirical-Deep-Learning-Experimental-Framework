@@ -114,7 +114,15 @@ class Marshaler(CommonMarshaler):
             }
 
         items.sort()
-        result = {k: m.marshal(v) for k, v in items}
+        result = {}
+        import numpy as np
+        for k, v in items:
+            if isinstance(v, np.int64):
+                result[k] = m.marshal(float(v))
+            else:
+                result[k] = m.marshal(v)
+        # items.sort()
+        # result = {k: m.marshal(v) for k, v in items}
         return result
 
     @staticmethod
