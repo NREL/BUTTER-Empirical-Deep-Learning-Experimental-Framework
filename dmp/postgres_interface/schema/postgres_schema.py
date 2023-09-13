@@ -90,7 +90,6 @@ class PostgresSchema:
         self,
         results: Sequence[Tuple[UUID, UUID, pandas.DataFrame, pandas.DataFrame]],
     ) -> None:
-
         # prepare histories:
         prepared_results = list(
             chain(
@@ -138,6 +137,12 @@ class PostgresSchema:
                 prepared_results,
                 binary=True,
             )
+            with ClientCursor(connection) as cursor:
+                mog = cursor.mogrify(
+                    query,
+                    prepared_results,
+                )
+                print(f"history query: {mog}")
 
     def get_run_history(
         self,
