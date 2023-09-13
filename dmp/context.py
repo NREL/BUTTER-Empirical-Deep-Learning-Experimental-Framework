@@ -105,7 +105,7 @@ class Context:
             print(
                 f"*******************************************************\nstored run\n'{self.id}'\n experiment'{self.get_experiment_id()}' history..."
             )
-            print(f"run marshalling: \n")
+            print(f"experiment marshalling: \n")
             import simplejson
             from dmp.marshaling import marshal
 
@@ -129,6 +129,17 @@ class Context:
     ) -> None:
         if self.schema is not None:
             experiment_id = self.get_experiment_id()
+            print(f"loading summaries for experiment {experiment_id}...")
+            print(f"experiment marshalling: \n")
+            import simplejson
+            from dmp.marshaling import marshal
+
+            print(
+                simplejson.dumps(
+                    marshal.marshal(self.experiment), sort_keys=True, indent="  "
+                )
+            )
+
             summary = self.experiment.summarize(
                 self.schema.get_experiment_run_histories(experiment_id)
             )
