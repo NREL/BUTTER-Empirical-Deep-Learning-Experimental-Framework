@@ -90,7 +90,6 @@ class PostgresSchema:
         self,
         results: Sequence[Tuple[UUID, UUID, pandas.DataFrame, pandas.DataFrame]],
     ) -> None:
-        from dmp.marshaling import marshal
 
         # prepare histories:
         prepared_results = list(

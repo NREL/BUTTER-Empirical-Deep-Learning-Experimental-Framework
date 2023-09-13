@@ -1,79 +1,311 @@
-...
-pandas:
-   test_accuracy  test_loss  free_parameter_count  validation_loss test_ms  seed_number  train_categorical_crossentropy epoch_start_ms  validation_categorical_crossentropy  model_number  retained train_ms  train_loss  \
-0       0.087357   2.524398                 61706         2.513121    None            0                        2.523890           None                             2.513121             0      True     None    2.523890
-1       0.972500   0.094645                 61706         0.098574     142            0                        0.167010  1689872256753                             0.098574             0      True     3262    0.167010
-2       0.982571   0.061082                 61706         0.068306     137            0                        0.067535  1689872260163                             0.068306             0      True      615    0.067535
-3       0.982143   0.069127                 61706         0.071150     159            0                        0.053429  1689872260922                             0.071150             0      True     1146    0.053429
-4       0.981857   0.065303                 61706         0.067570     148            0                        0.046037  1689872262234                             0.067570             0      True      722    0.046037
-5       0.982714   0.071872                 61706         0.078361     137            0                        0.049995  1689872263110                             0.078361             0      True      711    0.049995
-6       0.980929   0.096596                 61706         0.108330     145            0                        0.045580  1689872263965                             0.108330             0      True      656    0.045580
+stored run
+'8e07d977-1f20-4fcb-938f-035138971960'
+ experiment'31157380-8c3f-7550-2004-d5b55e3bcdaf' history...
+experiment marshalling:
 
-   test_categorical_crossentropy  model_epoch  train_accuracy  validation_accuracy  masked_parameter_count  epoch
-0                       2.524398            0        0.087771             0.088286                       0      0
-1                       0.094645            1        0.948286             0.968571                       0      1
-2                       0.061082            2        0.978914             0.982571                       0      2
-3                       0.069127            3        0.983829             0.980857                       0      3
-4                       0.065303            4        0.986362             0.982571                       0      4
-5                       0.071872            5        0.986019             0.982000                       0      5
-6                       0.096596            6        0.987048             0.980000                       0      6
--------------------------------------------------------------------
-convert_bytes_to_dataframe:
-pyarrow.Table
-test_accuracy: float not null
-test_loss: float not null
-free_parameter_count: int32 not null
-validation_loss: float not null
-test_ms: int16
-seed_number: int8 not null
-train_categorical_crossentropy: float not null
-epoch_start_ms: int64
-validation_categorical_crossentropy: float not null
-model_number: int8 not null
-retained: bool not null
-train_ms: int16
-train_loss: float not null
-test_categorical_crossentropy: float not null
-model_epoch: int8 not null
-train_accuracy: float not null
-validation_accuracy: float not null
-masked_parameter_count: int8 not null
-epoch: int8 not null
-----
-test_accuracy: [[0.08735714,0.9725,0.9825714,0.98214287,0.98214287,...,0.9869286,0.9836429,0.9822143,0.9868571,0.9802143]]
-test_loss: [[2.524398,0.09464544,0.06108152,0.069127455,0.069127455,...,0.052706566,0.064247146,0.079355516,0.06599493,0.09475395]]
-free_parameter_count: [[61706,61706,61706,61706,61706,...,61706,61706,61706,61706,61706]]
-validation_loss: [[2.5131214,0.09857389,0.068305545,0.07115029,0.07115029,...,0.06324939,0.09300514,0.08008514,0.09459451,0.1018178]]
-test_ms: [[null,142,137,159,null,...,135,136,130,132,137]]
-seed_number: [[0,0,0,0,0,...,0,0,0,0,0]]
-train_categorical_crossentropy: [[2.5238898,0.16700995,0.06753471,0.053428967,0.03985992,...,0.033203114,0.040969055,0.044624522,0.03959837,0.047906514]]
-epoch_start_ms: [[null,1689872256753,1689872260163,1689872260922,null,...,1689872275817,1689872276663,1689872277483,1689872278283,1689872279098]]
-validation_categorical_crossentropy: [[2.5131214,0.09857389,0.068305545,0.07115029,0.07115029,...,0.06324939,0.09300514,0.08008514,0.09459451,0.1018178]]
-model_number: [[0,0,0,0,0,...,0,0,0,0,0]]
-...
-pandas:
-    test_accuracy  test_loss  free_parameter_count  validation_loss test_ms  seed_number  train_categorical_crossentropy epoch_start_ms  validation_categorical_crossentropy  model_number  retained train_ms  train_loss  \
-0        0.087357   2.524398                 61706         2.513121    None            0                        2.523890           None                             2.513121             0      True     None    2.523890
-1        0.972500   0.094645                 61706         0.098574     142            0                        0.167010  1689872256753                             0.098574             0      True     3262    0.167010
-2        0.982571   0.061082                 61706         0.068306     137            0                        0.067535  1689872260163                             0.068306             0      True      615    0.067535
-3        0.982143   0.069127                 61706         0.071150     159            0                        0.053429  1689872260922                             0.071150             0      True     1146    0.053429
-4        0.982143   0.069127                 61706         0.071150    None            0                        0.039860           None                             0.071150             0      True     None    0.039860
-5        0.987214   0.054030                 61706         0.060847     133            0                        0.024474  1689872273016                             0.060847             0      True     2661    0.024474
-6        0.986929   0.052707                 61706         0.063249     135            0                        0.033203  1689872275817                             0.063249             0      True      705    0.033203
-7        0.983643   0.064247                 61706         0.093005     136            0                        0.040969  1689872276663                             0.093005             0      True      677    0.040969
-8        0.982214   0.079356                 61706         0.080085     130            0                        0.044625  1689872277483                             0.080085             0      True      663    0.044625
-9        0.986857   0.065995                 61706         0.094595     132            0                        0.039598  1689872278283                             0.094595             0      True      677    0.039598
-10       0.980214   0.094754                 61706         0.101818     137            0                        0.047907  1689872279098                             0.101818             0      True      668    0.047907
+{
+  "data": {
+    "batch": "lth_mnist_lenet_1",
+    "data_set_size": 70000,
+    "input_shape": [
+      28,
+      28,
+      1
+    ],
+    "lth": true,
+    "ml_task": "classification",
+    "model_family": "lenet",
+    "model_name": "lenet_relu",
+    "network_description": {},
+    "num_free_parameters": 61706,
+    "output_shape": [
+      10
+    ],
+    "test_set_size": 10000,
+    "train_set_size": 56500,
+    "validation_set_size": 3500
+  },
+  "dataset": {
+    "label_noise": 0,
+    "method": "shuffled_train_test_split",
+    "name": "mnist",
+    "source": "keras",
+    "test_split": 0.14285714285714285,
+    "type": "DatasetSpec",
+    "validation_split": 0.05
+  },
+  "early_stopping": {
+    "class": "EarlyStopping",
+    "min_delta": 0,
+    "monitor": "val_loss",
+    "patience": 30,
+    "restore_best_weights": true
+  },
+  "fit": {
+    "batch_size": 60,
+    "epochs": 30
+  },
+  "loss": {
+    "class": "CategoricalCrossentropy"
+  },
+  "model": {
+    "cell": "conv_5x5_1x1_valid",
+    "cell_width_scale_factor": 1,
+    "cells_per_stack": 1,
+    "downsample": "max_pool_2x2_2x2_valid",
+    "downsample_width_scale_factor": 1,
+    "final": {
+      "depth": 2,
+      "flatten_input": true,
+      "inner": {
+        "activation": "relu",
+        "activity_regularizer": null,
+        "bias_constraint": null,
+        "bias_initializer": "Zeros",
+        "bias_regularizer": null,
+        "kernel_constraint": {
+          "class": "ParameterMask"
+        },
+        "kernel_initializer": "HeUniform",
+        "kernel_regularizer": null,
+        "type": "Dense",
+        "units": -1,
+        "use_bias": true
+      },
+      "input": null,
+      "min_width": 84,
+      "output": null,
+      "rectangular": false,
+      "residual_mode": "none",
+      "type": "FullyConnectedNetwork",
+      "width": 120,
+      "widths": [
+        120,
+        84
+      ]
+    },
+    "input": {
+      "name": "dmp_8",
+      "shape": [
+        28,
+        28,
+        1
+      ],
+      "type": "Input"
+    },
+    "num_stacks": 2,
+    "output": {
+      "activation": "softmax",
+      "activity_regularizer": null,
+      "bias_constraint": null,
+      "bias_initializer": "Zeros",
+      "bias_regularizer": null,
+      "kernel_constraint": null,
+      "kernel_initializer": {
+        "class": "GlorotUniform"
+      },
+      "kernel_regularizer": null,
+      "type": "Dense",
+      "units": 10,
+      "use_bias": true
+    },
+    "stack_width_scale_factor": 2.6666666666666665,
+    "stem": "conv_5x5_1x1_same",
+    "stem_width": 6,
+    "type": "Lenet"
+  },
+  "optimizer": {
+    "class": "Adam",
+    "learning_rate": 0.0012
+  },
+  "precision": "float32",
+  "pruning": {
+    "iterations": 6,
+    "max_epochs_per_iteration": 30,
+    "method": {
+      "pruning_rate": 0.5903999999999999,
+      "type": "MagnitudePruner"
+    },
+    "new_seed": false,
+    "rewind_epoch": {
+      "epoch": 16,
+      "model_epoch": 16,
+      "model_number": 0,
+      "type": "TrainingEpoch"
+    },
+    "rewind_optimizer": true,
+    "type": "PruningConfig"
+  },
+  "resume_from": {
+    "epoch": {
+      "epoch": 210,
+      "model_epoch": 30,
+      "model_number": 6,
+      "type": "TrainingEpoch"
+    },
+    "load_mask": true,
+    "load_optimizer": true,
+    "run_id": {
+      "int64": 188791132200136227108641766041063987552,
+      "type": "UUID",
+      "value": "8e07d977-1f20-4fcb-938f-035138971960"
+    },
+    "type": "TrainingExperimentCheckpoint"
+  },
+  "type": "IterativePruningExperiment"
+}
+loading summaries for experiment 31157380-8c3f-7550-2004-d5b55e3bcdaf...
+experiment marshalling:
 
-    test_categorical_crossentropy  model_epoch  train_accuracy  validation_accuracy  masked_parameter_count  epoch
-0                        2.524398            0        0.087771             0.088286                       0      0
-1                        0.094645            1        0.948286             0.968571                       0      1
-2                        0.061082            2        0.978914             0.982571                       0      2
-3                        0.069127            3        0.983829             0.980857                       0      3
-4                        0.069127            3        0.988495             0.980857                       0      6
-5                        0.054030            4        0.992419             0.985714                       0      7
-6                        0.052707            5        0.989848             0.986857                       0      8
-7                        0.064247            6        0.988114             0.980286                       0      9
-8                        0.079356            7        0.986990             0.983714                       0     10
-9                        0.065995            8        0.988952             0.982286                       0     11
-10                       0.094754            9        0.987733             0.978571                       0     12  
+{
+  "data": {
+    "batch": "lth_mnist_lenet_1",
+    "data_set_size": 70000,
+    "input_shape": [
+      28,
+      28,
+      1
+    ],
+    "lth": true,
+    "ml_task": "classification",
+    "model_family": "lenet",
+    "model_name": "lenet_relu",
+    "network_description": {},
+    "num_free_parameters": 61706,
+    "output_shape": [
+      10
+    ],
+    "test_set_size": 10000,
+    "train_set_size": 56500,
+    "validation_set_size": 3500
+  },
+  "dataset": {
+    "label_noise": 0,
+    "method": "shuffled_train_test_split",
+    "name": "mnist",
+    "source": "keras",
+    "test_split": 0.14285714285714285,
+    "type": "DatasetSpec",
+    "validation_split": 0.05
+  },
+  "early_stopping": {
+    "class": "EarlyStopping",
+    "min_delta": 0,
+    "monitor": "val_loss",
+    "patience": 30,
+    "restore_best_weights": true
+  },
+  "fit": {
+    "batch_size": 60,
+    "epochs": 30
+  },
+  "loss": {
+    "class": "CategoricalCrossentropy"
+  },
+  "model": {
+    "cell": "conv_5x5_1x1_valid",
+    "cell_width_scale_factor": 1,
+    "cells_per_stack": 1,
+    "downsample": "max_pool_2x2_2x2_valid",
+    "downsample_width_scale_factor": 1,
+    "final": {
+      "depth": 2,
+      "flatten_input": true,
+      "inner": {
+        "activation": "relu",
+        "activity_regularizer": null,
+        "bias_constraint": null,
+        "bias_initializer": "Zeros",
+        "bias_regularizer": null,
+        "kernel_constraint": {
+          "class": "ParameterMask"
+        },
+        "kernel_initializer": "HeUniform",
+        "kernel_regularizer": null,
+        "type": "Dense",
+        "units": -1,
+        "use_bias": true
+      },
+      "input": null,
+      "min_width": 84,
+      "output": null,
+      "rectangular": false,
+      "residual_mode": "none",
+      "type": "FullyConnectedNetwork",
+      "width": 120,
+      "widths": [
+        120,
+        84
+      ]
+    },
+    "input": {
+      "name": "dmp_8",
+      "shape": [
+        28,
+        28,
+        1
+      ],
+      "type": "Input"
+    },
+    "num_stacks": 2,
+    "output": {
+      "activation": "softmax",
+      "activity_regularizer": null,
+      "bias_constraint": null,
+      "bias_initializer": "Zeros",
+      "bias_regularizer": null,
+      "kernel_constraint": null,
+      "kernel_initializer": {
+        "class": "GlorotUniform"
+      },
+      "kernel_regularizer": null,
+      "type": "Dense",
+      "units": 10,
+      "use_bias": true
+    },
+    "stack_width_scale_factor": 2.6666666666666665,
+    "stem": "conv_5x5_1x1_same",
+    "stem_width": 6,
+    "type": "Lenet"
+  },
+  "optimizer": {
+    "class": "Adam",
+    "learning_rate": 0.0012
+  },
+  "precision": "float32",
+  "pruning": {
+    "iterations": 6,
+    "max_epochs_per_iteration": 30,
+    "method": {
+      "pruning_rate": 0.5903999999999999,
+      "type": "MagnitudePruner"
+    },
+    "new_seed": false,
+    "rewind_epoch": {
+      "epoch": 16,
+      "model_epoch": 16,
+      "model_number": 0,
+      "type": "TrainingEpoch"
+    },
+    "rewind_optimizer": true,
+    "type": "PruningConfig"
+  },
+  "resume_from": {
+    "epoch": {
+      "epoch": 210,
+      "model_epoch": 30,
+      "model_number": 6,
+      "type": "TrainingEpoch"
+    },
+    "load_mask": true,
+    "load_optimizer": true,
+    "run_id": {
+      "int64": 188791132200136227108641766041063987552,
+      "type": "UUID",
+      "value": "8e07d977-1f20-4fcb-938f-035138971960"
+    },
+    "type": "TrainingExperimentCheckpoint"
+  },
+  "type": "IterativePruningExperiment"
+}
+No Sources to summarize.

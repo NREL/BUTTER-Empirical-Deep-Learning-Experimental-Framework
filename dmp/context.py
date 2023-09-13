@@ -91,12 +91,13 @@ class Context:
         print(f"record_history\n{history}\nextended:\n{extended_history}")
 
         if self.schema is not None:
-            print(f"storing experiment {self.get_experiment_id()} history...")
+            experiment_id = self.get_experiment_id()
+            print(f"storing experiment {experiment_id} history...")
             self.schema.record_history(
                 [
                     (
                         self.job.id,
-                        self.get_experiment_id(),
+                        experiment_id,
                         history,
                         extended_history,
                     )

@@ -1,14 +1,18 @@
+from dataclasses import dataclass
 from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.layer.dense import Dense
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.fully_connected_network import FullyConnectedNetwork
+from dmp.model.model_spec import ModelSpec
+from dmp.model.network_info import NetworkInfo
 
 
-class Lenet(CNNStack):
-    def __init__(self):
-        super().__init__(
-            input=None,
-            output=None,
+@dataclass
+class Lenet(ModelSpec):
+    def make_network(self) -> NetworkInfo:
+        return CNNStack(
+            input=self.input,
+            output=self.output,
             num_stacks=2,
             cells_per_stack=1,
             stem="conv_5x5_1x1_same",
@@ -33,4 +37,4 @@ class Lenet(CNNStack):
             stack_width_scale_factor=16.0 / 6.0,
             downsample_width_scale_factor=1.0,
             cell_width_scale_factor=1.0,
-        )
+        ).make_network()
