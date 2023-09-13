@@ -102,6 +102,18 @@ class Context:
                     )
                 ]
             )
+            print(
+                f"*******************************************************\nstored run\n'{self.id}'\n experiment'{self.get_experiment_id()}' history..."
+            )
+            print(f"run marshalling: \n")
+            import simplejson
+            from dmp.marshaling import marshal
+
+            print(
+                simplejson.dumps(
+                    marshal.marshal(self.experiment), sort_keys=True, indent="  "
+                )
+            )
 
     def update_task(self) -> None:
         if self.worker is None or self.worker.job_queue is None:
