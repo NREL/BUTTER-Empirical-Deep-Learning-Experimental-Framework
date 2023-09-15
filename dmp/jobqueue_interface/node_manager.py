@@ -231,7 +231,7 @@ def main():
                 shell=True,
             ).splitlines()
         ]
-    except subprocess.CalledProcessError:
+    except:
         print("No GPUs detected using nvidia-smi.")
 
     worker_configs: List[WorkerConfig] = []
