@@ -66,7 +66,7 @@ def main():
                 model=Lenet(),
                 fit={
                     "batch_size": 60,
-                    "epochs": 30,
+                    "epochs": 32,
                 },
                 optimizer={
                     "class": "Adam",
@@ -77,7 +77,7 @@ def main():
                     "EarlyStopping",
                     monitor="val_loss",
                     min_delta=0,
-                    patience=30,
+                    patience=32,
                     restore_best_weights=True,
                 ),
                 pruning_configs=pruning_configs,
@@ -119,9 +119,9 @@ def main():
         0.8 ** (1 / 4),
         0.8 ** (1 / 8),
     ]:
-        pruning_iterations = float(numpy.ceil(
-            numpy.log(pruning_target) / numpy.log(survival_rate)
-        ))
+        pruning_iterations = float(
+            numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
+        )
         pruning_rate = 1.0 - survival_rate
 
         for rewind_epoch in [
@@ -133,13 +133,14 @@ def main():
             8,
             10,
             16,
+            24,
             32,
         ]:
             pruning_configs.append(
                 PruningConfig(
                     iterations=pruning_iterations,
                     method=MagnitudePruner(pruning_rate),
-                    max_epochs_per_iteration=30,
+                    max_epochs_per_iteration=32,
                     rewind_epoch=TrainingEpoch(
                         epoch=rewind_epoch,
                         model_number=0,
