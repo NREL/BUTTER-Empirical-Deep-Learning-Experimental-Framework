@@ -204,7 +204,7 @@ class TrainingExperimentSummarizer:
         # print(loss_levels)
         # print(loss_levels.shape)
 
-        loss_series = history[keys.test_loss_cmin]
+        # loss_series = history[keys.test_loss_cmin]
         interpolated_loss_points = {
             k: [] for k in chain((keys.run, keys.epoch), history.columns)
         }
@@ -214,17 +214,21 @@ class TrainingExperimentSummarizer:
             loss_level_idx = 0
             prev_epoch: Any = None
             for curr_epoch, curr_loss in losses.items():
-                while curr_loss <= loss_levels[loss_level_idx]:
-                    loss_level = loss_levels[loss_level_idx]
+                loss_level = loss_levels[loss_level_idx]
+
+                if curr_loss > loss_level:
+                    continue
+
+                while curr_loss <= loss_level:
                     if prev_epoch is None:
                         prev_epoch = curr_epoch
                     prev_loss = losses.loc[prev_epoch]
 
+                    prev_weight = 0.5
                     delta = prev_loss - curr_loss
-                    curr_weight = 0.5
-                    if delta > 1e-18:
-                        curr_weight = (loss_level - curr_loss) / delta
-                    prev_weight = 1 - curr_weight
+                    if delta > 1e-12:
+                        prev_weight = (loss_level - curr_loss) / delta
+                    curr_weight = 1.0 - prev_weight
 
                     prev_index = (run, prev_epoch)
                     prev = history.loc[prev_index]

@@ -1,3 +1,10 @@
+truncate table run_data;
+truncate table run_status;
+truncate table history;
+truncate table experiment2;
+truncate table checkpoint;
+
+
 
 CREATE TABLE IF NOT EXISTS history
 (
