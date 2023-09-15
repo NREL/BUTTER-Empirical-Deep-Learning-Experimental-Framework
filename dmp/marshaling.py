@@ -75,7 +75,7 @@ import uuid
 register_type(
     uuid.UUID,
     "UUID",
-    lambda m, s: {m.marshal_key("value"): str(s), m.marshal_key("int64"): int(s)},
+    lambda m, s: {m.marshal_key("value"): str(s)},
     lambda d, s: uuid.UUID(s[d.marshal_key("value")]),
     lambda d, s, r: r,
 )
