@@ -53,7 +53,6 @@ def run_worker(
     )
 
     command = [
-        "source",
         f"./{config.run_script}",
         nodes_string,
         cpus_string,
