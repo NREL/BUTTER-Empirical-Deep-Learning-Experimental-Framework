@@ -53,7 +53,8 @@ def run_worker(
     )
 
     command = [
-        f"source ./{config.run_script}",
+        "source",
+        f"./{config.run_script}",
         nodes_string,
         cpus_string,
         "python",
