@@ -1,8 +1,8 @@
 #!/bin/bash
 ARGS=("$@")
-node_list=("${ARGS[1]}")
-core_list=("${ARGS[2]}")
-command=("${ARGS[@]:3}")
+node_list=("${ARGS[0]}")
+core_list=("${ARGS[1]}")
+command=("${ARGS[@]:2}")
 
 
 echo args "${ARGS[@]}"
