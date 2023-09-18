@@ -393,7 +393,11 @@ class TrainingExperiment(Experiment):
         history_callbacks.append(timestamp_recorder)
 
         zero_epoch_recorder = None
-        if new_model_number or experiment_history is None:
+        if (
+            new_model_number
+            or experiment_history is None
+            or len(experiment_history) == 0
+        ):
             zero_epoch_recorder = ZeroEpochRecorder(
                 [train_set_info, validation_set_info, test_set_info], None
             )
