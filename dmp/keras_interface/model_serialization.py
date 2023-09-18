@@ -134,7 +134,7 @@ def load_model_from_file(
         optimizer_path,
     ) = get_paths(model_path)
 
-    optimizer_path = re.sub(r'(\d+)\.0', r'\1', optimizer_path)
+    optimizer_path = re.sub(r"(\d+)\.0", r"\1", optimizer_path)
 
     with open(optimizer_path, "rb") as file:
         return load_model(
