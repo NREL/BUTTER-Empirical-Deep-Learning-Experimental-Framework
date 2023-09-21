@@ -96,13 +96,17 @@ def get_mask_constraint(
     keras_layer,
     variable,
 ) -> Optional[Any]:
+    print(f'get mask constraint {variable} {keras_layer}')
     match = re.fullmatch(".*/(bias|kernel):\d+", variable.name)
     if match is not None:
         match_str = match.group(1)
+        print(f'match found {match_str}.')
         constraint_member_name = f"{match_str}_constraint"
         if hasattr(keras_layer, constraint_member_name):
+            print(f'hasattr {constraint_member_name}')
             constraint = getattr(keras_layer, constraint_member_name)
             if isinstance(constraint, ParameterMask):
+                print(f'isinstance ParameterMask ***')
                 return constraint
     return None
 

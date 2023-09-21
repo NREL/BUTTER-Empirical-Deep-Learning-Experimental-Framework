@@ -34,5 +34,8 @@ def count_masked_parameters(
             layer_to_keras_map.get(layer).keras_layer,  # type: ignore
         )
         if constraint is not None:
+            print(
+                f"found constraint with {constraint.mask.numpy().sum()} masked parameters"
+            )
             num_masked_parameters += constraint.mask.numpy().sum()
     return num_masked_parameters

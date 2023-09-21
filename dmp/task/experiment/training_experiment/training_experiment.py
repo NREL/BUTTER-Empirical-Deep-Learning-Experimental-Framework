@@ -396,7 +396,7 @@ class TrainingExperiment(Experiment):
         if (
             new_model_number
             or experiment_history is None
-            or len(experiment_history) == 0
+            or self.get_current_epoch(experiment_history).model_epoch == 0
         ):
             zero_epoch_recorder = ZeroEpochRecorder(
                 [train_set_info, validation_set_info, test_set_info], None

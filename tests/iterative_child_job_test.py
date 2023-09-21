@@ -56,32 +56,30 @@ def iterative_child_job_test():
     "data": {
       "job_id": {
         "type": "UUID",
-        "int64": 1.99699937299130823180304949746497493586e+38,
-        "label": "1e",
-        "value": "963ccf14-f748-40dd-b2da-638f23041a52"
+        "label": "1a",
+        "value": "000c6744-4df7-4b89-b634-7d019f5268df"
       },
       "run_id": {
         "type": "UUID",
-        "int64": 1.99699937299130823180304949746497493586e+38,
-        "label": "1e",
-        "value": "963ccf14-f748-40dd-b2da-638f23041a52"
+        "label": "1a",
+        "value": "000c6744-4df7-4b89-b634-7d019f5268df"
       },
       "context": {
         "cpus": [
-          8,
-          9,
-          10,
-          11,
-          12,
-          13,
-          14,
-          15,
-          16,
-          17
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
         ],
         "gpus": [],
         "nodes": [
-          0
+          1
         ],
         "num_cpus": 10,
         "num_gpus": 0,
@@ -89,20 +87,19 @@ def iterative_child_job_test():
         "num_nodes": 1,
         "worker_id": {
           "type": "UUID",
-          "int64": 3.08412683651886119774123842615453104684e+38,
-          "value": "e8061f4c-ea92-4e0a-a4f0-20f860db3a2c"
+          "value": "c7ef06e9-b166-4188-ab0a-ab2249b179a4"
         },
         "gpu_memory": 0,
-        "tensorflow_strategy": "\\\\<class 'tensorflow.python.distribute.distribute_lib._DefaultDistributionStrategy'>"
+        "tensorflow_strategy": "<class 'tensorflow.python.distribute.distribute_lib._DefaultDistributionStrategy'>"
       },
-      "git_hash": "ac1c585",
+      "git_hash": "921c228",
       "platform": "Linux-3.10.0-1062.9.1.el7.x86_64-x86_64-with-glibc2.17",
-      "host_name": "r4i7n35",
-      "slurm_job_id": 13231242,
+      "host_name": "r4i6n1",
+      "slurm_job_id": 13306753,
       "python_version": "3.10.8",
       "tensorflow_version": "2.8.1"
     },
-    "seed": 1693935724,
+    "seed": 1694811841,
     "type": "IterativePruningRunSpec",
     "model_saving": {
       "type": "ModelSavingSpec",
@@ -110,11 +107,14 @@ def iterative_child_job_test():
         0,
         1,
         2,
+        3,
         4,
+        5,
         6,
         8,
         10,
         16,
+        24,
         32
       ],
       "fixed_interval": 1,
@@ -127,23 +127,20 @@ def iterative_child_job_test():
     "record_times": true,
     "rewind_run_id": {
       "type": "UUID",
-      "int64": 1.99699937299130823180304949746497493586e+38,
-      "label": "1e",
-      "value": "963ccf14-f748-40dd-b2da-638f23041a52"
+      "value": "15e6dc64-f3d1-4384-8a1c-288485c06d78"
     },
     "resume_checkpoint": {
       "type": "TrainingExperimentCheckpoint",
       "epoch": {
         "type": "TrainingEpoch",
-        "epoch": 30,
-        "model_epoch": 30,
-        "model_number": 0
+        "epoch": 224,
+        "model_epoch": 32,
+        "model_number": 6
       },
       "run_id": {
         "type": "UUID",
-        "int64": 1.99699937299130823180304949746497493586e+38,
-        "label": "1e",
-        "value": "963ccf14-f748-40dd-b2da-638f23041a52"
+        "label": "1a",
+        "value": "000c6744-4df7-4b89-b634-7d019f5268df"
       },
       "load_mask": true,
       "load_optimizer": true
@@ -154,7 +151,7 @@ def iterative_child_job_test():
   "type": "Run",
   "experiment": {
     "fit": {
-      "epochs": 30,
+      "epochs": 32,
       "batch_size": 60
     },
     "data": {
@@ -183,39 +180,7 @@ def iterative_child_job_test():
     },
     "type": "IterativePruningExperiment",
     "model": {
-      "cell": "conv_5x5_1x1_valid",
-      "stem": "conv_5x5_1x1_same",
       "type": "Lenet",
-      "final": {
-        "type": "FullyConnectedNetwork",
-        "depth": 2,
-        "inner": {
-          "type": "Dense",
-          "units": -1,
-          "use_bias": true,
-          "activation": "relu",
-          "bias_constraint": null,
-          "bias_initializer": "Zeros",
-          "bias_regularizer": null,
-          "kernel_constraint": {
-            "class": "ParameterMask"
-          },
-          "kernel_initializer": "HeUniform",
-          "kernel_regularizer": null,
-          "activity_regularizer": null
-        },
-        "input": null,
-        "width": 120,
-        "output": null,
-        "widths": [
-          120,
-          84
-        ],
-        "min_width": 84,
-        "rectangular": false,
-        "flatten_input": true,
-        "residual_mode": "none"
-      },
       "input": {
         "name": "dmp_8",
         "type": "Input",
@@ -239,14 +204,7 @@ def iterative_child_job_test():
         },
         "kernel_regularizer": null,
         "activity_regularizer": null
-      },
-      "downsample": "max_pool_2x2_2x2_valid",
-      "num_stacks": 2,
-      "stem_width": 6,
-      "cells_per_stack": 1,
-      "cell_width_scale_factor": 1,
-      "stack_width_scale_factor": 2.6666666666666665,
-      "downsample_width_scale_factor": 1
+      }
     },
     "dataset": {
       "name": "mnist",
@@ -267,12 +225,12 @@ def iterative_child_job_test():
       "iterations": 6,
       "rewind_epoch": {
         "type": "TrainingEpoch",
-        "epoch": 16,
-        "model_epoch": 16,
+        "epoch": 0,
+        "model_epoch": 0,
         "model_number": 0
       },
       "rewind_optimizer": true,
-      "max_epochs_per_iteration": 30
+      "max_epochs_per_iteration": 32
     },
     "optimizer": {
       "class": "Adam",
@@ -282,7 +240,7 @@ def iterative_child_job_test():
     "early_stopping": {
       "class": "EarlyStopping",
       "monitor": "val_loss",
-      "patience": 30,
+      "patience": 32,
       "min_delta": 0,
       "restore_best_weights": true
     }
@@ -292,7 +250,7 @@ def iterative_child_job_test():
     deserialized = simplejson.loads(job_command)
     run = marshaling.marshal.demarshal(deserialized)
     experiment_test_util.run_experiment(
-        run, True, id=UUID("8e07d977-1f20-4fcb-938f-035138971960")
+        run, True, id=UUID("000c6744-4df7-4b89-b634-7d019f5268df")
     )
 
 
