@@ -57,37 +57,35 @@ def iterative_child_job_test():
       "job_id": {
         "type": "UUID",
         "label": "1a",
-        "value": "000c6744-4df7-4b89-b634-7d019f5268df"
+        "value": "001a8336-4303-48e9-b88a-29dbea4eaf1a"
       },
       "run_id": {
         "type": "UUID",
         "label": "1a",
-        "value": "000c6744-4df7-4b89-b634-7d019f5268df"
+        "value": "001a8336-4303-48e9-b88a-29dbea4eaf1a"
       },
       "context": {
         "cpus": [
-          26,
-          27,
-          28,
-          29,
-          30,
-          31,
-          32,
-          33,
-          34,
-          35
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
         ],
         "gpus": [],
         "nodes": [
-          1
+          0
         ],
-        "num_cpus": 10,
+        "num_cpus": 8,
         "num_gpus": 0,
         "queue_id": 200,
         "num_nodes": 1,
         "worker_id": {
           "type": "UUID",
-          "value": "c7ef06e9-b166-4188-ab0a-ab2249b179a4"
+          "value": "1704f3e2-f9fd-490d-af0e-8324e635cd15"
         },
         "gpu_memory": 0,
         "tensorflow_strategy": "<class 'tensorflow.python.distribute.distribute_lib._DefaultDistributionStrategy'>"
@@ -99,7 +97,7 @@ def iterative_child_job_test():
       "python_version": "3.10.8",
       "tensorflow_version": "2.8.1"
     },
-    "seed": 1694811841,
+    "seed": 1694811813,
     "type": "IterativePruningRunSpec",
     "model_saving": {
       "type": "ModelSavingSpec",
@@ -127,20 +125,20 @@ def iterative_child_job_test():
     "record_times": true,
     "rewind_run_id": {
       "type": "UUID",
-      "value": "15e6dc64-f3d1-4384-8a1c-288485c06d78"
+      "value": "35d90ef7-29c0-4c7c-9ff3-a54a30e8dfda"
     },
     "resume_checkpoint": {
       "type": "TrainingExperimentCheckpoint",
       "epoch": {
         "type": "TrainingEpoch",
-        "epoch": 224,
+        "epoch": 704,
         "model_epoch": 32,
-        "model_number": 6
+        "model_number": 21
       },
       "run_id": {
         "type": "UUID",
         "label": "1a",
-        "value": "000c6744-4df7-4b89-b634-7d019f5268df"
+        "value": "001a8336-4303-48e9-b88a-29dbea4eaf1a"
       },
       "load_mask": true,
       "load_optimizer": true
@@ -219,14 +217,14 @@ def iterative_child_job_test():
       "type": "PruningConfig",
       "method": {
         "type": "MagnitudePruner",
-        "pruning_rate": 0.5903999999999999
+        "pruning_rate": 0.19999999999999996
       },
       "new_seed": false,
-      "iterations": 6,
+      "iterations": 21,
       "rewind_epoch": {
         "type": "TrainingEpoch",
-        "epoch": 0,
-        "model_epoch": 0,
+        "epoch": 1,
+        "model_epoch": 1,
         "model_number": 0
       },
       "rewind_optimizer": true,
@@ -250,7 +248,7 @@ def iterative_child_job_test():
     deserialized = simplejson.loads(job_command)
     run = marshaling.marshal.demarshal(deserialized)
     experiment_test_util.run_experiment(
-        run, True, id=UUID("000c6744-4df7-4b89-b634-7d019f5268df")
+        run, True, id=UUID("001a8336-4303-48e9-b88a-29dbea4eaf1a")
     )
 
 

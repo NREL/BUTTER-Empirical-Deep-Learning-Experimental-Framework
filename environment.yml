@@ -6,13 +6,13 @@ dependencies:
 - pip
 - scipy
 - numpy
-- conda-forge::tensorflow >= 2.7
+- tensorflow >= 2.11
 - simplejson
 - libpq
 - bzip2
 - lz4
 - pip:
-  - pyarrow >= 10
+  - pyarrow >= 12
   - psycopg[binary] >= 3
   - psycopg_pool >= 3
   - pytest
@@ -21,4 +21,4 @@ dependencies:
   - pathos
 
 
-  
+
