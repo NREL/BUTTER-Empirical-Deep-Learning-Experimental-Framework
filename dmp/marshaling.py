@@ -7,6 +7,7 @@ from dmp.keras_interface.keras_utils import (
 )
 from dmp.common import marshal_type_key
 from dmp.model.named.lenet import Lenet
+from dmp.model.named.resenet20 import Resnet20
 from dmp.task.experiment.lth.lth_experiment import LTHExperiment
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.pruning_experiment.pruning_run_spec import (
@@ -195,6 +196,7 @@ register_types(
         BatchNormBlock,
         LayerFactoryModel,
         Lenet,
+        Resnet20,
     )
 )
 

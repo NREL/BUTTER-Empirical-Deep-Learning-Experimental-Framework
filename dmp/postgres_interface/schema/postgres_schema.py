@@ -138,9 +138,9 @@ class PostgresSchema:
                         history_table.extended_history,
                     )
                 )
-            )
+            ),
         )
-        print(query)
+        # print(query)
 
         with ConnectionManager(self.credentials) as connection:
             connection.execute(
@@ -148,12 +148,12 @@ class PostgresSchema:
                 prepared_results,
                 binary=True,
             )
-            with ClientCursor(connection) as cursor:
-                mog = cursor.mogrify(
-                    query,
-                    prepared_results,
-                )
-                print(f"history query: {mog}")
+            # with ClientCursor(connection) as cursor:
+            #     mog = cursor.mogrify(
+            #         query,
+            #         prepared_results,
+            #     )
+            #     print(f"history query: {mog}")
 
     def get_run_history(
         self,
@@ -306,7 +306,7 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET {update_clause}
                 )
             ),
         )
-        print(query)
+        # print(query)
 
         with ConnectionManager(self.credentials) as connection:
             connection.execute(
@@ -343,7 +343,7 @@ ON CONFLICT DO NOTHING;
             casting_clause=input_colums.casting_sql,
             placeholders=input_colums.placeholders,
         )
-        print(f"query running: {query}")
+        # print(f"query running: {query}")
         # print(f"run_id: {run_id}, type: {type(run_id)}")
 
         with ConnectionManager(self.credentials) as connection:

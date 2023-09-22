@@ -220,7 +220,7 @@ def iterative_child_job_test():
         "pruning_rate": 0.19999999999999996
       },
       "new_seed": false,
-      "iterations": 21,
+      "iterations": 30,
       "rewind_epoch": {
         "type": "TrainingEpoch",
         "epoch": 1,

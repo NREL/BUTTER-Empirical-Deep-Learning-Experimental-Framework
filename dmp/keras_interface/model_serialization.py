@@ -70,15 +70,15 @@ def save_model_data(
     # print(f'1 {relative_path} {model_path} {network_path} {keras_model_path}')
 
     with open(task_path, "w") as task_file:
-        print(f"Writing task to {task_path}...")
+        # print(f"Writing task to {task_path}...")
         simplejson.dump(marshal.marshal(task), task_file)
 
     with open(network_path, "w") as network_file:
-        print(f"Writing network to {network_path}...")
+        # print(f"Writing network to {network_path}...")
         simplejson.dump(marshal.marshal(model.network), network_file)
 
     with open(parameters_path, "wb") as parameters_file:
-        print(f"Writing parameters to {parameters_file}...")
+        # print(f"Writing parameters to {parameters_file}...")
         save_parameters(
             model.network.structure,
             model.keras_network.layer_to_keras_map,
@@ -87,7 +87,7 @@ def save_model_data(
         )
 
     with open(optimizer_path, "wb") as optimizer_file:
-        print(f"Writing model state to {optimizer_path}...")
+        # print(f"Writing model state to {optimizer_path}...")
         save_parameters(
             model.network.structure,
             model.keras_network.layer_to_keras_map,
@@ -184,7 +184,7 @@ def load_parameters(
     parameters_table = {
         column: table[column].to_numpy() for column in table.column_names
     }
-    print(f'first values: {table["value"][0:4]}')
+    # print(f'first values: {table["value"][0:4]}')
     del table
 
     optimizer_members = [
@@ -195,9 +195,9 @@ def load_parameters(
         and hasattr(optimizer, member)
     ]
 
-    print(
-        f"Loading model with optimizer type: {type(optimizer)} with members {optimizer_members}."
-    )
+    # print(
+    #     f"Loading model with optimizer type: {type(optimizer)} with members {optimizer_members}."
+    # )
 
     row_index = 0
 
@@ -206,7 +206,7 @@ def load_parameters(
 
         shape = variable.value().shape
         size = numpy.prod(shape)
-        print(f"loading variable: {variable.name} {size} {shape} {row_index}")
+        # print(f"loading variable: {variable.name} {size} {shape} {row_index}")
         constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None
         if load_mask and constraint is not None:
@@ -214,24 +214,28 @@ def load_parameters(
             chunk = column[row_index : row_index + size]
             # mask = numpy.logical_not(pyarrow.compute.is_null(chunk).to_numpy())
             mask = numpy.logical_not(numpy.isnan(chunk))
+            # print(f"load_mask {numpy.sum(mask)} / {numpy.size(mask)}")
             constraint.mask.assign(mask.reshape(shape))
 
-        def load_value(name, variable):
+        def load_variable(name, variable):
             column = parameters_table[name]
             prepared = column[row_index : row_index + size]
 
             if mask is not None:
                 prepared = numpy.where(mask, prepared, 0)
-            print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
+            # print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
             prepared = prepared.reshape(shape)
             variable.assign(prepared)
 
-        load_value("value", variable)
-        for member in optimizer_members:
-            variable_index = optimizer._index_dict[
-                optimizer._var_key(variable)
-            ]  # type: ignore
-            load_value(member, getattr(optimizer, member)[variable_index])
+        load_variable("value", variable)
+        if optimizer is not None:
+            for member in optimizer_members:
+                var_key = optimizer._var_key(variable)
+                if var_key not in optimizer._index_dict:
+                    continue
+                variable_index = optimizer._index_dict[var_key]  # type: ignore
+                optimizer_variable = getattr(optimizer, member)[variable_index]
+                load_variable(member, optimizer_variable)
 
         row_index += size
 
@@ -254,9 +258,9 @@ def save_parameters(
         if optimizer is not None and hasattr(optimizer, member)
     ]
 
-    print(
-        f"Saving model with optimizer type: {type(optimizer)} with members {optimizer_members}."
-    )
+    # print(
+    #     f"Saving model with optimizer type: {type(optimizer)} with members {optimizer_members}."
+    # )
 
     data: dict = {column: [] for column in ["value"] + optimizer_members}
     row_index = 0
@@ -268,24 +272,36 @@ def save_parameters(
         size = numpy.prod(shape)
         constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
         mask = None if constraint is None else constraint.mask.numpy().flatten()
-        print(f"saving variable: {variable.name} {size} {shape}")
+        # print(f"saving variable: {variable.name} {size} {shape}")
 
-        def accumulate_value(name, variable):
+        def accumulate_value(name, value):
+            data[name].append(value)
+
+        def accumulate_variable(name, variable):
             value = variable.numpy().flatten()
             if mask is not None:
                 value = numpy.where(mask, value, numpy.nan)
-            print(
-                f"{name}, {row_index}, {len(data[name])}, {size}, {shape}, values: {value[0:4]}"
-            )
-            data[name].append(value)
+            # print(
+            #     f"{name}, {row_index}, {len(data[name])}, {size}, {shape}, values: {value[0:4]}"
+            # )
+            accumulate_value(name, value)
 
-        accumulate_value("value", variable)
-        for member in optimizer_members:
-            optimizer_member = getattr(optimizer, member)
-            variable_index = optimizer._index_dict[
-                optimizer._var_key(variable)
-            ]  # type: ignore
-            accumulate_value(member, optimizer_member[variable_index])
+        accumulate_variable("value", variable)
+        if optimizer is not None:
+            for member in optimizer_members:
+                print(f"visit_variable {layer} {variable.name} {layer.name} {member}")
+                optimizer_member = getattr(optimizer, member)
+                print(f"optimizer_member {type(optimizer_member)}")
+                var_key = optimizer._var_key(variable)
+
+                if var_key not in optimizer._index_dict:
+                    values = numpy.empty(variable.shape)
+                    values.fill(numpy.nan)
+                    accumulate_value(member, values)
+                else:
+                    variable_index = optimizer._index_dict[var_key]  # type: ignore
+                    optimizer_variable = optimizer_member[variable_index]
+                    accumulate_variable(member, optimizer_variable)
 
         row_index += size
 
@@ -305,7 +321,7 @@ def save_parameters(
         nan_to_none=True,
     )
 
-    print(f'first values: {table["value"][0:4]}, {table["sequence"][0:4]}')
+    # print(f'first values: {table["value"][0:4]}, {table["sequence"][0:4]}')
 
     parquet_util.write_parquet_table(
         table,

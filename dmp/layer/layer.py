@@ -162,6 +162,11 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
             if "name" in layer:
                 params.append(f'"{layer["name"]}"')
 
+            if "kernel_constraint" in layer:
+                params.append(
+                    f'kc:"{type(layer["kernel_constraint"])}: {layer["kernel_constraint"]}"'
+                )
+
             output_indicies = ", ".join(
                 (str(layer_order_index[output]) for output in output_map[layer])
             )

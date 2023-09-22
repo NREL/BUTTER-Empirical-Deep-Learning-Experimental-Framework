@@ -412,6 +412,10 @@ class TrainingExperiment(Experiment):
         )
         callbacks.extend(history_callbacks)
 
+        count = count_masked_parameters(
+            model.network.structure, model.keras_network.layer_to_keras_map
+        )
+        print(f"masked parameters: {count}")
         # fit the model
         history: keras.callbacks.History = model.keras_model.fit(
             callbacks=callbacks,
@@ -450,8 +454,11 @@ class TrainingExperiment(Experiment):
             ] * fit_history_length
 
         # set masked parameter count history
-        if keys.maked_parameter_count_key not in fit_history:
-            fit_history[keys.maked_parameter_count_key] = [
+        print(
+            f"count masked parameters... {keys.masked_parameter_count_key not in fit_history}"
+        )
+        if keys.masked_parameter_count_key not in fit_history:
+            fit_history[keys.masked_parameter_count_key] = [
                 count_masked_parameters(
                     model.network.structure,
                     model.keras_network.layer_to_keras_map,

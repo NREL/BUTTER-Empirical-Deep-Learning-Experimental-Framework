@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dataclasses import dataclass
 from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.layer.dense import Dense
 from dmp.model.cnn.cnn_stack import CNNStack

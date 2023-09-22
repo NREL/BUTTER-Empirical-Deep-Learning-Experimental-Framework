@@ -119,7 +119,7 @@ def main():
         0.8 ** (1 / 4),
         0.8 ** (1 / 8),
     ]:
-        pruning_iterations = float(
+        pruning_iterations = int(
             numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
         )
         pruning_rate = 1.0 - survival_rate

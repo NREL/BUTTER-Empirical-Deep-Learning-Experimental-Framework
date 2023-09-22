@@ -88,11 +88,11 @@ class Context:
         history: pandas.DataFrame,
         extended_history: pandas.DataFrame,
     ) -> None:
-        print(f"record_history\n{history}\nextended:\n{extended_history}")
+        # print(f"record_history\n{history}\nextended:\n{extended_history}")
 
         if self.schema is not None:
             experiment_id = self.get_experiment_id()
-            print(f"storing experiment {experiment_id} history...")
+            # print(f"storing experiment {experiment_id} history...")
             self.schema.record_history(
                 [
                     (
@@ -103,18 +103,18 @@ class Context:
                     )
                 ]
             )
-            print(
-                f"*******************************************************\nstored run\n'{self.id}'\n experiment'{experiment_id}' history..."
-            )
-            print(f"experiment marshalling: \n")
-            import simplejson
-            from dmp.marshaling import marshal
+            # print(
+            #     f"*******************************************************\nstored run\n'{self.id}'\n experiment'{experiment_id}' history..."
+            # )
+            # print(f"experiment marshalling: \n")
+            # import simplejson
+            # from dmp.marshaling import marshal
 
-            print(
-                simplejson.dumps(
-                    marshal.marshal(self.experiment), sort_keys=True, indent="  "
-                )
-            )
+            # print(
+            #     simplejson.dumps(
+            #         marshal.marshal(self.experiment), sort_keys=True, indent="  "
+            #     )
+            # )
 
     def update_task(self) -> None:
         if self.worker is None or self.worker.job_queue is None:
@@ -130,16 +130,16 @@ class Context:
     ) -> None:
         if self.schema is not None:
             experiment_id = self.get_experiment_id()
-            print(f"loading summaries for experiment {experiment_id}...")
-            print(f"experiment marshalling: \n")
-            import simplejson
-            from dmp.marshaling import marshal
+            # print(f"loading summaries for experiment {experiment_id}...")
+            # print(f"experiment marshalling: \n")
+            # import simplejson
+            # from dmp.marshaling import marshal
 
-            print(
-                simplejson.dumps(
-                    marshal.marshal(self.experiment), sort_keys=True, indent="  "
-                )
-            )
+            # print(
+            #     simplejson.dumps(
+            #         marshal.marshal(self.experiment), sort_keys=True, indent="  "
+            #     )
+            # )
 
             summary = self.experiment.summarize(
                 self.schema.get_experiment_run_histories(experiment_id)
@@ -163,9 +163,9 @@ class Context:
             epoch.model_epoch,
         )
 
-        print(
-            f"\n\n\n========== saving model data run:{self.run} model_path:{model_path} model: {model} ==========\n\n\n"
-        )
+        # print(
+        #     f"\n\n\n========== saving model data run:{self.run} model_path:{model_path} model: {model} ==========\n\n\n"
+        # )
         model_serialization.save_model_data(self.run, model, model_path)
 
         if self.schema is not None:

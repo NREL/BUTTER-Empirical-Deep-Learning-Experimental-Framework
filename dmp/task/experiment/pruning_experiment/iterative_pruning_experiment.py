@@ -43,6 +43,7 @@ class IterativePruningExperiment(TrainingExperiment):
         context: Context,
         run: IterativePruningRunSpec,
     ) -> None:
+        print(f"********** 1")
         # http://proceedings.mlr.press/v119/frankle20a/frankle20a.pdf Algorithim 2
         pruning = self.pruning
 
@@ -62,17 +63,24 @@ class IterativePruningExperiment(TrainingExperiment):
             epoch=pruning.rewind_epoch,
         )
 
+        print(f"********** 2")
+
         # 4: for n ∈ {1, . . . , N} do
         first_iteration = True
         while True:
             epoch = self.get_current_epoch(experiment_history)
             iteration = epoch.model_number
+
+            print(f"********** 3 {epoch}")
             if iteration >= pruning.iterations:
+                print(f"********** 4")
                 break
 
+            print(f"********** 5")
             is_new_iteration = run.prune_first_iteration or not first_iteration
             if is_new_iteration:
                 iteration += 1
+                print(f"********** 6")
 
                 # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
                 pruning.method.prune(
@@ -82,7 +90,9 @@ class IterativePruningExperiment(TrainingExperiment):
 
                 # load rewind point
                 rewind_point.resume(model)
+                print(f"********** 7")
 
+            print(f"********** 8")
             # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
             # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
             self._fit_model(
@@ -98,6 +108,8 @@ class IterativePruningExperiment(TrainingExperiment):
                 epochs=pruning.max_epochs_per_iteration,
             )
 
+            print(f"********** 9")
+
             # 7: Return Wk, m
             # save weights at this point
             run.prune_first_iteration = True
@@ -110,9 +122,11 @@ class IterativePruningExperiment(TrainingExperiment):
                 experiment_history,
                 model,
             )
+            print(f"********** 10")
 
             first_iteration = False
 
+        print(f"********** 11")
         self._record_result(
             context,
             run,
@@ -121,4 +135,7 @@ class IterativePruningExperiment(TrainingExperiment):
             experiment_history,
         )
 
+        print(f"********** 12")
+
         context.update_summary()
+        print(f"********** 13")

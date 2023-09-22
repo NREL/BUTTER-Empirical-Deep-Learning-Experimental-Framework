@@ -45,10 +45,8 @@ def make_pyarrow_table_from_dataframe(
                 elif has_float:
                     array = array.astype(numpy.float32)
                 elif has_int:
-                    print(f'NULLABLE INT ----------------------------')
                     array = array.astype(numpy.obj)
                 elif has_bool:
-                    print(f'NULLABLE Bool ----------------------------')
                     array = array.astype(numpy.B)
 
         return array
@@ -62,8 +60,7 @@ def make_pyarrow_table_from_dataframe(
 def convert_dataframe_to_bytes(
     dataframe: Optional[pandas.DataFrame],
 ) -> Optional[bytes]:
-
-    print(f'convert_dataframe_to_bytes\n{dataframe}')
+    # print(f'convert_dataframe_to_bytes\n{dataframe}')
     if dataframe is None:
         return None
 
@@ -83,7 +80,7 @@ def convert_dataframe_to_bytes(
 
     table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
 
-    print(f'convert_dataframe_to_bytes : pyarrow:\n{table}')
+    # print(f'convert_dataframe_to_bytes : pyarrow:\n{table}')
 
     data = None
     with io.BytesIO() as buffer:
@@ -109,6 +106,7 @@ def convert_bytes_to_dataframe(
         return None
 
     import pyarrow.types as types
+
     with io.BytesIO(data) as buffer:
         pqt = read_parquet_table(buffer)
 
@@ -133,14 +131,18 @@ def convert_bytes_to_dataframe(
                     pandas_dtype = pandas.BooleanDtype
 
                 if pandas_dtype is not None:
-                    cols[name] = pandas.Series(pqt.column(name).to_pylist(), dtype=pandas_dtype)
+                    cols[name] = pandas.Series(
+                        pqt.column(name).to_pylist(), dtype=pandas_dtype
+                    )
                 else:
                     cols[name] = pandas.Series(pqt.column(name).to_pylist())
             else:
                 cols[name] = column.to_numpy()
 
         df = pandas.DataFrame(cols)
-        print(f'-------------------------------------------------------------------\nconvert_bytes_to_dataframe:\n{pqt}\npandas:\n{df}')
+        # print(
+        #     f"convert_bytes_to_dataframe:\n{pqt}\npandas:\n{df}"
+        # )
         return df
 
         # def type_mapper(pq_dtype):
@@ -214,7 +216,6 @@ def get_pyarrow_type_mapping(
     values: Union[list, ndarray],
     nan_to_none: bool = True,
 ) -> Tuple[pyarrow.DataType, bool, bool, Union[list, ndarray]]:
-
     def is_null(v):
         if v is None:
             return True
@@ -224,10 +225,7 @@ def get_pyarrow_type_mapping(
         return pandas.isna(v)
 
     nullable = False
-    nullable = any(
-        is_null(v)
-        for v in values
-    )
+    nullable = any(is_null(v) for v in values)
 
     use_byte_stream_split = False
 

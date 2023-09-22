@@ -24,6 +24,7 @@ class ResNetBlock(LayerFactory):
             "padding": "same",
             "use_bias": False,
             "activation": "relu",
+            "kernel_constraint": keras_kwcfg("ParameterMask"),
         }
     )
 
