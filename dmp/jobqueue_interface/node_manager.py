@@ -52,6 +52,9 @@ def run_worker(
         "-" if len(config.gpus) == 0 else ",".join([str(i) for i in config.gpus])
     )
 
+    print(
+        f'making worker command with nodes_string "{nodes_string}", cpus_string "{cpus_string}", gpus_string {gpus_string}".'
+    )
     command = [
         f"./{config.run_script}",
         nodes_string,
