@@ -289,9 +289,9 @@ def save_parameters(
         accumulate_variable("value", variable)
         if optimizer is not None:
             for member in optimizer_members:
-                print(f"visit_variable {layer} {variable.name} {layer.name} {member}")
+                # print(f"visit_variable {layer} {variable.name} {layer.name} {member}")
                 optimizer_member = getattr(optimizer, member)
-                print(f"optimizer_member {type(optimizer_member)}")
+                # print(f"optimizer_member {type(optimizer_member)}")
                 var_key = optimizer._var_key(variable)
 
                 if var_key not in optimizer._index_dict:

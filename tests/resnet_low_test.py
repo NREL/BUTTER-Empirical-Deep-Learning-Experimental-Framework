@@ -27,7 +27,7 @@ from dmp.marshaling import marshal
 
 import tests.experiment_test_util as experiment_test_util
 
-param = get_paper_param("Linear_Mode_Connectivity", "RESNET", "Low")
+param = get_paper_param("Linear_Mode_Connectivity", "RESNET", "low")
 
 
 def test_resenet20():
@@ -37,15 +37,6 @@ def test_resenet20():
     # Helpful reference: https://towardsdatascience.com/understanding-and-visualizing-resnets-442284831be8
     # Helpful but incomplete diagram: https://www.researchgate.net/figure/ResNet-20-architecture_fig3_351046093
 
-    # cells_per_stack = 3
-    # depth = cells_per_stack * 3 + 2
-    # def make_downsample(input):
-    #     return AvgPool.make(
-    #         [2, 2],
-    #         [2, 2],
-    #         {'padding': 'same'},
-    #         input,
-    #     )
     pruning_target = 0.001
     base_pruning_rate = param["pruning_rate"]
     base_survival_rate = 1.0 - base_pruning_rate
@@ -63,19 +54,6 @@ def test_resenet20():
             numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
         )
         pruning_rate = 1.0 - survival_rate
-
-        pruning_config = PruningConfig(
-            iterations=pruning_iterations,
-            method=MagnitudePruner(pruning_rate),
-            max_epochs_per_iteration=32,
-            rewind_epoch=TrainingEpoch(
-                epoch=rewind_epoch,
-                model_number=0,
-                model_epoch=rewind_epoch,
-            ),
-            rewind_optimizer=True,
-            new_seed=False,
-        )
 
         for rewind_epoch in [
             0,
@@ -112,7 +90,6 @@ def test_resenet20():
                     new_seed=False,
                 )
             )
-            pruning_configs.append(pruning_config)
 
     seed = 1234
 
@@ -139,7 +116,7 @@ def test_resenet20():
             fit={
                 "batch_size": param["batch"],
                 "epochs": int(
-                    param["batch"] * param["train_Step"] // 60000
+                    param["batch"] * param["train_step"] // 60000
                 ),  # 60000 is the number of training images in CIFAR10
             },
             optimizer={

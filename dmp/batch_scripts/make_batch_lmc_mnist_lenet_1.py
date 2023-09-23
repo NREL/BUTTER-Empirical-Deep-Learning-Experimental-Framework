@@ -49,8 +49,8 @@ def main():
         return Run(
             experiment=LTHExperiment(
                 data={
-                    "lth": True,
-                    "batch": "lth_mnist_lenet_1",
+                    "lmc": True,
+                    "batch": "lmc_mnist_lenet_1",
                     "model_family": "lenet",
                     "model_name": "lenet_relu",
                 },
@@ -109,7 +109,7 @@ def main():
     # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration
     #         to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
 
-    pruning_target = 0.01
+    pruning_target = 0.001
     pruning_configs = []
     for survival_rate in [
         0.8**4,
@@ -117,7 +117,6 @@ def main():
         0.8,
         0.8 ** (1 / 2),
         0.8 ** (1 / 4),
-        0.8 ** (1 / 8),
     ]:
         pruning_iterations = int(
             numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
@@ -130,13 +129,11 @@ def main():
             2,
             3,
             4,
-            5,
             6,
             8,
-            10,
+            12,
             16,
             24,
-            32,
         ]:
             pruning_configs.append(
                 PruningConfig(

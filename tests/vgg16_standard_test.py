@@ -1,169 +1,158 @@
+from dataclasses import dataclass
+import math
 import sys
+from typing import List, Union
 
-# working with paper_param.py
 from jobqueue.job import Job
 import numpy
-import pandas
-from tensorflow.python.framework.ops import re
-from dmp.layer.avg_pool import AvgPool
-from dmp.layer.dense_conv import DenseConv, conv_3x3
 
-# from dmp import jobqueue_interface
-from dmp.layer.flatten import Flatten
-from dmp.layer.max_pool import MaxPool
-from dmp.model.cnn.cnn_stack import CNNStack
-from dmp.model.cnn.cnn_stacker import CNNStacker
-from dmp.model.fully_connected_network import FullyConnectedNetwork
-from dmp.model.layer_factory_model import LayerFactoryModel
-from dmp.structure.batch_norm_block import BatchNormBlock
-from dmp.structure.sequential_model import SequentialModel
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
-from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
-    WidthScaler,
-)
-from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import (
-    IterativePruningExperiment,
-)
+from dmp.model.named.resenet20 import Resnet20
+from dmp.model.named.vgg16 import VGG16
+from dmp.task.experiment.lth.lth_experiment import LTHExperiment
+from dmp.task.experiment.lth.pruning_config import PruningConfig
+from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.task.experiment.run_spec import (
-    RunSpec,
-)
-from dmp.worker import Worker
+from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+from dmp.task.run import Run
 from dmp.keras_interface.keras_utils import keras_kwcfg
-from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
-from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
-    OverlayTransfer,
-)
 
 sys.path.insert(0, "./")
 
-import tensorflow
-import dmp.jobqueue_interface.worker
-import pytest
 
 from dmp.dataset.dataset_spec import DatasetSpec
-from dmp.layer.dense import Dense
-from dmp.model.dense_by_size import DenseBySize
-
-from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment,
-)
 from pprint import pprint
 from paper_param import get_paper_param
-
 from dmp.marshaling import marshal
 
-# strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-# strategy = dmp.jobqueue_interface.worker.make_strategy(6, None, None)
-strategy = tensorflow.distribute.get_strategy()
-worker = Worker(
-    None,
-    None,
-    None,
-    strategy,
-    {},
-)  # type: ignore
-params = get_paper_param("Linear_Mode_Connectivity", "VGG16", "Standard")
+import tests.experiment_test_util as experiment_test_util
 
 
-def run_experiment(experiment):
-    results = experiment(worker, Job())
-    print("experiment_attrs\n")
-    pprint(results.experiment_attrs)
-    print("experiment_tags\n")
-    pprint(results.experiment_tags)
-    print("run_data\n", results.run_data)
-    print("run_history\n", results.run_history)
-    print("run_extended_history\n", results.run_extended_history)
-    return results
+param_name = "standard"
+param = get_paper_param("Linear_Mode_Connectivity", "VGG16", param_name)
 
 
 def test_vgg16():
-    conv_config = {
-        "padding": "same",
-        "use_bias": True,
-    }
-    experiment = TrainingExperiment(
-        seed=0,
-        batch="test",
-        experiment_tags={
-            "model_family": "vgg",
-            "model_name": "vgg16",
-        },
-        run_tags={
-            "test": True,
-        },
-        precision="float32",
-        dataset=DatasetSpec(
-            # 'mnist',
-            # 'keras',
-            "cifar10",
-            "keras",
-            "shuffled_train_test_split",
-            0.2,
-            0.05,
-            0.0,
-        ),
-        # RETHINKING THE VALUE OF NETWORK PRUNING: https://arxiv.org/pdf/1810.05270.pdf
-        # reference implementation: https://github.com/Eric-mingjie/rethinking-network-pruning/blob/master/cifar/lottery-ticket/l1-norm-pruning/models/vgg.py
-        # Original VGG: https://arxiv.org/pdf/1409.1556.pdf
-        model=LayerFactoryModel(
-            layer_factory=SequentialModel(
-                [
-                    BatchNormBlock(DenseConv.make(64, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(64, [3, 3], [1, 1], conv_config)),
-                    MaxPool.make([2, 2], [2, 2]),
-                    BatchNormBlock(DenseConv.make(128, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(128, [3, 3], [1, 1], conv_config)),
-                    MaxPool.make([2, 2], [2, 2]),
-                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(256, [3, 3], [1, 1], conv_config)),
-                    MaxPool.make([2, 2], [2, 2]),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    MaxPool.make([2, 2], [2, 2]),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    BatchNormBlock(DenseConv.make(512, [3, 3], [1, 1], conv_config)),
-                    AvgPool.make([2, 2], [2, 2]),  # MaxPool in original paper
-                    Flatten(),
-                    # Dense.make(512),
-                    # Dense.make(512),
-                ]
+    pruning_target = 0.001
+    base_pruning_rate = param["pruning_rate"]
+    base_survival_rate = 1.0 - base_pruning_rate
+
+    rewind_epoch = 1
+    pruning_configs = []
+    for survival_rate in [
+        base_survival_rate**4,
+        base_survival_rate**2,
+        base_survival_rate,
+        base_survival_rate ** (1 / 2),
+        base_survival_rate ** (1 / 4),
+    ]:
+        pruning_iterations = int(
+            numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
+        )
+        pruning_rate = 1.0 - survival_rate
+
+        for rewind_epoch in [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            10,
+            12,
+            16,
+            20,
+            24,
+            32,
+            48,
+            64,
+            96,
+            128,
+        ]:
+            pruning_configs.append(
+                PruningConfig(
+                    iterations=pruning_iterations,
+                    method=MagnitudePruner(pruning_rate),
+                    max_epochs_per_iteration=32,
+                    rewind_epoch=TrainingEpoch(
+                        epoch=rewind_epoch,
+                        model_number=0,
+                        model_epoch=rewind_epoch,
+                    ),
+                    rewind_optimizer=True,
+                    new_seed=False,
+                )
             )
+
+    seed = 1234
+
+    run = Run(
+        experiment=LTHExperiment(
+            data={
+                "lmc": True,
+                "batch": f"lmc_cifar10_vgg16_{param_name}_1",
+                "group": f"lmc_cifar10_vgg16_{param_name}",
+                "supergroup": "lmc_cifar10_vgg16",
+                "model_family": "VGG",
+                "model_name": "VGG16",
+                "vgg_depth": 16,
+            },
+            precision="float32",
+            dataset=DatasetSpec(
+                "cifar10",
+                "keras",
+                "shuffled_train_test_split",
+                0.2,
+                0.05,
+                0.0,
+            ),
+            model=VGG16(),
+            fit={
+                "batch_size": param["batch"],
+                "epochs": int(
+                    math.ceil(param["batch"] * param["train_step"] / 60000)
+                ),  # 60000 is the number of training images in CIFAR10
+            },
+            optimizer={
+                "class": param["optimizer"],
+                "momentum": param["momentum"],
+                "learning_rate": param["learning_rate"],
+            },
+            loss=None,
+            early_stopping=keras_kwcfg(
+                "EarlyStopping",
+                monitor="val_loss",
+                min_delta=0,
+                patience=50,
+                restore_best_weights=True,
+            ),
+            pruning_configs=pruning_configs,
+            num_additional_seeds_per_config=1,
         ),
-        fit={
-            "batch_size": params["batch"],
-            "epochs": params["batch"]
-            * params["train_Step"]
-            // 60000,  # 60000 is the number of training images in CIFAR10
-        },
-        optimizer={
-            "class": params["optimizer"],
-            "momentum": params["momentum"],
-            "learning_rate": params["learning_rate"],
-        },
-        loss=None,
-        early_stopping=keras_kwcfg(
-            "EarlyStopping",
-            monitor="val_loss",
-            min_delta=0,
-            patience=50,
-            restore_best_weights=True,
-        ),
-        record=RunSpec(
-            post_training_metrics=True,
-            times=True,
-            model=None,
-            metrics=None,
+        run=RunSpec(
+            seed=seed,
+            data={},
+            record_post_training_metrics=True,
+            record_times=True,
+            model_saving=ModelSavingSpec(
+                save_initial_model=True,
+                save_trained_model=True,
+                save_model_epochs=[],
+                save_epochs=[],
+                fixed_interval=1,
+                fixed_threshold=32,
+                exponential_rate=math.pow(2, 1 / 8.0),
+            ),
+            resume_checkpoint=None,
         ),
     )
 
-    run_experiment(experiment)
+    experiment_test_util.run_experiment(run)
 
 
 if __name__ == "__main__":

@@ -71,7 +71,7 @@ worker = Worker(
     strategy,
     {},
 )  # type: ignore
-param = get_paper_param("Linear_Mode_Connectivity", "RESNET", "Standard")
+param = get_paper_param("Linear_Mode_Connectivity", "RESNET", "standard")
 
 
 def run_experiment(experiment):
@@ -158,7 +158,7 @@ def test_resenet20():
         fit={
             "batch_size": param["batch"],
             "epochs": int(
-                param["batch"] * param["train_Step"] // 60000
+                param["batch"] * param["train_step"] // 60000
             ),  # 60000 is the number of training images in CIFAR10
         },
         optimizer={

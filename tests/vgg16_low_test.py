@@ -66,7 +66,7 @@ worker = Worker(
     strategy,
     {},
 )  # type: ignore
-params = get_paper_param("Linear_Mode_Connectivity", "VGG16", "Low")
+params = get_paper_param("Linear_Mode_Connectivity", "VGG16", "low")
 
 
 def run_experiment(experiment):
@@ -140,7 +140,7 @@ def test_vgg16():
         fit={
             "batch_size": params["batch"],
             "epochs": params["batch"]
-            * params["train_Step"]
+            * params["train_step"]
             // 60000,  # 60000 is the number of training images in CIFAR10
         },
         optimizer={
