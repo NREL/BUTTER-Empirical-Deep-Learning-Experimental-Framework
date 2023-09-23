@@ -120,7 +120,7 @@ def __make_keras_dispatch_table() -> Dict[str, Callable]:
         for name, cls in module.__dict__.items():
             if name.startswith("_"):
                 continue
-            print(f"keras register: {module} : {name} : {cls}")
+            # print(f"keras register: {module} : {name} : {cls}")
             dispatch_table[name] = cls
 
     # special provision for activation functions...
