@@ -127,15 +127,15 @@ def convert_bytes_to_dataframe(
             pandas_dtype = None
             if field.nullable:
                 if types.is_integer(_type):
-                    pandas_dtype = pandas.Int64Dtype
+                    pandas_dtype = pandas.Int64Dtype()
                     if types.is_int8(_type):
-                        pandas_dtype = pandas.Int8Dtype
+                        pandas_dtype = pandas.Int8Dtype()
                     if types.is_int16(_type):
-                        pandas_dtype = pandas.Int16Dtype
+                        pandas_dtype = pandas.Int16Dtype()
                     if types.is_int32(_type):
-                        pandas_dtype = pandas.Int32Dtype
+                        pandas_dtype = pandas.Int32Dtype()
                 elif types.is_boolean(_type):
-                    pandas_dtype = pandas.BooleanDtype
+                    pandas_dtype = pandas.BooleanDtype()
 
                 if pandas_dtype is not None:
                     cols[name] = pandas.Series(

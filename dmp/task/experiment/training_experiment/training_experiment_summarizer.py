@@ -349,7 +349,6 @@ class TrainingExperimentSummarizer:
             and k not in simple_metrics
             and is_numeric_dtype(groups[k])
         ]
-        print(f"groups: {groups[quantile_metrics].dtypes}")
         quantiles = (
             groups[quantile_metrics]
             .quantile(quantile_points)  # type: ignore
