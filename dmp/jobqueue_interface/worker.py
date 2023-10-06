@@ -29,7 +29,7 @@ def make_strategy(num_cores, gpus, gpu_mem):
     if gpu_mem is None:
         gpu_mem = 4096
 
-    tf_gpus = tensorflow.config.experimental.list_physical_devices("GPU")
+    tf_gpus = tensorflow.config.list_physical_devices("GPU")
     print(f"Found GPUs: {len(tf_gpus)} {tf_gpus}.\nUsing: {gpus}.")
     gpu_set = set(gpus)
     gpu_devices = []
@@ -46,7 +46,7 @@ def make_strategy(num_cores, gpus, gpu_mem):
             #             memory_limit=gpu_mem)
             #     ])
 
-    cpus = tensorflow.config.experimental.list_physical_devices("CPU")
+    cpus = tensorflow.config.list_physical_devices("CPU")
     # print(f'cpus: {cpus}')
     visible_devices = gpu_devices.copy()
     visible_devices.extend(cpus)
