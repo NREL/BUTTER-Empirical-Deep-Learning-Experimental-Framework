@@ -239,9 +239,6 @@ class TrainingExperimentSummarizer:
                 while curr_loss <= loss_level:
                     prev_weight = 0.5
                     delta = prev_loss - curr_loss
-                    print(
-                        f"delta: {delta}\nprev_loss: {prev_loss}\ncurr_loss: {curr_loss}"
-                    )
                     if delta > 1e-12:
                         prev_weight = (loss_level - curr_loss) / delta
                     curr_weight = 1.0 - prev_weight
