@@ -30,6 +30,7 @@ def make_pyarrow_table_from_dataframe(
             has_float = False
             has_str = False
             has_null = False
+            has_na = False
 
             for v in array:
                 value_type = type(v)
@@ -38,6 +39,10 @@ def make_pyarrow_table_from_dataframe(
                 has_float |= isinstance(value_type, float)
                 has_str |= isinstance(value_type, str)
                 has_null |= v is None
+                has_na |= pandas.isna(v)
+
+            if has_na and not has_float:
+                array = numpy.array([None if pandas.isna(v) else v for v in array])
 
             if has_null:
                 if has_str:
