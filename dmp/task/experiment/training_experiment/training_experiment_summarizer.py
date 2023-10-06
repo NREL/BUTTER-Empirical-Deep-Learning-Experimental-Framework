@@ -340,8 +340,14 @@ class TrainingExperimentSummarizer:
                 )
 
         quantile_points = numpy.array([0, 0.25, 0.5, 0.75, 1], dtype=numpy.float32)
+        from pandas.api.types import is_numeric_dtype
+
         quantile_metrics = [
-            k for k in quantile_metrics if k not in by_loss and k not in simple_metrics
+            k
+            for k in quantile_metrics
+            if k not in by_loss
+            and k not in simple_metrics
+            and is_numeric_dtype(groups[k])
         ]
         print(f"groups: {groups[quantile_metrics].dtypes}")
         quantiles = (
