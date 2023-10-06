@@ -345,6 +345,7 @@ class TrainingExperimentSummarizer:
         ]
         quantiles = (
             groups[quantile_metrics]
+            .astype(numpy.float32)
             .quantile(quantile_points)  # type: ignore
             .unstack()
             .astype(numpy.float32)
