@@ -24,12 +24,17 @@ class TestSetRecorder(Recorder, ABC):
         model: keras.Model = self.model  # type: ignore
 
         # evaluate on the additional test sets
+        print(
+            f"TestSetRecorder: evaluating {len(self._test_sets)} additional test sets..."
+        )
         for test_set in self._test_sets:
             if test_set.test_data is None:
                 continue
+            print(f"TestSetRecorder: evaluating {test_set.history_key}...")
             start_time = time.time()
             results = self._evaluate_set(test_set)
             end_time = time.time()
+            print(f"TestSetRecorder: done evaluating {test_set.history_key}.")
             if self._timestamp_recorder is not None:
                 self._timestamp_recorder.record_time(
                     test_set.history_key, end_time - start_time
