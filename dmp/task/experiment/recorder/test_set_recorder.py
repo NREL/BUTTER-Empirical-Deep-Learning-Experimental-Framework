@@ -48,7 +48,7 @@ class TestSetRecorder(Recorder, ABC):
             x=test_set.test_data,
             y=test_set.test_targets,
             sample_weight=test_set.sample_weights,
-            verbose=1,  # type: ignore
+            verbose=0,  # type: ignore
             use_multiprocessing=True,
             workers=8,
         )
