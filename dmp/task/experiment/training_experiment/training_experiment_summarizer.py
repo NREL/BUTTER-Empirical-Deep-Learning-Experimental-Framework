@@ -234,13 +234,13 @@ class TrainingExperimentSummarizer:
                 prev_index = (run, prev_epoch)
                 prev = history.at[prev_index]
 
-                prev_loss = prev[loss_key]
+                prev_loss = prev[loss_key].iloc[0]
 
                 while curr_loss <= loss_level:
                     prev_weight = 0.5
                     delta = prev_loss - curr_loss
                     print(
-                        f"delta: {delta}\nprev_loss: {prev_loss}\ncurr_loss{curr_loss}"
+                        f"delta: {delta}\nprev_loss: {prev_loss}\ncurr_loss: {curr_loss}"
                     )
                     if delta > 1e-12:
                         prev_weight = (loss_level - curr_loss) / delta
