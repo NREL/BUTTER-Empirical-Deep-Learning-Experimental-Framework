@@ -116,7 +116,7 @@ def main():
     jobs = []
     seed = int(time.time())
     repetitions = 20
-    base_priority = 2000
+    base_priority = 20000
 
     for param_name in ["standard", "low"]:
         # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration

@@ -188,6 +188,8 @@ class TrainingExperimentSummarizer:
         history: pandas.DataFrame,
     ) -> pandas.DataFrame:
         keys: TrainingExperimentKeys = experiment.keys
+        loss_key = keys.test_loss_cmin
+
         min_median = history[keys.test_loss_cmin].groupby(keys.run).min().median()
         loss_levels = numpy.flip(
             self.make_summary_points(
@@ -210,31 +212,36 @@ class TrainingExperimentSummarizer:
         }
         for run in runs:
             run_df = history.loc[run, :]
-            losses = run_df[keys.test_loss_cmin]
+            losses = run_df[loss_key]
             loss_level_idx = 0
+
+            retained_epoch: Any = None
             prev_epoch: Any = None
             for curr_epoch, curr_loss in losses.items():
+                prev_epoch = retained_epoch
+                retained_epoch = curr_epoch
+                if prev_epoch is None:
+                    prev_epoch = curr_epoch
+
                 loss_level = loss_levels[loss_level_idx]
 
                 if curr_loss > loss_level:
                     continue
 
-                while curr_loss <= loss_level:
-                    if prev_epoch is None:
-                        prev_epoch = curr_epoch
-                    prev_loss = losses.loc[prev_epoch]
+                curr_index = (run, curr_epoch)
+                curr = history.at[curr_index]  # type: ignore
 
+                prev_index = (run, prev_epoch)
+                prev = history.at[prev_index]
+
+                prev_loss = prev[loss_key]
+
+                while curr_loss <= loss_level:
                     prev_weight = 0.5
                     delta = prev_loss - curr_loss
                     if delta > 1e-12:
                         prev_weight = (loss_level - curr_loss) / delta
                     curr_weight = 1.0 - prev_weight
-
-                    prev_index = (run, prev_epoch)
-                    prev = history.loc[prev_index]
-
-                    curr_index = (run, curr_epoch)
-                    curr = history.loc[curr_index]  # type: ignore
 
                     interpolated_loss_points[keys.run].append(run)
                     interpolated_loss_points[keys.epoch].append(
@@ -270,7 +277,6 @@ class TrainingExperimentSummarizer:
 
                 if loss_level_idx >= loss_levels.size:
                     break
-                prev_epoch = curr_epoch
 
         # print(interpolated_loss_points)
 
