@@ -220,7 +220,7 @@ class DatasetLoader(ABC):
         return preprocessor.transform(value).astype(numpy.float32)
 
     def one_hot(self, value: ndarray) -> ndarray:
-        preprocessor = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        preprocessor = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
         preprocessor.fit(value)
         return preprocessor.transform(value).astype(numpy.int8)  # type: ignore
 
