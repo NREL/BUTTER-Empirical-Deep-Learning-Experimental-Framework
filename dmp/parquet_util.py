@@ -53,7 +53,8 @@ def make_pyarrow_table_from_dataframe(
 
     return make_pyarrow_table_from_numpy(
         [str(column) for column in columns],
-        [to_numpy(column) for column in columns],
+        # [to_numpy(column) for column in columns],
+        columns,
     )
 
 
