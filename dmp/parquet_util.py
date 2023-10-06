@@ -43,6 +43,7 @@ def make_pyarrow_table_from_dataframe(
 
             if has_na and not has_float:
                 array = numpy.array([None if pandas.isna(v) else v for v in array])
+                has_null = True
 
             if has_null:
                 if has_str:
