@@ -343,7 +343,7 @@ class TrainingExperimentSummarizer:
         quantile_metrics = [
             k for k in quantile_metrics if k not in by_loss and k not in simple_metrics
         ]
-        print(groups[quantile_metrics])
+        print(f"groups: {groups[quantile_metrics]}")
         quantiles = (
             groups[quantile_metrics]
             .quantile(quantile_points)  # type: ignore
