@@ -248,9 +248,11 @@ def get_pyarrow_type_mapping(
 
     def check_integer():
         nonlocal dst_type, nullable
-        hi = max(filter(lambda v: not is_null(v), values))
-        lo = min(filter(lambda v: not is_null(v), values))
-        if hi < (2**7 - 1) and lo > (-(2**7)):
+        hi = max(filter(lambda v: not is_null(v), values), key=None)
+        lo = min(filter(lambda v: not is_null(v), values), key=None)
+        if hi is None or lo is None:
+            return
+        elif hi < (2**7 - 1) and lo > (-(2**7)):
             dst_type = pyarrow.int8()
         elif hi < (2**15 - 1) and lo > (-(2**15)):
             dst_type = pyarrow.int16()
