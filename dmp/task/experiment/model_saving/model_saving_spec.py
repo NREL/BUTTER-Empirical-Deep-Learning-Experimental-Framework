@@ -91,7 +91,7 @@ class ModelSavingSpec:
                     return
                 else:
                     # exponential regime
-                    denom = math.log(self.exponential_rate)
+                    denom = math.log(self.parent.exponential_rate)
                     ratio = math.ceil(math.log(model_epoch) / denom)
                     next_ratio = math.ceil(math.log(model_epoch + 1) / denom)
                     if ratio != next_ratio:
