@@ -231,7 +231,11 @@ class TrainingExperimentSummarizer:
                 curr_index = (run, curr_epoch)
                 if curr_index not in history.index:
                     break
-                curr = history.at[curr_index]  # type: ignore
+
+                try:
+                    curr = history.at[curr_index]  # type: ignore
+                except KeyError:
+                    break
 
                 prev_index = (run, prev_epoch)
                 prev = history.at[prev_index]
