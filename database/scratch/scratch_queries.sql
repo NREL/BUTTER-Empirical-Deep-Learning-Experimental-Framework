@@ -1,3 +1,26 @@
+select count(1) num, model, status, error
+from
+(
+select *,
+	command->'experiment'->'model'->'type' model
+from
+	run_status s inner join run_data using (id)
+) x
+group by model, status, error
+order by model, status, error;
+
+
+
+
+
+
+
+
+
+
+
+
+
 SELECT status, COUNT(*) FROM jobqueue WHERE groupname = 'exp00' GROUP BY status;
 SELECT * FROM jobqueue WHERE groupname =  'exp00' AND status = 'running' AND (CURRENT_TIMESTAMP - update_time) > '4 hours';
 UPDATE jobqueue SET status = NULL WHERE groupname =  'exp00' AND status = 'running' AND (CURRENT_TIMESTAMP - update_time) > '60 minutes';

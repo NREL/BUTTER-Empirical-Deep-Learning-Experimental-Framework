@@ -146,7 +146,14 @@ class TrainingExperiment(Experiment):
             experiment_history,
         )
 
-        context.update_summary()
+        try:
+            context.update_summary()
+        except Exception as e:
+            import traceback
+
+            print(
+                f'Exception "{e}" while updating summary. Traceback:\n{traceback.format_exc()}'
+            )
         return experiment_history
 
     def summarize(

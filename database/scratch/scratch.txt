@@ -1,4 +1,4 @@
-'NoneType' object has no attribute 'merge_call'
+max() arg is an empty sequence
 Traceback (most recent call last):
   File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/jobqueue/jobqueue/job_queue.py", line 346, in work_loop
     continue_working = handler(worker_id, _job)  # handle the message
@@ -8,14 +8,24 @@ Traceback (most recent call last):
     result = task(Context(self, job, task))
   File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/run.py", line 24, in __call__
     self.experiment(context, self.run)
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/pruning_experiment/iterative_pruning_experiment.py", line 57, in __call__
-    experiment_history = self._try_restore_checkpoint(context, run, model)
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/training_experiment/training_experiment.py", line 325, in _try_restore_checkpoint
-    optimizer.apply_gradients(zip(zero_grads, grad_vars))
-  File "/projects/modularai/dmp/env/eagle/gpu/lib/python3.10/site-packages/keras/optimizers/optimizer_experimental/optimizer.py", line 1139, in apply_gradients
-    grads_and_vars = self.aggregate_gradients(grads_and_vars)
-  File "/projects/modularai/dmp/env/eagle/gpu/lib/python3.10/site-packages/keras/optimizers/optimizer_experimental/optimizer.py", line 1105, in aggregate_gradients
-    return optimizer_utils.all_reduce_sum_gradients(grads_and_vars)
-  File "/projects/modularai/dmp/env/eagle/gpu/lib/python3.10/site-packages/keras/optimizers/optimizer_v2/utils.py", line 42, in all_reduce_sum_gradients
-    reduced = tf.distribute.get_replica_context().merge_call(
-AttributeError: 'NoneType' object has no attribute 'merge_call'
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/lth/lth_experiment.py", line 71, in __call__
+    experiment_history = super().__call__(context, run)
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/training_experiment/training_experiment.py", line 149, in __call__
+    context.update_summary()
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/context.py", line 148, in update_summary
+    self.schema.store_summary(self.run.experiment, experiment_id, summary)  # type: ignore
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/postgres_interface/schema/postgres_schema.py", line 264, in store_summary
+    convert_dataframe_to_bytes(summary.by_loss),
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 88, in convert_dataframe_to_bytes
+    table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 60, in make_pyarrow_table_from_dataframe
+    return make_pyarrow_table_from_numpy(
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 177, in make_pyarrow_table_from_numpy
+    schema, use_byte_stream_split, column_data = make_pyarrow_schema_from_dict(
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 201, in make_pyarrow_schema_from_dict
+    ) = get_pyarrow_type_mapping(
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 268, in get_pyarrow_type_mapping
+    check_integer()
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 251, in check_integer
+    hi = max(filter(lambda v: not is_null(v), values), key=None)
+ValueError: max() arg is an empty sequence
