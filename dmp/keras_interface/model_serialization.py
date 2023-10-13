@@ -35,6 +35,7 @@ def save_model_data(
     task: Task,
     model: ModelInfo,
     model_path: str,
+    only_save_optimizer: bool = True,
 ):
     # print(f'smd: {task}\n\n{model}\n\n{model_path}\n\n')
     """
@@ -69,22 +70,23 @@ def save_model_data(
 
     # print(f'1 {relative_path} {model_path} {network_path} {keras_model_path}')
 
-    with open(task_path, "w") as task_file:
-        # print(f"Writing task to {task_path}...")
-        simplejson.dump(marshal.marshal(task), task_file)
+    if not only_save_optimizer:
+        with open(task_path, "w") as task_file:
+            # print(f"Writing task to {task_path}...")
+            simplejson.dump(marshal.marshal(task), task_file)
 
-    with open(network_path, "w") as network_file:
-        # print(f"Writing network to {network_path}...")
-        simplejson.dump(marshal.marshal(model.network), network_file)
+        with open(network_path, "w") as network_file:
+            # print(f"Writing network to {network_path}...")
+            simplejson.dump(marshal.marshal(model.network), network_file)
 
-    with open(parameters_path, "wb") as parameters_file:
-        # print(f"Writing parameters to {parameters_file}...")
-        save_parameters(
-            model.network.structure,
-            model.keras_network.layer_to_keras_map,
-            None,
-            parameters_file,
-        )
+        with open(parameters_path, "wb") as parameters_file:
+            # print(f"Writing parameters to {parameters_file}...")
+            save_parameters(
+                model.network.structure,
+                model.keras_network.layer_to_keras_map,
+                None,
+                parameters_file,
+            )
 
     with open(optimizer_path, "wb") as optimizer_file:
         # print(f"Writing model state to {optimizer_path}...")
