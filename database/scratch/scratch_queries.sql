@@ -1,4 +1,4 @@
-select count(1) num, model, status, error
+select count(1) num, queue, model, status, error
 from
 (
 select *,
@@ -6,17 +6,24 @@ select *,
 from
 	run_status s inner join run_data using (id)
 ) x
-group by model, status, error
-order by model, status, error;
+group by queue, model, status, error
+order by queue, model, status, error;
 
 
 
 
+update run_status s set
+	status = 0,
+	error = NULL
+where status IN (1, 3);
 
 
 
 
-
+update run_status s set
+	queue = 201
+from run_data d
+where s.id = d.id and status = 0 and MOD((command->'run'->>'seed')::bigint, 2) = 0;
 
 
 

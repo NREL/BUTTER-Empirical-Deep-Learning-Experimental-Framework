@@ -91,7 +91,7 @@ def main():
     max_worker_per_gpu = 2
 
     cpus_per_gpu_worker = 1
-    min_cpus_per_cpu_worker = 14
+    min_cpus_per_cpu_worker = 8
 
     smt_level = 1  # maximum number of SMT's (a.k.a. "CPUs") per core to use
 
@@ -203,7 +203,7 @@ def main():
                             # could be more efficient here
                             level.append((new_sublevel_size, new_sublevel))
                             level.sort(key=lambda e: e[0])
-                        size += new_sublevel_size - sublevel_size
+                        size -= sublevel_size - new_sublevel_size
 
                     return size, level
                 else:
