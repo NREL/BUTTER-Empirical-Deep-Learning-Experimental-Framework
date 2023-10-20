@@ -13,11 +13,11 @@ SELECT
    pg_size_pretty(pg_relation_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Core Per Tuple",
    pg_size_pretty(pg_indexes_size(relid) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "Index Per Tuple",
    pg_size_pretty((pg_table_size(relid) - pg_relation_size(relid) - pg_relation_size(relid, 'vm') - pg_relation_size(relid, 'fsm')) / (1 + pg_stat_get_live_tuples(relid) + pg_stat_get_dead_tuples(relid))) as "TOAST Per Tuple"
-   FROM pg_catalog.pg_statio_user_tables 
+   FROM pg_catalog.pg_statio_user_tables
 ORDER BY pg_total_relation_size(relid) DESC;
 
 SELECT *
-FROM pg_stat_activity 
+FROM pg_stat_activity
 WHERE usename = 'dmpappsops'
 ORDER BY state, query_start desc;
 
@@ -32,10 +32,10 @@ SELECT l.locktype, p.pid as pid , p.datname as database, p.usename as user, p.ap
        p.pid = l.pid AND NOT l.granted AND
        bl.database = l.database AND bl.relation = l.relation AND bl.granted AND
        b.pid = bl.pid;
-       
-       
+
+
 SELECT pg_terminate_backend(pid)
-FROM pg_stat_activity 
+FROM pg_stat_activity
 WHERE usename = 'dmpappsops'
     AND query_start < (CURRENT_TIMESTAMP - '10s'::interval)
 ORDER BY state, query_start desc;
@@ -60,24 +60,24 @@ WHERE EXISTS (select 1 from run_ r where r.experiment_id = e.experiment_id);
 
 UPDATE experiment_migration set migrated = FALSE, error_message =NULL WHERE migrated and error_message IS NOT NULL;
 
-update experiment_migration m set 
+update experiment_migration m set
     is_valid = True,
     migrated = False,
     error_message = NULL
     WHERE EXISTS (select 1 from run_ r where r.experiment_id = m.experiment_id)
     AND NOT EXISTS (select 1 from experiment e where e.old_experiment_id = m.experiment_id)
-    and error_message NOT LIKE 'failed on Could not find%' 
+    and error_message NOT LIKE 'failed on Could not find%'
     and error_message NOT LIKE 'wrong number%';
 
 update experiment_migration m
     set migrated = FALSE
-WHERE 
+WHERE
     migrated
-    AND error_message is null 
+    AND error_message is null
     AND (
-        select count(1) from run r, experiment e 
-        where e.old_experiment_id = m.experiment_id 
-        and r.experiment_id = e.experiment_id) <> 
+        select count(1) from run r, experiment e
+        where e.old_experiment_id = m.experiment_id
+        and r.experiment_id = e.experiment_id) <>
         (select count(1) from run_ r where r.experiment_id = m.experiment_id);
 
 
@@ -94,17 +94,17 @@ select
     errored::real / migrated pct_errored
 from
 (
-    select 
-        count(1) total, 
+    select
+        count(1) total,
         sum(migrated::integer) migrated,
         sum((migrated and error_message is not NULL)::integer) errored
     from experiment_migration where is_valid
     ) x;
 
-select x.* from 
+select x.* from
     experiment e,
     lateral (
-        select 
+        select
             (   select value_str from unnest(experiment_attrs) ea(attr_id) inner join attr using(attr_id)
                 where kind = 'dataset_name' limit 1
             ) dataset_name,
@@ -123,12 +123,12 @@ where
 group by dataset_name, model_input_shape, model_output_shape;
 
 
-select 
+select
     dataset_name, model_input_shape, model_output_units,
     count(distinct experiment_id) num_exp,
     count(1) num_run
 FROM (
-select 
+select
     e.experiment_id,
     a_dataset_name.value_str dataset_name,
     a_model_input_shape.value_json model_input_shape,
@@ -148,7 +148,7 @@ where
     and a_dataset_name.kind = 'dataset_name'
     and e.experiment_attrs @> ARRAY[a_dataset_name.attr_id]
     and a_model_input_shape.kind = 'model_input_shape'
-    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attrs 
+    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attrs
     and a_model_output_units.kind = 'model_output_units'
     and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attrs
 ) x
@@ -158,7 +158,7 @@ select
     *
 from
 (
-    select 
+    select
         sum(n) / count(1) compression_ratio,
         kind,
         value_type,
@@ -170,13 +170,13 @@ from
         max(n)
     from
     (
-        select 
-            kind, 
+        select
+            kind,
             value_type,
             coalesce(
-                to_jsonb(value_bool), 
-                to_jsonb(value_int), 
-                to_jsonb(value_float), 
+                to_jsonb(value_bool),
+                to_jsonb(value_int),
+                to_jsonb(value_float),
                 to_jsonb(value_str),
                 to_jsonb(digest)
             ) v,
@@ -194,7 +194,7 @@ select * from attr where kind like '%regul%';
 select count(1) from experiment where experiment_attrs @> array[37];
 
 
-select 
+select
     e.*,
     x.*,
     json_object_agg(a.kind, coalesce(a.value_bool, a.value_int, a.value_float, a.value_str, a.value_json)) xattrib,
@@ -212,12 +212,12 @@ where TRUE
 group by x.*, e.*
 
 
-select 
+select
     dataset_name, model_input_shape, model_output_units,
     count(distinct experiment_id) num_exp,
     count(1) num_run
 FROM (
-select 
+select
     e.experiment_id,
     a_dataset_name.value_str dataset_name,
     a_model_input_shape.value_json model_input_shape,
@@ -238,16 +238,16 @@ where
     and a_dataset_name.kind = 'dataset_name'
     and e.experiment_attrs @> ARRAY[a_dataset_name.attr_id]
     and a_model_input_shape.kind = 'model_input_shape'
-    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attrs 
+    and ARRAY[a_model_input_shape.attr_id] <@ e.experiment_attrs
     and a_model_output_units.kind = 'model_output_units'
     and ARRAY[a_model_output_units.attr_id] <@ e.experiment_attrs
 ) x
 group by dataset_name, model_input_shape, model_output_units;
 
 select * from attr where kind like 'model_output%';
-    
 
-select distinct error_message from experiment_migration m where is_valid and migrated and error_message is not null 
+
+select distinct error_message from experiment_migration m where is_valid and migrated and error_message is not null
 and error_message NOT LIKE 'failed on Could not find%' and error_message NOT LIKE 'wrong number%wide_first_%' AND error_message NOT LIKE 'wrong number%poker%'
 limit 1000;
 
@@ -275,7 +275,7 @@ ALTER TABLE attr SET (fillfactor = 100);
 ALTER TABLE attr
   ADD CONSTRAINT parameter_proper_format
   CHECK (
-    (value_type = 0 
+    (value_type = 0
         AND value_bool IS NULL
         AND value_int IS NULL
         AND value_float IS NULL
@@ -293,7 +293,7 @@ ALTER TABLE attr
         AND digest IS NULL
     )
     OR
-    (value_type = 2 
+    (value_type = 2
         AND value_bool IS NULL
         AND value_int IS NOT NULL
         AND value_float IS NULL
@@ -329,7 +329,7 @@ ALTER TABLE attr
         AND digest IS NOT NULL
     )
   );
-  
+
 CREATE UNIQUE INDEX ON attr USING btree (kind) INCLUDE (attr_id) WHERE value_type = 0;
 CREATE UNIQUE INDEX ON attr USING btree (kind, value_bool) INCLUDE (attr_id) WHERE value_type = 1;
 CREATE UNIQUE INDEX ON attr USING btree (kind, value_int) INCLUDE (attr_id) WHERE value_type = 2;
@@ -363,7 +363,7 @@ CREATE TABLE run
     experiment_id uuid,
 
     run_timestamp timestamp WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
+
     run_id uuid NOT NULL,
     job_id uuid,
 
@@ -378,11 +378,11 @@ CREATE TABLE run
 
     host_name text,
     batch text,
-    
+
     run_data jsonb,
     run_history bytea,
     run_extended_history bytea,
-    
+
     PRIMARY KEY (run_id)
 );
 
@@ -414,10 +414,10 @@ CREATE INDEX ON run USING gin (run_data);
 CREATE TABLE model
 (
     run_id uuid,
-    model_number integer,
-    model_epoch integer,
+    fit_number integer,
+    fit_epoch integer,
     epoch integer,
-    PRIMARY KEY (run_id, model_number, model_epoch)
+    PRIMARY KEY (run_id, fit_number, fit_epoch)
 );
 
 CREATE TABLE experiment_summary
@@ -447,12 +447,12 @@ CREATE INDEX ON experiment_summary USING hash(experiment_id);
 
 
 --- to check run data sizes:
-SELECT 
+SELECT
     pg_size_pretty(avg(length(run_history))) avg_run_history_size,
     pg_size_pretty(avg(length(run_extended_history))) avg_run_extended_history_size
 FROM run;
 
-SELECT 
+SELECT
     pg_size_pretty(avg(length(by_epoch))) avg_size_by_epoch,
     pg_size_pretty(avg(length(by_loss))) avg_size_by_loss,
     pg_size_pretty(avg(length(by_progress))) avg_size_by_progress,
@@ -464,7 +464,7 @@ FROM experiment_summary;
 insert into experiment_summary (experiment_id)
 select experiment_id from experiment;
 
-UPDATE experiment_summary set 
+UPDATE experiment_summary set
     last_updated = '1960-01-01'::timestamp
 WHERE
     by_epoch IS NULL
@@ -478,8 +478,8 @@ select
     (100.0 * incomplete / total) pct_incomplete,
     100.0 - (100.0 * incomplete / total) pct_complete
 FROM
-    (select 
-        sum((by_epoch is null)::integer) incomplete, 
+    (select
+        sum((by_epoch is null)::integer) incomplete,
         sum((most_recent_run IS NOT NULL and by_epoch IS NULL)::integer) pending,
         count(1) total,
         pg_size_pretty(avg(length(by_epoch))) avg_size_by_epoch,
@@ -497,13 +497,13 @@ WITH property_attrs as (
     from attr where kind like '%sweep%' or kind = 'butter'
 ),
 exp_target as (
-    select 
-        e.experiment_id src_id,  
-        (md5(x.experiment_attrs::text))::uuid dst_id, 
+    select
+        e.experiment_id src_id,
+        (md5(x.experiment_attrs::text))::uuid dst_id,
         x.experiment_attrs,
         y.experiment_tags,
         old_experiment_id
-    from 
+    from
         experiment e,
         lateral (select array_agg(attr_id) experiment_attrs from (
             select attr_id
@@ -522,7 +522,7 @@ exp_target as (
         ) y
     WHERE e.experiment_attrs && (select array_agg(attr_id) from property_attrs)
     order by dst_id
-        
+
 ),
 dst_map as (
     select distinct on (dst_id) *
@@ -534,7 +534,7 @@ dst_map as (
         first_value(experiment_tags) over (partition by dst_id ORDER BY greatest(array_length(experiment_tags, 1)) DESC) experiment_tags,
         first_value(old_experiment_id) over (partition by dst_id ORDER BY old_experiment_id ASC) old_experiment_id
      FROM (
-         SELECT 
+         SELECT
             dst_id,
             experiment_attrs,
             experiment_tags,
@@ -542,7 +542,7 @@ dst_map as (
          FROM exp_target
          UNION ALL
          (
-             SELECT 
+             SELECT
                 experiment_id dst_id,
                 experiment_attrs,
                 experiment_tags,
@@ -557,7 +557,7 @@ dst_map as (
     ORDER BY dst_id
 ),
 exp_map as (
-    select 
+    select
         src_id,
         dst_map.*
     from
@@ -576,7 +576,7 @@ exp_update as (
         experiment_tags,
         old_experiment_id
         )
-    SELECT 
+    SELECT
         dst_id experiment_id,
         experiment_attrs,
         experiment_tags,
@@ -589,7 +589,7 @@ exp_update as (
 )
 update run r set
     experiment_id = m.dst_id
-from 
+from
     exp_map m
 where
     r.experiment_id = m.src_id

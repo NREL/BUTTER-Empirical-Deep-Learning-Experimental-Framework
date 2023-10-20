@@ -197,7 +197,7 @@ LIMIT 1
             history_df = convert_bytes_to_dataframe(history_bytes)
             if history_df is not None:
                 history_df.sort_values(
-                    ["epoch", "model_number", "model_epoch"], inplace=True
+                    ["epoch", "fit_number", "fit_epoch"], inplace=True
                 )
 
                 if extended_history_bytes is not None:
@@ -206,8 +206,8 @@ LIMIT 1
                     )
                     if extended_history_df is not None:
                         merge_keys = ["epoch"]
-                        if "model_number" in extended_history_df:
-                            merge_keys.extend(["model_number", "model_epoch"])
+                        if "fit_number" in extended_history_df:
+                            merge_keys.extend(["fit_number", "fit_epoch"])
 
                         history_df = history_df.merge(
                             extended_history_df,
@@ -315,61 +315,61 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET {update_clause}
                 binary=True,
             )
 
-    def save_model(
-        self,
-        run_id: UUID,
-        epoch: TrainingEpoch,
-    ) -> None:
-        checkpoint_table = self.checkpoint
-        input_colums = ColumnGroup(
-            checkpoint_table.run_id,
-            checkpoint_table.model_number,
-            checkpoint_table.model_epoch,
-            checkpoint_table.epoch,
-        )
+#     def save_model(
+#         self,
+#         run_id: UUID,
+#         epoch: TrainingEpoch,
+#     ) -> None:
+#         checkpoint_table = self.checkpoint
+#         input_colums = ColumnGroup(
+#             checkpoint_table.run_id,
+#             checkpoint_table.fit_number,
+#             checkpoint_table.fit_epoch,
+#             checkpoint_table.epoch,
+#         )
 
-        query = SQL(
-            """
-INSERT INTO {checkpoint_table} ( {input_colums} )
-SELECT
-{casting_clause}
-FROM
-( VALUES ({placeholders}) ) AS V ({input_colums})
-ON CONFLICT DO NOTHING;
-"""
-        ).format(
-            checkpoint_table=checkpoint_table.identifier,
-            input_colums=input_colums.columns_sql,
-            casting_clause=input_colums.casting_sql,
-            placeholders=input_colums.placeholders,
-        )
-        # print(f"query running: {query}")
-        # print(f"run_id: {run_id}, type: {type(run_id)}")
+#         query = SQL(
+#             """
+# INSERT INTO {checkpoint_table} ( {input_colums} )
+# SELECT
+# {casting_clause}
+# FROM
+# ( VALUES ({placeholders}) ) AS V ({input_colums})
+# ON CONFLICT DO NOTHING;
+# """
+#         ).format(
+#             checkpoint_table=checkpoint_table.identifier,
+#             input_colums=input_colums.columns_sql,
+#             casting_clause=input_colums.casting_sql,
+#             placeholders=input_colums.placeholders,
+#         )
+#         # print(f"query running: {query}")
+#         # print(f"run_id: {run_id}, type: {type(run_id)}")
 
-        with ConnectionManager(self.credentials) as connection:
-            try:
-                connection.execute(
-                    query,
-                    (
-                        run_id,
-                        int(epoch.model_number),
-                        int(epoch.model_epoch),
-                        int(epoch.epoch),
-                    ),
-                    binary=True,
-                )
-            except Exception as e:
-                print(f"Exception: {e}")
-                with ClientCursor(connection) as cursor:
-                    print(
-                        cursor.mogrify(
-                            query,
-                            (
-                                run_id,
-                                int(epoch.model_number),
-                                int(epoch.model_epoch),
-                                int(epoch.epoch),
-                            ),
-                        )
-                    )
-                raise e
+#         with ConnectionManager(self.credentials) as connection:
+#             try:
+#                 connection.execute(
+#                     query,
+#                     (
+#                         run_id,
+#                         int(epoch.fit_number),
+#                         int(epoch.fit_epoch),
+#                         int(epoch.epoch),
+#                     ),
+#                     binary=True,
+#                 )
+#             except Exception as e:
+#                 print(f"Exception: {e}")
+#                 with ClientCursor(connection) as cursor:
+#                     print(
+#                         cursor.mogrify(
+#                             query,
+#                             (
+#                                 run_id,
+#                                 int(epoch.fit_number),
+#                                 int(epoch.fit_epoch),
+#                                 int(epoch.epoch),
+#                             ),
+#                         )
+#                     )
+#                 raise e

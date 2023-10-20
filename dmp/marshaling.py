@@ -14,6 +14,7 @@ from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.pruning_experiment.pruning_run_spec import (
     IterativePruningRunSpec,
 )
+from dmp.task.experiment.training_experiment.dmp_early_stopping import DMPEarlyStopping
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.run import Run
 
@@ -212,6 +213,7 @@ register_custom_keras_types(
     {
         "ProportionalStopping": ProportionalStopping,
         "ParameterMask": ParameterMask,
+        "DMPEarlyStopping": DMPEarlyStopping,
     }
 )
 

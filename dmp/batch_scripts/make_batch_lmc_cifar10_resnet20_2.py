@@ -10,7 +10,6 @@ import numpy
 
 from dmp.model.named.lenet import Lenet
 from dmp.model.named.resenet20 import Resnet20
-from dmp.model.named.vgg16 import VGG16
 from dmp.task.experiment.lth.lth_experiment import LTHExperiment
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
@@ -56,12 +55,12 @@ def main():
             experiment=LTHExperiment(
                 data={
                     "lmc": True,
-                    "batch": f"lmc_cifar10_vgg16_{param_name}_1",
-                    "group": f"lmc_cifar10_vgg16_{param_name}",
-                    "supergroup": "lmc_cifar10_vgg16",
-                    "model_family": "VGG",
-                    "model_name": "VGG16",
-                    "vgg_depth": 16,
+                    "batch": f"lmc_cifar10_resnet20_{param_name}_2",
+                    "group": f"lmc_cifar10_resnet20_{param_name}",
+                    "supergroup": "lmc_cifar10_resnet20",
+                    "model_family": "resnet",
+                    "model_name": "Resnet20",
+                    "resnet_depth": 20,
                 },
                 precision="float32",
                 dataset=DatasetSpec(
@@ -72,7 +71,7 @@ def main():
                     0.05,
                     0.0,
                 ),
-                model=VGG16(),
+                model=Resnet20(),
                 fit={
                     "batch_size": param["batch"],
                     "epochs": int(
@@ -81,7 +80,6 @@ def main():
                 },
                 optimizer={
                     "class": param["optimizer"],
-                    "momentum": param["momentum"],
                     "learning_rate": param["learning_rate"],
                 },
                 loss=None,
@@ -121,7 +119,7 @@ def main():
     for param_name in ["standard", "low"]:
         # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration
         #         to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
-        param = get_paper_param("Linear_Mode_Connectivity", "VGG16", param_name)
+        param = get_paper_param("Linear_Mode_Connectivity", "RESNET", param_name)
 
         pruning_target = 0.001
         base_pruning_rate = param["pruning_rate"]
@@ -141,23 +139,19 @@ def main():
             pruning_rate = 1.0 - survival_rate
 
             for rewind_epoch in [
-                0,
                 1,
                 2,
                 3,
                 4,
                 5,
                 6,
+                7,
                 8,
                 10,
                 12,
                 16,
                 24,
                 32,
-                48,
-                64,
-                96,
-                128,
             ]:
                 pruning_configs.append(
                     PruningConfig(

@@ -49,9 +49,9 @@ CREATE INDEX ON experiment2 USING GIN(experiment jsonb_path_ops);
 CREATE TABLE checkpoint
 (
     id uuid NOT NULL,
-    model_number integer NOT NULL,
-    model_epoch integer NOT NULL,
+    fit_number integer NOT NULL,
+    fit_epoch integer NOT NULL,
     epoch integer NOT NULL,
-    CONSTRAINT checkpoint_pkey PRIMARY KEY (id, model_number, model_epoch)
+    CONSTRAINT checkpoint_pkey PRIMARY KEY (id, fit_number, fit_epoch)
 );
 

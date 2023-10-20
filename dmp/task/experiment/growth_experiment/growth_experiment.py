@@ -90,19 +90,17 @@ class GrowthExperiment(TrainingExperiment):
 
         max_total_epochs: int = self.fit["epochs"]
         experiment_history: Dict[str, Any] = {}
-        model_number: int = 0
+        fit_number: int = 0
         epoch_parameters: int = 0
         src_model: Optional[ModelInfo] = None
         on_final_iteration: bool = False
         while not on_final_iteration:
             target_size: int = int(
-                math.floor(
-                    self.initial_size * math.pow(self.growth_scale, model_number)
-                )
+                math.floor(self.initial_size * math.pow(self.growth_scale, fit_number))
             )
 
             # print(
-            #     f'target_size {target_size}, self.initial_size {self.initial_size}, growth_step {model_number}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}'
+            #     f'target_size {target_size}, self.initial_size {self.initial_size}, growth_step {fit_number}, src_model.network.num_free_parameters {None if src_model is None else src_model.network.num_free_parameters}'
             # )
 
             max_epochs_at_this_iteration = (
@@ -145,7 +143,7 @@ class GrowthExperiment(TrainingExperiment):
                     and network.num_free_parameters
                     <= src_model.network.num_free_parameters
                 ):
-                    model_number += 1
+                    fit_number += 1
                     continue
 
                 print(f"Growing to {target_size} {network.num_free_parameters}")
@@ -190,9 +188,9 @@ class GrowthExperiment(TrainingExperiment):
             )
 
             src_model = model
-            model_number += 1
+            fit_number += 1
             epoch_parameters += (
-                self.get_current_epoch(experiment_history).model_epoch
+                self.get_current_epoch(experiment_history).fit_epoch
                 * model.network.num_free_parameters
             )
             continue  # just put this here for better readability

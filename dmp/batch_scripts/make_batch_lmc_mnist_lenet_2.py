@@ -40,7 +40,7 @@ import sys
 
 
 def main():
-    queue_id = 200
+    queue_id = 100
 
     def make_run(
         seed,
@@ -50,7 +50,7 @@ def main():
             experiment=LTHExperiment(
                 data={
                     "lmc": True,
-                    "batch": "lmc_mnist_lenet_1",
+                    "batch": "lmc_mnist_lenet_2",
                     "model_family": "lenet",
                     "model_name": "lenet_relu",
                 },
@@ -74,14 +74,14 @@ def main():
                 },
                 loss=None,
                 early_stopping=keras_kwcfg(
-                    "EarlyStopping",
+                    "DMPEarlyStopping",
                     monitor="val_loss",
                     min_delta=0,
                     patience=32,
                     restore_best_weights=True,
                 ),
                 pruning_configs=pruning_configs,
-                num_additional_seeds_per_config=1,
+                num_additional_seeds_per_config=0,
             ),
             run=RunSpec(
                 seed=seed,
@@ -97,13 +97,14 @@ def main():
                     fixed_threshold=-1,
                     exponential_rate=0,
                 ),
+                saved_models=[],
                 resume_checkpoint=None,
             ),
         )
 
     jobs = []
     seed = int(time.time())
-    repetitions = 20
+    repetitions = 1
     base_priority = 1000
 
     # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration
@@ -112,11 +113,11 @@ def main():
     pruning_target = 0.001
     pruning_configs = []
     for survival_rate in [
-        0.8**4,
-        0.8**2,
+        # 0.8**4,
+        # 0.8**2,
         0.8,
-        0.8 ** (1 / 2),
-        0.8 ** (1 / 4),
+        # 0.8 ** (1 / 2),
+        # 0.8 ** (1 / 4),
     ]:
         pruning_iterations = int(
             numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
@@ -126,14 +127,14 @@ def main():
         for rewind_epoch in [
             0,
             1,
-            2,
-            3,
-            4,
-            6,
-            8,
-            12,
-            16,
-            24,
+            # 2,
+            # 3,
+            # 4,
+            # 6,
+            # 8,
+            # 12,
+            # 16,
+            # 24,
         ]:
             pruning_configs.append(
                 PruningConfig(

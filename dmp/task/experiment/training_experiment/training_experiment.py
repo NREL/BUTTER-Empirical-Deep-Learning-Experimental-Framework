@@ -1,10 +1,10 @@
 from __future__ import annotations
 import platform
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import itertools
 import random
-from typing import Any, Dict, Iterable, Optional, Set, Type
+from typing import Any, Dict, Iterable, Iterator, Optional, Set, Type
 import numpy
 import pandas
 import tensorflow
@@ -23,6 +23,8 @@ from dmp.task.experiment.training_experiment import (
     training_experiment_keys,
     training_experiment_summarizer,
 )
+from dmp.task.experiment.training_experiment.dmp_early_stopping import DMPEarlyStopping
+from dmp.task.experiment.training_experiment.epoch_counter import EpochCounter
 from dmp.task.experiment.training_experiment.run_spec import RunSpec
 
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
@@ -100,7 +102,9 @@ class TrainingExperiment(Experiment):
         dataset, metrics = self._load_and_prepare_dataset()
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
-        experiment_history = self._try_restore_checkpoint(context, run, model)
+        epoch_counter, experiment_history = self._try_restore_checkpoint(
+            context, run, model
+        )
         print(model.network.structure.summary())
         model.keras_model.summary()
 
@@ -125,6 +129,7 @@ class TrainingExperiment(Experiment):
 
                 + when running, must be able to resume
         """
+        callbacks = [epoch_counter, self._make_early_stopping_callback(epoch_counter)]
 
         self._fit_model(
             context,
@@ -132,9 +137,9 @@ class TrainingExperiment(Experiment):
             self.fit,
             dataset,
             model,
-            [self._make_early_stopping_callback()],
+            callbacks,
             experiment_history=experiment_history,
-            new_model_number=False,
+            new_fit_number=False,
             new_seed=False,
         )
 
@@ -322,10 +327,12 @@ class TrainingExperiment(Experiment):
         context: Context,
         run: RunSpec,
         model: ModelInfo,
-    ) -> Dict[str, Any]:
+    ) -> Tuple[EpochCounter, Dict[str, Any]]:
         checkpoint = run.resume_checkpoint
         if checkpoint is None:
-            return {}
+            return EpochCounter(TrainingEpoch(0, -1, 0)), {}
+
+        epoch = checkpoint.epoch
         optimizer = model.keras_model.optimizer
         grad_vars = model.keras_model.trainable_weights
         zero_grads = [tensorflow.zeros_like(w) for w in grad_vars]
@@ -333,15 +340,11 @@ class TrainingExperiment(Experiment):
         checkpoint.resume(model)
         run_history = context.schema.get_run_history(checkpoint.run_id)
         if run_history is None:
-            return {}
-        run_history = run_history[run_history["epoch"] <= checkpoint.epoch.epoch]
-        run_history = run_history[
-            run_history["model_number"] <= checkpoint.epoch.model_number
-        ]
-        run_history = run_history[
-            run_history["model_epoch"] <= checkpoint.epoch.model_epoch
-        ]
-        return run_history.to_dict(orient="list")  # type: ignore
+            return EpochCounter(epoch), {}
+
+        # trim run history past this model number
+        run_history = run_history[run_history["fit_number"] <= epoch.fit_number]
+        return EpochCounter(epoch), run_history.to_dict(orient="list")  # type: ignore
 
     def _fit_model(
         self,
@@ -351,13 +354,15 @@ class TrainingExperiment(Experiment):
         dataset: PreparedDataset,
         model: ModelInfo,
         callbacks: List[Optional[keras.callbacks.Callback]],
-        new_model_number: bool,
+        new_fit_number: bool,
         epochs: Optional[int] = None,
         experiment_history: Optional[Dict[str, Any]] = None,
         new_seed=False,
     ) -> Dict[str, Any]:
         # filter None's out of callbacks
         callbacks = [cb for cb in callbacks if cb is not None]
+        epoch_counter: EpochCounter = self._find_callback(callbacks, EpochCounter)  # type: ignore
+        epoch_counter.new_fit_number = new_fit_number
 
         # setup training, validation, and test datasets
         fit_config = fit_config.copy()
@@ -366,7 +371,7 @@ class TrainingExperiment(Experiment):
 
         if epochs is None and fit_config["epochs"] is not None:
             fit_config["epochs"] = (
-                fit_config["epochs"] - self.get_current_epoch(experiment_history).epoch
+                fit_config["epochs"] - epoch_counter.training_epoch.epoch
             )
         else:
             fit_config["epochs"] = epochs
@@ -376,15 +381,6 @@ class TrainingExperiment(Experiment):
         test_set_info = TestSetInfo(keys.test, dataset.test)
         validation_set_info = TestSetInfo(keys.validation, dataset.validation)
         train_set_info = TestSetInfo(keys.train, dataset.train)
-
-        # setup model saving callback
-        self._setup_model_saving_callback(
-            context,
-            run,
-            callbacks,
-            experiment_history,
-            model,
-        )
 
         # setup history statistics recorders
         history_callbacks = []
@@ -401,9 +397,9 @@ class TrainingExperiment(Experiment):
 
         zero_epoch_recorder = None
         if (
-            new_model_number
+            new_fit_number
             or experiment_history is None
-            or self.get_current_epoch(experiment_history).model_epoch == 0
+            or epoch_counter.training_epoch.fit_epoch == 0
         ):
             zero_epoch_recorder = ZeroEpochRecorder(
                 [train_set_info, validation_set_info, test_set_info], None
@@ -422,6 +418,20 @@ class TrainingExperiment(Experiment):
         count = count_masked_parameters(
             model.network.structure, model.keras_network.layer_to_keras_map
         )
+
+        # setup model saving callback
+        early_stopping_callback = self._find_callback(
+            callbacks,
+            keras.callbacks.EarlyStopping,
+        )
+
+        model_saving_callback = self._setup_model_saving_callback(
+            context,
+            run,
+            callbacks,
+            model,
+        )
+
         print(f"masked parameters: {count}")
         # fit the model
         history: keras.callbacks.History = model.keras_model.fit(
@@ -477,35 +487,56 @@ class TrainingExperiment(Experiment):
             retained = [True] * fit_history_length
             fit_history[keys.retained] = retained
 
-            early_stopping_callback = next(
-                (
-                    cb
-                    for cb in callbacks
-                    if isinstance(cb, keras.callbacks.EarlyStopping)
-                ),
-                None,
+            early_stopping_callback = self._find_callback(
+                callbacks, keras.callbacks.EarlyStopping
             )
-
-            if (
-                early_stopping_callback is not None
-                and early_stopping_callback.stopped_epoch > 0
-            ):
-                last_retained_epoch = (
-                    len(fit_history[keys.epoch]) - 1
-                ) - early_stopping_callback.patience
-                for i in range(last_retained_epoch + 1, fit_history_length):
+            if early_stopping_callback is not None:
+                for i in range(early_stopping_callback.best_epoch, fit_history_length):
                     retained[i] = False
+
+        # update run saved_models list
+        if model_saving_callback is not None:
+            run.saved_models.extend(model_saving_callback.saved_epochs)
 
         # if experiment_history was supplied, merge this call to fit into it and return it
         # if experiment_history is not None:
         return self._append_fit_history_to_model_history(
-            new_model_number,
+            # new_fit_number,
             new_seed,
             experiment_history,
             fit_history,
+            epoch_counter,
         )
 
         # return fit_history
+
+    def _get_last_retained_epoch(
+        self,
+        epoch: TrainingEpoch,
+        early_stopping_callback: Optional[keras.callbacks.EarlyStopping],
+    ) -> TrainingEpoch:
+        if (
+            early_stopping_callback is not None
+            and early_stopping_callback.stopped_epoch > 0
+        ):
+            delta = early_stopping_callback.patience
+            return replace(
+                epoch,
+                epoch=epoch.epoch - delta,
+                fit_epoch=epoch.fit_epoch - delta,
+                type=1,
+            )
+        return epoch
+
+    def _find_callback(
+        self,
+        callbacks: Iterable,
+        callback_type: Type,
+    ) -> Optional[keras.callbacks.Callback]:
+        return next(
+            (cb for cb in callbacks if isinstance(cb, callback_type)),
+            None,
+        )
 
     @staticmethod
     def remap_key_prefixes(
@@ -566,7 +597,7 @@ class TrainingExperiment(Experiment):
         if experiment_history is None:
             return TrainingEpoch(0, 0, 0)
 
-        return TrainingEpoch(
+        result = TrainingEpoch(
             self.get_last_value_of(
                 experiment_history,
                 self.keys.epoch,
@@ -574,40 +605,38 @@ class TrainingExperiment(Experiment):
             ),
             self.get_last_value_of(
                 experiment_history,
-                self.keys.model_number,
+                self.keys.fit_number,
                 0,
             ),
             self.get_last_value_of(
                 experiment_history,
-                self.keys.model_epoch,
+                self.keys.fit_epoch,
                 0,
             ),
         )
 
+        return result
+
     def _append_fit_history_to_model_history(
         self,
-        new_model_number: bool,
         new_seed: bool,
         experiment_history: Optional[Dict[str, Any]],
         fit_history: Dict[str, Any],
+        epoch_counter: EpochCounter,
     ) -> Dict[str, Any]:
-        epoch = self.get_current_epoch(experiment_history)
-
-        if new_model_number:
-            epoch.count_new_model()
+        epoch = epoch_counter.training_epoch
 
         fit_history_length = len(fit_history[self.keys.epoch])
 
-        # set model number column
-        fit_history[self.keys.model_number] = [epoch.model_number] * fit_history_length
+        # set fit_number column
+        fit_history[self.keys.fit_number] = [epoch.fit_number] * fit_history_length
 
-        # set model epoch column
-        model_epochs = numpy.array(fit_history[self.keys.epoch])
-        model_epochs += epoch.model_epoch
-        fit_history[self.keys.model_epoch] = model_epochs
+        # set fit_epoch column
+        fit_epochs = numpy.array(fit_history[self.keys.epoch]) + epoch.fit_epoch
+        fit_history[self.keys.fit_epoch] = fit_epochs
 
-        # convert model epochs to history epochs
-        fit_history[self.keys.epoch] = model_epochs + epoch.epoch
+        # convert fit_epochs to epochs
+        fit_history[self.keys.epoch] = fit_epochs + epoch_counter.initial_epoch.epoch
 
         # set seed number column
         if self.keys.seed_number not in fit_history:
@@ -665,14 +694,16 @@ class TrainingExperiment(Experiment):
         network: NetworkInfo,
         history: Dict[str, Any],
         model: ModelInfo,
+        epoch_counter: EpochCounter,
     ) -> TrainingExperimentCheckpoint:
         # + save checkpoint
         #     + to disk``
         #     + to db
         # + update Job & Task to resume on failure
+
         run.resume_checkpoint = context.save_model(
             model,
-            self.get_current_epoch(history),
+            epoch_counter.training_epoch,
         )
 
         # + save history to db
@@ -708,8 +739,8 @@ class TrainingExperiment(Experiment):
             key: history[key]
             for key in (
                 keys.epoch,
-                keys.model_number,
-                keys.model_epoch,
+                keys.fit_number,
+                keys.fit_epoch,
             )
         }
         for column in keys.extended_history_columns:
@@ -761,24 +792,23 @@ class TrainingExperiment(Experiment):
 
         context.update_task()
 
-    def _make_early_stopping_callback(self) -> Optional[keras.callbacks.EarlyStopping]:
-        return make_keras_instance(self.early_stopping)
+    def _make_early_stopping_callback(
+        self, epoch_counter: EpochCounter
+    ) -> Optional[keras.callbacks.EarlyStopping]:
+        return make_keras_instance(self.early_stopping, epoch_counter)
 
     def _setup_model_saving_callback(
         self,
         context: Context,
         run: RunSpec,
         callbacks: List[Optional[keras.callbacks.Callback]],
-        experiment_history: Optional[Dict[str, Any]],
         model: ModelInfo,
-    ) -> Optional[keras.callbacks.Callback]:
+    ) -> Optional[ModelSavingCallback]:
         if run.model_saving is None:
             return None
 
-        model_saving_callback = next(
-            (cb for cb in callbacks if isinstance(cb, ModelSavingCallback)),
-            None,
-        )
+        epoch_counter: EpochCounter = self._find_callback(callbacks, EpochCounter)  # type: ignore
+        model_saving_callback = self._find_callback(callbacks, ModelSavingCallback)
 
         if model_saving_callback is not None:
             return model_saving_callback
@@ -786,7 +816,7 @@ class TrainingExperiment(Experiment):
         # if no model saving callback, create one
         model_saving_callback = run.model_saving.make_save_model_callback(
             context,
-            self.get_current_epoch(experiment_history),
+            epoch_counter,
             model,
         )
         callbacks.append(model_saving_callback)

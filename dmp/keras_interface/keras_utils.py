@@ -113,6 +113,8 @@ def __make_keras_dispatch_table() -> Dict[str, Callable]:
         keras.initializers,
         keras.optimizers,
         keras.losses,
+        keras.optimizers.Adam,
+        keras.optimizers.SGD,
     )  # later modules override/shadow earlier modules
 
     dispatch_table: Dict[str, Callable] = {}

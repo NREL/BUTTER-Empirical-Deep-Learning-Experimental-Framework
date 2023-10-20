@@ -20,8 +20,7 @@ class TrainingExperimentCheckpoint:
 
         model_serialization.load_model_from_file(
             self.run_id,
-            self.epoch.model_number,
-            self.epoch.model_epoch,
+            self.epoch,
             model,
             load_mask=self.load_mask,
             load_optimizer=self.load_optimizer,

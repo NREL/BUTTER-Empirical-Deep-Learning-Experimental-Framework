@@ -11,6 +11,8 @@ dependencies:
 - libpq
 - bzip2
 - lz4
+- h5py
+- hdf5plugin
 - pip:
   - pyarrow >= 12
   - psycopg[binary] >= 3

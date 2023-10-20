@@ -10,8 +10,8 @@ marshaled = marshal.marshal(my_epoch)
 
 {
     'epoch' : 1,
-    'model_number' : 2,
-    'model_epoch' : 3,
+    'fit_number' : 2,
+    'fit_epoch' : 3,
     'type' : 'TrainingEpoch',
 }
 
@@ -29,13 +29,19 @@ recovered_epoch = marshal.demarshal(deserialized)
 @dataclass(order=True)
 class TrainingEpoch:
     epoch: int
-    model_number: int
-    model_epoch: int
+    fit_number: int
+    fit_epoch: int
+    type: int = 0  # 0: regular, 1: final (best)
+    sequence_number: Optional[int] = None
 
     def count_new_model(self) -> None:
-        self.model_number += 1
-        self.model_epoch = 0
+        self.fit_number += 1
+        self.fit_epoch = 0
+        self.type = 0
+        self.sequence_number = None
 
-    def count_new_epoch(self) -> None:
-        self.epoch += 1
-        self.model_epoch += 1
+    def count_new_epoch(self, delta: int = 1) -> None:
+        self.epoch += delta
+        self.fit_epoch += delta
+        self.type = 0
+        self.sequence_number = None

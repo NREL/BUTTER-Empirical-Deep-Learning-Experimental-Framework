@@ -80,7 +80,7 @@ def main():
                 model_saving=ModelSavingSpec(
                     save_initial_model=True,
                     save_trained_model=True,
-                    save_model_epochs=[],
+                    save_fit_epochs=[],
                     save_epochs=[],
                     fixed_interval=1,
                     fixed_threshold=-1,

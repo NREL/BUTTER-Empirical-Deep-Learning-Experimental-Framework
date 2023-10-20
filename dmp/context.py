@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Dict, Iterable, Sequence, Tuple
 from uuid import UUID, uuid4
 
@@ -157,23 +157,17 @@ class Context:
             TrainingExperimentCheckpoint,
         )
 
-        model_path = model_serialization.get_path_for_model_savepoint(
-            self.id,
-            epoch.model_number,
-            epoch.model_epoch,
-        )
-
         # print(
         #     f"\n\n\n========== saving model data run:{self.run} model_path:{model_path} model: {model} ==========\n\n\n"
         # )
-        model_serialization.save_model_data(self.run, model, model_path)
+        model_serialization.save_model_data(self.id, model, epoch)
 
-        if self.schema is not None:
-            self.schema.save_model(self.id, epoch)
+        # if self.schema is not None:
+        #     self.schema.save_model(self.id, epoch)
 
         return TrainingExperimentCheckpoint(
             self.id,
             True,
             True,
-            epoch,
+            replace(epoch),
         )

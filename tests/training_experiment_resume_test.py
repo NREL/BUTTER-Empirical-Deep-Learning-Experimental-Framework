@@ -115,7 +115,7 @@ def test_mnist_lenet():
             model_saving=ModelSavingSpec(
                 save_initial_model=False,
                 save_trained_model=True,
-                save_model_epochs=[],
+                save_fit_epochs=[],
                 save_epochs=[
                     3,
                 ],
@@ -135,8 +135,8 @@ def test_mnist_lenet():
         load_optimizer=True,
         epoch=TrainingEpoch(
             epoch=3,
-            model_number=0,
-            model_epoch=3,
+            fit_number=0,
+            fit_epoch=3,
         ),
     )
 

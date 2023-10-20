@@ -3,8 +3,12 @@ import math
 from typing import Any, Dict, List, Optional, Sequence, Set
 
 from dmp.model.model_info import ModelInfo
+from dmp.task.experiment.training_experiment.epoch_counter import EpochCounter
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.context import Context
+from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
+    TrainingExperimentCheckpoint,
+)
 
 
 @dataclass
@@ -21,7 +25,7 @@ class ModelSavingSpec:
     save_trained_model: bool
 
     save_epochs: List[int]  # specific global epochs to save at
-    save_model_epochs: List[int]
+    save_fit_epochs: List[int]
 
     fixed_interval: int
     fixed_threshold: int
@@ -32,7 +36,7 @@ class ModelSavingSpec:
     def make_save_model_callback(
         self,
         context: Context,
-        epoch: TrainingEpoch,
+        epoch_counter: EpochCounter,
         model_info: ModelInfo,
         # checkpoint_interval: float,
     ):
@@ -45,46 +49,47 @@ class ModelSavingSpec:
             def __init__(self, parent: ModelSavingSpec):
                 super().__init__()
                 self.parent: ModelSavingSpec = parent
-                self.save_model_epochs: Set[int] = set(parent.save_model_epochs)
+                self.save_fit_epochs: Set[int] = set(parent.save_fit_epochs)
                 self.save_epochs: Set[int] = set(parent.save_epochs)
 
-                self.epoch: TrainingEpoch = replace(epoch)
-                self.epoch.model_number -= 1
+                # self.epoch: TrainingEpoch = replace(epoch)
+                # self.epoch.fit_number -= 1
 
-                self.last_saved_epoch: TrainingEpoch = replace(self.epoch)
+                self.last_saved_epoch: TrainingEpoch = replace(
+                    epoch_counter.training_epoch
+                )
                 self.last_saved_epoch.epoch -= 1
-                self.last_saved_epoch.model_epoch -= 1
+                self.last_saved_epoch.fit_epoch -= 1
 
                 self.last_save_time: float = time.time()
 
                 # self.history : Dict[str, List] = {}
-                self._saved_epochs: List[TrainingEpoch] = []
+                self.checkpoints: List[TrainingExperimentCheckpoint] = []
 
-            @property
-            def saved_epochs(self) -> List[TrainingEpoch]:
-                return self._saved_epochs
+            def saved_epochs(self) -> Sequence[TrainingEpoch]:
+                return [checkpoint.epoch for checkpoint in self.checkpoints]
 
             def on_train_begin(self, logs=None) -> None:
-                self.epoch.count_new_model()
                 if self.parent.save_initial_model:
                     self.save_model()
 
             def on_epoch_end(self, epoch, logs=None) -> None:
-                self.epoch.count_new_epoch()
+                training_epoch = epoch_counter.training_epoch
+                global_epoch = training_epoch.epoch
+                fit_epoch = training_epoch.fit_epoch
 
-                model_epoch = self.epoch.model_epoch
                 parent = self.parent
                 if (
-                    self.epoch.epoch in self.save_epochs
-                    or model_epoch in self.save_model_epochs
+                    global_epoch in self.save_epochs
+                    or fit_epoch in self.save_fit_epochs
                 ):
                     # specified epoch
                     pass
                 elif parent.fixed_threshold == -1 or (
-                    parent.fixed_threshold > 0 and model_epoch <= parent.fixed_threshold
+                    parent.fixed_threshold > 0 and fit_epoch <= parent.fixed_threshold
                 ):
                     # fixed regime
-                    if model_epoch % parent.fixed_interval != 0:
+                    if fit_epoch % parent.fixed_interval != 0:
                         return
                 elif parent.exponential_rate <= 0.0:
                     # exponential regime disabled
@@ -92,23 +97,24 @@ class ModelSavingSpec:
                 else:
                     # exponential regime
                     denom = math.log(self.parent.exponential_rate)
-                    ratio = math.ceil(math.log(model_epoch) / denom)
-                    next_ratio = math.ceil(math.log(model_epoch + 1) / denom)
-                    if ratio != next_ratio:
+                    ratio = math.ceil(math.log(fit_epoch) / denom)
+                    next_ratio = math.ceil(math.log(fit_epoch + 1) / denom)
+                    if ratio == next_ratio:
                         return
 
                 self.save_model()
 
             def on_train_end(self, logs=None) -> None:
                 if self.parent.save_trained_model:
-                    self.save_model()
+                    self.save_model(train_end=True)
 
-            def save_model(self) -> None:
-                if self.last_saved_epoch == self.epoch:
+            def save_model(self, train_end: bool = False) -> None:
+                training_epoch = epoch_counter.training_epoch
+                if self.last_saved_epoch == training_epoch:
                     return
 
-                self.last_saved_epoch = replace(self.epoch)
-                self._saved_epochs.append(replace(self.epoch))
-                context.save_model(model_info, self.last_saved_epoch)
+                self.last_saved_epoch = replace(training_epoch)
+                checkpoint = context.save_model(model_info, training_epoch)
+                self.checkpoints.append(checkpoint)
 
         return SaveCallback(self)

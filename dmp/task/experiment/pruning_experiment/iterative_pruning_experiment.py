@@ -12,6 +12,7 @@ from dmp.layer.layer import Layer
 
 from dmp.keras_interface.keras_utils import make_keras_instance, keras_kwcfg
 from dmp.task.experiment.lth.pruning_config import PruningConfig
+from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
@@ -36,7 +37,7 @@ class IterativePruningExperiment(TrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 1
+        return 2
 
     def __call__(
         self,
@@ -44,6 +45,22 @@ class IterativePruningExperiment(TrainingExperiment):
         run: IterativePruningRunSpec,
     ) -> None:
         print(f"********** 1")
+
+        # make sure we are not saving the trained weights in the callback
+        # instead, we will always explicitly save them as part of a checkpoint.
+        if run.model_saving is None:
+            run.model_saving = ModelSavingSpec(
+                True,
+                False,
+                [],
+                [],
+                0,
+                0,
+                0,
+            )
+        else:
+            run.model_saving.save_trained_model = False
+
         # http://proceedings.mlr.press/v119/frankle20a/frankle20a.pdf Algorithim 2
         pruning = self.pruning
 
@@ -54,7 +71,9 @@ class IterativePruningExperiment(TrainingExperiment):
         # 2: Initialize pruning mask to m = 1d.
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
-        experiment_history = self._try_restore_checkpoint(context, run, model)
+        epoch_counter, experiment_history = self._try_restore_checkpoint(
+            context, run, model
+        )
 
         rewind_point = TrainingExperimentCheckpoint(
             run_id=run.rewind_run_id,
@@ -68,10 +87,9 @@ class IterativePruningExperiment(TrainingExperiment):
         # 4: for n ∈ {1, . . . , N} do
         first_iteration = True
         while True:
-            epoch = self.get_current_epoch(experiment_history)
-            iteration = epoch.model_number
+            iteration = epoch_counter.training_epoch.fit_number
 
-            print(f"********** 3 {epoch}")
+            print(f"********** 3 {epoch_counter.training_epoch}")
             if iteration >= pruning.iterations:
                 print(f"********** 4")
                 break
@@ -101,19 +119,20 @@ class IterativePruningExperiment(TrainingExperiment):
                 self.fit,
                 dataset,
                 model,
-                [self._make_early_stopping_callback()],
+                [epoch_counter, self._make_early_stopping_callback(epoch_counter)],
                 experiment_history=experiment_history,
-                new_model_number=is_new_iteration,
+                new_fit_number=is_new_iteration,
                 new_seed=(pruning.new_seed and first_iteration),
                 epochs=pruning.max_epochs_per_iteration,
             )
 
             print(f"********** 9")
-
-            # 7: Return Wk, m
+            # 7: Return Wk, m  (handled by model saving callback)
             # save weights at this point
+            print(f"********** 10")
             run.prune_first_iteration = True
             pruning.new_seed = False
+
             self._save_checkpoint(
                 context,
                 run,
@@ -121,8 +140,8 @@ class IterativePruningExperiment(TrainingExperiment):
                 network,
                 experiment_history,
                 model,
+                epoch_counter,
             )
-            print(f"********** 10")
 
             first_iteration = False
 

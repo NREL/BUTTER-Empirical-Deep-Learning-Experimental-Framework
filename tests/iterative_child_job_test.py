@@ -132,8 +132,8 @@ def iterative_child_job_test():
       "epoch": {
         "type": "TrainingEpoch",
         "epoch": 704,
-        "model_epoch": 32,
-        "model_number": 21
+        "fit_epoch": 32,
+        "fit_number": 21
       },
       "run_id": {
         "type": "UUID",
@@ -224,8 +224,8 @@ def iterative_child_job_test():
       "rewind_epoch": {
         "type": "TrainingEpoch",
         "epoch": 1,
-        "model_epoch": 1,
-        "model_number": 0
+        "fit_epoch": 1,
+        "fit_number": 0
       },
       "rewind_optimizer": true,
       "max_epochs_per_iteration": 32

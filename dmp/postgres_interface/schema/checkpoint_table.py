@@ -7,8 +7,8 @@ from dmp.postgres_interface.element.table import Table
 
 class CheckpointTable(Table):
     run_id: Column = Column("run_id", "uuid")
-    model_number: Column = Column("model_number", "integer")
-    model_epoch: Column = Column("model_epoch", "integer")
+    fit_number: Column = Column("fit_number", "integer")
+    fit_epoch: Column = Column("fit_epoch", "integer")
     epoch: Column = Column("epoch", "integer")
 
     def __init__(self) -> None:

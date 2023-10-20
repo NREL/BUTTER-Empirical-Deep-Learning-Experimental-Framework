@@ -118,7 +118,7 @@ def queue_jobs():
             model_saving=ModelSavingSpec(
                 save_initial_model=False,
                 save_trained_model=True,
-                save_model_epochs=[],
+                save_fit_epochs=[],
                 save_epochs=[
                     1,
                     2,

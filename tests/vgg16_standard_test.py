@@ -81,8 +81,8 @@ def test_vgg16():
                     max_epochs_per_iteration=32,
                     rewind_epoch=TrainingEpoch(
                         epoch=rewind_epoch,
-                        model_number=0,
-                        model_epoch=rewind_epoch,
+                        fit_number=0,
+                        fit_epoch=rewind_epoch,
                     ),
                     rewind_optimizer=True,
                     new_seed=False,
@@ -142,7 +142,7 @@ def test_vgg16():
             model_saving=ModelSavingSpec(
                 save_initial_model=True,
                 save_trained_model=True,
-                save_model_epochs=[],
+                save_fit_epochs=[],
                 save_epochs=[],
                 fixed_interval=1,
                 fixed_threshold=32,
