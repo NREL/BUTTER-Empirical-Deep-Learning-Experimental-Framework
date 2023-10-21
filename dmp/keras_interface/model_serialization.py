@@ -210,7 +210,7 @@ def require_parameter_dataset(
         chunks=(512, 64),
         maxshape=(max_parameters, max_epochs),
         fillvalue=numpy.nan,
-        **hdf5plugin.Blosc(cname="lz4", clevel=4, shuffle=hdf5plugin.Blosc.SHUFFLE),
+        **hdf5plugin.Blosc(cname="lz4", clevel=5, shuffle=hdf5plugin.Blosc.SHUFFLE),
     )
 
 
