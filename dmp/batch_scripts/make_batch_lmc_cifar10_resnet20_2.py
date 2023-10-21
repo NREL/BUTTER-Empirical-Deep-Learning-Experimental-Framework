@@ -84,7 +84,7 @@ def main():
                 },
                 loss=None,
                 early_stopping=keras_kwcfg(
-                    "EarlyStopping",
+                    "DMPEarlyStopping",
                     monitor="val_loss",
                     min_delta=0,
                     patience=50,

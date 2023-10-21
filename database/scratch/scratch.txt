@@ -1,19 +1,345 @@
-EarlyStopping.__init__() got multiple values for argument 'monitor'
-Traceback (most recent call last):
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/jobqueue/jobqueue/job_queue.py", line 346, in work_loop
-    continue_working = handler(worker_id, _job)  # handle the message
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/worker.py", line 44, in <lambda>
-    lambda worker_id, job: self._handler(worker_id, job, git_hash)
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/worker.py", line 80, in _handler
-    result = task(Context(self, job, task))
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/run.py", line 24, in __call__
-    self.experiment(context, self.run)
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/lth/lth_experiment.py", line 71, in __call__
-    experiment_history = super().__call__(context, run)
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/training_experiment/training_experiment.py", line 132, in __call__
-    callbacks = [epoch_counter, self._make_early_stopping_callback(epoch_counter)]
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/training_experiment/training_experiment.py", line 798, in _make_early_stopping_callback
-    return make_keras_instance(self.early_stopping, epoch_counter)
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/keras_interface/keras_utils.py", line 67, in make_keras_instance
-    return factory(*params, **kwargs)
-TypeError: EarlyStopping.__init__() got multiple values for argument 'monitor'
+{
+  "run": {
+    "data": {},
+    "seed": 1697927464,
+    "type": "RunSpec",
+    "model_saving": {
+      "type": "ModelSavingSpec",
+      "save_epochs": [],
+      "fixed_interval": 1,
+      "fixed_threshold": 4,
+      "save_fit_epochs": [],
+      "exponential_rate": 1.189207115002721,
+      "save_initial_model": true,
+      "save_trained_model": true
+    },
+    "record_times": true,
+    "saved_models": [],
+    "resume_checkpoint": null,
+    "record_post_training_metrics": true
+  },
+  "type": "Run",
+  "experiment": {
+    "fit": {
+      "epochs": 135,
+      "batch_size": 128
+    },
+    "data": {
+      "lmc": true,
+      "batch": "lmc_cifar10_resnet20_standard_2",
+      "group": "lmc_cifar10_resnet20_standard",
+      "model_name": "Resnet20",
+      "supergroup": "lmc_cifar10_resnet20",
+      "model_family": "resnet",
+      "resnet_depth": 20
+    },
+    "loss": null,
+    "type": "LTHExperiment",
+    "model": {
+      "type": "Resnet20",
+      "input": null,
+      "output": null
+    },
+    "dataset": {
+      "name": "cifar10",
+      "type": "DatasetSpec",
+      "method": "shuffled_train_test_split",
+      "source": "keras",
+      "test_split": 0.2,
+      "label_noise": 0,
+      "validation_split": 0.05
+    },
+    "optimizer": {
+      "class": "SGD",
+      "learning_rate": {
+        "class": "PiecewiseConstantDecay",
+        "values": [
+          0.1,
+          0.01,
+          0.001
+        ],
+        "boundaries": [
+          32000,
+          48000
+        ]
+      }
+    },
+    "precision": "float32",
+    "early_stopping": {
+      "class": "EarlyStopping",
+      "monitor": "val_loss",
+      "patience": 50,
+      "min_delta": 0,
+      "restore_best_weights": true
+    },
+    "pruning_configs": [
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 0,
+          "marker": 0,
+          "fit_epoch": 0,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 1,
+          "marker": 0,
+          "fit_epoch": 1,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 2,
+          "marker": 0,
+          "fit_epoch": 2,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 3,
+          "marker": 0,
+          "fit_epoch": 3,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 4,
+          "marker": 0,
+          "fit_epoch": 4,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 5,
+          "marker": 0,
+          "fit_epoch": 5,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 6,
+          "marker": 0,
+          "fit_epoch": 6,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 7,
+          "marker": 0,
+          "fit_epoch": 7,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 8,
+          "marker": 0,
+          "fit_epoch": 8,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 10,
+          "marker": 0,
+          "fit_epoch": 10,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 12,
+          "marker": 0,
+          "fit_epoch": 12,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 16,
+          "marker": 0,
+          "fit_epoch": 16,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 24,
+          "marker": 0,
+          "fit_epoch": 24,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      },
+      {
+        "type": "PruningConfig",
+        "method": {
+          "type": "MagnitudePruner",
+          "pruning_rate": 0.5208259338240001
+        },
+        "new_seed": false,
+        "iterations": 10,
+        "rewind_epoch": {
+          "type": "TrainingEpoch",
+          "epoch": 32,
+          "marker": 0,
+          "fit_epoch": 32,
+          "fit_number": 0,
+          "sequence_number": null
+        },
+        "rewind_optimizer": true,
+        "max_epochs_per_iteration": 135
+      }
+    ],
+    "num_additional_seeds_per_config": 1
+  }
+}
