@@ -31,17 +31,17 @@ class TrainingEpoch:
     epoch: int
     fit_number: int
     fit_epoch: int
-    type: int = 0  # 0: regular, 1: final (best)
+    marker: int = 0  # 0: regular, 1: final (best)
     sequence_number: Optional[int] = None
 
     def count_new_model(self) -> None:
         self.fit_number += 1
         self.fit_epoch = 0
-        self.type = 0
+        self.marker = 0
         self.sequence_number = None
 
     def count_new_epoch(self, delta: int = 1) -> None:
         self.epoch += delta
         self.fit_epoch += delta
-        self.type = 0
+        self.marker = 0
         self.sequence_number = None

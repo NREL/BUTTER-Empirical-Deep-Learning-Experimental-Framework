@@ -22,3 +22,4 @@ class DMPEarlyStopping(keras.callbacks.EarlyStopping):
             counter = self.dmp_epoch_counter
             counter.training_epoch = replace(self.dmp_epoch_counter.initial_epoch)
             counter.training_epoch.count_new_epoch(self.best_epoch)
+            counter.training_epoch.marker = 1

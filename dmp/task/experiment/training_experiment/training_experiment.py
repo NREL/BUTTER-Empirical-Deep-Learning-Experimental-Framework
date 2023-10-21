@@ -96,7 +96,7 @@ class TrainingExperiment(Experiment):
         self,
         context: Context,
         run: RunSpec,
-    ) -> Dict[str, Any]:
+    ) -> Tuple[EpochCounter, Dict[str, Any]]:
         # tensorflow.config.optimizer.set_jit(True)
         self._setup_environment(run)
         dataset, metrics = self._load_and_prepare_dataset()
@@ -159,7 +159,7 @@ class TrainingExperiment(Experiment):
             print(
                 f'Exception "{e}" while updating summary. Traceback:\n{traceback.format_exc()}'
             )
-        return experiment_history
+        return epoch_counter, experiment_history
 
     def summarize(
         self,
@@ -330,7 +330,7 @@ class TrainingExperiment(Experiment):
     ) -> Tuple[EpochCounter, Dict[str, Any]]:
         checkpoint = run.resume_checkpoint
         if checkpoint is None:
-            return EpochCounter(TrainingEpoch(0, -1, 0)), {}
+            return EpochCounter(TrainingEpoch(0, 0, 0)), {}
 
         epoch = checkpoint.epoch
         optimizer = model.keras_model.optimizer
@@ -589,33 +589,6 @@ class TrainingExperiment(Experiment):
         if len(vals) > 0:
             return vals[-1]
         return default_value
-
-    def get_current_epoch(
-        self,
-        experiment_history: Optional[Dict[str, Any]],
-    ) -> TrainingEpoch:
-        if experiment_history is None:
-            return TrainingEpoch(0, 0, 0)
-
-        result = TrainingEpoch(
-            self.get_last_value_of(
-                experiment_history,
-                self.keys.epoch,
-                0,
-            ),
-            self.get_last_value_of(
-                experiment_history,
-                self.keys.fit_number,
-                0,
-            ),
-            self.get_last_value_of(
-                experiment_history,
-                self.keys.fit_epoch,
-                0,
-            ),
-        )
-
-        return result
 
     def _append_fit_history_to_model_history(
         self,

@@ -53,7 +53,7 @@ class LTHExperiment(TrainingExperiment):
         if run.model_saving is None:
             run.model_saving = ModelSavingSpec(
                 True,
-                True,
+                False,
                 [],
                 [],
                 0,
@@ -61,14 +61,14 @@ class LTHExperiment(TrainingExperiment):
                 0,
             )
 
-        run.model_saving.save_trained_model = True
+        run.model_saving.save_trained_model = False
         save_epochs = set(run.model_saving.save_epochs)
         save_epochs.update(
             (config.rewind_epoch.epoch for config in self.pruning_configs)
         )
         run.model_saving.save_epochs = sorted(save_epochs)
 
-        experiment_history = super().__call__(context, run)
+        epoch_counter, experiment_history = super().__call__(context, run)
 
         base_experiment_config = copy(vars(self))
         del base_experiment_config["pruning_configs"]
@@ -78,6 +78,7 @@ class LTHExperiment(TrainingExperiment):
         base_run_config = copy(vars(run))
         del base_run_config["seed"]
         del base_run_config["resume_checkpoint"]
+        base_run_config["saved_models"] = []
         # del base_run_config['data']
 
         child_tasks = []
@@ -95,7 +96,7 @@ class LTHExperiment(TrainingExperiment):
                         run_id=context.id,
                         load_mask=True,
                         load_optimizer=True,
-                        epoch=self.get_current_epoch(experiment_history),
+                        epoch=epoch_counter.training_epoch,
                     )
                 else:
                     child_pruning_config.new_seed = True

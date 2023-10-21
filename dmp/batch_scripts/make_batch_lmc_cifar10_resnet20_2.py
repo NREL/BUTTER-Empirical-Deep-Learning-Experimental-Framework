@@ -43,7 +43,7 @@ import sys
 
 
 def main():
-    queue_id = 200
+    queue_id = 10
 
     def make_run(
         seed,
@@ -104,17 +104,18 @@ def main():
                     save_fit_epochs=[],
                     save_epochs=[],
                     fixed_interval=1,
-                    fixed_threshold=32,
-                    exponential_rate=math.pow(2, 1 / 8.0),
+                    fixed_threshold=4,
+                    exponential_rate=math.pow(2, 1 / 4.0),
                 ),
+                saved_models=[],
                 resume_checkpoint=None,
             ),
         )
 
     jobs = []
     seed = int(time.time())
-    repetitions = 20
-    base_priority = 20000
+    repetitions = 10
+    base_priority = 2000
 
     for param_name in ["standard", "low"]:
         # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration
@@ -139,6 +140,7 @@ def main():
             pruning_rate = 1.0 - survival_rate
 
             for rewind_epoch in [
+                0,
                 1,
                 2,
                 3,

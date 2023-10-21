@@ -202,6 +202,9 @@ def make_pyarrow_schema_from_dict(
             values,
             nan_to_none=nan_to_none,
         )
+        print(
+            f"make_pyarrow_schema_from_dict {name}, {pyarrow_type}, {nullable}, {use_byte_stream_split_}"
+        )
         result_columns.append((name, values))
 
         if pyarrow_type is None:
@@ -391,7 +394,7 @@ def write_parquet_table(
         table,
         pyarrow.PythonFile(file),
         use_byte_stream_split=use_byte_stream_split,
-        data_page_size=data_page_size,
+        # data_page_size=data_page_size,
         compression=compression,
         compression_level=compression_level,
         use_dictionary=use_dictionary,

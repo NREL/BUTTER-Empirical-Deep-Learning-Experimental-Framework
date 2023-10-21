@@ -2,6 +2,7 @@
 Enqueues jobs from stdin into the JobQueue
 """
 
+import math
 import sys
 
 import numpy
@@ -40,7 +41,7 @@ import sys
 
 
 def main():
-    queue_id = 100
+    queue_id = 10
 
     def make_run(
         seed,
@@ -81,7 +82,7 @@ def main():
                     restore_best_weights=True,
                 ),
                 pruning_configs=pruning_configs,
-                num_additional_seeds_per_config=0,
+                num_additional_seeds_per_config=1,
             ),
             run=RunSpec(
                 seed=seed,
@@ -94,8 +95,8 @@ def main():
                     save_fit_epochs=[],
                     save_epochs=[],
                     fixed_interval=1,
-                    fixed_threshold=-1,
-                    exponential_rate=0,
+                    fixed_threshold=4,
+                    exponential_rate=math.pow(2, 1 / 2.0),
                 ),
                 saved_models=[],
                 resume_checkpoint=None,
@@ -104,7 +105,7 @@ def main():
 
     jobs = []
     seed = int(time.time())
-    repetitions = 1
+    repetitions = 10
     base_priority = 1000
 
     # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration
@@ -113,11 +114,11 @@ def main():
     pruning_target = 0.001
     pruning_configs = []
     for survival_rate in [
-        # 0.8**4,
-        # 0.8**2,
+        0.8**4,
+        0.8**2,
         0.8,
-        # 0.8 ** (1 / 2),
-        # 0.8 ** (1 / 4),
+        0.8 ** (1 / 2),
+        0.8 ** (1 / 4),
     ]:
         pruning_iterations = int(
             numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
@@ -127,11 +128,11 @@ def main():
         for rewind_epoch in [
             0,
             1,
-            # 2,
-            # 3,
-            # 4,
-            # 6,
-            # 8,
+            2,
+            3,
+            4,
+            6,
+            8,
             # 12,
             # 16,
             # 24,

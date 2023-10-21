@@ -142,7 +142,7 @@ def load_parameters(
             f"Loading model with optimizer type: {type(optimizer)} with members {[m[0] for m in optimizer_datasets]}."
         )
 
-        epoch.type = epoch_dataset[sequence_number, 3]
+        epoch.marker = epoch_dataset[3, sequence_number]
         epoch.sequence_number = sequence_number
 
         parameter_index = 0
@@ -282,7 +282,7 @@ def save_parameters(
             f"set {sequence_number}, {epoch_dataset.shape}, {parameter_dataset.shape}, {epoch}"
         )
         epoch_dataset[:, sequence_number] = numpy.array(
-            [epoch.epoch, epoch.fit_number, epoch.fit_epoch, epoch.type],
+            [epoch.epoch, epoch.fit_number, epoch.fit_epoch, epoch.marker],
             dtype=numpy.int32,
         )
 

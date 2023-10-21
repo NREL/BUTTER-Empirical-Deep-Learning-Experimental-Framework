@@ -1,4 +1,4 @@
-max() arg is an empty sequence
+EarlyStopping.__init__() got multiple values for argument 'monitor'
 Traceback (most recent call last):
   File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/jobqueue/jobqueue/job_queue.py", line 346, in work_loop
     continue_working = handler(worker_id, _job)  # handle the message
@@ -10,22 +10,10 @@ Traceback (most recent call last):
     self.experiment(context, self.run)
   File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/lth/lth_experiment.py", line 71, in __call__
     experiment_history = super().__call__(context, run)
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/training_experiment/training_experiment.py", line 149, in __call__
-    context.update_summary()
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/context.py", line 148, in update_summary
-    self.schema.store_summary(self.run.experiment, experiment_id, summary)  # type: ignore
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/postgres_interface/schema/postgres_schema.py", line 264, in store_summary
-    convert_dataframe_to_bytes(summary.by_loss),
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 88, in convert_dataframe_to_bytes
-    table, use_byte_stream_split = make_pyarrow_table_from_dataframe(dataframe)
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 60, in make_pyarrow_table_from_dataframe
-    return make_pyarrow_table_from_numpy(
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 177, in make_pyarrow_table_from_numpy
-    schema, use_byte_stream_split, column_data = make_pyarrow_schema_from_dict(
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 201, in make_pyarrow_schema_from_dict
-    ) = get_pyarrow_type_mapping(
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 268, in get_pyarrow_type_mapping
-    check_integer()
-  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/parquet_util.py", line 251, in check_integer
-    hi = max(filter(lambda v: not is_null(v), values), key=None)
-ValueError: max() arg is an empty sequence
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/training_experiment/training_experiment.py", line 132, in __call__
+    callbacks = [epoch_counter, self._make_early_stopping_callback(epoch_counter)]
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/task/experiment/training_experiment/training_experiment.py", line 798, in _make_early_stopping_callback
+    return make_keras_instance(self.early_stopping, epoch_counter)
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/dmp/keras_interface/keras_utils.py", line 67, in make_keras_instance
+    return factory(*params, **kwargs)
+TypeError: EarlyStopping.__init__() got multiple values for argument 'monitor'

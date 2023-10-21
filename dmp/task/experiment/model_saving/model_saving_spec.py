@@ -66,6 +66,7 @@ class ModelSavingSpec:
                 # self.history : Dict[str, List] = {}
                 self.checkpoints: List[TrainingExperimentCheckpoint] = []
 
+            @property
             def saved_epochs(self) -> Sequence[TrainingEpoch]:
                 return [checkpoint.epoch for checkpoint in self.checkpoints]
 
