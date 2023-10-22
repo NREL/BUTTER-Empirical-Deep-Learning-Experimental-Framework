@@ -124,7 +124,7 @@ def main():
         #         to target of <3.5% LeNet (16 iters), 3.5% ResNet (16 iters), 0.6% (24 iters) VGG:
         param = get_paper_param("Linear_Mode_Connectivity", "VGG16", param_name)
 
-        pruning_target = 0.001
+        pruning_target = 0.005
         base_pruning_rate = param["pruning_rate"]
         base_survival_rate = 1.0 - base_pruning_rate
 
