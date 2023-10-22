@@ -53,7 +53,7 @@ class LTHExperiment(TrainingExperiment):
         if run.model_saving is None:
             run.model_saving = ModelSavingSpec(
                 True,
-                False,
+                True,
                 [],
                 [],
                 0,
@@ -61,7 +61,7 @@ class LTHExperiment(TrainingExperiment):
                 0,
             )
 
-        run.model_saving.save_trained_model = False
+        run.model_saving.save_trained_model = True
         save_epochs = set(run.model_saving.save_epochs)
         save_epochs.update(
             (config.rewind_epoch.epoch for config in self.pruning_configs)
