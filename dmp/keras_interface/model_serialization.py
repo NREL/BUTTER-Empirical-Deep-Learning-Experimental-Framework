@@ -91,28 +91,20 @@ def find_sequence_number(
     if shape[0] == 0 or shape[1] == 0:
         return None
 
-    epochs = epoch_dataset[0, :]
-    sequence_number = bisect_left(epochs, epoch.epoch)
-    if sequence_number >= len(epochs) or epochs[sequence_number] != epoch.epoch:
-        return None
+    # if "sequence_index" not in h5_file:
 
-    while (
-        sequence_number < len(epochs)
-        and epoch_dataset[0, sequence_number] == epoch.epoch
-        and epoch_dataset[1, sequence_number] != epoch.fit_number
-        and epoch_dataset[2, sequence_number] != epoch.fit_epoch
-    ):
-        sequence_number += 1
+    sequence_number = epoch_dataset.shape[1] - 1
+    while sequence_number >= 0:
+        if (
+            epoch_dataset[0, sequence_number] == epoch.epoch
+            and epoch_dataset[1, sequence_number] == epoch.fit_number
+            and epoch_dataset[2, sequence_number] == epoch.fit_epoch
+        ):
+            return sequence_number
 
-    if (
-        sequence_number >= len(epochs)
-        or epoch_dataset[0, sequence_number] != epoch.epoch
-        or epoch_dataset[1, sequence_number] != epoch.fit_number
-        or epoch_dataset[2, sequence_number] != epoch.fit_epoch
-    ):
-        return None
+        sequence_number -= 1
 
-    return sequence_number
+    return None
 
 
 def load_parameters(
@@ -264,6 +256,7 @@ def save_parameters(
         ) = get_datasets_from_model_file(h5_file, optimizer)
 
         sequence_number = find_sequence_number(epoch_dataset, epoch)
+
         if sequence_number is None:
             sequence_number = epoch_dataset.shape[1]
             print(
