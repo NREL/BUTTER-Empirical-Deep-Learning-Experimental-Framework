@@ -12,10 +12,10 @@ class EpochCounter(keras.callbacks.Callback):
         self.new_fit_number: bool = True
 
     def on_train_begin(self, *args, **kwargs) -> None:
-        self.training_epoch = replace(self.training_epoch)
         if self.new_fit_number:
+            self.initial_epoch = replace(self.training_epoch)
             self.initial_epoch.count_new_model()
-            self.training_epoch.count_new_model()
+            self.training_epoch = replace(self.initial_epoch)
 
     def on_epoch_end(self, *args, **kwargs) -> None:
         self.training_epoch = replace(self.training_epoch)

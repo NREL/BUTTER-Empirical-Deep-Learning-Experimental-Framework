@@ -597,15 +597,17 @@ class TrainingExperiment(Experiment):
         fit_history: Dict[str, Any],
         epoch_counter: EpochCounter,
     ) -> Dict[str, Any]:
-        epoch = epoch_counter.training_epoch
+        initial_epoch = epoch_counter.initial_epoch
 
         fit_history_length = len(fit_history[self.keys.epoch])
 
         # set fit_number column
-        fit_history[self.keys.fit_number] = [epoch.fit_number] * fit_history_length
+        fit_history[self.keys.fit_number] = [
+            initial_epoch.fit_number
+        ] * fit_history_length
 
         # set fit_epoch column
-        fit_epochs = numpy.array(fit_history[self.keys.epoch]) + epoch.fit_epoch
+        fit_epochs = numpy.array(fit_history[self.keys.epoch]) + initial_epoch.fit_epoch
         fit_history[self.keys.fit_epoch] = fit_epochs
 
         # convert fit_epochs to epochs
