@@ -19,12 +19,20 @@ where status IN (1, 3);
 
 
 
+update run_status s set
+	queue = 11
+from run_data d
+where s.id = d.id and status = 0 and queue = 9 and MOD((command->'run'->>'seed')::bigint, 100) < 30;
 
 update run_status s set
-	queue = 201
+	queue = 12
 from run_data d
-where s.id = d.id and status = 0 and MOD((command->'run'->>'seed')::bigint, 2) = 0;
+where s.id = d.id and status = 0 and queue = 9 and MOD((command->'run'->>'seed')::bigint, 100) < 40;
 
+update run_status s set
+	queue = 10
+from run_data d
+where s.id = d.id and status = 0;
 
 
 

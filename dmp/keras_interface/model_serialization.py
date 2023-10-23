@@ -72,6 +72,9 @@ def load_model_from_file(
     load_mask: bool = True,
     load_optimizer: bool = True,
 ) -> TrainingEpoch:
+    """
+    Loads the parameters for a given training epoch into an existing model.
+    """
     data_path = get_model_data_path(run_id)
     return load_parameters(
         model.network.structure,
@@ -87,6 +90,10 @@ def find_sequence_number(
     epoch_dataset,
     epoch: TrainingEpoch,
 ):
+    """
+    Finds the sequence number cooresponding to the given training epoch.
+    Returns None if not found.
+    """
     shape = epoch_dataset.shape
     if shape[0] == 0 or shape[1] == 0:
         return None
@@ -210,8 +217,29 @@ def get_datasets_from_model_file(
     h5_file: h5.File,
     optimizer: Optional[keras.optimizers.Optimizer],
 ) -> Tuple[h5.Dataset, h5.Dataset, List[Tuple[str, h5.Dataset,]],]:
+    """
+    "parameter" dataset:
+    + every checkpoint saves a new [:, sequence] array with all model parameters
+    [parameter index, sequence] = parameter value at sequence number (see "epoch" dataset to map sequence to epoch)
+    """
     parameter_dataset = require_parameter_dataset(h5_file, "parameter", numpy.float32)
 
+    """
+    "epoch" dataset:
+        -> maps to TrainingEpoch fields
+        [0, sequence] = global epoch number
+        [1, sequence] = fit (model) number
+        [2, sequence] = fit (model) epoch
+        [3, sequence] = marker (0 = normal, 1 = best weights / early stopping)
+
+    To load the parameter values for a particular epoch:
+        1) find the sequence number for that epoch using find_sequence_number() and the epoch dataset
+        2) use that sequence number to index into the parameter dataset and access the parameter values for that sequence number
+            e.x.: parameter_dataset[parameter_index, sequence_number]
+    To look at a parameter's history:
+        1) parameter_dataset[parameter_index,:] -> all paramer values for every checkpoint
+        2)
+    """
     epoch_dataset = h5_file.require_dataset(
         "epoch",
         (4, 0),
@@ -223,8 +251,10 @@ def get_datasets_from_model_file(
         **hdf5plugin.Blosc(cname="lz4", clevel=4, shuffle=hdf5plugin.Blosc.SHUFFLE),
     )
 
+    '''
+    Optimizer state values are stored in the "optimizer_members" group.
+    '''
     optimizer_members_group = h5_file.require_group("optimizer_members")
-
     optimizer_datasets = [
         (
             member,
