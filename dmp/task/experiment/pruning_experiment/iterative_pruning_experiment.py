@@ -51,7 +51,7 @@ class IterativePruningExperiment(TrainingExperiment):
         if run.model_saving is None:
             run.model_saving = ModelSavingSpec(
                 True,
-                False,
+                True,
                 [],
                 [],
                 0,
