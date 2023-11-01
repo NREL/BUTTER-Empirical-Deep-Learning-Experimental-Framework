@@ -169,7 +169,7 @@ def load_parameters(
                 prepared = dataset[parameter_index:parameter_limit, sequence_number]
 
                 if mask is not None:
-                    prepared = numpy.where(mask, prepared, 0)
+                    prepared = numpy.where(mask, prepared, 0.0)
                 # print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
                 prepared = prepared.reshape(shape)
                 variable.assign(prepared)
@@ -251,9 +251,9 @@ def get_datasets_from_model_file(
         **hdf5plugin.Blosc(cname="lz4", clevel=4, shuffle=hdf5plugin.Blosc.SHUFFLE),
     )
 
-    '''
+    """
     Optimizer state values are stored in the "optimizer_members" group.
-    '''
+    """
     optimizer_members_group = h5_file.require_group("optimizer_members")
     optimizer_datasets = [
         (

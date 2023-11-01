@@ -73,7 +73,7 @@ class MagnitudePruner(PruningMethod):
             layer: Layer,
         ) -> numpy.ndarray:
             weights, mask = get_weights_and_mask(layer)
-            return (weights[mask]).flatten()  # type: ignore
+            return numpy.abs(numpy.where(mask, weights[mask], numpy.nan).flatten())  # type: ignore
 
         prunable_layers = [layer for layer in root.layers if is_prunable(layer)]
 
@@ -87,9 +87,11 @@ class MagnitudePruner(PruningMethod):
             ]
         )
 
-        pruning_threshold = numpy.quantile(
+        pruning_threshold = numpy.nanquantile(
             prunable_weights,
             self.pruning_rate,
+            method="linear",
+            overwrite_input=True,
         )
         del prunable_weights
 
@@ -99,7 +101,7 @@ class MagnitudePruner(PruningMethod):
             weights, mask = get_weights_and_mask(layer)
             new_mask = numpy.logical_and(
                 mask,  # type: ignore
-                weights > pruning_threshold,
+                numpy.abs(weights) >= pruning_threshold,
             )
             total_pruned += new_mask.size - new_mask.sum()
             mask.assign(new_mask)
