@@ -203,7 +203,7 @@ def require_parameter_dataset(
 ):
     return dest.require_dataset(
         name,
-        (max_parameters, 0),
+        (0, 0),
         dtype=dtype,
         shuffle=False,
         chunks=(512, 64),
@@ -328,13 +328,14 @@ def save_parameters(
             # print(f"saving variable: {variable.name} {size} {shape}")
 
             def accumulate_value(dataset, value):
+                if dataset.shape[0] <= parameter_limit:
+                    dataset.resize((parameter_limit + 1, dataset.shape[1]))
                 dataset[parameter_index:parameter_limit, sequence_number] = value
 
             def accumulate_variable(dataset, variable):
                 value = variable.numpy().flatten()
                 if mask is not None:
                     value = numpy.where(mask, value, numpy.nan)
-                dataset[parameter_index:parameter_limit, sequence_number] = value
                 accumulate_value(dataset, value)
 
             accumulate_variable(parameter_dataset, variable)
