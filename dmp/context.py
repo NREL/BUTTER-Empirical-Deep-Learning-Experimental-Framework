@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, replace
-from typing import Any, Dict, Iterable, Sequence, Tuple
+from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 from uuid import UUID, uuid4
 
 from typing import TYPE_CHECKING
@@ -160,7 +160,8 @@ class Context:
         # print(
         #     f"\n\n\n========== saving model data run:{self.run} model_path:{model_path} model: {model} ==========\n\n\n"
         # )
-        model_serialization.save_model_data(self.id, model, epoch)
+
+        model_serialization.save_model_data(self.id, model, epoch, self.job.parent)
 
         # if self.schema is not None:
         #     self.schema.save_model(self.id, epoch)

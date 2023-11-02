@@ -47,8 +47,17 @@ def save_model_data(
     id: UUID,
     model: ModelInfo,
     epoch: TrainingEpoch,
+    parent_id: Optional[UUID] = None,
 ) -> int:
+    import os
+
     data_path = get_model_data_path(id)
+    if parent_id is not None and not os.path.exists(data_path):
+        parent_path = get_model_data_path(parent_id)
+        if os.path.exists(parent_path):
+            import shutil
+
+            shutil.copy(parent_path, data_path)
 
     return save_parameters(
         model.network.structure,
@@ -206,7 +215,7 @@ def require_parameter_dataset(
         (0, 0),
         dtype=dtype,
         shuffle=False,
-        chunks=(512, 64),
+        chunks=(256, 128),
         maxshape=(max_parameters, max_epochs),
         fillvalue=numpy.nan,
         **hdf5plugin.Blosc(cname="lz4", clevel=5, shuffle=hdf5plugin.Blosc.SHUFFLE),
@@ -248,7 +257,7 @@ def get_datasets_from_model_file(
         # chunks=(512, 64),
         maxshape=(4, max_epochs),
         fillvalue=-1,
-        **hdf5plugin.Blosc(cname="lz4", clevel=4, shuffle=hdf5plugin.Blosc.SHUFFLE),
+        **hdf5plugin.Blosc(cname="lz4", clevel=5, shuffle=hdf5plugin.Blosc.SHUFFLE),
     )
 
     """
