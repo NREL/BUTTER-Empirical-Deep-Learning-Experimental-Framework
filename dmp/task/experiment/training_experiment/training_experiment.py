@@ -90,7 +90,7 @@ class TrainingExperiment(Experiment):
 
     @property
     def version(self) -> int:
-        return super().version + 20
+        return super().version + 21
 
     def __call__(
         self,

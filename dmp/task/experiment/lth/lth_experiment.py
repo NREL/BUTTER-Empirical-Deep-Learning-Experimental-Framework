@@ -42,7 +42,7 @@ class LTHExperiment(TrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 1
+        return 2
 
     def __call__(
         self,
