@@ -38,7 +38,7 @@ import sys
 
 
 def main():
-    queue_id = 101
+    queue_id = 10
 
     def make_run(
         seed,
@@ -102,7 +102,7 @@ def main():
 
     jobs = []
     seed = int(time.time())
-    repetitions = 1
+    repetitions = 9
     base_priority = 1000
 
     # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration

@@ -43,7 +43,7 @@ import sys
 
 
 def main():
-    queue_id = 100
+    queue_id = 10
 
     def make_run(
         seed,
