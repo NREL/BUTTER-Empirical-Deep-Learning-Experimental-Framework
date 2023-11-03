@@ -331,17 +331,17 @@ class TrainingExperimentSummarizer:
         quantile_metrics: Iterable,
     ) -> pandas.DataFrame:
         keys: TrainingExperimentKeys = experiment.keys
-        by_loss = pandas.DataFrame(
+        result = pandas.DataFrame(
             {
                 group_column: [group for group, _ in groups],
                 keys.count: groups.size(),
             },
         )
-        by_loss.set_index(group_column, inplace=True)
+        result.set_index(group_column, inplace=True)
 
         for key in simple_metrics:
-            if key not in key in ignore_metrics and key in groups:  # type: ignore
-                by_loss[key + "_quantile_50"] = (
+            if key in groups:  # type: ignore
+                result[key + "_quantile_50"] = (
                     groups[key].median().astype(numpy.float32)
                 )
 
@@ -349,11 +349,13 @@ class TrainingExperimentSummarizer:
         from pandas.api.types import is_numeric_dtype
 
         quantile_metrics = [
-            k
-            for k in quantile_metrics
-            if k not in by_loss
-            and k not in simple_metrics
-            and is_numeric_dtype(groups[k])
+            key
+            for key in quantile_metrics
+            if (
+                key not in result
+                and key not in simple_metrics
+                and is_numeric_dtype(groups[key])
+            )
         ]
         quantiles = (
             groups[quantile_metrics]
@@ -368,17 +370,17 @@ class TrainingExperimentSummarizer:
 
         for key in chain(simple_metrics, quantile_metrics):
             if key in groups:
-                by_loss[key + "_count"] = groups[key].count().astype(numpy.int16)
+                result[key + "_count"] = groups[key].count().astype(numpy.int16)
 
-        by_loss = pandas.concat(
+        result = pandas.concat(
             (
-                by_loss,
+                result,
                 quantiles,
             ),
             axis=1,
         )
 
-        return by_loss
+        return result
 
 
 summarizer = TrainingExperimentSummarizer()

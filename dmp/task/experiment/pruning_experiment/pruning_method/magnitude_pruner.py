@@ -73,7 +73,7 @@ class MagnitudePruner(PruningMethod):
             layer: Layer,
         ) -> numpy.ndarray:
             weights, mask = get_weights_and_mask(layer)
-            return numpy.abs(numpy.where(mask, weights[mask], numpy.nan).flatten())  # type: ignore
+            return numpy.abs(weights[mask].flatten())  # type: ignore
 
         prunable_layers = [layer for layer in root.layers if is_prunable(layer)]
 

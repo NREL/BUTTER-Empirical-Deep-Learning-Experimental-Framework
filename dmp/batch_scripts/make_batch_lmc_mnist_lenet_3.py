@@ -25,9 +25,6 @@ sys.path.insert(0, "./")
 
 from dmp.dataset.dataset_spec import DatasetSpec
 
-from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment,
-)
 
 from dmp.marshaling import marshal
 
@@ -41,7 +38,7 @@ import sys
 
 
 def main():
-    queue_id = 20
+    queue_id = 101
 
     def make_run(
         seed,
@@ -152,17 +149,17 @@ def main():
                 )
             )
 
-        for rep in range(repetitions):
-            run = make_run(
-                seed + len(jobs),
-                pruning_configs,
+    for rep in range(repetitions):
+        run = make_run(
+            seed + len(jobs),
+            pruning_configs,
+        )
+        jobs.append(
+            Job(
+                priority=base_priority + len(jobs),
+                command=marshal.marshal(run),
             )
-            jobs.append(
-                Job(
-                    priority=base_priority + len(jobs),
-                    command=marshal.marshal(run),
-                )
-            )
+        )
 
     print(f"Generated {len(jobs)} jobs.")
     # pprint(jobs)
