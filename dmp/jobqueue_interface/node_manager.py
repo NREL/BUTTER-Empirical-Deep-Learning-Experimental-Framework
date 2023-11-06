@@ -90,7 +90,7 @@ def main():
     min_gpu_mem_buffer = 500
     max_worker_per_gpu = 2
 
-    cpus_per_gpu_worker = 1
+    cpus_per_gpu_worker = 2
     min_cpus_per_cpu_worker = 32
 
     smt_level = 1  # maximum number of SMT's (a.k.a. "CPUs") per core to use
