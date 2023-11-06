@@ -1,3 +1,14 @@
+select count(1) num, queue, model, status, error
+from
+(
+select *,
+	command->'experiment'->'model'->'type' model
+from
+	run_status s inner join run_data using (id)
+) x
+group by queue, model, status, error
+order by queue, model, status, error;
+
 select * from run_status left join run_data using (id);
 
 SELECT *
