@@ -1,6 +1,8 @@
+import math
 from uuid import UUID
 from dmp.marshaling import marshal
 from pprint import pprint
+from dmp.model.named.lenet import Lenet
 from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.training_experiment.run_spec import RunSpec
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
@@ -63,42 +65,22 @@ def test_mnist_lenet():
                 "mnist",
                 "keras",
                 "shuffled_train_test_split",
-                0.2,
+                10 / 70.0,
                 0.05,
                 0.0,
             ),
-            model=CNNStack(
-                input=None,
-                output=None,
-                num_stacks=2,
-                cells_per_stack=1,
-                stem="conv_5x5_1x1_same",
-                downsample="max_pool_2x2_2x2_valid",
-                cell="conv_5x5_1x1_valid",
-                final=FullyConnectedNetwork(
-                    input=None,
-                    output=None,
-                    widths=[120, 84],
-                    residual_mode="none",
-                    flatten_input=True,
-                    inner=Dense.make(-1, {}),
-                ),
-                stem_width=6,
-                stack_width_scale_factor=16.0 / 6.0,
-                downsample_width_scale_factor=1.0,
-                cell_width_scale_factor=1.0,
-            ),
+            model=Lenet(),
             fit={
                 "batch_size": 128,
                 "epochs": 6,
             },
             optimizer={
                 "class": "Adam",
-                "learning_rate": 0.01,
+                "learning_rate": 12e-4,
             },
             loss=None,
             early_stopping=keras_kwcfg(
-                "EarlyStopping",
+                "DMPEarlyStopping",
                 monitor="val_loss",
                 min_delta=0,
                 patience=10,
@@ -107,22 +89,19 @@ def test_mnist_lenet():
         ),
         run=RunSpec(
             seed=seed,
-            data={
-                "test": True,
-            },
-            record_post_training_metrics=False,
+            data={},
+            record_post_training_metrics=True,
             record_times=True,
             model_saving=ModelSavingSpec(
-                save_initial_model=False,
+                save_initial_model=True,
                 save_trained_model=True,
                 save_fit_epochs=[],
-                save_epochs=[
-                    3,
-                ],
-                fixed_interval=0,
-                fixed_threshold=0,
-                exponential_rate=0,
+                save_epochs=[],
+                fixed_interval=1,
+                fixed_threshold=4,
+                exponential_rate=math.pow(2, 1 / 2.0),
             ),
+            saved_models=[],
             resume_checkpoint=None,
         ),
     )

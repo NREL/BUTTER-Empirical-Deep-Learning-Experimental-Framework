@@ -415,10 +415,6 @@ class TrainingExperiment(Experiment):
         )
         callbacks.extend(history_callbacks)
 
-        count = count_masked_parameters(
-            model.network.structure, model.keras_network.layer_to_keras_map
-        )
-
         # setup model saving callback
         early_stopping_callback = self._find_callback(
             callbacks,
@@ -432,7 +428,6 @@ class TrainingExperiment(Experiment):
             model,
         )
 
-        print(f"masked parameters: {count}")
         # fit the model
         history: keras.callbacks.History = model.keras_model.fit(
             callbacks=callbacks,
@@ -475,24 +470,29 @@ class TrainingExperiment(Experiment):
             f"count masked parameters... {keys.masked_parameter_count_key not in fit_history}"
         )
         if keys.masked_parameter_count_key not in fit_history:
+            masked_parameter_count = count_masked_parameters(
+                model.network.structure,
+                model.keras_network.layer_to_keras_map,
+            )
+            print(f"masked parameters: {masked_parameter_count}")
             fit_history[keys.masked_parameter_count_key] = [
-                count_masked_parameters(
-                    model.network.structure,
-                    model.keras_network.layer_to_keras_map,
-                )
+                masked_parameter_count
             ] * fit_history_length
 
         # set retained column
         if keys.retained not in fit_history:
-            retained = [True] * fit_history_length
-            fit_history[keys.retained] = retained
-
             early_stopping_callback = self._find_callback(
                 callbacks, keras.callbacks.EarlyStopping
             )
+            retained = []
             if early_stopping_callback is not None:
-                for i in range(early_stopping_callback.best_epoch, fit_history_length):
-                    retained[i] = False
+                retained = [
+                    (epoch <= early_stopping_callback.best_epoch)
+                    for epoch in fit_history[keys.epoch]
+                ]
+            else:
+                retained = [True] * fit_history_length
+            fit_history[keys.retained] = retained
 
         # update run saved_models list
         if model_saving_callback is not None:

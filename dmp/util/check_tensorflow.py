@@ -23,3 +23,4 @@ def get_mkl_enabled_flag():
 
 print("We are using Tensorflow version", tensorflow.__version__)
 print("MKL enabled :", get_mkl_enabled_flag())
+print(f"GPU Devices: {tensorflow.config.list_physical_devices('GPU')}")

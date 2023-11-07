@@ -89,7 +89,7 @@ class MagnitudePruner(PruningMethod):
 
         pruning_threshold = numpy.nanquantile(
             prunable_weights,
-            self.pruning_rate,
+            1.0 - self.pruning_rate,
             method="linear",
             overwrite_input=True,
         )
