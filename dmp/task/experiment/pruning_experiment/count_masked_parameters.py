@@ -42,5 +42,6 @@ def count_masked_parameters(
             constraint = get_mask_constraint(keras_layer, variable)
             if constraint is None:
                 continue
-            num_masked_parameters += constraint.mask.numpy().sum()
+            numpy_mask = constraint.mask.numpy()
+            num_masked_parameters += numpy_mask.size - numpy_mask.sum()
     return num_masked_parameters
