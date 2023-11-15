@@ -139,10 +139,10 @@ def main():
                 "505_tecator",
             ]:
                 for optimizer in [
-                    {"class_name": "adam", "config": {"learning_rate": 0.01}},
-                    {"class_name": "adam", "config": {"learning_rate": 0.001}},
-                    {"class_name": "adam", "config": {"learning_rate": 0.0001}},
-                    {"class_name": "adam", "config": {"learning_rate": 0.00001}},
+                    {"class": "Adam", "learning_rate": 0.01},
+                    {"class": "Adam", "learning_rate": 0.001},
+                    {"class": "Adam", "learning_rate": 0.0001},
+                    {"class": "Adam", "learning_rate": 0.00001},
                     # {
                     #     "class_name": "SGD",
                     #     "config": {
