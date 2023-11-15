@@ -1,5 +1,6 @@
 import math
 from uuid import UUID
+import uuid
 from dmp.marshaling import marshal
 from pprint import pprint
 from dmp.model.named.lenet import Lenet
@@ -47,7 +48,9 @@ from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
 
-save_id = UUID("a69b6248-9790-4641-9620-0942fd20a442")
+# save_id = UUID("a69b6248-9790-4641-9620-0942fd20a442")
+save_id = uuid.uuid4()
+
 seed = 10
 
 
@@ -121,7 +124,7 @@ def test_mnist_lenet():
 
     run.run.model_saving = None
 
-    experiment_test_util.run_experiment(run, use_database=True)
+    experiment_test_util.run_experiment(run, use_database=True, id=save_id)
 
 
 if __name__ == "__main__":

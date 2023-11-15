@@ -487,7 +487,7 @@ class TrainingExperiment(Experiment):
             retained = []
             if early_stopping_callback is not None:
                 retained = [
-                    (epoch <= early_stopping_callback.best_epoch)
+                    (epoch <= (early_stopping_callback.best_epoch + 1))
                     for epoch in fit_history[keys.epoch]
                 ]
             else:

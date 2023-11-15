@@ -88,11 +88,11 @@ class Context:
         history: pandas.DataFrame,
         extended_history: pandas.DataFrame,
     ) -> None:
-        # print(f"record_history\n{history}\nextended:\n{extended_history}")
+        print(f"record_history\n{history}\nextended:\n{extended_history}")
 
         if self.schema is not None:
             experiment_id = self.get_experiment_id()
-            # print(f"storing experiment {experiment_id} history...")
+            print(f"storing experiment {experiment_id} history...")
             self.schema.record_history(
                 [
                     (

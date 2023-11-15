@@ -30,5 +30,5 @@ class Table(ColumnGroup, Identifiable):
         return self._columns[index]
 
     @property
-    def columns(self) -> Sequence["Column"]:
-        raise NotImplementedError()
+    def columns(self) -> Sequence[Column]:
+        return [v for k, v in vars(type(self)).items() if isinstance(v, Column)]

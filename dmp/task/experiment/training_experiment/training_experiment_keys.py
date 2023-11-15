@@ -10,7 +10,7 @@ class TrainingExperimentKeys:
         self.epoch: str = "epoch"
         self.count: str = "count"
 
-        self.test_loss_cmin: str = "test_loss_cmin"
+        self.test_loss_cmin: str = "test_loss_cumulative_min"
         self.canonical_epoch: str = "canonical_epoch"
 
         self.train: str = "train"
@@ -27,8 +27,8 @@ class TrainingExperimentKeys:
         self.data_sets: Sequence[str] = (self.train,) + self.test_data_sets
 
         self.loss = "loss"
-        self.cmin = "cmin"
-        self.cepoch = "cepoch"
+        self.cmin = "cumulative_min"
+        self.cepoch = "best_epoch"
 
         self.test_loss = self.test + "_" + self.loss
         self.test_loss_cmin = self.test_loss + "_" + self.cmin
@@ -124,7 +124,7 @@ class TrainingExperimentKeys:
                     ]
                     for metric, cfunc, ifunc, suffix in chain(
                         [
-                            (metric, cmin, imin, "cmin")
+                            (metric, cmin, imin, self.cmin)
                             for metric in chain(
                                 self.loss_metrics,
                                 [
@@ -133,17 +133,17 @@ class TrainingExperimentKeys:
                             )
                         ],
                         [
-                            ("accuracy", cmax, imax, "cmax"),
-                        ],
-                    )
-                ]
-            )
+                            ("accuracy", cmax, imax, "cumulative_max"),
+                        ],  # type: ignore
+                    )  # type: ignore
+                ]  # type: ignore
+            )  # type: ignore
         )  # type: ignore
 
         self.simple_summarize_keys: Set[str] = set(
             [
                 self.epoch_start_time_ms,
-                self.canonical_epoch,
+                self.epoch,
             ]
             + make_with_data_set_prefixes((self.interval_suffix,))
             + [

@@ -59,7 +59,7 @@ class TrainingExperimentSummarizer:
                     if history[column].equals(history[loss_column]):
                         del history[column]
 
-        history.set_index([keys.run, keys.epoch], inplace=True)
+        history.set_index([keys.run, keys.epoch], inplace=True, drop=False)
         history.sort_index(inplace=True)
 
         for (
@@ -85,19 +85,21 @@ class TrainingExperimentSummarizer:
                     ].index.get_level_values(keys.epoch)
                     history.loc[(run, slice(None)), epoch_column] = cumulative_epochs
 
+        # print(history)
         selected_epochs = self._select_epochs(
             history.index.get_level_values(keys.epoch)
         )
+        # print(f"selected epochs: {selected_epochs}")
 
-        history[keys.canonical_epoch] = False
-        history[keys.canonical_epoch] = history[keys.canonical_epoch].astype(
-            numpy.bool_
-        )
-        history.loc[(slice(None), selected_epochs), keys.canonical_epoch] = True
+        # history[keys.canonical_epoch] = False
+        # history[keys.canonical_epoch] = history[keys.canonical_epoch].astype(
+        #     numpy.bool_
+        # )
+        # history.loc[(slice(None), selected_epochs), keys.canonical_epoch] = True
 
-        epoch_subset = self._summarize_epoch_subset(
-            experiment, history, selected_epochs
-        )
+        # epoch_subset = self._summarize_epoch_subset(
+        #     experiment, history, selected_epochs
+        # )
         # print(epoch_subset.describe())
         # print(epoch_subset)
 
@@ -110,13 +112,15 @@ class TrainingExperimentSummarizer:
         # print(by_epoch.describe())
 
         by_loss = self._summarize_by_loss(experiment, runs, history)
+        # print(by_loss.head(200))
+        # print(by_loss.describe())
 
         return ExperimentSummaryRecord(
             num_sources,
             by_epoch,
             by_loss,
             None,
-            epoch_subset,
+            None,
         )
 
     def _select_epochs(
@@ -128,9 +132,9 @@ class TrainingExperimentSummarizer:
                 self.make_summary_points(
                     epochs.min(),
                     epochs.max(),
-                    128,
                     1,
-                    numpy.log(10.0 / 1) / 100,
+                    100,
+                    numpy.log(10 / 1) / 20,
                 )
             ).astype(numpy.int16)
         )
@@ -143,6 +147,12 @@ class TrainingExperimentSummarizer:
     ) -> pandas.DataFrame:
         keys: TrainingExperimentKeys = experiment.keys
         epoch_samples = history.loc[(slice(None), selected_epochs), :]
+        del epoch_samples[keys.run]
+        del epoch_samples[keys.epoch]
+
+        # print(f"summarize by epoch names {history.columns.values.tolist()}")
+        # print(history.columns)
+        # print(history.head(10))
 
         skip_set = {keys.run, keys.epoch}
         by_epoch = self._summarize_group(
@@ -150,7 +160,7 @@ class TrainingExperimentSummarizer:
             epoch_samples.groupby(keys.epoch, sort=True),
             keys.epoch,
             {k for k in keys.simple_summarize_keys if k not in skip_set},
-            history.columns,
+            history.columns.values.tolist(),
         )
 
         return by_epoch
@@ -187,114 +197,100 @@ class TrainingExperimentSummarizer:
         runs: numpy.ndarray,
         history: pandas.DataFrame,
     ) -> pandas.DataFrame:
+        loss_index_key = "_loss_index"
         keys: TrainingExperimentKeys = experiment.keys
         loss_key = keys.test_loss_cmin
+        history = history.copy()
+        del history[keys.run]
 
-        min_median = history[keys.test_loss_cmin].groupby(keys.run).min().median()
+        run_groups = history[loss_key].groupby(keys.run)
         loss_levels = numpy.flip(
             self.make_summary_points(
-                min_median,
-                history[keys.test_loss_cmin].groupby(keys.run).max().median(),
+                run_groups.min().median(),
+                run_groups.max().median(),
                 1e-5,
                 1e-4,
-                numpy.log(1.0 / 0.1) / 10,
+                numpy.log(10) / 20,
             ).astype(numpy.float32)
         )
 
-        # print(f'min {min_pt} max {max_pt}')
-
+        # print(f"loss_levels")
         # print(loss_levels)
         # print(loss_levels.shape)
 
         # loss_series = history[keys.test_loss_cmin]
         interpolated_loss_points = {
-            k: [] for k in chain((keys.run, keys.epoch), history.columns)
+            k: [] for k in chain((loss_index_key, keys.epoch), history.columns)
         }
         for run in runs:
-            run_df = history.loc[run, :]
-            losses = run_df[loss_key]
-            loss_level_idx = 0
+            run_df = history.loc[run, :].set_index(keys.epoch, drop=False).sort_index()
+            # del run_df[keys.run]
+            # run_df.sort_index()
 
-            retained_epoch: Any = None
-            prev_epoch: Any = None
-            for curr_epoch, curr_loss in losses.items():
-                prev_epoch = retained_epoch
-                retained_epoch = curr_epoch
-                if prev_epoch is None:
-                    prev_epoch = curr_epoch
+            # loss_level_idx = 0
+            # loss_level = loss_levels[loss_level_idx]
 
-                loss_level = loss_levels[loss_level_idx]
+            # for i in range(len(run_df)):
+            i = 0
+            for loss_index, loss_level in enumerate(loss_levels):
+                while i < len(run_df) and run_df[loss_key].iloc[i] > loss_level:
+                    i += 1
 
-                if curr_loss > loss_level:
-                    continue
-
-                curr_index = (run, curr_epoch)
-                if curr_index not in history.index:
+                if i >= len(run_df):
                     break
 
-                try:
-                    curr = history.at[curr_index]  # type: ignore
-                except KeyError:
-                    break
+                curr = run_df.iloc[i]
+                curr_loss = curr[loss_key]
 
-                prev_index = (run, prev_epoch)
-                prev = history.at[prev_index]
+                prev = run_df.iloc[max(0, i - 1)]
+                prev_loss = prev[loss_key]
 
-                prev_loss = prev[loss_key].iloc[0]
+                prev_weight = 0.0
+                delta = prev_loss - curr_loss
+                if delta > 1e-12:
+                    prev_weight = (loss_level - curr_loss) / delta
+                curr_weight = 1.0 - prev_weight
 
-                while curr_loss <= loss_level:
-                    prev_weight = 0.5
-                    delta = prev_loss - curr_loss
-                    if delta > 1e-12:
-                        prev_weight = (loss_level - curr_loss) / delta
-                    curr_weight = 1.0 - prev_weight
+                # interpolated_loss_points[keys.run].append(run)
+                # interpolated_loss_points[keys.epoch].append(
+                #     curr_weight * curr[keys.epoch] + prev_weight * prev[keys.epoch]
+                # )
+                interpolated_loss_points[loss_index_key].append(loss_index)
+                # print(
+                #     f"intrp: {loss_index} {i} {prev_loss} {loss_level} {curr_loss} -> {prev_weight}"
+                # )
+                for c in run_df.columns:
+                    prev_value = prev[c]
+                    curr_value = curr[c]
+                    interpolated_value = curr_value
+                    if (
+                        isinstance(curr_value, Number) and not pandas.isna(curr_value)  # type: ignore
+                    ) and (
+                        isinstance(prev_value, Number) and not pandas.isna(prev_value)  # type: ignore
+                    ):
+                        interpolated_value = (
+                            curr_weight * curr_value + prev_weight * prev_value  # type: ignore
+                        )
+                        # print(
+                        #     f"intrpc: {c} {prev_value} {curr_value} -> {interpolated_value}"
+                        # )
 
-                    interpolated_loss_points[keys.run].append(run)
-                    interpolated_loss_points[keys.epoch].append(
-                        curr_weight * curr_epoch + prev_weight * prev_epoch
-                    )
+                    interpolated_loss_points[c].append(interpolated_value)
 
-                    for c in history.columns:
-                        prev_value = prev[c]
-                        curr_value = curr[c]  # type:ignore
-                        interpolated_value = None
-                        if isinstance(curr_value, Number):
-                            if pandas.isna(prev_value) or pandas.isna(
-                                curr_value
-                            ):  # type: ignore
-                                interpolated_value = curr_value
-                            else:
-                                interpolated_value = (
-                                    curr_weight * curr_value + prev_weight * prev_value
-                                )
-                        else:
-                            if curr_weight >= prev_weight:
-                                interpolated_value = curr_value
-                            else:
-                                interpolated_value = prev_value
-
-                        interpolated_loss_points[c].append(interpolated_value)
-
-                    interpolated_loss_points[keys.test_loss_cmin][-1] = loss_level
-
-                    loss_level_idx += 1
-                    if loss_level_idx >= loss_levels.size:
-                        break
-
-                if loss_level_idx >= loss_levels.size:
-                    break
-
+        # print("interpolated_loss_points")
         # print(interpolated_loss_points)
+
+        by_loss_df = pandas.DataFrame(interpolated_loss_points)
+        by_loss_df.set_index(loss_index_key, inplace=True, drop=True)
+        by_loss_df.sort_index(inplace=True)
 
         skip_set = {keys.run, keys.test_loss_cmin}
         by_loss = self._summarize_group(
             experiment,
-            pandas.DataFrame(interpolated_loss_points).groupby(
-                keys.test_loss_cmin, sort=True
-            ),
+            by_loss_df.groupby(loss_key, sort=True),
             keys.test_loss_cmin,
             {k for k in keys.simple_summarize_keys if k not in skip_set},
-            history.columns,
+            history.columns.values.tolist(),
         )
 
         # print(by_loss)
@@ -305,22 +301,61 @@ class TrainingExperimentSummarizer:
         self,
         min_pt: float,
         max_pt: float,
-        switch_point: float,
         linear_resolution: float,
+        switch_point: float,
         logarithmic_resolution: float,
     ) -> numpy.ndarray:
-        linear_points = numpy.arange(
-            min_pt, min(switch_point, max_pt) + linear_resolution, linear_resolution
-        )
-        logarithmic_points = numpy.exp(
-            numpy.arange(
-                numpy.log(max(min_pt, switch_point) + linear_resolution),
-                numpy.log(max_pt + logarithmic_resolution),
-                logarithmic_resolution,
+        # linear_points = numpy.arange(
+        #     min_pt, min(switch_point, max_pt) + linear_resolution, linear_resolution
+        # )
+
+        # print(
+        #     f"make_summary_points {min_pt} {max_pt} {linear_resolution} {switch_point} {logarithmic_resolution}"
+        # )
+        switch_point = numpy.floor(switch_point / linear_resolution) * linear_resolution
+
+        linear_start = numpy.ceil(min_pt / linear_resolution)
+        linear_max = min(switch_point, max_pt)
+        linear_end = numpy.floor(linear_max / linear_resolution)
+
+        # print(f"start {linear_start}, end {linear_end}")
+        linear_points = (
+            numpy.fromiter(
+                range(int(linear_start), int(linear_end) + 1),
+                numpy.dtype(numpy.float32),
             )
+            * linear_resolution
         )
 
-        return numpy.concatenate((linear_points, logarithmic_points))
+        # print(f"linear_points {linear_points}")
+
+        if min_pt > switch_point:
+            log_start = numpy.ceil(numpy.log(min_pt) / logarithmic_resolution)
+        else:
+            switch_point_log_index = numpy.log(switch_point) / logarithmic_resolution
+            log_start = numpy.ceil(numpy.log(switch_point) / logarithmic_resolution)
+            if switch_point_log_index >= log_start:
+                log_start += 1
+
+        log_end = numpy.floor(numpy.log(max_pt) / logarithmic_resolution)
+        # print(f"log_start {log_start}, log_end {log_end}")
+
+        log_points = numpy.exp(
+            numpy.fromiter(
+                range(
+                    int(log_start),
+                    int(log_end) + 1,
+                ),
+                numpy.dtype(numpy.float32),
+            )
+            * logarithmic_resolution
+        )
+
+        # print(f"log_points {log_points}")
+
+        return numpy.concatenate((linear_points, log_points))
+
+        # return numpy.concatenate((linear_points, logarithmic_points))
 
     def _summarize_group(
         self,
@@ -339,27 +374,44 @@ class TrainingExperimentSummarizer:
         )
         result.set_index(group_column, inplace=True)
 
-        for key in simple_metrics:
-            if key in groups:  # type: ignore
-                result[key + "_quantile_50"] = (
-                    groups[key].median().astype(numpy.float32)
+        # print(f"summarize group {len(groups)} {group_column} {simple_metrics}")
+        # print(result)
+        for metric in simple_metrics:
+            if metric in groups.obj:  # type: ignore
+                result[metric + "_quantile_50"] = (
+                    groups[metric].median().astype(numpy.float32)
                 )
+        # print(f"summarize group 2")
+        # print(result)
 
         quantile_points = numpy.array([0, 0.25, 0.5, 0.75, 1], dtype=numpy.float32)
         from pandas.api.types import is_numeric_dtype
 
+        # print(f"summarize group 3 input quantile metrics: {quantile_metrics}")
+        # print(f"in result: {[key for key in quantile_metrics if key in result]}")
+        # print(
+        #     f"in simple: {[key for key in quantile_metrics if key in simple_metrics]}"
+        # )
+        # print(f"in groups: {[key for key in quantile_metrics if key in groups.obj]}")
+        # print(
+        #     f"numeric: {[key for key in quantile_metrics if key in groups.obj and is_numeric_dtype(groups.obj[key])]}"
+        # )
         quantile_metrics = [
             key
             for key in quantile_metrics
             if (
                 key not in result
                 and key not in simple_metrics
-                and is_numeric_dtype(groups[key])
+                and key in groups.obj
+                and is_numeric_dtype(groups.obj[key])
             )
         ]
+
+        # print(f"summarize group 3 quantiles: {quantile_metrics}")
+
         quantiles = (
             groups[quantile_metrics]
-            .quantile(quantile_points)  # type: ignore
+            .quantile(quantile_points, interpolation="linear")  # type: ignore
             .unstack()
             .astype(numpy.float32)
         )
@@ -379,6 +431,9 @@ class TrainingExperimentSummarizer:
             ),
             axis=1,
         )
+
+        # print(f"summarize group 4")
+        # print(result)
 
         return result
 
