@@ -43,3 +43,56 @@ ORDER BY error;
 
 
 select * from run_data where command @@ '$.experiment.type == "LTHExperiment"';
+
+
+SELECT
+	size,
+	depth,
+	shape,
+	dataset,
+	learning_rate,
+	batch_size,
+	optimizer,
+	COUNT(1) num,
+	SUM(is_cpu) num_cpu,
+	(COUNT(1) - SUM(is_cpu)) num_gpu
+FROM
+(
+	SELECT
+		(command->'model'->'size')::int size,
+		(command->'model'->'depth')::int depth,
+		(command->'model'->'shape')::text shape,
+		(command->'dataset'->'name')::text dataset,
+		(command->'optimizer'->'learning_rate')::float learning_rate,
+		(command->'fit'->'batch_size')::int batch_size,
+		(command->'optimizer'->'class')::text optimizer,
+		(num_gpus <= 0)::int is_cpu
+	FROM
+		run,
+		job_status,
+		job_data
+	WHERE TRUE
+		AND run.batch like '%energy%'
+		AND job_status.id = run.run_id
+		AND job_status.id = job_data.id
+		AND job_status.status = 2
+) x
+GROUP BY
+	learning_rate,
+	batch_size,
+	optimizer,
+	depth,
+	shape,
+	dataset,
+	size
+ORDER BY
+	learning_rate,
+	batch_size,
+	optimizer,
+	depth,
+	shape,
+	dataset,
+	size
+;
+
+
