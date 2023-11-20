@@ -17,8 +17,6 @@ from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_plac
 from dmp.parquet_util import (
     convert_bytes_to_dataframe,
     convert_dataframe_to_bytes,
-    make_dataframe_from_dict,
-    make_pyarrow_table_from_dataframe,
 )
 from dmp.postgres_interface.element.column_group import ColumnGroup
 
@@ -314,6 +312,7 @@ ON CONFLICT ({experiment_id}) DO UPDATE SET {update_clause}
                 prepared_values,
                 binary=True,
             )
+
 
 #     def save_model(
 #         self,

@@ -229,40 +229,6 @@ def get_pyarrow_type_mapping(
 ) -> Tuple[pyarrow.DataType, bool, bool, Union[list, ndarray]]:
     use_byte_stream_split = False
 
-    # if isinstance(values, ndarray):
-    #     dtype = values.dtype
-    #     if numpy.issubdtype(t, bool):
-    #         dst_type = pyarrow.bool_()
-    #     elif numpy.issubdtype(t, numpy.integer):
-    #     check_integer()
-    # elif _check_type(t, float) or numpy.issubdtype(t, numpy.floating):
-    #     dst_type = pyarrow.float32()
-    #     if nan_to_none and numpy.any(numpy.isnan(values)):
-    #         values = [None if numpy.isnan(v) else v for v in values]
-    #         nullable = True
-    #     use_byte_stream_split = True
-    #     # print(f'check float {dst_type} {nullable} {use_byte_stream_split} {nan_to_none}')
-    # elif (
-    #     _check_type(t, str)
-    #     or numpy.issubdtype(t, numpy.string_)
-    #     or numpy.issubdtype(t, numpy.str_)
-    # ):
-    #     dst_type = pyarrow.string()
-    # elif _check_type(t, list):
-    #     element_type = next(
-    #         (
-    #             et
-    #             for et in (get_pyarrow_type_mapping(v) for v in values)
-    #             if et is not None
-    #         ),
-    #         None,
-    #     )
-    #     if element_type is None:
-    #         return None, nullable, use_byte_stream_split, values
-    #     else:
-    #         # dst_type = pyarrow.list_(get_pyarrow_type_mapping(element_type[0]))
-    #         raise NotImplemented()
-
     def is_int_type(value):
         return isinstance(value, int) or numpy.issubdtype(type(value), numpy.integer)
 
