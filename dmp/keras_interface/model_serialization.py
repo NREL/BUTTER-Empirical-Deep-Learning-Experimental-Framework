@@ -175,7 +175,7 @@ def load_parameters(
             def load_variable(dataset, variable):
                 prepared = dataset[parameter_index:parameter_limit, sequence_number]
                 prepared = numpy.where(
-                    mask, prepared, variable.to_numpy().reshape(mask.shape)
+                    mask, prepared, variable.numpy().reshape(mask.shape)
                 )
                 # print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
                 prepared = prepared.reshape(shape)
