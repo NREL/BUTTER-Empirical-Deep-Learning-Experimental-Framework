@@ -165,20 +165,18 @@ def load_parameters(
             constraint = access_model_parameters.get_mask_constraint(
                 keras_layer, variable
             )
-            mask = None
-            if load_mask and constraint is not None:
-                chunk = parameter_dataset[
+
+            chunk = parameter_dataset[
                     parameter_index:parameter_limit, sequence_number
                 ]
-                mask = numpy.logical_not(numpy.isnan(chunk))
-                # print(f"load_mask {numpy.sum(mask)} / {numpy.size(mask)}")
+            mask = numpy.logical_not(numpy.isnan(chunk))
+
+            if load_mask and constraint is not None:
                 constraint.mask.assign(mask.reshape(shape))
 
             def load_variable(dataset, variable):
                 prepared = dataset[parameter_index:parameter_limit, sequence_number]
-
-                if mask is not None:
-                    prepared = numpy.where(mask, prepared, 0.0)
+                prepared = numpy.where(mask, prepared, 0.0)
                 # print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
                 prepared = prepared.reshape(shape)
                 variable.assign(prepared)
@@ -337,8 +335,8 @@ def save_parameters(
             # print(f"saving variable: {variable.name} {size} {shape}")
 
             def accumulate_value(dataset, value):
-                if dataset.shape[0] <= parameter_limit:
-                    dataset.resize((parameter_limit + 1, dataset.shape[1]))
+                if dataset.shape[0] < parameter_limit:
+                    dataset.resize((parameter_limit, dataset.shape[1]))
                 dataset[parameter_index:parameter_limit, sequence_number] = value
 
             def accumulate_variable(dataset, variable):

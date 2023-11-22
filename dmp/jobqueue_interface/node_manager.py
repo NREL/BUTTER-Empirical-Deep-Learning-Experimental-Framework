@@ -91,7 +91,7 @@ def main():
     max_worker_per_gpu = 2
 
     cpus_per_gpu_worker = 2
-    min_cpus_per_cpu_worker = 32
+    min_cpus_per_cpu_worker = 16
 
     smt_level = 1  # maximum number of SMT's (a.k.a. "CPUs") per core to use
 
