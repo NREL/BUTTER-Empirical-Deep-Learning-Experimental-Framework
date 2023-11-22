@@ -3,13 +3,17 @@ WHERE
     queue IN (10)
     ;
 
-delete from run_data d
+UPDATE run_status
+    SET status = 0
 WHERE
-	NOT EXISTS (select 1 from run_status s where s.id = d.id);
+    queue IN (10, 11)
+    ;
+
 
 delete from history h
 where
-	NOT EXISTS (SELECT 1 FROM run_status s where s.status = 2 and s.id = h.id)
+	NOT EXISTS (SELECT 1 FROM run_status s WHERE s.id = h.id)
+	OR EXISTS (SELECT 1 FROM run_status s WHERE s.id = h.id AND s.status = 0)
 	;
 
 

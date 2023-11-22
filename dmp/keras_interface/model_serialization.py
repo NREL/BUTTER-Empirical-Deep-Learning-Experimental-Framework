@@ -166,9 +166,7 @@ def load_parameters(
                 keras_layer, variable
             )
 
-            chunk = parameter_dataset[
-                    parameter_index:parameter_limit, sequence_number
-                ]
+            chunk = parameter_dataset[parameter_index:parameter_limit, sequence_number]
             mask = numpy.logical_not(numpy.isnan(chunk))
 
             if load_mask and constraint is not None:
@@ -176,7 +174,9 @@ def load_parameters(
 
             def load_variable(dataset, variable):
                 prepared = dataset[parameter_index:parameter_limit, sequence_number]
-                prepared = numpy.where(mask, prepared, 0.0)
+                prepared = numpy.where(
+                    mask, prepared, variable.to_numpy().reshape(mask.shape)
+                )
                 # print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
                 prepared = prepared.reshape(shape)
                 variable.assign(prepared)
