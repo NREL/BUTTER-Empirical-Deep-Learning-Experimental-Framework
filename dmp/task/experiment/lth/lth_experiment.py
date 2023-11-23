@@ -82,8 +82,8 @@ class LTHExperiment(TrainingExperiment):
 
                     resume_checkpoint = TrainingExperimentCheckpoint(
                         run_id=context.id,
-                        load_mask=True,
-                        load_optimizer=True,
+                        load_mask=False,
+                        load_optimizer=False,
                         epoch=epoch_counter.training_epoch,
                     )
                 else:
@@ -92,7 +92,7 @@ class LTHExperiment(TrainingExperiment):
 
                     resume_checkpoint = TrainingExperimentCheckpoint(
                         run_id=context.id,
-                        load_mask=True,
+                        load_mask=False,
                         load_optimizer=True,
                         epoch=pruning_config.rewind_epoch,
                     )
