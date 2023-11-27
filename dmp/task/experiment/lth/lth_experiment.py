@@ -64,7 +64,7 @@ class LTHExperiment(TrainingExperiment):
         # del base_experiment_config['data']
 
         base_run_config = copy(vars(run))
-        del base_run_config["seed"]
+        # del base_run_config["seed"]
         del base_run_config["resume_checkpoint"]
         base_run_config["saved_models"] = []
         # del base_run_config['data']
@@ -72,7 +72,7 @@ class LTHExperiment(TrainingExperiment):
         child_tasks = []
 
         for i in range(self.num_additional_seeds_per_config + 1):
-            seed = run.seed + i
+            # seed = run.seed + i
             for pruning_config in self.pruning_configs:
                 child_pruning_config = copy(pruning_config)
 
@@ -106,7 +106,7 @@ class LTHExperiment(TrainingExperiment):
                         run=IterativePruningRunSpec(
                             **base_run_config,
                             resume_checkpoint=resume_checkpoint,
-                            seed=seed,
+                            # seed=seed,
                             rewind_run_id=context.id,
                             prune_first_iteration=prune_first_iteration,
                         ),

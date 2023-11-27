@@ -64,7 +64,7 @@ def main():
                 model=Lenet(),
                 fit={
                     "batch_size": 60,
-                    "epochs": 32,
+                    "epochs": 256,
                 },
                 optimizer={
                     "class": "Adam",
@@ -75,7 +75,7 @@ def main():
                     "DMPEarlyStopping",
                     monitor="val_loss",
                     min_delta=0,
-                    patience=16,
+                    patience=8,
                     restore_best_weights=True,
                 ),
                 pruning_configs=pruning_configs,
@@ -116,6 +116,7 @@ def main():
         0.8,
         0.8 ** (1 / 2),
         0.8 ** (1 / 4),
+        0.8 ** (1 / 8),
     ]:
         pruning_iterations = int(
             numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
