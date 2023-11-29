@@ -48,7 +48,6 @@ def main():
             experiment=LTHExperiment(
                 data={
                     "lmc": True,
-                    "batch": "lmc_mnist_lenet_3",
                     "model_family": "lenet",
                     "model_name": "lenet_relu",
                 },
@@ -83,7 +82,9 @@ def main():
             ),
             run=RunSpec(
                 seed=seed,
-                data={},
+                data={
+                    "batch": "lmc_mnist_lenet_3",
+                },
                 record_post_training_metrics=True,
                 record_times=True,
                 model_saving=ModelSavingSpec(

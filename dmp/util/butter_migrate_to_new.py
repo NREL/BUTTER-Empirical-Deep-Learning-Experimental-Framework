@@ -154,6 +154,7 @@ class OldExperimentTable(Table):
     num_free_parameters = Column("num_free_parameters", "bigint")
     widths = Column("widths", "integer[]")
     relative_size_error = Column("relative_size_error", "real")
+    primary_sweep = Column("primary_sweep", "boolean")
     b_300_epoch_sweep = Column("300_epoch_sweep", "boolean")
     b_30k_epoch_sweep = Column("30k_epoch_sweep", "boolean")
     learning_rate_sweep = Column("learning_rate_sweep", "boolean")
@@ -385,6 +386,7 @@ SELECT * from r
                 dst_command = {
                     "run": {
                         "data": {
+                            "batch": src_command["batch"],
                             "job_id": {
                                 "type": "UUID",
                                 "value": str(run_id),
@@ -439,9 +441,9 @@ SELECT * from r
                             "batch_size": src_command["fit"]["batch_size"],
                         },
                         "data": {
-                            "batch": src_command["batch"],
+                            # "batch": src_command["batch"],
                             "ml_task": str(ml_task),
-                            "butter_e": get_value(old_experiment_table.butter),
+                            # "butter_e": get_value(old_experiment_table.butter),
                             "input_shape": input_shape,
                             "output_shape": [num_outputs],
                             "data_set_size": dataset_size,
@@ -514,6 +516,10 @@ SELECT * from r
                     dst_command["run"]["data"]["butter"] = {
                         k: True
                         for k, column in (
+                            (
+                                "primary_sweep",
+                                old_experiment_table.primary_sweep,
+                            ),
                             ("300_epoch_sweep", old_experiment_table.b_300_epoch_sweep),
                             ("30k_epoch_sweep", old_experiment_table.b_30k_epoch_sweep),
                             (
