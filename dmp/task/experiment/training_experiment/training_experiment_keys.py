@@ -86,6 +86,7 @@ class TrainingExperimentKeys:
 
         def cmax(a):
             # Thanks: https://stackoverflow.com/questions/40672186/cumulative-argmax-of-a-numpy-array
+            a = numpy.where(numpy.isnan(a), -numpy.inf, a)
             m = numpy.fmax.accumulate(a)
             x = numpy.arange(a.shape[0])
             x[1:] *= m[:-1] < m[1:]
@@ -94,6 +95,7 @@ class TrainingExperimentKeys:
 
         def cmin(a):
             # Thanks: https://stackoverflow.com/questions/40672186/cumulative-argmax-of-a-numpy-array
+            a = numpy.where(numpy.isnan(a), numpy.inf, a)
             m = numpy.fmin.accumulate(a)
             x = numpy.arange(a.shape[0])
             x[1:] *= m[:-1] > m[1:]
