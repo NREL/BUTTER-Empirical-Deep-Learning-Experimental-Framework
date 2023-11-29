@@ -578,10 +578,10 @@ SELECT * from r
                     dst_command["experiment"]["data"]["historical"] = True
 
                 experiment_id = json_to_uuid(dst_command["experiment"])
-                if experiment_id not in experiment_ids:
-                    experiment_ids[experiment_id] = marshal.demarshal(
-                        dst_command["experiment"]
-                    )
+                # if experiment_id not in experiment_ids:
+                #     experiment_ids[experiment_id] = marshal.demarshal(
+                #         dst_command["experiment"]
+                #     )
 
                 result_records.append(
                     (
@@ -679,16 +679,16 @@ SELECT 1;"""
 
         del result_records
 
-        for experiment_id, experiment in experiment_ids.items():
-            try:
-                summary = experiment.summarize(
-                    schema.get_experiment_run_histories(experiment_id)
-                )
-                if summary is not None:
-                    schema.store_summary(experiment, experiment_id, summary)  # type: ignore
-            except:
-                print(f"Failed to summarize experiment {experiment_id}.")
-                traceback.print_exc()
+        # for experiment_id, experiment in experiment_ids.items():
+        #     try:
+        #         summary = experiment.summarize(
+        #             schema.get_experiment_run_histories(experiment_id)
+        #         )
+        #         if summary is not None:
+        #             schema.store_summary(experiment, experiment_id, summary)  # type: ignore
+        #     except:
+        #         print(f"Failed to summarize experiment {experiment_id}.")
+        #         traceback.print_exc()
 
         print(
             f"Worker {worker_number} : {worker_id} committed {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}."
