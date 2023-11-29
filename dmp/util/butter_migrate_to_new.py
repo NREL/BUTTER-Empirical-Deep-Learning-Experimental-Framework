@@ -47,6 +47,25 @@ update migration set status = 0 where TRUE
 	AND (not exists (select 1 from history where history.id = migration.run_id)
 	or not exists (select 1 from run_status where run_status.id = migration.run_id)
 	or not exists (select 1 from run_data where run_data.id = migration.run_id));
+
+
+
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE usename = 'dmpappsops'
+    AND query_start < (CURRENT_TIMESTAMP - '10s'::interval)
+ORDER BY state, query_start desc;
+
+
+select *, (transfered*100.0/total) percent_complete
+FROM (
+select sum((status = 1)::integer) transfered, count(1) total from migration
+	) x;
+
+
++ set old_experiment_id in experiment2 table
++ extract new experiment summary for butter runs
++ extract butter-e run dataset
 """
 
 pmlb_index_path = os.path.join(
@@ -619,6 +638,12 @@ SELECT 1;"""
                     binary=True,
                 )
 
+        num_converted = len(result_records)
+        total_num_converted += num_converted
+        total_num_excepted += num_excepted
+
+        del result_records
+
         for experiment_id, experiment in experiment_ids.items():
             try:
                 summary = experiment.summarize(
@@ -629,10 +654,6 @@ SELECT 1;"""
             except:
                 print(f"Failed to summarize experiment {experiment_id}.")
                 traceback.print_exc()
-
-        num_converted = len(result_records)
-        total_num_converted += num_converted
-        total_num_excepted += num_excepted
 
         print(
             f"Worker {worker_number} : {worker_id} committed {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}."
