@@ -86,7 +86,7 @@ class TrainingExperimentKeys:
 
         def cmax(a):
             # Thanks: https://stackoverflow.com/questions/40672186/cumulative-argmax-of-a-numpy-array
-            m = numpy.maximum.accumulate(a)
+            m = numpy.fmax.accumulate(a)
             x = numpy.arange(a.shape[0])
             x[1:] *= m[:-1] < m[1:]
             numpy.maximum.accumulate(x, axis=0, out=x)
@@ -94,10 +94,10 @@ class TrainingExperimentKeys:
 
         def cmin(a):
             # Thanks: https://stackoverflow.com/questions/40672186/cumulative-argmax-of-a-numpy-array
-            m = numpy.minimum.accumulate(a)
+            m = numpy.fmin.accumulate(a)
             x = numpy.arange(a.shape[0])
             x[1:] *= m[:-1] > m[1:]
-            numpy.maximum.accumulate(x, axis=0, out=x)
+            numpy.minimum.accumulate(x, axis=0, out=x)
             return m, x
 
         # cmin = lambda c: numpy.argmin.accumulate(c)
