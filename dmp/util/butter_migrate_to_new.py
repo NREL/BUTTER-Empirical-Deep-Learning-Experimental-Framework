@@ -2,6 +2,11 @@ import io
 import os
 from itertools import chain
 from psycopg.types.json import Jsonb
+from dmp.parquet_util import convert_dataframe_to_bytes
+
+from dmp.task.experiment.training_experiment.training_experiment_keys import (
+    TrainingExperimentKeys,
+)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -67,6 +72,8 @@ select sum((status = 1)::integer) transfered, count(1) total from migration
 + extract new experiment summary for butter runs
 + extract butter-e run dataset
 """
+
+keys = TrainingExperimentKeys()
 
 pmlb_index_path = os.path.join(
     os.path.realpath(
@@ -175,6 +182,7 @@ old_experiment_selection: ColumnGroup = ColumnGroup(
     old_experiment_table.num_free_parameters,
     old_experiment_table.widths,
     old_experiment_table.relative_size_error,
+    old_experiment_table.primary_sweep,
     old_experiment_table.b_300_epoch_sweep,
     old_experiment_table.b_30k_epoch_sweep,
     old_experiment_table.learning_rate_sweep,
@@ -368,21 +376,39 @@ SELECT * from r
                 output_activation = "softmax"
                 output_kernel_initializer = "GlorotUniform"
                 loss = "CategoricalCrossentropy"
+                loss_metric = "categorical_crossentropy"
                 if ml_task == MLTask.regression:
                     output_activation = "sigmoid"
                     output_kernel_initializer = "GlorotUniform"
                     loss = "MeanSquaredError"
+                    loss_metric = "mean_squared_error"
                 elif ml_task == MLTask.classification:
                     if num_outputs == 1:
                         output_activation = "sigmoid"
                         output_kernel_initializer = "GlorotUniform"
                         loss = "BinaryCrossentropy"
+                        loss_metric = "binary_crossentropy"
                     else:
                         output_activation = "softmax"
                         output_kernel_initializer = "GlorotUniform"
                         loss = "CategoricalCrossentropy"
+                        loss_metric = "categorical_crossentropy"
 
-                src_history = parquet_to_dataframe(get_value(run_table.run_history))
+                history = parquet_to_dataframe(get_value(run_table.run_history))
+
+                for prefix in keys.measurement_prefixes:
+                    loss_key = prefix + "_" + keys.loss
+                    metric_key = prefix + "_" + loss_metric
+                    if (
+                        loss_key in history
+                        and metric_key in history
+                        and all(
+                            (x is y) or (x == y)
+                            for x, y in zip(history[loss_key], history[metric_key])
+                        )
+                    ):
+                        del history[metric_key]
+
                 dst_command = {
                     "run": {
                         "data": {
@@ -437,13 +463,11 @@ SELECT * from r
                     "type": "Run",
                     "experiment": {
                         "fit": {
-                            "epochs": int(src_history["epoch"].max()),
+                            "epochs": int(history["epoch"].max()),
                             "batch_size": src_command["fit"]["batch_size"],
                         },
                         "data": {
-                            # "batch": src_command["batch"],
                             "ml_task": str(ml_task),
-                            # "butter_e": get_value(old_experiment_table.butter),
                             "input_shape": input_shape,
                             "output_shape": [num_outputs],
                             "data_set_size": dataset_size,
@@ -547,6 +571,11 @@ SELECT * from r
                         )
                         if get_value(column)
                     }
+                    dst_command["experiment"]["data"]["butter"] = True
+                elif "energy" in src_command["batch"].lower():
+                    dst_command["experiment"]["data"]["butter-e"] = True
+                else:
+                    dst_command["experiment"]["data"]["historical"] = True
 
                 experiment_id = json_to_uuid(dst_command["experiment"])
                 if experiment_id not in experiment_ids:
@@ -565,7 +594,7 @@ SELECT * from r
                         get_value(job_status_table.parent),
                         Jsonb(dst_command),
                         experiment_id,
-                        get_value(run_table.run_history),
+                        convert_dataframe_to_bytes(history),
                         get_value(run_table.run_extended_history),
                     )
                 )

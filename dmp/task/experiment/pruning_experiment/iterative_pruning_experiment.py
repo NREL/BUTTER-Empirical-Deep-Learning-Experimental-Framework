@@ -65,7 +65,7 @@ class IterativePruningExperiment(TrainingExperiment):
         pruning = self.pruning
 
         self._setup_environment(run)
-        dataset, metrics = self._load_and_prepare_dataset()
+        dataset, metrics, loss_metric = self._load_and_prepare_dataset()
 
         # 1: Create a network with randomly initialization W0 ∈ Rd.
         # 2: Initialize pruning mask to m = 1d.
@@ -141,6 +141,7 @@ class IterativePruningExperiment(TrainingExperiment):
                 experiment_history,
                 model,
                 epoch_counter,
+                loss_metric,
             )
 
             first_iteration = False
@@ -152,6 +153,7 @@ class IterativePruningExperiment(TrainingExperiment):
             dataset,
             model.network,
             experiment_history,
+            loss_metric,
         )
 
         print(f"********** 12")

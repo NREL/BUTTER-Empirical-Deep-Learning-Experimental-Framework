@@ -99,7 +99,7 @@ class TrainingExperiment(Experiment):
     ) -> Tuple[EpochCounter, Dict[str, Any]]:
         # tensorflow.config.optimizer.set_jit(True)
         self._setup_environment(run)
-        dataset, metrics = self._load_and_prepare_dataset()
+        dataset, metrics, loss_metric = self._load_and_prepare_dataset()
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
         epoch_counter, experiment_history = self._try_restore_checkpoint(
@@ -149,6 +149,7 @@ class TrainingExperiment(Experiment):
             dataset,
             model.network,
             experiment_history,
+            loss_metric,
         )
 
         try:
@@ -183,18 +184,18 @@ class TrainingExperiment(Experiment):
 
     def _load_and_prepare_dataset(
         self,
-    ) -> Tuple[PreparedDataset, List[Union[str, keras.metrics.Metric]]]:
+    ) -> Tuple[PreparedDataset, List[Union[str, keras.metrics.Metric]], str]:
         dataset = PreparedDataset(
             self.dataset,
             self.fit["batch_size"],
         )
-        metrics = self._configute_for_dataset(dataset)
-        return dataset, metrics
+        metrics, loss_metric = self._configute_for_dataset(dataset)
+        return dataset, metrics, loss_metric
 
     def _configute_for_dataset(
         self,
         dataset: PreparedDataset,
-    ) -> List[Union[str, keras.metrics.Metric]]:
+    ) -> Tuple[List[Union[str, keras.metrics.Metric]], str]:
         # auto-populate model inputs and outputs if not already set
         num_outputs: int = int(dataset.output_shape[0])
         ml_task: MLTask = dataset.ml_task
@@ -206,13 +207,14 @@ class TrainingExperiment(Experiment):
         output_kernel_initializer = "HeUniform"
         output_activation = "relu"
         loss = "MeanSquaredError"
+        loss_metric = keras.metrics.MeanSquaredError()
         if ml_task == MLTask.regression:
             output_activation = "sigmoid"
             output_kernel_initializer = "GlorotUniform"
             loss = "MeanSquaredError"
+            loss_metric = "mean_squared_error"
             metrics.extend(
                 [
-                    keras.metrics.MeanSquaredError(),
                     keras.metrics.RootMeanSquaredError(),
                     keras.metrics.MeanAbsoluteError(),
                     keras.metrics.MeanSquaredLogarithmicError(),
@@ -223,9 +225,9 @@ class TrainingExperiment(Experiment):
                 output_activation = "sigmoid"
                 output_kernel_initializer = "GlorotUniform"
                 loss = "BinaryCrossentropy"
+                loss_metric = "binary_crossentropy"
                 metrics.extend(
                     [
-                        keras.metrics.BinaryCrossentropy(),
                         "accuracy",
                         keras.metrics.Hinge(),
                         keras.metrics.SquaredHinge(),
@@ -238,9 +240,9 @@ class TrainingExperiment(Experiment):
                 output_activation = "softmax"
                 output_kernel_initializer = "GlorotUniform"
                 loss = "CategoricalCrossentropy"
+                loss_metric = "categorical_crossentropy"
                 metrics.extend(
                     [
-                        keras.metrics.CategoricalCrossentropy(),
                         "accuracy",
                         keras.metrics.CategoricalHinge(),
                     ]
@@ -290,7 +292,7 @@ class TrainingExperiment(Experiment):
         if self.loss is None:
             self.loss = make_keras_config_from_dict(loss)
 
-        return metrics
+        return metrics, loss_metric
 
     def _make_model_from_network(
         self,
@@ -641,6 +643,7 @@ class TrainingExperiment(Experiment):
         dataset: PreparedDataset,
         network: NetworkInfo,
         history: Dict[str, Any],
+        loss_metric: Optional[str],
     ) -> None:
         self._record_run(
             context,
@@ -648,7 +651,7 @@ class TrainingExperiment(Experiment):
             dataset,
             network,
         )
-        self._record_history(context, history)
+        self._record_history(context, history, loss_metric)
 
         # self.summarizer.summarize(self)
         # return ExperimentResultRecord(
@@ -670,6 +673,7 @@ class TrainingExperiment(Experiment):
         history: Dict[str, Any],
         model: ModelInfo,
         epoch_counter: EpochCounter,
+        loss_metric: Optional[str],
     ) -> TrainingExperimentCheckpoint:
         # + save checkpoint
         #     + to disk``
@@ -688,6 +692,7 @@ class TrainingExperiment(Experiment):
             dataset,
             network,
             history,
+            loss_metric,
         )
 
         return run.resume_checkpoint
@@ -696,8 +701,25 @@ class TrainingExperiment(Experiment):
         self,
         context: Context,
         history: Dict[str, Any],
+        loss_metric: Optional[str],
     ) -> None:
         history = history.copy()
+
+        # if loss metric is the same as the loss, remove it to save space
+        if loss_metric is not None:
+            for prefix in self.keys.measurement_prefixes:
+                loss_key = prefix + "_" + self.keys.loss
+                metric_key = prefix + "_" + loss_metric
+                if (
+                    loss_key in history
+                    and metric_key in history
+                    and all(
+                        (x is y) or (x == y)
+                        for x, y in zip(history[loss_key], history[metric_key])
+                    )
+                ):
+                    del history[metric_key]
+
         extended_history = self._extract_extended_history(history)
 
         context.record_history(

@@ -327,7 +327,7 @@ def write_parquet_table(
     # compression_level=8,
     compression="ZSTD",
     # compression_level=12,
-    compression_level=20,
+    compression_level=18,
     version="2.6",
     data_page_version="2.0",
     # existing_data_behavior='overwrite_or_ignore',

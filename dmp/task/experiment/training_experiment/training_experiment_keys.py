@@ -25,6 +25,7 @@ class TrainingExperimentKeys:
         )
 
         self.data_sets: Sequence[str] = (self.train,) + self.test_data_sets
+        self.measurement_prefixes = (self.trained, *self.data_sets)
 
         self.loss = "loss"
         self.cmin = "cumulative_min"
@@ -43,7 +44,7 @@ class TrainingExperimentKeys:
             return list(chain(*[[p + "_" + k for k in keys] for p in prefixes]))
 
         def make_with_data_set_prefixes(keys: Iterable[str]) -> List[str]:
-            return make_with_prefixes(("trained", *self.data_sets), keys)
+            return make_with_prefixes(self.measurement_prefixes, keys)
 
         self.train_start_timestamp: str = "train_start_timestamp"
 
