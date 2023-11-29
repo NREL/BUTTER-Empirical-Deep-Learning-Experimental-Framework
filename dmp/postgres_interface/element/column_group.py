@@ -18,7 +18,6 @@ class ColumnGroup(AColumnGroup):
     def get_index_of(self, key: Column) -> int:
         if self._index is None:
             self._index = {column: i for i, column in enumerate(self._columns)}
-        print(self._index)
         return self._index[key]
 
     def get_column(self, index: int) -> Column:

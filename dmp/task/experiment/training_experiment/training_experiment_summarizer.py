@@ -208,9 +208,9 @@ class TrainingExperimentSummarizer:
             self.make_summary_points(
                 run_groups.min().median(),
                 run_groups.max().median(),
-                1e-5,
-                1e-4,
-                numpy.log(10) / 20,
+                1e-8,
+                1e-6,
+                numpy.log(10) / 25,
             ).astype(numpy.float32)
         )
 

@@ -68,7 +68,7 @@ def convert_dataframe_to_bytes(
     dataframe: Optional[pandas.DataFrame],
 ) -> Optional[bytes]:
     # print(f'convert_dataframe_to_bytes\n{dataframe}')
-    if dataframe is None:
+    if dataframe is None or len(dataframe) <= 0:
         return None
 
     # for column in dataframe.columns:
@@ -280,7 +280,7 @@ def get_pyarrow_type_mapping(
     elif "bool" in true_types:
         dst_type = pyarrow.bool_()
     else:
-        raise NotImplementedError(f"Unhandled types... {true_types}")
+        raise NotImplementedError(f"Unhandled types... {true_types}\n{list(values)}")
 
     # print(
     #     f"get pyarrow type: {type(dst_type)}: ",
