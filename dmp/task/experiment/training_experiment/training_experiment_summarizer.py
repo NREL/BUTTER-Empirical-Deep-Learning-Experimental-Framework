@@ -20,13 +20,23 @@ if TYPE_CHECKING:
         TrainingExperiment,
     )
 
-for k, v in {
-    "display.max_rows": 9000,
-    "display.min_rows": 40,
-    "display.max_columns": None,
-    "display.width": 240,
-}.items():
-    pandas.set_option(k, v)
+
+def is_valid_number(v):
+    return (
+        isinstance(v, Number)
+        and not pandas.isna(v)  # type: ignore
+        and not numpy.isfinite(v)  # type: ignore
+        and not numpy.isnan(v)  # type: ignore
+    )
+
+
+# for k, v in {
+#     "display.max_rows": 9000,
+#     "display.min_rows": 40,
+#     "display.max_columns": None,
+#     "display.width": 240,
+# }.items():
+#     pandas.set_option(k, v)
 
 
 class TrainingExperimentSummarizer:
@@ -264,9 +274,10 @@ class TrainingExperimentSummarizer:
                     curr_value = curr[c]
                     interpolated_value = curr_value
                     if (
-                        isinstance(curr_value, Number) and not pandas.isna(curr_value)  # type: ignore
-                    ) and (
-                        isinstance(prev_value, Number) and not pandas.isna(prev_value)  # type: ignore
+                        is_valid_number(curr_value)
+                        and is_valid_number(prev_value)
+                        and is_valid_number(curr_weight)
+                        and is_valid_number(prev_weight)
                     ):
                         interpolated_value = (
                             curr_weight * curr_value + prev_weight * prev_value  # type: ignore
