@@ -457,7 +457,7 @@ SELECT * from r
                 }
 
                 if "optimizer_learning_rate" in attrs:
-                    optimizer["learning_rate"] = attrs["learning_rate"]
+                    optimizer["learning_rate"] = attrs["optimizer_learning_rate"]
 
                 if "optimizer_momentum" in attrs:
                     optimizer["momentum"] = attrs["optimizer_momentum"]
