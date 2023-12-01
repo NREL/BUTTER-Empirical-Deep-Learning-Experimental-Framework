@@ -31,15 +31,6 @@ def is_valid_number(v):
     )
 
 
-# for k, v in {
-#     "display.max_rows": 9000,
-#     "display.min_rows": 40,
-#     "display.max_columns": None,
-#     "display.width": 240,
-# }.items():
-#     pandas.set_option(k, v)
-
-
 class TrainingExperimentSummarizer:
     def summarize(
         self,
@@ -49,6 +40,10 @@ class TrainingExperimentSummarizer:
         keys: TrainingExperimentKeys = experiment.keys
         sources = []
         for i, (run_id, run_history) in enumerate(histories):
+            print(f"run {i} {run_id} {run_history.shape}")
+            if "index" in run_history.columns:
+                del run_history["index"]
+
             run_history[keys.run] = i
             sources.append(run_history)
         num_sources = len(sources)
@@ -72,6 +67,8 @@ class TrainingExperimentSummarizer:
 
         history.set_index([keys.run, keys.epoch], inplace=True, drop=False)
         history.sort_index(inplace=True)
+        print(f"history 3:")
+        print(history.head(10))
 
         for (
             column,
@@ -119,12 +116,20 @@ class TrainingExperimentSummarizer:
             del history[keys.epoch_start_time_ms]
         by_epoch = self._summarize_by_epoch(experiment, history, selected_epochs)
 
-        # print(by_epoch.head(200))
-        # print(by_epoch.describe())
+        for k, v in {
+            "display.max_rows": 9000,
+            "display.min_rows": 40,
+            "display.max_columns": None,
+            "display.width": 300,
+        }.items():
+            pandas.set_option(k, v)
+
+        print(by_epoch.head(3000))
+        print(by_epoch.describe())
 
         by_loss = self._summarize_by_loss(experiment, runs, history)
-        # print(by_loss.head(200))
-        # print(by_loss.describe())
+        print(by_loss.head(3000))
+        print(by_loss.describe())
 
         return ExperimentSummaryRecord(
             num_sources,
@@ -144,8 +149,8 @@ class TrainingExperimentSummarizer:
                     epochs.min(),
                     epochs.max(),
                     1,
-                    100,
-                    numpy.log(10 / 1) / 20,
+                    32,
+                    numpy.log(10 / 1) / 50,
                 )
             ).astype(numpy.int16)
         )
@@ -161,9 +166,9 @@ class TrainingExperimentSummarizer:
         del epoch_samples[keys.run]
         del epoch_samples[keys.epoch]
 
-        # print(f"summarize by epoch names {history.columns.values.tolist()}")
-        # print(history.columns)
-        # print(history.head(10))
+        print(f"summarize by epoch names {history.columns.values.tolist()}")
+        print(history.columns)
+        print(history.head(10))
 
         skip_set = {keys.run, keys.epoch}
         by_epoch = self._summarize_group(
@@ -218,7 +223,7 @@ class TrainingExperimentSummarizer:
         loss_levels = numpy.flip(
             self.make_summary_points(
                 run_groups.min().median(),
-                run_groups.max().median(),
+                run_groups.max().min(),
                 1e-8,
                 1e-6,
                 numpy.log(10) / 25,
@@ -381,33 +386,33 @@ class TrainingExperimentSummarizer:
         result = pandas.DataFrame(
             {
                 group_column: [group for group, _ in groups],
-                keys.count: groups.size(),
+                # keys.count: groups.size(),
             },
         )
         result.set_index(group_column, inplace=True)
 
-        # print(f"summarize group {len(groups)} {group_column} {simple_metrics}")
-        # print(result)
+        print(f"summarize group {len(groups)} {group_column} {simple_metrics}")
+        print(result)
         for metric in simple_metrics:
             if metric in groups.obj:  # type: ignore
                 result[metric + "_quantile_50"] = (
                     groups[metric].median().astype(numpy.float32)
                 )
-        # print(f"summarize group 2")
-        # print(result)
+        print(f"summarize group 2")
+        print(result)
 
         quantile_points = numpy.array([0, 0.25, 0.5, 0.75, 1], dtype=numpy.float32)
         from pandas.api.types import is_numeric_dtype
 
-        # print(f"summarize group 3 input quantile metrics: {quantile_metrics}")
-        # print(f"in result: {[key for key in quantile_metrics if key in result]}")
-        # print(
-        #     f"in simple: {[key for key in quantile_metrics if key in simple_metrics]}"
-        # )
-        # print(f"in groups: {[key for key in quantile_metrics if key in groups.obj]}")
-        # print(
-        #     f"numeric: {[key for key in quantile_metrics if key in groups.obj and is_numeric_dtype(groups.obj[key])]}"
-        # )
+        print(f"summarize group 3 input quantile metrics: {quantile_metrics}")
+        print(f"in result: {[key for key in quantile_metrics if key in result]}")
+        print(
+            f"in simple: {[key for key in quantile_metrics if key in simple_metrics]}"
+        )
+        print(f"in groups: {[key for key in quantile_metrics if key in groups.obj]}")
+        print(
+            f"numeric: {[key for key in quantile_metrics if key in groups.obj and is_numeric_dtype(groups.obj[key])]}"
+        )
         quantile_metrics = [
             key
             for key in quantile_metrics
@@ -419,7 +424,7 @@ class TrainingExperimentSummarizer:
             )
         ]
 
-        # print(f"summarize group 3 quantiles: {quantile_metrics}")
+        print(f"summarize group 3 quantiles: {quantile_metrics}")
 
         quantiles = (
             groups[quantile_metrics]
@@ -433,8 +438,10 @@ class TrainingExperimentSummarizer:
         ]
 
         for key in chain(simple_metrics, quantile_metrics):
-            if key in groups:
-                result[key + "_count"] = groups[key].count().astype(numpy.int16)
+            if key in groups.obj:
+                result[key + "_count"] = (
+                    pandas.notna(groups[key]).count().astype(numpy.int16)
+                )
 
         result = pandas.concat(
             (

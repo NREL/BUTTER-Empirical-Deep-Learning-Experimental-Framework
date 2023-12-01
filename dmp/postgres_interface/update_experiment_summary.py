@@ -1,11 +1,14 @@
 from dataclasses import dataclass
 from itertools import chain
+from pprint import pprint
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Type
 from jobqueue.connection_manager import ConnectionManager
 
 from jobqueue.job import Job
+from jobqueue.job_status import JobStatus
 from psycopg import ClientCursor
 from psycopg.sql import SQL, Composed, Identifier, Literal
+from dmp.parquet_util import convert_bytes_to_dataframe
 from dmp.postgres_interface.element.column import Column
 from dmp.postgres_interface.element.column_group import ColumnGroup
 from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
@@ -22,9 +25,77 @@ from dmp.context import Context
 
 _summarizer_map: Dict[str, Callable] = {}
 
+"""
+WITH histories AS (
+	SELECT
+		selected_experiment.experiment_id,
+		run_data.command->'experiment' experiment,
+		run_status.id,
+		run_status.update_time,
+		history.history
+	FROM
+		(
+			SELECT DISTINCT ON (experiment_id) *
+			FROM
+			(
+				SELECT
+					target.experiment_id,
+					root_run.id
+				FROM
+					(
+						SELECT
+							run_status.experiment_id,
+							run_status.update_time
+						FROM
+							run_status
+						WHERE TRUE
+							AND run_status.status = 2
+							AND NOT EXISTS (
+								SELECT 1 FROM experiment2
+								WHERE
+									experiment2.experiment_id = run_status.experiment_id
+									AND experiment2.most_recent_run >= run_status.update_time
+							)
+						ORDER BY run_status.update_time DESC
+					) target
+					CROSS JOIN LATERAL (
+						SELECT rs.id FROM
+							run_status rs
+						WHERE TRUE
+							AND rs.experiment_id = target.experiment_id
+							AND rs.status = 2
+						ORDER BY rs.update_time ASC, id
+						LIMIT 1
+						FOR UPDATE SKIP LOCKED
+					) root_run
+				LIMIT 10
+			) selected_experiment
+		) selected_experiment
+		INNER JOIN run_data ON (run_data.id = selected_experiment.id)
+		INNER JOIN run_status ON (run_status.experiment_id = selected_experiment.experiment_id AND run_status.status = 2)
+		INNER JOIN history ON (history.id = run_status.id)
+	ORDER BY experiment_id
+), claim AS (
+	INSERT INTO experiment2 (experiment_id, experiment, most_recent_run, num_runs)
+	SELECT
+		experiment_id, experiment, MAX(update_time) most_recent_run, COUNT(1) num_runs
+	FROM
+		histories
+	GROUP BY experiment_id, experiment
+	ON CONFLICT (experiment_id) DO UPDATE SET
+		most_recent_run = EXCLUDED.most_recent_run,
+		num_runs = EXCLUDED.num_runs
+)
+SELECT * FROM histories
+;
+
+"""
+
 
 @dataclass
 class UpdateExperimentSummary(Task):
+    experiment_limit: int
+
     @staticmethod
     def register_types(types: Iterable[Type]) -> None:
         for target_type in types:
@@ -39,239 +110,113 @@ class UpdateExperimentSummary(Task):
         self,
         context: Context,
     ) -> TaskResult:
-        num_summaries = 0
-        experiment_limit = 512
+        from dmp.marshaling import marshal
 
         schema = context.schema
-        experiment = schema.experiment
+        experiment_table = schema.experiment
         run_status = schema.run_status
         run_data = schema.run_data
         history = schema.history
 
-        experiment_columns = ColumnGroup(
-            experiment.experiment_id,
-            experiment.experiment_attrs,
-            experiment.experiment_tags,
-        )
-
-        run_columns = ColumnGroup(
-            run.run_timestamp,
-            run.values,
-            run.run_data,
-            run.run_history,
-        )
-
-        result_columns = ColumnGroup(
-            # bound_columns,
-            experiment_columns,
-            run_columns,
-        )
-
-        summary_columns = ColumnGroup(
-            # summary.last_updated,
-            summary.experiment_id,
-            summary.most_recent_run,
-            summary.by_epoch,
-            summary.by_loss,
-            summary.by_progress,
-            summary.epoch_subset,
-        )
-        _values = Identifier("_values")
-        _selection = Identifier("_selection")
-
         format_args = dict(
-            experiment_selection=experiment_columns.of(experiment.identifier),
-            selection_selection=experiment_columns.of(selection),
-            run_selection=run_columns.of(run.identifier),
-            experiment=experiment.identifier,
-            run_timestamp=run.run_timestamp.identifier,
-            last_updated=summary.last_updated.identifier,
-            experiment_id=experiment.experiment_id.identifier,
-            run=run.identifier,
-            experiment_summary=summary.identifier,
-            run_id=run.run_id.identifier,
-            _selection=selection,
-            summary_columns=summary_columns.columns_sql,
-            update_clause=sql_comma.join(
-                (
-                    SQL("{c}=EXCLUDED.{c}").format(c=c)
-                    for c in summary_columns.identifiers
-                )
-            ),
-            experiment_limit=Literal(experiment_limit),
-            most_recent_run=summary.most_recent_run.identifier,
-            summary_exists=Identifier("summary_exists"),
-            experiment_locked=Identifier("_experiment_locked"),
-            summary_locked=Identifier("_summary_locked"),
-            _claim=Identifier("_claim"),
-            _updated=Identifier("_updated"),
+            history=history.identifier,
+            run_status=run_status.identifier,
+            run_data=run_data.identifier,
+            experiment=experiment_table.identifier,
+            id=run_status.id.identifier,
+            experiment_id=run_status.experiment_id.identifier,
+            update_time=run_status.update_time.identifier,
+            history_column=history.history.identifier,
+            command=run_data.command.identifier,
+            experiment_column=experiment_table.experiment.identifier,
+            most_recent_run=experiment_table.most_recent_run.identifier,
+            status=run_status.status.identifier,
+            num_runs=experiment_table.num_runs.identifier,
+            selected_experiment=Identifier("_selected_experiment"),
+            target=Identifier("_target"),
+            root_run=Identifier("_root_run"),
+            root_selection=Identifier("_root_selection"),
+            status_complete=Literal(JobStatus.Complete.value),
+            experiment_limit=Literal(self.experiment_limit),
+            runs_to_update=Identifier("_runs_to_update"),
+            by_epoch=experiment_table.by_epoch.identifier,
         )
-        """
-WITH histories AS (
-	SELECT
-		selected_experiment.experiment_id,
-		run_data.command->'experiment' experiment,
-		run_status.id,
-		run_status.update_time,
-		history.history
-	FROM
-		(
-			SELECT
-				target.experiment_id,
-				root_run.id
-			FROM
-				(
-					SELECT
-						run_status.experiment_id,
-						run_status.update_time
-					FROM
-						run_status
-					WHERE TRUE
-						AND run_status.status = 2
-						AND NOT EXISTS (
-							SELECT 1 FROM experiment2
-							WHERE
-								experiment2.experiment_id = run_status.experiment_id
-								AND experiment2.most_recent_run >= run_status.update_time
-						)
-					ORDER BY run_status.update_time DESC
-				) target
-				CROSS JOIN LATERAL (
-					SELECT rs.id FROM
-						run_status rs
-					WHERE TRUE
-						AND rs.experiment_id = target.experiment_id
-						AND rs.status = 2
-					ORDER BY rs.update_time ASC, id
-					LIMIT 1
-					FOR UPDATE SKIP LOCKED
-				) root_run
-			ORDER BY update_time DESC
-			LIMIT 10
-		) selected_experiment
-		INNER JOIN run_data ON (run_data.id = selected_experiment.id)
-		INNER JOIN run_status ON (run_status.experiment_id = selected_experiment.experiment_id AND run_status.status = 2)
-		INNER JOIN history ON (history.id = run_status.id)
-), claim AS (
-	INSERT INTO experiment2 (experiment_id, experiment, most_recent_run, num_runs)
-	SELECT
-		experiment_id, experiment, MAX(update_time) most_recent_run, COUNT(1) num_runs
-	FROM
-		histories
-	GROUP BY experiment_id, experiment
-	ON CONFLICT (experiment_id) DO UPDATE SET
-		most_recent_run = EXCLUDED.most_recent_run,
-		num_runs = EXCLUDED.num_runs
-)
-SELECT * FROM histories
-;
-"""
+
+        claim_columns = ColumnGroup(
+            run_status.experiment_id,
+            experiment_table.experiment,
+            run_status.id,
+            run_status.update_time,
+            history.history,
+        )
+
         claim_and_get_query = SQL(
             """
-WITH {_selection} AS
-(
-    SELECT DISTINCT ON ({_selection}.{experiment_id})
-        *
-    FROM
-    (
-        SELECT
-            {_selection}.{run_timestamp},
-            {experiment_selection}
-        FROM
+WITH {runs_to_update} AS (
+	SELECT
+		{selected_experiment}.{experiment_id},
+		{run_data}.{command}->'experiment' {experiment_column},
+		{run_status}.{id},
+		{run_status}.{update_time},
+		{history}.{history_column}
+	FROM
         (
-            SELECT
-                {run}.{experiment_id},
-                {run}.{run_timestamp}
+            SELECT DISTINCT ON ({experiment_id}) *
             FROM
-                {run}
-            WHERE
-                NOT EXISTS (
-                    SELECT
-                        1
-                    FROM
-                        {experiment_summary}
-                    WHERE
-                        {experiment_summary}.{experiment_id} = {run}.{experiment_id}
-                        AND {experiment_summary}.{most_recent_run} >= {run}.{run_timestamp}
-                )
-            ORDER BY
-                {run}.{run_timestamp} DESC, {run}.{experiment_id}
-        ) {_selection}
-        CROSS JOIN LATERAL
-        (
-            SELECT
-                {experiment_selection}
-            FROM
-                {experiment}
-            WHERE
-                {experiment}.{experiment_id} = {_selection}.{experiment_id}
-            FOR UPDATE SKIP LOCKED
-        ) {experiment}
-        LIMIT {experiment_limit}
-    ) {_selection}
-),
-{_claim} AS (
-    INSERT INTO {experiment_summary}
-    (
-        {experiment_id},
-        {most_recent_run},
-        {last_updated}
-    )
-    SELECT
-        {_selection}.{experiment_id} {experiment_id},
-        {_selection}.{run_timestamp} {most_recent_run},
-        CURRENT_TIMESTAMP
-    FROM
-        {_selection}
-    ON CONFLICT ({experiment_id}) DO UPDATE SET
-        {most_recent_run} = EXCLUDED.{most_recent_run},
-        {last_updated} = CURRENT_TIMESTAMP
+            (
+                SELECT
+                    {target}.{experiment_id},
+                    {root_run}.{id}
+                FROM
+                    (
+                        SELECT
+                            {run_status}.{experiment_id},
+                            {run_status}.{update_time}
+                        FROM
+                            {run_status}
+                        WHERE TRUE
+                            AND {run_status}.{status} = {status_complete}
+                            AND NOT EXISTS (
+                                SELECT 1 FROM {experiment}
+                                WHERE
+                                    {experiment}.{experiment_id} = {run_status}.{experiment_id}
+                                    AND {experiment}.{most_recent_run} >= {run_status}.{update_time}
+                            )
+                        ORDER BY {run_status}.{update_time} DESC
+                    ) {target}
+                    CROSS JOIN LATERAL (
+                        SELECT {root_selection}.{id} FROM
+                            {run_status} {root_selection}
+                        WHERE TRUE
+                            AND {root_selection}.{experiment_id} = {target}.{experiment_id}
+                            AND {root_selection}.{status} = {status_complete}
+                        ORDER BY {root_selection}.{update_time} ASC, {id}
+                        LIMIT 1
+                        FOR UPDATE SKIP LOCKED
+                    ) {root_run}
+                ORDER BY {update_time} DESC
+                LIMIT {experiment_limit}
+            ) {selected_experiment}
+        ) {selected_experiment}
+		INNER JOIN {run_data} ON ({run_data}.{id} = {selected_experiment}.{id})
+		INNER JOIN {run_status} ON ({run_status}.{experiment_id} = {selected_experiment}.{experiment_id} AND {run_status}.{status} = {status_complete})
+		INNER JOIN {history} ON ({history}.{id} = {run_status}.{id})
+    ORDER BY {experiment_id}
+), claim AS (
+	INSERT INTO {experiment} ({experiment_id}, {experiment_column}, {most_recent_run}, {num_runs})
+	SELECT
+		{experiment_id}, {experiment_column}, MAX({update_time}) {most_recent_run}, COUNT(1) {num_runs}
+	FROM
+		{runs_to_update}
+	GROUP BY {experiment_id}, {experiment_column}
+	ON CONFLICT ({experiment_id}) DO UPDATE SET
+		{most_recent_run} = EXCLUDED.{most_recent_run},
+		{num_runs} = EXCLUDED.{num_runs},
+        {by_epoch} = NULL
 )
-SELECT
-    {selection_selection},
-    {run_selection}
-FROM
-    {_selection}
-    INNER JOIN {run} ON
-    (
-        {run}.{experiment_id} = {_selection}.{experiment_id}
-    )
-ORDER BY {_selection}.{experiment_id}
+SELECT * FROM {runs_to_update} ORDER BY {experiment_id}
 ;"""
         ).format(**format_args)
-
-        def make_update_progress_query(num_summaries: int) -> Composed:
-            return SQL(
-                """
-UPDATE {experiment_summary} SET
-    {set_clause},
-    {last_updated} = NULL
-FROM
-    (
-        SELECT {summary_casting_clause}
-        FROM (VALUES {summary_column_placeholders} ) AS {_values} ({summary_columns})
-    ) {_values}
-WHERE
-    {_values}.{experiment_id} = {experiment_summary}.{experiment_id}
-    AND {experiment_summary}.{most_recent_run} <= {_values}.{most_recent_run}
-;"""
-            ).format(
-                _values=_values,
-                summary_casting_clause=summary_columns.casting_sql,
-                set_clause=sql_comma.join(
-                    [
-                        SQL("{c} = {_values}.{c}").format(
-                            _values=_values,
-                            c=c,
-                        )
-                        for c in summary_columns.identifiers
-                    ]
-                ),
-                summary_column_placeholders=sql_comma.join(
-                    [SQL("({})").format(summary_columns.placeholders)] * num_summaries
-                ),
-                **format_args,
-            )
 
         rows = []
         with ConnectionManager(schema.credentials) as connection:
@@ -281,220 +226,48 @@ WHERE
                 cursor.execute(claim_and_get_query, binary=True)
                 rows = cursor.fetchall()
 
-        summary_rows = []
+        result = UpdateExperimentSummaryResult(0, 0)
+        encoded_histories = []
         experiment_id = None
-        runs = []
-        most_recent_run = None
-        experiment_attrs = {}
-        experiment_properties = {}
+        marshaled_experiment = None
 
-        def make_summary():
-            nonlocal most_recent_run, experiment_id, runs, summary_rows
-            if len(runs) > 0:
-                summary_rows.append(
-                    (
-                        experiment_id,
-                        most_recent_run,
-                        *self._summary_to_bytes(schema, self._compute_summary(runs)),
-                    )
-                )
-            runs.clear()
+        def summarize_experiment():
+            nonlocal result, encoded_histories, experiment_id, marshaled_experiment
+            if len(encoded_histories) == 0 or marshaled_experiment is None:
+                return
+            try:
+                pprint(marshaled_experiment)
+                experiment = marshal.demarshal(marshaled_experiment)
+                print(f"demarshaled experiment: {experiment}")
+                histories = [
+                    (run_id, convert_bytes_to_dataframe(history))
+                    for run_id, history in encoded_histories
+                ]
+
+                experiment.summarize(histories)
+                result.num_experiments_updated += 1
+            except Exception as e:
+                result.num_experiments_excepted += 1
+                print(f"Error summarizing experiment {experiment_id}: {e}")
+                import traceback
+
+                traceback.print_exc()
 
         for row in rows:
 
             def value_of(column: Column) -> Any:
-                return row[result_columns[column]]
+                return row[claim_columns[column]]
 
-            row_uid = value_of(run.experiment_id)
-            if row_uid != experiment_id:
-                make_summary()
-                experiment_id = row_uid
-                experiment_attrs = schema.attribute_map.attribute_map_from_ids(
-                    value_of(experiment.experiment_attrs)
-                )
-                experiment_properties = schema.attribute_map.attribute_map_from_ids(
-                    value_of(experiment.experiment_tags)
-                )
-                most_recent_run = value_of(run.run_timestamp)
+            this_experiment_id = value_of(run_status.experiment_id)
+            if this_experiment_id != experiment_id:
+                summarize_experiment()
+                encoded_histories.clear()
+                experiment_id = this_experiment_id
+                marshaled_experiment = value_of(experiment_table.experiment)
 
-            most_recent_run = max(
-                most_recent_run,  # type: ignore
-                value_of(run.run_timestamp),
+            encoded_histories.append(
+                (value_of(run_status.id), value_of(history.history))
             )
+        summarize_experiment()
 
-            run_data = value_of(run.run_data)
-
-            for c in run.values:
-                run_data[c] = value_of(c)
-
-            run_history = schema.convert_bytes_to_dataframe(value_of(run.run_history))
-
-            runs.append(
-                ExperimentResultRecord(
-                    experiment_attrs,
-                    experiment_properties,
-                    run_data,
-                    run_history,  # type: ignore
-                    None,
-                )
-            )
-
-        make_summary()
-
-        num_summaries = len(summary_rows)
-        if num_summaries > 0:
-            # write summaries to database
-            with ConnectionManager(schema.credentials) as connection:
-                # with ClientCursor(connection) as cursor:
-                #     print(cursor.mogrify(make_update_progress_query(num_summaries)))
-                connection.execute(
-                    make_update_progress_query(num_summaries),
-                    list(
-                        chain(
-                            *(
-                                (
-                                    # last_updated,
-                                    *summary_cols,
-                                )
-                                for summary_cols in summary_rows
-                            )
-                        )
-                    ),
-                )
-
-        return UpdateExperimentSummaryResult(num_summaries)
-
-    def _compute_summary(self, runs: List[ExperimentResultRecord]):
-        experiment_type_code = runs[0].experiment_attrs[marshal_type_key]
-        return _summarizer_map[experiment_type_code](runs)
-
-    def _summary_to_bytes(
-        self,
-        schema: PostgresSchema,
-        summary: ExperimentSummaryRecord,
-    ) -> Sequence[Optional[bytes]]:
-        return [
-            schema.convert_dataframe_to_bytes(df)
-            for df in (
-                summary.by_epoch,
-                summary.by_loss,
-                summary.by_progress,
-                summary.epoch_subset,
-            )
-        ]
-
-
-"""
-SELECT
-    *
-FROM
-    (
-        SELECT DISTINCT experiment_id
-        FROM
-        (
-            SELECT experiment.experiment_id
-            FROM
-            (
-                SELECT run.experiment_id, run.run_timestamp FROM
-                run
-                WHERE NOT EXISTS
-                (
-                    SELECT (1) FROM "experiment_summary"
-                    WHERE
-                        "experiment_summary"."most_recent_run" >= "run"."run_timestamp"
-                        AND "experiment_summary"."experiment_id" = "run"."experiment_id"
-                )
-            ) "selection"
-            CROSS JOIN LATERAL
-            (
-                SELECT
-                    *
-                FROM
-                    "experiment"
-                WHERE
-                    "experiment"."experiment_id" = "selection"."experiment_id"
-                FOR UPDATE SKIP LOCKED
-            ) "experiment"
-            WHERE "experiment".experiment_id IS NOT NULL
-            LIMIT 64
-        ) "_selection"
-    ) "_selection"
-    CROSS JOIN LATERAL (SELECT * FROM "run" WHERE "run"."experiment_id" = "_selection"."experiment_id") run
-    ;
-"""
-
-"""
-SELECT
-    "_selection"."last_updated","_selection"."last_experiment_id",
-    "_selection"."experiment_id","_selection"."experiment_attrs","_selection"."experiment_properties",
-    "run"."run_timestamp","run"."run_id","run"."job_id","run"."seed","run"."slurm_job_id","run"."task_version","run"."num_nodes","run"."num_cpus","run"."num_gpus","run"."gpu_memory","run"."host_name","run"."batch","run"."run_data","run"."run_history"
-FROM
-    (
-        SELECT
-            "_bound".*,
-            "experiment".*
-        FROM
-            (
-                SELECT "run_timestamp" "last_updated", "experiment_id" "last_experiment_id"
-                FROM "run"
-                WHERE "run_timestamp" >=
-                (
-                    SELECT COALESCE(MAX("last_updated"), '1960-01-01'::timestamp)
-                    FROM "experiment_summary"
-                )
-                AND
-NOT EXISTS
-(
-    SELECT 1
-    FROM "experiment_summary"
-    WHERE
-        "experiment_summary"."experiment_id" = "run"."experiment_id"
-        AND "experiment_summary"."most_recent_run" >= "run"."run_timestamp"
-)
-
-ORDER BY "run_timestamp" ASC, "experiment_id" ASC, "run_id" ASC
-                LIMIT 1
-            ) "_bound"
-            INNER JOIN "run" ON
-            (
-                "run"."run_timestamp" >= "_bound"."last_updated"
-                AND "run"."experiment_id" >= "_bound"."last_experiment_id"
-                AND
-NOT EXISTS
-(
-    SELECT 1
-    FROM "experiment_summary"
-    WHERE
-        "experiment_summary"."experiment_id" = "run"."experiment_id"
-        AND "experiment_summary"."most_recent_run" >= "run"."run_timestamp"
-)
-                AND NOT EXISTS
-                (
-                    SELECT 1
-                    FROM "run" "_run_backselect"
-                    WHERE
-                        "_run_backselect"."experiment_id" = "run"."experiment_id"
-                        AND "_run_backselect"."run_timestamp" <= "run"."run_timestamp"
-                        AND "_run_backselect"."run_timestamp" >= "_bound"."last_updated"
-                        AND "_run_backselect"."run_id" < "run"."run_id"
-                )
-            )
-            CROSS JOIN LATERAL
-            (
-                SELECT
-                    *
-                FROM
-                    "experiment"
-                WHERE
-                    "experiment"."experiment_id" = "run"."experiment_id"
-                FOR UPDATE SKIP LOCKED
-                LIMIT 1
-            ) "experiment"
-        WHERE "experiment"."experiment_id" IS NOT NULL
-
-ORDER BY "run_timestamp" ASC, "experiment_id" ASC, "run_id" ASC
-        LIMIT 4
-    ) "_selection"
-    LEFT JOIN "run" ON ("run"."experiment_id" = "_selection"."experiment_id")
-    ORDER BY "_selection"."experiment_id";
-"""
+        return result

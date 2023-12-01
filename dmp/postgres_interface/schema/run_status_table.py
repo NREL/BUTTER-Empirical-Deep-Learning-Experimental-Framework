@@ -13,6 +13,7 @@ class RunStatusTable(Table):
     error_count = Column("error_count", "smallint")
     error = Column("error", "text")
     parent = Column("parent", "uuid")
+    experiment_id = Column("experiment_id", "uuid")
 
     def __init__(self) -> None:
         super().__init__("run_status")

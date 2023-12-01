@@ -218,6 +218,22 @@ class RunTable(Table):
 
 run_table: RunTable = RunTable("run")
 
+run_table_selection = ColumnGroup(
+    run_table.experiment_id,
+    run_table.run_id,
+    run_table.seed,
+    run_table.slurm_job_id,
+    run_table.task_version,
+    run_table.num_nodes,
+    run_table.num_cpus,
+    run_table.num_gpus,
+    run_table.gpu_memory,
+    run_table.host_name,
+    run_table.batch,
+    run_table.run_data,
+    run_table.task,
+)
+
 
 class MigrationTable(Table):
     status = Column("status", "integer")
@@ -227,6 +243,7 @@ class MigrationTable(Table):
 
 migration_table: MigrationTable = MigrationTable("migration")
 
+attrs_column = Column("attrs", "jsonb")
 
 selected_columns = (
     job_status_selection
@@ -234,6 +251,7 @@ selected_columns = (
     + experiment_selection
     + old_experiment_selection
     + run_table
+    + attrs_column
 )
 
 
@@ -269,7 +287,19 @@ SELECT
     {job_data_selection},
     {experiment_selection},
     {old_experiment_selection},
-    {run_selection}
+    {run_selection},
+    (SELECT jsonb_object_agg(
+        attr.kind,
+        COALESCE(
+            to_jsonb(attr.value_bool),
+            to_jsonb(attr.value_int),
+            to_jsonb(attr.value_float),
+            to_jsonb(attr.value_str),
+            attr.value_json)) attrs
+        FROM attr
+        WHERE array[attr.attr_id] <@ e.experiment_attrs
+        OR array[attr.attr_id] <@ e.experiment_tags
+	) {attrs}
 FROM
     (
         SELECT experiment_id, run_id
@@ -308,6 +338,7 @@ SELECT * from r
         old_experiment_selection=old_experiment_selection.of(Identifier("eold")),
         run_selection=run_table.of(Identifier("r")),
         block_size=Literal(block_size),
+        attrs=attrs_column.identifier,
     )
 
     while True:  #  binary=True, scrollable=True
@@ -322,7 +353,6 @@ SELECT * from r
                 source_records = list(cursor.fetchall())
 
         result_records = []
-        experiment_ids: Dict[uuid.UUID, Experiment] = {}
 
         for row in source_records:
 
@@ -345,69 +375,71 @@ SELECT * from r
                 #     rsuffix="_",
                 # )
 
-                dataset_name = src_command["dataset"]["name"]
-                dsinfo = dataset_index[dataset_index["Dataset"] == dataset_name].iloc[0]
-                ml_task = MLTask.regression
-                num_outputs = 1
+                attrs = get_value(attrs_column)
 
-                if dataset_name == "201_pol":
-                    ml_task = MLTask.classification
-                    num_outputs = 11
-                elif dataset_name == "294_satellite_image":
-                    ml_task = MLTask.classification
-                    num_outputs = 6
-                elif dsinfo["Task"] == "classification":
-                    ml_task = MLTask.classification
-                    num_outputs = int(dsinfo["n_classes"])
-                    if num_outputs == 2:
-                        num_outputs = 1
+                # dataset_name = src_command["dataset"]["name"]
+                # dsinfo = dataset_index[dataset_index["Dataset"] == dataset_name].iloc[0]
+                # ml_task = MLTask.regression
+                # num_outputs = 1
 
-                dataset_size = int(dsinfo["n_observations"])
-                test_split = float(src_command["dataset"]["test_split"])
-                train_set_size = math.floor(dataset_size * test_split)
-                test_set_size = dataset_size - train_set_size
+                # if dataset_name == "201_pol":
+                #     ml_task = MLTask.classification
+                #     num_outputs = 11
+                # elif dataset_name == "294_satellite_image":
+                #     ml_task = MLTask.classification
+                #     num_outputs = 6
+                # elif dsinfo["Task"] == "classification":
+                #     ml_task = MLTask.classification
+                #     num_outputs = int(dsinfo["n_classes"])
+                #     if num_outputs == 2:
+                #         num_outputs = 1
 
-                shapes = dataset_shape_map[dataset_name]
+                # dataset_size = int(dsinfo["n_observations"])
+                # test_split = float(src_command["dataset"]["test_split"])
+                # train_set_size = math.floor(dataset_size * test_split)
+                # test_set_size = dataset_size - train_set_size
 
-                input_shape = [
-                    shapes[0],
-                ]
+                # shapes = dataset_shape_map[dataset_name]
 
-                output_activation = "softmax"
-                output_kernel_initializer = "GlorotUniform"
-                loss = "CategoricalCrossentropy"
-                loss_metric = "categorical_crossentropy"
-                if ml_task == MLTask.regression:
-                    output_activation = "sigmoid"
-                    output_kernel_initializer = "GlorotUniform"
-                    loss = "MeanSquaredError"
-                    loss_metric = "mean_squared_error"
-                elif ml_task == MLTask.classification:
-                    if num_outputs == 1:
-                        output_activation = "sigmoid"
-                        output_kernel_initializer = "GlorotUniform"
-                        loss = "BinaryCrossentropy"
-                        loss_metric = "binary_crossentropy"
-                    else:
-                        output_activation = "softmax"
-                        output_kernel_initializer = "GlorotUniform"
-                        loss = "CategoricalCrossentropy"
-                        loss_metric = "categorical_crossentropy"
+                # input_shape = [
+                #     shapes[0],
+                # ]
 
-                history = parquet_to_dataframe(get_value(run_table.run_history))
+                # output_activation = "softmax"
+                # output_kernel_initializer = "GlorotUniform"
+                # loss = "CategoricalCrossentropy"
+                # loss_metric = "categorical_crossentropy"
+                # if ml_task == MLTask.regression:
+                #     output_activation = "sigmoid"
+                #     output_kernel_initializer = "GlorotUniform"
+                #     loss = "MeanSquaredError"
+                #     loss_metric = "mean_squared_error"
+                # elif ml_task == MLTask.classification:
+                #     if num_outputs == 1:
+                #         output_activation = "sigmoid"
+                #         output_kernel_initializer = "GlorotUniform"
+                #         loss = "BinaryCrossentropy"
+                #         loss_metric = "binary_crossentropy"
+                #     else:
+                #         output_activation = "softmax"
+                #         output_kernel_initializer = "GlorotUniform"
+                #         loss = "CategoricalCrossentropy"
+                #         loss_metric = "categorical_crossentropy"
 
-                for prefix in keys.measurement_prefixes:
-                    loss_key = prefix + "_" + keys.loss
-                    metric_key = prefix + "_" + loss_metric
-                    if (
-                        loss_key in history
-                        and metric_key in history
-                        and all(
-                            (x is y) or (x == y)
-                            for x, y in zip(history[loss_key], history[metric_key])
-                        )
-                    ):
-                        del history[metric_key]
+                # history = parquet_to_dataframe(get_value(run_table.run_history))
+
+                # for prefix in keys.measurement_prefixes:
+                #     loss_key = prefix + "_" + keys.loss
+                #     metric_key = prefix + "_" + loss_metric
+                #     if (
+                #         loss_key in history
+                #         and metric_key in history
+                #         and all(
+                #             (x is y) or (x == y)
+                #             for x, y in zip(history[loss_key], history[metric_key])
+                #         )
+                #     ):
+                #         del history[metric_key]
 
                 dst_command = {
                     "run": {
@@ -463,52 +495,78 @@ SELECT * from r
                     "type": "Run",
                     "experiment": {
                         "fit": {
-                            "epochs": int(history["epoch"].max()),
-                            "batch_size": src_command["fit"]["batch_size"],
+                            "epochs": attrs["fit_epochs"],
+                            "batch_size": attrs["fit_batch_size"],
                         },
                         "data": {
-                            "ml_task": str(ml_task),
-                            "input_shape": input_shape,
-                            "output_shape": [num_outputs],
-                            "data_set_size": dataset_size,
-                            "test_set_size": test_set_size,
-                            "train_set_size": train_set_size,
-                            "network_description": {
-                                "widths": get_value(old_experiment_table.widths)
-                            },
+                            "ml_task": attrs["ml_task"],
+                            "input_shape": attrs["input_shape"],
+                            "output_shape": attrs["output_shape"],
+                            "data_set_size": attrs["data_set_size"],
+                            "test_set_size": attrs["test_set_size"],
+                            "train_set_size": attrs["train_set_size"],
+                            "network_description": {"widths": attrs["model_widths"]},
                             "num_free_parameters": get_value(
                                 old_experiment_table.num_free_parameters
                             ),
-                            "validation_set_size": 0,
+                            "validation_set_size": attrs["validation_set_size"],
                         },
-                        "loss": {"class": loss},
+                        "loss": {"class": attrs["loss"]},
                         "type": "TrainingExperiment",
                         "model": {
-                            "size": src_command["model"]["size"],
-                            "type": src_command["model"]["type"],
-                            "depth": src_command["model"]["depth"],
-                            "inner": src_command["model"]["inner"],
+                            "size": attrs["model_size"],
+                            "type": attrs["model"],
+                            "depth": attrs["model_depth"],
+                            "inner": {
+                                "type": "Dense",
+                                "units": -1,
+                                "use_bias": attrs["model_inner_use_bias"],
+                                "activation": attrs["model_inner_activation"],
+                                "bias_constraint": attrs["model_inner_bias_constraint"],
+                                "bias_initializer": attrs[
+                                    "model_inner_bias_initializer"
+                                ],
+                                "bias_regularizer": attrs[
+                                    "model_inner_bias_regularizer"
+                                ],
+                                "kernel_constraint": attrs[
+                                    "model_inner_kernel_constraint"
+                                ],
+                                "kernel_initializer": attrs[
+                                    "model_inner_kernel_initializer"
+                                ],
+                                "kernel_regularizer": attrs[
+                                    "model_inner_kernel_regularizer"
+                                ],
+                                "activity_regularizer": attrs[
+                                    "model_inner_activity_regularizer"
+                                ],
+                            },
                             "input": {
                                 "name": "dmp_2",
                                 "type": "Input",
-                                "shape": input_shape,
+                                "shape": attrs["input_shape"],
                             },
-                            "shape": src_command["model"]["shape"],
+                            "shape": attrs["model_shape"],
                             "output": {
                                 "type": src_command["model"]["inner"]["type"],
-                                "units": num_outputs,
-                                "use_bias": True,
-                                "activation": output_activation,
-                                "bias_constraint": None,
-                                "bias_initializer": "Zeros",
-                                "bias_regularizer": src_command["model"]["inner"][
-                                    "bias_regularizer"
+                                "units": attrs["output_shape"][0],
+                                "use_bias": attrs["model_output_use_bias"],
+                                "activation": attrs["model_output_activation"],
+                                "bias_constraint": attrs[
+                                    "model_output_bias_constraint"
                                 ],
-                                "kernel_constraint": src_command["model"]["inner"][
-                                    "kernel_constraint"
+                                "bias_initializer": attrs[
+                                    "model_output_bias_initializer"
+                                ],
+                                "bias_regularizer": attrs[
+                                    "model_output_bias_regularizer"
+                                ],
+                                "kernel_constraint": attrs[
+                                    "model_output_kernel_constraint"
                                 ],
                                 "kernel_initializer": {
-                                    "class": output_kernel_initializer
+                                    "class": attrs["model_output_kernel_initializer"]
                                 },
                                 "kernel_regularizer": src_command["model"]["inner"][
                                     "kernel_regularizer"
@@ -520,17 +578,15 @@ SELECT * from r
                             "search_method": src_command["model"]["search_method"],
                         },
                         "dataset": {
-                            "name": dataset_name,
+                            "name": attrs["dataset"],
                             "type": "DatasetSpec",
-                            "method": src_command["dataset"]["method"],
+                            "method": attrs["dataset_method"],
                             "source": "pmlb",
-                            "test_split": src_command["dataset"]["test_split"],
-                            "label_noise": src_command["dataset"]["label_noise"],
-                            "validation_split": src_command["dataset"][
-                                "validation_split"
-                            ],
+                            "test_split": attrs["dataset_test_split"],
+                            "label_noise": attrs["dataset_label_noise"],
+                            "validation_split": attrs["dataset_validation_split"],
                         },
-                        "optimizer": src_command["optimizer"],
+                        "optimizer": attrs["optimizer"],
                         "precision": src_command["precision"],
                         "early_stopping": src_command["early_stopping"],
                     },
@@ -594,8 +650,8 @@ SELECT * from r
                         get_value(job_status_table.parent),
                         Jsonb(dst_command),
                         experiment_id,
-                        convert_dataframe_to_bytes(history),
-                        get_value(run_table.run_extended_history),
+                        # convert_dataframe_to_bytes(history),
+                        # get_value(run_table.run_extended_history),
                     )
                 )
 
@@ -617,8 +673,8 @@ SELECT * from r
             Column("parent", "uuid"),
             Column("command", "jsonb"),
             Column("experiment_id", "uuid"),
-            Column("history", "bytea"),
-            Column("extended_history", "bytea"),
+            # Column("history", "bytea"),
+            # Column("extended_history", "bytea"),
         )
 
         if len(result_records) > 0:
@@ -644,15 +700,17 @@ rdi AS (
     SELECT
         id, command
     FROM input_data
-    ON CONFLICT (id) DO NOTHING
+    ON CONFLICT (id) DO UPDATE SET
+        command = EXCLUDED.command
 ),
 hi AS (
     INSERT INTO {history}
-        (id, experiment_id, history, extended_history)
+        (id, experiment_id)
     SELECT
-        id, experiment_id, history, extended_history
+        id, experiment_id
     FROM input_data
-    ON CONFLICT (id) DO NOTHING
+    ON CONFLICT (id) DO UPDATE SET
+        experiment_id = EXCLUDED.experiment_id
 )
 SELECT 1;"""
             ).format(
@@ -664,6 +722,48 @@ SELECT 1;"""
                 input_colums=input_columns.columns_sql,
                 history=schema.history.identifier,
             )
+            #             migrate_query = SQL(
+            #                 """
+            # WITH input_data AS (
+            #     SELECT
+            #         {input_cast}
+            #     FROM
+            #         ( VALUES {input_placeholders} ) AS input_data ({input_colums})
+            # ),
+            # rsi AS (
+            #     INSERT INTO run_status
+            #         (queue, status, priority, id, start_time, update_time, worker, error_count, error, parent)
+            #     SELECT
+            #         -100, 2, 0, id, start_time, update_time, worker, error_count, error, parent
+            #     FROM input_data
+            #     ON CONFLICT (id) DO NOTHING
+            # ),
+            # rdi AS (
+            #     INSERT INTO run_data
+            #         (id, command)
+            #     SELECT
+            #         id, command
+            #     FROM input_data
+            #     ON CONFLICT (id) DO NOTHING
+            # ),
+            # hi AS (
+            #     INSERT INTO {history}
+            #         (id, experiment_id, history, extended_history)
+            #     SELECT
+            #         id, experiment_id, history, extended_history
+            #     FROM input_data
+            #     ON CONFLICT (id) DO NOTHING
+            # )
+            # SELECT 1;"""
+            #             ).format(
+            #                 input_cast=input_columns.casting_sql,
+            #                 input_placeholders=sql_comma.join(
+            #                     [SQL("({})").format(input_columns.placeholders)]
+            #                     * len(result_records)
+            #                 ),
+            #                 input_colums=input_columns.columns_sql,
+            #                 history=schema.history.identifier,
+            #             )
 
             with ConnectionManager(credentials) as connection:
                 connection.execute("SET TIMEZONE to 'UTC';")
