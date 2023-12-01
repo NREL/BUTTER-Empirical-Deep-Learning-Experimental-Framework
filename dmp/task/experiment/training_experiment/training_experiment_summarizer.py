@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import Any, Iterable, Optional, Sequence, Set, Type, List
+from typing import Any, Iterable, Optional, Sequence, Set, Tuple, Type, List
 from numbers import Number
+from uuid import UUID
 
 import numpy
 import pandas
@@ -43,11 +44,11 @@ class TrainingExperimentSummarizer:
     def summarize(
         self,
         experiment: TrainingExperiment,
-        results: List[pandas.DataFrame],
+        histories: List[Tuple[UUID, pandas.DataFrame]],
     ) -> Optional[ExperimentSummaryRecord]:
         keys: TrainingExperimentKeys = experiment.keys
         sources = []
-        for i, run_history in enumerate(results):
+        for i, (run_id, run_history) in enumerate(histories):
             run_history[keys.run] = i
             sources.append(run_history)
         num_sources = len(sources)
@@ -58,7 +59,7 @@ class TrainingExperimentSummarizer:
         history = pandas.concat(sources, ignore_index=True, axis=0)
         runs = numpy.arange(num_sources)
         del sources
-        del results
+        del histories
 
         # remove duplicate loss columns
         for metric in keys.loss_metrics:
@@ -81,8 +82,8 @@ class TrainingExperimentSummarizer:
         ) in keys.run_summary_metrics:
             if column in history:
                 history[result_column] = numpy.nan
-                history[epoch_column] = 0
                 history[result_column] = history[result_column].astype(numpy.float32)
+                history[epoch_column] = 0
                 history[epoch_column] = history[epoch_column].astype(numpy.int16)
                 for run in runs:
                     run_history = history.loc[(run, slice(None)), column]

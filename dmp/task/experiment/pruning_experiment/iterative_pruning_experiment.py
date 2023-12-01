@@ -147,7 +147,7 @@ class IterativePruningExperiment(TrainingExperiment):
             first_iteration = False
 
         print(f"********** 11")
-        self._record_result(
+        self._record_completed_run(
             context,
             run,
             dataset,

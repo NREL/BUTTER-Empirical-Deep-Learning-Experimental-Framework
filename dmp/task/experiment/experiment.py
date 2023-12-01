@@ -11,6 +11,7 @@ from dataclasses import dataclass
 # FlatParameterDict = Dict[str, ParameterValue]
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 if TYPE_CHECKING:
     from dmp.context import Context
@@ -38,6 +39,6 @@ class Experiment(ABC):
     @abstractmethod
     def summarize(
         self,
-        results: List[pandas.DataFrame],
+        histories: List[Tuple[UUID, pandas.DataFrame]],
     ) -> Optional[ExperimentSummaryRecord]:
         pass

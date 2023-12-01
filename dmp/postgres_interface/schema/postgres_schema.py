@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 
 from uuid import UUID
 from jobqueue.connection_manager import ConnectionManager
+from jobqueue.job_status import JobStatus
 import pandas
 from psycopg import ClientCursor
 
@@ -24,6 +25,8 @@ from dmp.postgres_interface.postgres_interface_common import json_dump_function
 from dmp.postgres_interface.schema.experiment_table import ExperimentTable
 from dmp.postgres_interface.schema.checkpoint_table import CheckpointTable
 from dmp.postgres_interface.schema.history_table import HistoryTable
+from dmp.postgres_interface.schema.run_data_table import RunDataTable
+from dmp.postgres_interface.schema.run_status_table import RunStatusTable
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
@@ -44,6 +47,8 @@ class PostgresSchema:
 
     experiment_id_column: str
 
+    run_status: RunStatusTable = RunStatusTable()
+    run_data: RunDataTable = RunDataTable()
     history: HistoryTable = HistoryTable()
     experiment: ExperimentTable = ExperimentTable()
     checkpoint: CheckpointTable = CheckpointTable()
@@ -219,23 +224,31 @@ LIMIT 1
     def get_experiment_run_histories(
         self,
         experiment_id: UUID,
-    ) -> List[pandas.DataFrame]:
+    ) -> List[Tuple[UUID, pandas.DataFrame]]:
         history_table = self.history
+        run_status_table = self.run_status
         query = SQL(
             """
 SELECT
-    {history}
+    {history_table}.{id},
+    {history_table}.{history}
 FROM
     {history_table}
-WHERE
-    {experiment_id} = {experiment_id_value}
+    INNER JOIN {run_status_table} ON ({history_table}.{id} = {run_status_table}.{id})
+WHERE TRUE
+    AND {history_table}.{experiment_id} = {experiment_id_value}
     AND {history} IS NOT NULL
+    AND {run_status_table}.{status} = {status_value}
 ;"""
         ).format(
+            id=history_table.id.identifier,
             history=history_table.history.identifier,
             history_table=history_table.identifier,
             experiment_id=history_table.experiment_id.identifier,
             experiment_id_value=Literal(experiment_id),
+            run_status_table=run_status_table.identifier,
+            status=run_status_table.status.identifier,
+            status_value=Literal(int(JobStatus.Complete)),
         )
 
         results = []
@@ -243,7 +256,7 @@ WHERE
             with connection.cursor(binary=True) as cursor:
                 cursor.execute(query)
                 for row in cursor.fetchall():
-                    results.append(convert_bytes_to_dataframe(row[0]))
+                    results.append((row[0], convert_bytes_to_dataframe(row[1])))
         return results
 
     def store_summary(

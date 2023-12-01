@@ -199,7 +199,7 @@ class GrowthExperiment(TrainingExperiment):
             raise RuntimeError(f"No result record generated for task {self}.")
 
         src_model.network.description = goal_network.description
-        return self._record_result(
+        return self._record_completed_run(
             context,
             dataset,
             src_model.network,

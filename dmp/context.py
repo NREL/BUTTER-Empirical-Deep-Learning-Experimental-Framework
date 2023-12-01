@@ -85,13 +85,13 @@ class Context:
 
     def record_history(
         self,
+        experiment_id: UUID,
         history: pandas.DataFrame,
         extended_history: pandas.DataFrame,
     ) -> None:
         print(f"record_history\n{history}\nextended:\n{extended_history}")
 
         if self.schema is not None:
-            experiment_id = self.get_experiment_id()
             print(f"storing experiment {experiment_id} history...")
             self.schema.record_history(
                 [
@@ -116,14 +116,25 @@ class Context:
             #     )
             # )
 
-    def update_task(self) -> None:
+    def update_task(
+        self,
+        experiment_id: Optional[UUID] = None,
+    ) -> None:
         if self.worker is None or self.worker.job_queue is None:
             return
 
         from dmp.marshaling import marshal
 
         self.job.command = marshal.marshal(self.task)
-        self.worker.job_queue.update_job_command(self.job)
+
+        additional_updates = {}
+        if experiment_id is not None:
+            additional_updates["experiment_id"] = experiment_id
+
+        self.worker.job_queue.update_job_command(
+            self.job,
+            additional_updates=additional_updates,
+        )
 
     def update_summary(
         self,

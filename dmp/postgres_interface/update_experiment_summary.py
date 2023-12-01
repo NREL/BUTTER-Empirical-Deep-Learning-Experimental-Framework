@@ -44,17 +44,9 @@ class UpdateExperimentSummary(Task):
 
         schema = context.schema
         experiment = schema.experiment
-        run = schema.run
-        summary = schema.experiment_summary
-
-        # selection_columns = ColumnGroup(
-        #     experiment.experiment_attrs,
-        #     experiment.experiment_properties,
-        # )
-
-        #                             AND experiment_properties @> array[2568] and experiment_attrs @> array[75, 224]
-        selection = Identifier("_selection")
-        # last_updated = Identifier('last_updated')
+        run_status = schema.run_status
+        run_data = schema.run_data
+        history = schema.history
 
         experiment_columns = ColumnGroup(
             experiment.experiment_id,
@@ -85,6 +77,7 @@ class UpdateExperimentSummary(Task):
             summary.epoch_subset,
         )
         _values = Identifier("_values")
+        _selection = Identifier("_selection")
 
         format_args = dict(
             experiment_selection=experiment_columns.of(experiment.identifier),
@@ -113,7 +106,66 @@ class UpdateExperimentSummary(Task):
             _claim=Identifier("_claim"),
             _updated=Identifier("_updated"),
         )
-
+        """
+WITH histories AS (
+	SELECT
+		selected_experiment.experiment_id,
+		run_data.command->'experiment' experiment,
+		run_status.id,
+		run_status.update_time,
+		history.history
+	FROM
+		(
+			SELECT
+				target.experiment_id,
+				root_run.id
+			FROM
+				(
+					SELECT
+						run_status.experiment_id,
+						run_status.update_time
+					FROM
+						run_status
+					WHERE TRUE
+						AND run_status.status = 2
+						AND NOT EXISTS (
+							SELECT 1 FROM experiment2
+							WHERE
+								experiment2.experiment_id = run_status.experiment_id
+								AND experiment2.most_recent_run >= run_status.update_time
+						)
+					ORDER BY run_status.update_time DESC
+				) target
+				CROSS JOIN LATERAL (
+					SELECT rs.id FROM
+						run_status rs
+					WHERE TRUE
+						AND rs.experiment_id = target.experiment_id
+						AND rs.status = 2
+					ORDER BY rs.update_time ASC, id
+					LIMIT 1
+					FOR UPDATE SKIP LOCKED
+				) root_run
+			ORDER BY update_time DESC
+			LIMIT 10
+		) selected_experiment
+		INNER JOIN run_data ON (run_data.id = selected_experiment.id)
+		INNER JOIN run_status ON (run_status.experiment_id = selected_experiment.experiment_id AND run_status.status = 2)
+		INNER JOIN history ON (history.id = run_status.id)
+), claim AS (
+	INSERT INTO experiment2 (experiment_id, experiment, most_recent_run, num_runs)
+	SELECT
+		experiment_id, experiment, MAX(update_time) most_recent_run, COUNT(1) num_runs
+	FROM
+		histories
+	GROUP BY experiment_id, experiment
+	ON CONFLICT (experiment_id) DO UPDATE SET
+		most_recent_run = EXCLUDED.most_recent_run,
+		num_runs = EXCLUDED.num_runs
+)
+SELECT * FROM histories
+;
+"""
         claim_and_get_query = SQL(
             """
 WITH {_selection} AS

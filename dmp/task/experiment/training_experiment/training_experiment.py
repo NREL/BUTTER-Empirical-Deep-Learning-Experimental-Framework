@@ -5,6 +5,8 @@ from dataclasses import dataclass, replace
 import itertools
 import random
 from typing import Any, Dict, Iterable, Iterator, Optional, Set, Type
+from uuid import UUID
+from jobqueue.job_status import JobStatus
 import numpy
 import pandas
 import tensorflow
@@ -143,7 +145,7 @@ class TrainingExperiment(Experiment):
             new_seed=False,
         )
 
-        self._record_result(
+        self._record_completed_run(
             context,
             run,
             dataset,
@@ -152,21 +154,13 @@ class TrainingExperiment(Experiment):
             loss_metric,
         )
 
-        try:
-            context.update_summary()
-        except Exception as e:
-            import traceback
-
-            print(
-                f'Exception "{e}" while updating summary. Traceback:\n{traceback.format_exc()}'
-            )
         return epoch_counter, experiment_history
 
     def summarize(
         self,
-        results: List[pandas.DataFrame],
+        histories: List[Tuple[UUID, pandas.DataFrame]],
     ) -> Optional[ExperimentSummaryRecord]:
-        return self.summarizer.summarize(self, results)
+        return self.summarizer.summarize(self, histories)
 
     def _setup_environment(self, run: RunSpec) -> None:
         seed = run.seed
@@ -636,6 +630,34 @@ class TrainingExperiment(Experiment):
 
         return experiment_history
 
+    def _record_completed_run(
+        self,
+        context: Context,
+        run: RunSpec,
+        dataset: PreparedDataset,
+        network: NetworkInfo,
+        history: Dict[str, Any],
+        loss_metric: Optional[str],
+    ) -> None:
+        context.job.status = JobStatus.Complete
+        self._record_result(
+            context,
+            run,
+            dataset,
+            network,
+            history,
+            loss_metric,
+        )
+
+        try:
+            context.update_summary()
+        except Exception as e:
+            import traceback
+
+            print(
+                f'Exception "{e}" while updating summary. Traceback:\n{traceback.format_exc()}'
+            )
+
     def _record_result(
         self,
         context: Context,
@@ -645,24 +667,51 @@ class TrainingExperiment(Experiment):
         history: Dict[str, Any],
         loss_metric: Optional[str],
     ) -> None:
-        self._record_run(
-            context,
-            run,
-            dataset,
-            network,
+        # update experiment data
+        self.data.update(
+            {
+                "ml_task": dataset.ml_task.value,
+                "num_free_parameters": network.num_free_parameters,
+                # 'model_structure':
+                # network.structure,
+                "input_shape": dataset.input_shape,
+                "output_shape": dataset.output_shape,
+                "train_set_size": dataset.train_size,
+                "test_set_size": dataset.test_size,
+                "validation_set_size": dataset.validation_size,
+                "data_set_size": dataset.train_size
+                + dataset.test_size
+                + dataset.validation_size,
+                "network_description": network.description,
+            }
         )
-        self._record_history(context, history, loss_metric)
 
-        # self.summarizer.summarize(self)
-        # return ExperimentResultRecord(
-        #     experiment_attrs,
-        #     experiment_tags,
-        #     run_data,
-        #     make_dataframe_from_dict(experiment_history),
-        #     None
-        #     if len(extended_history) == 0
-        #     else make_dataframe_from_dict(extended_history),  # type: ignore
-        # )
+        # update run data
+        run.data.update(
+            {
+                "job_id": context.id,
+                "run_id": context.id,
+                "python_version": str(platform.python_version()),
+                "platform": str(platform.platform()),
+                "tensorflow_version": str(tensorflow.__version__),
+                "host_name": str(platform.node()),
+                "slurm_job_id": common.get_slurm_job_id(),
+                "git_hash": common.get_git_hash(),
+                "context": context.info,
+            }
+        )
+
+        experiment_id = context.get_experiment_id()
+
+        # TODO: this should really be in a transaction or single query.
+        self._record_history(
+            context,
+            experiment_id,
+            history,
+            loss_metric,
+        )
+
+        context.update_task(experiment_id=experiment_id)
 
     def _save_checkpoint(
         self,
@@ -676,7 +725,7 @@ class TrainingExperiment(Experiment):
         loss_metric: Optional[str],
     ) -> TrainingExperimentCheckpoint:
         # + save checkpoint
-        #     + to disk``
+        #     + to disk
         #     + to db
         # + update Job & Task to resume on failure
 
@@ -700,6 +749,7 @@ class TrainingExperiment(Experiment):
     def _record_history(
         self,
         context: Context,
+        experiment_id: UUID,
         history: Dict[str, Any],
         loss_metric: Optional[str],
     ) -> None:
@@ -723,6 +773,7 @@ class TrainingExperiment(Experiment):
         extended_history = self._extract_extended_history(history)
 
         context.record_history(
+            experiment_id,
             make_dataframe_from_dict(history),
             make_dataframe_from_dict(extended_history),  # type: ignore
         )
@@ -745,49 +796,6 @@ class TrainingExperiment(Experiment):
             if v is not None:
                 extended_history[column] = v
         return extended_history
-
-    def _record_run(
-        self,
-        context: Context,
-        run: RunSpec,
-        dataset: PreparedDataset,
-        network: NetworkInfo,
-    ) -> None:
-        # update run data
-        run.data.update(
-            {
-                "job_id": context.id,
-                "run_id": context.id,
-                "python_version": str(platform.python_version()),
-                "platform": str(platform.platform()),
-                "tensorflow_version": str(tensorflow.__version__),
-                "host_name": str(platform.node()),
-                "slurm_job_id": common.get_slurm_job_id(),
-                "git_hash": common.get_git_hash(),
-                "context": context.info,
-            }
-        )
-
-        # update experiment data
-        self.data.update(
-            {
-                "ml_task": dataset.ml_task.value,
-                "num_free_parameters": network.num_free_parameters,
-                # 'model_structure':
-                # network.structure,
-                "input_shape": dataset.input_shape,
-                "output_shape": dataset.output_shape,
-                "train_set_size": dataset.train_size,
-                "test_set_size": dataset.test_size,
-                "validation_set_size": dataset.validation_size,
-                "data_set_size": dataset.train_size
-                + dataset.test_size
-                + dataset.validation_size,
-                "network_description": network.description,
-            }
-        )
-
-        context.update_task()
 
     def _make_early_stopping_callback(
         self, epoch_counter: EpochCounter
