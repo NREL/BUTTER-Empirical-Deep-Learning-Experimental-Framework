@@ -236,9 +236,9 @@ SELECT * FROM {runs_to_update} ORDER BY {experiment_id}
             if len(encoded_histories) == 0 or marshaled_experiment is None:
                 return
             try:
-                pprint(marshaled_experiment)
+                # pprint(marshaled_experiment)
                 experiment = marshal.demarshal(marshaled_experiment)
-                print(f"demarshaled experiment: {experiment}")
+                # print(f"demarshaled experiment: {experiment}")
                 histories = [
                     (run_id, convert_bytes_to_dataframe(history))
                     for run_id, history in encoded_histories
