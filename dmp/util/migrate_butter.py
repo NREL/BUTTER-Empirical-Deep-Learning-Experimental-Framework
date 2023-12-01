@@ -642,12 +642,12 @@ SELECT * from r
                 result_records.append(
                     (
                         run_id,
-                        get_value(job_status_table.start_time),
-                        get_value(job_status_table.update_time),
-                        get_value(job_status_table.worker),
-                        get_value(job_status_table.error_count),
-                        get_value(job_status_table.error),
-                        get_value(job_status_table.parent),
+                        # get_value(job_status_table.start_time),
+                        # get_value(job_status_table.update_time),
+                        # get_value(job_status_table.worker),
+                        # get_value(job_status_table.error_count),
+                        # get_value(job_status_table.error),
+                        # get_value(job_status_table.parent),
                         Jsonb(dst_command),
                         experiment_id,
                         # convert_dataframe_to_bytes(history),
@@ -665,12 +665,12 @@ SELECT * from r
 
         input_columns = ColumnGroup(
             Column("id", "uuid"),
-            Column("start_time", "timestamp with time zone"),
-            Column("update_time", "timestamp with time zone"),
-            Column("worker", "uuid"),
-            Column("error_count", "smallint"),
-            Column("error", "text"),
-            Column("parent", "uuid"),
+            # Column("start_time", "timestamp with time zone"),
+            # Column("update_time", "timestamp with time zone"),
+            # Column("worker", "uuid"),
+            # Column("error_count", "smallint"),
+            # Column("error", "text"),
+            # Column("parent", "uuid"),
             Column("command", "jsonb"),
             Column("experiment_id", "uuid"),
             # Column("history", "bytea"),
@@ -686,36 +686,23 @@ WITH input_data AS (
     FROM
         ( VALUES {input_placeholders} ) AS input_data ({input_colums})
 ),
-rsi AS (
-    INSERT INTO run_status
-        (queue, status, priority, id, start_time, update_time, worker, error_count, error, parent)
-    SELECT
-        -100, 2, 0, id, start_time, update_time, worker, error_count, error, parent
-    FROM input_data
-    ON CONFLICT (id) DO NOTHING
-),
 rdi AS (
-    INSERT INTO run_data
-        (id, command)
-    SELECT
-        id, command
+    UPDATE run_data SET
+        command = input_data.command
     FROM input_data
-    ON CONFLICT (id) DO UPDATE SET
-        command = EXCLUDED.command
+    WHERE run_data.id = input_data.id
 ),
 hi AS (
-    INSERT INTO {history}
-        (id, experiment_id)
-    SELECT
-        id, experiment_id
+    UPDATE history SET
+        experiment_id = input_data.experiment_id
     FROM input_data
-    ON CONFLICT (id) DO UPDATE SET
-        experiment_id = EXCLUDED.experiment_id
+    WHERE history.id = input_data.id
 ),
 mu AS (
     UPDATE migration SET
         status = 2
-    WHERE migration.run_id IN (SELECT id FROM input_data)
+    FROM input_data
+    WHERE migration.run_id = input_data.id
 )
 SELECT 1;"""
             ).format(
