@@ -152,6 +152,8 @@ experiment_table: ExperimentTable = ExperimentTable("experiment")
 experiment_selection: ColumnGroup = ColumnGroup(
     experiment_table.experiment_id,
     experiment_table.old_experiment_id,
+    experiment_table.experiment_attrs,
+    experiment_table.experiment_tags,
 )
 
 
@@ -177,6 +179,7 @@ class OldExperimentTable(Table):
 
 
 old_experiment_table: OldExperimentTable = OldExperimentTable("experiment_")
+
 old_experiment_selection: ColumnGroup = ColumnGroup(
     # old_experiment_table.experiment_id,  # "old experiment id"
     old_experiment_table.num_free_parameters,
@@ -279,6 +282,14 @@ def do_work(args):
     total_num_excepted = 0
     print(f"Worker {worker_number} : {worker_id} started...")
 
+    get_attsr_query = SQL(
+        """
+select
+	attr_id, kind, COALESCE(to_jsonb(value_bool), to_jsonb(value_int), to_jsonb(value_float), to_jsonb(value_str), value_json) v
+from attr
+"""
+    )
+
     get_runs_query = SQL(
         """
 WITH r AS (
@@ -287,19 +298,7 @@ SELECT
     {job_data_selection},
     {experiment_selection},
     {old_experiment_selection},
-    {run_selection},
-    (SELECT jsonb_object_agg(
-        attr.kind,
-        COALESCE(
-            to_jsonb(attr.value_bool),
-            to_jsonb(attr.value_int),
-            to_jsonb(attr.value_float),
-            to_jsonb(attr.value_str),
-            attr.value_json)) attrs
-        FROM attr
-        WHERE array[attr.attr_id] <@ e.experiment_attrs
-        OR array[attr.attr_id] <@ e.experiment_tags
-	) {attrs}
+    {run_selection}
 FROM
     (
         SELECT experiment_id, run_id
@@ -338,8 +337,9 @@ SELECT * from r
         old_experiment_selection=old_experiment_selection.of(Identifier("eold")),
         run_selection=run_table.of(Identifier("r")),
         block_size=Literal(block_size),
-        attrs=attrs_column.identifier,
     )
+
+    attr_map = None
 
     while True:  #  binary=True, scrollable=True
         num_converted = 0
@@ -348,7 +348,12 @@ SELECT * from r
         source_records = []
         with ConnectionManager(credentials) as connection:
             connection.execute("SET TIMEZONE to 'UTC';")
+
             with connection.cursor(binary=True) as cursor:
+                if attr_map is None:
+                    cursor.execute(get_attsr_query)
+                    attr_map = {row[0]: (row[1], row[2]) for row in cursor.fetchall()}
+
                 cursor.execute(get_runs_query, binary=True)
                 source_records = list(cursor.fetchall())
 
@@ -375,7 +380,13 @@ SELECT * from r
                 #     rsuffix="_",
                 # )
 
-                attrs = get_value(attrs_column)
+                attrs = {}
+                for attr_id in chain(
+                    get_value(experiment_table.experiment_attrs),
+                    get_value(experiment_table.experiment_tags),
+                ):
+                    kind, value = attr_map[attr_id]  # type: ignore
+                    attrs[kind] = value
 
                 # dataset_name = src_command["dataset"]["name"]
                 # dsinfo = dataset_index[dataset_index["Dataset"] == dataset_name].iloc[0]
