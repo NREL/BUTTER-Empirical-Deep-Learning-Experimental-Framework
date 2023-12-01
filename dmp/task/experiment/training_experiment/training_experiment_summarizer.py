@@ -58,6 +58,8 @@ class TrainingExperimentSummarizer:
 
         # remove duplicate loss columns
         for metric in keys.loss_metrics:
+            if metric == keys.loss:
+                continue
             for prefix in keys.data_sets:
                 column = prefix + "_" + metric
                 loss_column = prefix + "_" + keys.loss
@@ -175,8 +177,9 @@ class TrainingExperimentSummarizer:
             experiment,
             epoch_samples.groupby(keys.epoch, sort=True),
             keys.epoch,
-            {k for k in keys.simple_summarize_keys if k not in skip_set},
-            history.columns.values.tolist(),
+            simple_metrics={k for k in keys.simple_summarize_keys if k not in skip_set},
+            quantile_metrics=keys.quantile_metrics,
+            count_metrics=[keys.test_loss_cmin],
         )
 
         return by_epoch
@@ -220,24 +223,39 @@ class TrainingExperimentSummarizer:
         del history[keys.run]
 
         run_groups = history[loss_key].groupby(keys.run)
-        loss_levels = numpy.flip(
-            self.make_summary_points(
-                run_groups.min().median(),
-                run_groups.max().min(),
-                1e-8,
-                1e-6,
-                numpy.log(10) / 25,
-            ).astype(numpy.float32)
-        )
 
-        # print(f"loss_levels")
-        # print(loss_levels)
-        # print(loss_levels.shape)
+        lo = run_groups.min().median()
+        hi = history.loc[history[keys.epoch] <= 1, loss_key].median()
+        print(f"lo {lo} hi {hi}")
+
+        magnificaiton = 1.0
+        while True:
+            loss_levels = numpy.flip(
+                self.make_summary_points(
+                    run_groups.min().median(),
+                    hi,
+                    1e-10,
+                    1e-8,
+                    numpy.log(2) / (magnificaiton),
+                ).astype(numpy.float32)
+            )
+            print(f"finding: {magnificaiton} : {len(loss_levels)}")
+            if len(loss_levels) >= 32 or magnificaiton >= 8192:
+                break
+            magnificaiton *= 2
+
+        print(f"loss_levels")
+        print(loss_levels)
+        print(loss_levels.shape)
 
         # loss_series = history[keys.test_loss_cmin]
         interpolated_loss_points = {
-            k: [] for k in chain((loss_index_key, keys.epoch), history.columns)
+            # k: [] for k in chain((loss_index_key, keys.epoch), history.columns)
+            k: []
+            for k in history.columns.values.tolist()
         }
+        print(f"history cols: {sorted(history.columns.values.tolist())}")
+
         for run in runs:
             run_df = history.loc[run, :].set_index(keys.epoch, drop=False).sort_index()
             # del run_df[keys.run]
@@ -263,7 +281,7 @@ class TrainingExperimentSummarizer:
 
                 prev_weight = 0.0
                 delta = prev_loss - curr_loss
-                if delta > 1e-12:
+                if delta > 1e-9:
                     prev_weight = (loss_level - curr_loss) / delta
                 curr_weight = 1.0 - prev_weight
 
@@ -271,7 +289,7 @@ class TrainingExperimentSummarizer:
                 # interpolated_loss_points[keys.epoch].append(
                 #     curr_weight * curr[keys.epoch] + prev_weight * prev[keys.epoch]
                 # )
-                interpolated_loss_points[loss_index_key].append(loss_index)
+                # interpolated_loss_points[loss_index_key].append(loss_index)
                 # print(
                 #     f"intrp: {loss_index} {i} {prev_loss} {loss_level} {curr_loss} -> {prev_weight}"
                 # )
@@ -279,7 +297,10 @@ class TrainingExperimentSummarizer:
                     prev_value = prev[c]
                     curr_value = curr[c]
                     interpolated_value = curr_value
-                    if (
+
+                    if c == loss_key:
+                        interpolated_value = loss_level
+                    elif (
                         is_valid_number(curr_value)
                         and is_valid_number(prev_value)
                         and is_valid_number(curr_weight)
@@ -298,20 +319,27 @@ class TrainingExperimentSummarizer:
         # print(interpolated_loss_points)
 
         by_loss_df = pandas.DataFrame(interpolated_loss_points)
-        by_loss_df.set_index(loss_index_key, inplace=True, drop=True)
-        by_loss_df.sort_index(inplace=True)
+        # by_loss_df.set_index(loss_index_key, inplace=True, drop=True)
+        # by_loss_df.sort_index(inplace=True)
 
-        skip_set = {keys.run, keys.test_loss_cmin}
+        skip_set = {keys.run, keys.test_loss_cmin, keys.epoch, "test_loss_best_epoch"}
         by_loss = self._summarize_group(
             experiment,
             by_loss_df.groupby(loss_key, sort=True),
             keys.test_loss_cmin,
-            {k for k in keys.simple_summarize_keys if k not in skip_set},
-            history.columns.values.tolist(),
+            simple_metrics={
+                k
+                for k in chain(keys.simple_summarize_keys, keys.quantile_metrics)
+                if k not in skip_set
+            },
+            quantile_metrics=[
+                keys.epoch,
+            ],
+            count_metrics=[keys.test_loss_cmin],
         )
 
-        # print(by_loss)
-        # print(by_loss.describe())
+        print(by_loss)
+        print(by_loss.describe())
         return by_loss
 
     def make_summary_points(
@@ -372,8 +400,6 @@ class TrainingExperimentSummarizer:
 
         return numpy.concatenate((linear_points, log_points))
 
-        # return numpy.concatenate((linear_points, logarithmic_points))
-
     def _summarize_group(
         self,
         experiment: TrainingExperiment,
@@ -381,6 +407,7 @@ class TrainingExperimentSummarizer:
         group_column: str,  #: Union[numpy.ndarray, pandas.Series],
         simple_metrics: Set[str],
         quantile_metrics: Iterable,
+        count_metrics: Iterable[str],
     ) -> pandas.DataFrame:
         keys: TrainingExperimentKeys = experiment.keys
         result = pandas.DataFrame(
@@ -391,28 +418,30 @@ class TrainingExperimentSummarizer:
         )
         result.set_index(group_column, inplace=True)
 
-        print(f"summarize group {len(groups)} {group_column} {simple_metrics}")
+        print(
+            f"summarize group {len(groups)}\n{group_column}\n{simple_metrics}\n{quantile_metrics}\n{count_metrics}"
+        )
         print(result)
         for metric in simple_metrics:
             if metric in groups.obj:  # type: ignore
                 result[metric + "_quantile_50"] = (
                     groups[metric].median().astype(numpy.float32)
                 )
-        print(f"summarize group 2")
-        print(result)
+        # print(f"summarize group 2")
+        # print(result)
 
         quantile_points = numpy.array([0, 0.25, 0.5, 0.75, 1], dtype=numpy.float32)
         from pandas.api.types import is_numeric_dtype
 
-        print(f"summarize group 3 input quantile metrics: {quantile_metrics}")
-        print(f"in result: {[key for key in quantile_metrics if key in result]}")
-        print(
-            f"in simple: {[key for key in quantile_metrics if key in simple_metrics]}"
-        )
-        print(f"in groups: {[key for key in quantile_metrics if key in groups.obj]}")
-        print(
-            f"numeric: {[key for key in quantile_metrics if key in groups.obj and is_numeric_dtype(groups.obj[key])]}"
-        )
+        # print(f"summarize group 3 input quantile metrics: {quantile_metrics}")
+        # print(f"in result: {[key for key in quantile_metrics if key in result]}")
+        # print(
+        #     f"in simple: {[key for key in quantile_metrics if key in simple_metrics]}"
+        # )
+        # print(f"in groups: {[key for key in quantile_metrics if key in groups.obj]}")
+        # print(
+        #     f"numeric: {[key for key in quantile_metrics if key in groups.obj and is_numeric_dtype(groups.obj[key])]}"
+        # )
         quantile_metrics = [
             key
             for key in quantile_metrics
@@ -437,7 +466,7 @@ class TrainingExperimentSummarizer:
             for metric, quantile in quantiles.columns.to_flat_index().values
         ]
 
-        for key in chain(simple_metrics, quantile_metrics):
+        for key in count_metrics:
             if key in groups.obj:
                 result[key + "_count"] = groups[key].count().astype(numpy.int16)
 

@@ -28,14 +28,25 @@ class TrainingExperimentKeys:
         self.measurement_prefixes = (self.trained, *self.data_sets)
 
         self.loss = "loss"
-        self.cmin = "cumulative_min"
+        self.accuracy = "accuracy"
+
+        self.best = "best"
+        self.cumulative_best = "best"
         self.cepoch = "best_epoch"
 
         self.test_loss = self.test + "_" + self.loss
-        self.test_loss_cmin = self.test_loss + "_" + self.cmin
+        self.test_loss_cmin = self.test_loss + "_" + self.cumulative_best
 
         self.validation_loss = self.validation + "_" + self.loss
-        self.validation_loss_cmin = self.validation_loss + "_" + self.cmin
+        self.validation_loss_cmin = self.validation_loss + "_" + self.cumulative_best
+
+        self.loss_metrics = [
+            self.loss,
+            self.accuracy,
+            "mean_squared_error",
+            "binary_crossentropy",
+            "catergorical_crossentropy",
+        ]
 
         def make_with_prefixes(
             prefixes: Iterable[str],
@@ -67,11 +78,11 @@ class TrainingExperimentKeys:
             )
         )
 
-        self.loss_metrics: Sequence[str] = (
-            "categorical_crossentropy",
-            "mean_squared_error",
-            "binary_crossentropy",
-        )
+        # self.loss_metrics: Sequence[str] = (
+        #     "categorical_crossentropy",
+        #     "mean_squared_error",
+        #     "binary_crossentropy",
+        # )
 
         self.prefixed_loss_metrics: Sequence[str] = tuple(
             make_with_data_set_prefixes(self.loss_metrics)
@@ -99,7 +110,7 @@ class TrainingExperimentKeys:
             m = numpy.fmin.accumulate(a)
             x = numpy.arange(a.shape[0])
             x[1:] *= m[:-1] > m[1:]
-            numpy.minimum.accumulate(x, axis=0, out=x)
+            numpy.maximum.accumulate(x, axis=0, out=x)
             return m, x
 
         # cmin = lambda c: numpy.argmin.accumulate(c)
@@ -127,16 +138,11 @@ class TrainingExperimentKeys:
                     ]
                     for metric, cfunc, ifunc, suffix in chain(
                         [
-                            (metric, cmin, imin, self.cmin)
-                            for metric in chain(
-                                self.loss_metrics,
-                                [
-                                    self.loss,
-                                ],
-                            )
+                            (metric, cmin, imin, self.cumulative_best)
+                            for metric in self.loss_metrics
                         ],
                         [
-                            ("accuracy", cmax, imax, "cumulative_max"),
+                            (self.accuracy, cmax, imax, self.cumulative_best),
                         ],  # type: ignore
                     )  # type: ignore
                 ]  # type: ignore
@@ -149,11 +155,33 @@ class TrainingExperimentKeys:
                 self.epoch,
             ]
             + make_with_data_set_prefixes((self.interval_suffix,))
+            + make_with_prefixes(
+                [self.train, self.trained, self.validation],
+                self.loss_metrics,
+            )
             + [
                 epoch_column
                 for column, cfunc, ifunc, result_column, epoch_column in self.run_summary_metrics
             ]
         )
+
+        test_summary_metrics = [
+            (name, cumulative_column, epoch_column)
+            for name, _, _, cumulative_column, epoch_column in self.run_summary_metrics
+            if name.startswith(self.test)
+        ]
+
+        self.quantile_metrics = [
+            *[name for name, cumulative_column, epoch_column in test_summary_metrics],
+            *[
+                cumulative_column
+                for name, cumulative_column, epoch_column in test_summary_metrics
+            ],
+            # *[
+            #     epoch_column
+            #     for name, cumulative_column, epoch_column in test_summary_metrics
+            # ],
+        ]
 
 
 keys = TrainingExperimentKeys()
