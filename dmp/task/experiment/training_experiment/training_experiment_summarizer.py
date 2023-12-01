@@ -40,7 +40,7 @@ class TrainingExperimentSummarizer:
         keys: TrainingExperimentKeys = experiment.keys
         sources = []
         for i, (run_id, run_history) in enumerate(histories):
-            print(f"run {i} {run_id} {run_history.shape}")
+            # print(f"run {i} {run_id} {run_history.shape}")
             if "index" in run_history.columns:
                 del run_history["index"]
 
@@ -69,8 +69,8 @@ class TrainingExperimentSummarizer:
 
         history.set_index([keys.run, keys.epoch], inplace=True, drop=False)
         history.sort_index(inplace=True)
-        print(f"history 3:")
-        print(history.head(10))
+        # print(f"history 3:")
+        # print(history.head(10))
 
         for (
             column,
@@ -126,12 +126,12 @@ class TrainingExperimentSummarizer:
         }.items():
             pandas.set_option(k, v)
 
-        print(by_epoch.head(3000))
-        print(by_epoch.describe())
+        # print(by_epoch.head(3000))
+        # print(by_epoch.describe())
 
         by_loss = self._summarize_by_loss(experiment, runs, history)
-        print(by_loss.head(3000))
-        print(by_loss.describe())
+        # print(by_loss.head(3000))
+        # print(by_loss.describe())
 
         return ExperimentSummaryRecord(
             num_sources,
@@ -168,9 +168,9 @@ class TrainingExperimentSummarizer:
         del epoch_samples[keys.run]
         del epoch_samples[keys.epoch]
 
-        print(f"summarize by epoch names {history.columns.values.tolist()}")
-        print(history.columns)
-        print(history.head(10))
+        # print(f"summarize by epoch names {history.columns.values.tolist()}")
+        # print(history.columns)
+        # print(history.head(10))
 
         skip_set = {keys.run, keys.epoch}
         by_epoch = self._summarize_group(
@@ -226,7 +226,7 @@ class TrainingExperimentSummarizer:
 
         lo = run_groups.min().median()
         hi = history.loc[history[keys.epoch] <= 1, loss_key].median()
-        print(f"lo {lo} hi {hi}")
+        # print(f"lo {lo} hi {hi}")
 
         magnificaiton = 1.0
         while True:
@@ -239,14 +239,14 @@ class TrainingExperimentSummarizer:
                     numpy.log(2) / (magnificaiton),
                 ).astype(numpy.float32)
             )
-            print(f"finding: {magnificaiton} : {len(loss_levels)}")
+            # print(f"finding: {magnificaiton} : {len(loss_levels)}")
             if len(loss_levels) >= 32 or magnificaiton >= 8192:
                 break
             magnificaiton *= 2
 
-        print(f"loss_levels")
-        print(loss_levels)
-        print(loss_levels.shape)
+        # print(f"loss_levels")
+        # print(loss_levels)
+        # print(loss_levels.shape)
 
         # loss_series = history[keys.test_loss_cmin]
         interpolated_loss_points = {
@@ -254,7 +254,7 @@ class TrainingExperimentSummarizer:
             k: []
             for k in history.columns.values.tolist()
         }
-        print(f"history cols: {sorted(history.columns.values.tolist())}")
+        # print(f"history cols: {sorted(history.columns.values.tolist())}")
 
         for run in runs:
             run_df = history.loc[run, :].set_index(keys.epoch, drop=False).sort_index()
@@ -338,8 +338,8 @@ class TrainingExperimentSummarizer:
             count_metrics=[keys.test_loss_cmin],
         )
 
-        print(by_loss)
-        print(by_loss.describe())
+        # print(by_loss)
+        # print(by_loss.describe())
         return by_loss
 
     def make_summary_points(
@@ -418,10 +418,10 @@ class TrainingExperimentSummarizer:
         )
         result.set_index(group_column, inplace=True)
 
-        print(
-            f"summarize group {len(groups)}\n{group_column}\n{simple_metrics}\n{quantile_metrics}\n{count_metrics}"
-        )
-        print(result)
+        # print(
+        #     f"summarize group {len(groups)}\n{group_column}\n{simple_metrics}\n{quantile_metrics}\n{count_metrics}"
+        # )
+        # print(result)
         for metric in simple_metrics:
             if metric in groups.obj:  # type: ignore
                 result[metric + "_quantile_50"] = (
@@ -453,7 +453,7 @@ class TrainingExperimentSummarizer:
             )
         ]
 
-        print(f"summarize group 3 quantiles: {quantile_metrics}")
+        # print(f"summarize group 3 quantiles: {quantile_metrics}")
 
         quantiles = (
             groups[quantile_metrics]
