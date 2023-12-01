@@ -72,8 +72,7 @@ def do_work(args) -> UpdateExperimentSummaryResult:
     worker_result = UpdateExperimentSummaryResult(0, 0)
     while num_tries < 32:
         this_result: UpdateExperimentSummaryResult = context.task(context)  # type: ignore
-        worker_result += this_result
-        num_updated = worker_result.num_experiments_updated
+        worker_result = worker_result + this_result
         print(f"Updated {this_result}; lifetime total {worker_result}")
         if worker_result.num_experiments_updated == 0:
             num_tries += 1
