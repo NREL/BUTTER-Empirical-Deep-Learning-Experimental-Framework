@@ -439,9 +439,7 @@ class TrainingExperimentSummarizer:
 
         for key in chain(simple_metrics, quantile_metrics):
             if key in groups.obj:
-                result[key + "_count"] = (
-                    pandas.notna(groups[key]).count().astype(numpy.int16)
-                )
+                result[key + "_count"] = groups[key].count().astype(numpy.int16)
 
         result = pandas.concat(
             (

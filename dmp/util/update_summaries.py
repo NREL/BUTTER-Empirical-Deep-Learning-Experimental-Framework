@@ -41,7 +41,7 @@ def main():
     block_size = args.block_size
 
     pool = multiprocessing.ProcessPool(num_workers)
-    results = pool.uimap(do_work, ((i, block_size) for i in range(num_workers)))
+    results = pool.uimap(do_work, ((i,) for i in range(num_workers)))
     aggregate_result: UpdateExperimentSummaryResult = sum(results)  # type: ignore
     print(
         f"Done. Summarized {aggregate_result.num_experiments_updated} experiments, excepted {aggregate_result.num_experiments_excepted}."
@@ -54,7 +54,7 @@ def main():
 
 def do_work(args) -> UpdateExperimentSummaryResult:
     worker_number = args[0]
-    block_size = args[1]
+    # block_size = args[1]
 
     context = Context(
         Worker(

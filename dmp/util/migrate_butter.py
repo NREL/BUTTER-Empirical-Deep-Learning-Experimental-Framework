@@ -452,6 +452,33 @@ SELECT * from r
                 #     ):
                 #         del history[metric_key]
 
+                optimizer = {
+                    "class": attrs["optimizer"],
+                }
+
+                if "optimizer_learning_rate" in attrs:
+                    optimizer["learning_rate"] = attrs["learning_rate"]
+
+                if "optimizer_momentum" in attrs:
+                    optimizer["momentum"] = attrs["optimizer_momentum"]
+
+                if "optimizer_nesterov" in attrs:
+                    optimizer["nesterov"] = attrs["optimizer_nesterov"]
+
+                inner_kernel_regularizer = None
+                if "model_inner_kernel_regularizer" in attrs:
+                    inner_kernel_regularizer = {
+                        "class": attrs["model_inner_kernel_regularizer"]
+                    }
+                    if "model_inner_kernel_regularizer_l1" in attrs:
+                        inner_kernel_regularizer["l1"] = attrs[
+                            "model_inner_kernel_regularizer_l1"
+                        ]
+                    if "model_inner_kernel_regularizer_l2" in attrs:
+                        inner_kernel_regularizer["l2"] = attrs[
+                            "model_inner_kernel_regularizer_l2"
+                        ]
+
                 dst_command = {
                     "run": {
                         "data": {
@@ -529,7 +556,7 @@ SELECT * from r
                             "type": attrs["model"],
                             "depth": attrs["model_depth"],
                             "inner": {
-                                "type": "Dense",
+                                "type": attrs["model_inner"],
                                 "units": -1,
                                 "use_bias": attrs["model_inner_use_bias"],
                                 "activation": attrs["model_inner_activation"],
@@ -546,9 +573,7 @@ SELECT * from r
                                 "kernel_initializer": attrs[
                                     "model_inner_kernel_initializer"
                                 ],
-                                "kernel_regularizer": attrs[
-                                    "model_inner_kernel_regularizer"
-                                ],
+                                "kernel_regularizer": inner_kernel_regularizer,
                                 "activity_regularizer": attrs[
                                     "model_inner_activity_regularizer"
                                 ],
@@ -560,8 +585,8 @@ SELECT * from r
                             },
                             "shape": attrs["model_shape"],
                             "output": {
-                                "type": src_command["model"]["inner"]["type"],
-                                "units": attrs["output_shape"][0],
+                                "type": attrs["model_output"],
+                                "units": attrs["model_output_units"],
                                 "use_bias": attrs["model_output_use_bias"],
                                 "activation": attrs["model_output_activation"],
                                 "bias_constraint": attrs[
@@ -579,14 +604,12 @@ SELECT * from r
                                 "kernel_initializer": {
                                     "class": attrs["model_output_kernel_initializer"]
                                 },
-                                "kernel_regularizer": src_command["model"]["inner"][
-                                    "kernel_regularizer"
-                                ],
-                                "activity_regularizer": src_command["model"]["inner"][
-                                    "activity_regularizer"
+                                "kernel_regularizer": inner_kernel_regularizer,
+                                "activity_regularizer": attrs[
+                                    "model_output_activity_regularizer"
                                 ],
                             },
-                            "search_method": src_command["model"]["search_method"],
+                            "search_method": attrs["model_search_method"],
                         },
                         "dataset": {
                             "name": attrs["dataset"],
@@ -597,7 +620,7 @@ SELECT * from r
                             "label_noise": attrs["dataset_label_noise"],
                             "validation_split": attrs["dataset_validation_split"],
                         },
-                        "optimizer": attrs["optimizer"],
+                        "optimizer": optimizer,
                         "precision": src_command["precision"],
                         "early_stopping": src_command["early_stopping"],
                     },
