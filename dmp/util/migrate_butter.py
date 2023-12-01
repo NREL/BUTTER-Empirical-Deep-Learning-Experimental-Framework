@@ -711,6 +711,11 @@ hi AS (
     FROM input_data
     ON CONFLICT (id) DO UPDATE SET
         experiment_id = EXCLUDED.experiment_id
+),
+mu AS (
+    UPDATE migration SET
+        status = 2
+    WHERE migration.run_id IN (SELECT id FROM input_data)
 )
 SELECT 1;"""
             ).format(
