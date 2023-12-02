@@ -121,7 +121,7 @@ WITH
 {to_summarize} AS (
 	SELECT
 		{experiment_id},
-		{experiment}
+		{experiment_column}
 	FROM
 		{experiment}
 	WHERE TRUE
@@ -144,7 +144,7 @@ WHERE TRUE
 )
 SELECT
 	{to_summarize}.{experiment_id},
-	{to_summarize}.{experiment},
+	{to_summarize}.{experiment_column},
 	{history}.{id},
 	{history}.{history_column}
 FROM
