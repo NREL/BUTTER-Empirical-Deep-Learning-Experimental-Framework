@@ -38,41 +38,38 @@ WITH histories AS (
 			SELECT DISTINCT ON (experiment_id) *
 			FROM
 			(
-				SELECT
-					target.experiment_id,
-					root_run.id
-				FROM
-					(
-						SELECT
-							run_status.experiment_id,
-							run_status.update_time
-						FROM
-							run_status
-						WHERE TRUE
-							AND run_status.status = 2
-							AND NOT EXISTS (
-								SELECT 1 FROM experiment2
-								WHERE
-									experiment2.experiment_id = run_status.experiment_id
-									AND experiment2.most_recent_run >= run_status.update_time
-							)
-						ORDER BY run_status.update_time DESC
-					) target
-					CROSS JOIN LATERAL (
-						SELECT rs.id FROM
-							run_status rs
-						WHERE TRUE
-							AND rs.experiment_id = target.experiment_id
-							AND rs.status = 2
-						ORDER BY rs.update_time ASC, id
-						LIMIT 1
-						FOR UPDATE SKIP LOCKED
-					) root_run
-				LIMIT 10
+                SELECT
+                    run_status.experiment_id,
+                FROM
+                    run_status
+                    CROSS JOIN LATERAL (
+                        SELECT rs.id root_id FROM
+                            run_status rs
+                        WHERE TRUE
+                            AND rs.experiment_id = run_status.experiment_id
+                            AND rs.status = 2
+                        ORDER BY rs.update_time ASC, id
+                        LIMIT 1) root_id
+                    CROSS JOIN LATERAL (
+                        SELECT rs.id FROM
+                            run_status rs
+                        WHERE rs.id = root_id
+                        FOR UPDATE SKIP LOCKED
+                    ) root_run
+                WHERE TRUE
+                    AND run_status.status = 2
+                    AND NOT EXISTS (
+                        SELECT 1 FROM experiment2
+                        WHERE
+                            experiment2.experiment_id = run_status.experiment_id
+                            AND experiment2.most_recent_run >= run_status.update_time
+                    )
+                ORDER BY run_status.update_time DESC
+                LIMIT 10
 			) selected_experiment
 		) selected_experiment
-		INNER JOIN run_data ON (run_data.id = selected_experiment.id)
 		INNER JOIN run_status ON (run_status.experiment_id = selected_experiment.experiment_id AND run_status.status = 2)
+		INNER JOIN run_data ON (run_data.id = run_status.id)
 		INNER JOIN history ON (history.id = run_status.id)
 	ORDER BY experiment_id
 ), claim AS (
@@ -133,9 +130,10 @@ class UpdateExperimentSummary(Task):
             status=run_status.status.identifier,
             num_runs=experiment_table.num_runs.identifier,
             selected_experiment=Identifier("_selected_experiment"),
-            target=Identifier("_target"),
             root_run=Identifier("_root_run"),
             root_selection=Identifier("_root_selection"),
+            root_id=Identifier("_root_id"),
+            root_lock=Identifier("_root_lock"),
             status_complete=Literal(JobStatus.Complete.value),
             experiment_limit=Literal(self.experiment_limit),
             runs_to_update=Identifier("_runs_to_update"),
@@ -164,42 +162,39 @@ WITH {runs_to_update} AS (
             SELECT DISTINCT ON ({experiment_id}) *
             FROM
             (
+
                 SELECT
-                    {target}.{experiment_id},
-                    {root_run}.{id}
+                    {run_status}.{experiment_id}
                 FROM
-                    (
-                        SELECT
-                            {run_status}.{experiment_id},
-                            {run_status}.{update_time}
-                        FROM
-                            {run_status}
-                        WHERE TRUE
-                            AND {run_status}.{status} = {status_complete}
-                            AND NOT EXISTS (
-                                SELECT 1 FROM {experiment}
-                                WHERE
-                                    {experiment}.{experiment_id} = {run_status}.{experiment_id}
-                                    AND {experiment}.{most_recent_run} >= {run_status}.{update_time}
-                            )
-                        ORDER BY {run_status}.{update_time} DESC
-                    ) {target}
+                    {run_status}
                     CROSS JOIN LATERAL (
-                        SELECT {root_selection}.{id} FROM
+                        SELECT {root_selection}.{id} {root_id} FROM
                             {run_status} {root_selection}
                         WHERE TRUE
-                            AND {root_selection}.{experiment_id} = {target}.{experiment_id}
+                            AND {root_selection}.{experiment_id} = {run_status}.{experiment_id}
                             AND {root_selection}.{status} = {status_complete}
-                        ORDER BY {root_selection}.{update_time} ASC, {id}
+                        ORDER BY {root_selection}.{update_time} ASC, {root_selection}.{id}
                         LIMIT 1
-                        FOR UPDATE SKIP LOCKED
-                    ) {root_run}
-                ORDER BY {update_time} DESC
+                    ) {root_id}
+                    CROSS JOIN LATERAL (
+                        SELECT {root_selection}.{id} {root_lock} FROM
+                            {run_status} {root_selection}
+                        WHERE {root_selection}.{id} = {root_id}.{root_id}
+                    ) {root_lock}
+                WHERE TRUE
+                    AND {run_status}.{status} = {status_complete}
+                    AND NOT EXISTS (
+                        SELECT 1 FROM {experiment}
+                        WHERE
+                            {experiment}.{experiment_id} = {run_status}.{experiment_id}
+                            AND {experiment}.{most_recent_run} >= {run_status}.{update_time}
+                    )
+                ORDER BY {run_status}.{update_time} DESC
                 LIMIT {experiment_limit}
             ) {selected_experiment}
         ) {selected_experiment}
-		INNER JOIN {run_data} ON ({run_data}.{id} = {selected_experiment}.{id})
 		INNER JOIN {run_status} ON ({run_status}.{experiment_id} = {selected_experiment}.{experiment_id} AND {run_status}.{status} = {status_complete})
+        INNER JOIN {run_data} ON ({run_data}.{id} = {run_status}.{id})
 		INNER JOIN {history} ON ({history}.{id} = {run_status}.{id})
     ORDER BY {experiment_id}
 ), claim AS (
