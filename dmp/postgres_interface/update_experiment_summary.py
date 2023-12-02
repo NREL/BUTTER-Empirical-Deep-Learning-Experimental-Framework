@@ -239,7 +239,11 @@ SELECT * FROM {runs_to_update} ORDER BY {experiment_id}
                     for run_id, history in encoded_histories
                 ]
 
-                experiment.summarize(histories)
+                schema.store_summary(
+                    experiment,
+                    experiment_id,  # type: ignore
+                    experiment.summarize(histories),
+                )
                 result.num_experiments_updated += 1
             except Exception as e:
                 result.num_experiments_excepted += 1
