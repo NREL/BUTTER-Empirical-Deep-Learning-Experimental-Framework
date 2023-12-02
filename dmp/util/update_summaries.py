@@ -35,13 +35,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("num_workers", type=int)
     parser.add_argument("block_size", type=int)
+    parser.add_argument("lock_limit", type=int)
     args = parser.parse_args()
 
     num_workers = args.num_workers
     block_size = args.block_size
+    lock_limit = args.lock_limit
 
     pool = multiprocessing.ProcessPool(num_workers)
-    results = pool.uimap(do_work, ((i,) for i in range(num_workers)))
+    results = pool.uimap(
+        do_work, ((i, block_size, lock_limit) for i in range(num_workers))
+    )
     aggregate_result: UpdateExperimentSummaryResult = sum(results)  # type: ignore
     print(
         f"Done. Summarized {aggregate_result.num_experiments_updated} experiments, excepted {aggregate_result.num_experiments_excepted}."
@@ -49,11 +53,10 @@ def main():
     pool.close()
     pool.join()
     print("Complete.")
-    do_work((0, 0))
 
 
 def do_work(args) -> UpdateExperimentSummaryResult:
-    worker_number = args[0]
+    worker_number, block_size, lock_limit = args
     # block_size = args[1]
 
     context = Context(
@@ -65,7 +68,10 @@ def do_work(args) -> UpdateExperimentSummaryResult:
             None,
         ),
         Job(uuid.uuid4()),
-        UpdateExperimentSummary(1),
+        UpdateExperimentSummary(
+            block_size,
+            lock_limit,
+        ),
     )
 
     num_tries = 0

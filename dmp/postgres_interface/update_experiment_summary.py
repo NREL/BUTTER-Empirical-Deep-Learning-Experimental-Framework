@@ -92,6 +92,7 @@ SELECT * FROM histories
 @dataclass
 class UpdateExperimentSummary(Task):
     experiment_limit: int
+    lock_limit: int
 
     @staticmethod
     def register_types(types: Iterable[Type]) -> None:
@@ -136,8 +137,10 @@ class UpdateExperimentSummary(Task):
             root_lock=Identifier("_root_lock"),
             status_complete=Literal(JobStatus.Complete.value),
             experiment_limit=Literal(self.experiment_limit),
+            lock_limit=Literal(self.lock_limit),
             runs_to_update=Identifier("_runs_to_update"),
             by_epoch=experiment_table.by_epoch.identifier,
+            by_loss=experiment_table.by_loss.identifier,
         )
 
         claim_columns = ColumnGroup(
@@ -162,7 +165,6 @@ WITH {runs_to_update} AS (
             SELECT DISTINCT ON ({experiment_id}) *
             FROM
             (
-
                 SELECT
                     {run_status}.{experiment_id}
                 FROM
@@ -190,8 +192,9 @@ WITH {runs_to_update} AS (
                             AND {experiment}.{most_recent_run} >= {run_status}.{update_time}
                     )
                 ORDER BY {run_status}.{update_time} DESC
-                LIMIT {experiment_limit}
+                LIMIT {lock_limit}
             ) {selected_experiment}
+            LIMIT {experiment_limit}
         ) {selected_experiment}
 		INNER JOIN {run_status} ON ({run_status}.{experiment_id} = {selected_experiment}.{experiment_id} AND {run_status}.{status} = {status_complete})
         INNER JOIN {run_data} ON ({run_data}.{id} = {run_status}.{id})
@@ -207,9 +210,10 @@ WITH {runs_to_update} AS (
 	ON CONFLICT ({experiment_id}) DO UPDATE SET
 		{most_recent_run} = EXCLUDED.{most_recent_run},
 		{num_runs} = EXCLUDED.{num_runs},
-        {by_epoch} = NULL
+        {by_epoch} = NULL,
+        {by_loss} = NULL
 )
-SELECT * FROM {runs_to_update} ORDER BY {experiment_id}
+SELECT * FROM {runs_to_update}
 ;"""
         ).format(**format_args)
 
