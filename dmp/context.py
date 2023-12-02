@@ -90,6 +90,7 @@ class Context:
         extended_history: pandas.DataFrame,
     ) -> None:
         print(f"record_history\n{history}\nextended:\n{extended_history}")
+        from dmp.marshaling import marshal
 
         if self.schema is not None:
             print(f"storing experiment {experiment_id} history...")
@@ -98,6 +99,7 @@ class Context:
                     (
                         self.job.id,
                         experiment_id,
+                        marshal.marshal(self.experiment),
                         history,
                         extended_history,
                     )

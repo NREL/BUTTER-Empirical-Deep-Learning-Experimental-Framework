@@ -91,7 +91,7 @@ class PostgresSchema:
 
     def record_history(
         self,
-        results: Sequence[Tuple[UUID, UUID, pandas.DataFrame, pandas.DataFrame]],
+        results: Sequence[Tuple[UUID, UUID, Dict, pandas.DataFrame, pandas.DataFrame]],
     ) -> None:
         # prepare histories:
         prepared_results = list(
@@ -100,38 +100,54 @@ class PostgresSchema:
                     (
                         run_id,
                         experiment_id,
+                        Jsonb(experiment),
                         convert_dataframe_to_bytes(history),
                         convert_dataframe_to_bytes(extended_history),
                     )
-                    for run_id, experiment_id, history, extended_history in results
+                    for run_id, experiment_id, experiment, history, extended_history in results
                 )
             )
         )
 
         history_table = self.history
+        experiment_table = self.experiment
         input_colums = ColumnGroup(
             history_table.id,
             history_table.experiment_id,
+            experiment_table.experiment,
             history_table.history,
             history_table.extended_history,
         )
 
         query = SQL(
             """
-                INSERT INTO {history_table} ( {input_colums} )
+                WITH {input_table} AS (
+                    SELECT {casting_clause} FROM ( VALUES {input_placeholders} ) AS {input_table} ({input_columns})
+                ),
+                {experiment_insert} AS (
+                    INSERT INTO {experiment_table} ( {experiment_id}, {experiment} )
+                    SELECT {experiment_id}, {experiment} FROM {input_table}
+                    ON CONFLICT ({experiment_id}) DO NOTHING
+                )
+                INSERT INTO {history_table} ( {id}, {experiment_id}, {history}, {extended_history} )
                 SELECT
-                {casting_clause}
-                FROM
-                ( VALUES {input_placeholders} ) AS {input_table} ({input_colums})
+                    {id}, {experiment_id}, {history}, {extended_history}
+                FROM {input_table}
                 ON CONFLICT ({id}) DO UPDATE SET {update_clause}
-                ;"""
+;"""
         ).format(
-            history_table=history_table.identifier,
-            input_colums=input_colums.columns_sql,
+            input_table=Identifier("_input_table"),
             casting_clause=input_colums.casting_sql,
             input_placeholders=input_colums.placeholders_for_values(len(results)),
-            input_table=Identifier("_input_table"),
+            input_colums=input_colums.columns_sql,
+            experiment_insert=Identifier("_experiment_insert"),
+            experiment_table=experiment_table.identifier,
+            experiment_id=history_table.experiment_id.identifier,
+            experiment=experiment_table.experiment.identifier,
+            history_table=history_table.identifier,
             id=history_table.id.identifier,
+            history=history_table.history.identifier,
+            extended_history=history_table.extended_history.identifier,
             update_clause=sql_comma.join(
                 (
                     SQL("{column} = EXCLUDED.{column}").format(column=column.identifier)

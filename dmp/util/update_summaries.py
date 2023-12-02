@@ -46,7 +46,9 @@ def main():
     results = pool.uimap(
         do_work, ((i, block_size, lock_limit) for i in range(num_workers))
     )
-    aggregate_result: UpdateExperimentSummaryResult = sum(results)  # type: ignore
+    aggregate_result = UpdateExperimentSummaryResult(0, 0)
+    for result in results:
+        aggregate_result += result
     print(
         f"Done. Summarized {aggregate_result.num_experiments_updated} experiments, excepted {aggregate_result.num_experiments_excepted}."
     )
