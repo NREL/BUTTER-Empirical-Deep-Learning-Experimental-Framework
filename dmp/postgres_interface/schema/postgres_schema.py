@@ -261,15 +261,14 @@ WHERE TRUE
 
     def store_summary(
         self,
-        experiment: TrainingExperiment,
         experiment_id: UUID,
         summary: ExperimentSummaryRecord,
     ) -> None:
-        self.store_summaries([(experiment, experiment_id, summary)])
+        self.store_summaries([(experiment_id, summary)])
 
     def store_summaries(
         self,
-        summaries: Sequence[Tuple[TrainingExperiment, UUID, ExperimentSummaryRecord]],
+        summaries: Sequence[Tuple[UUID, ExperimentSummaryRecord]],
     ) -> None:
         from dmp.marshaling import marshal
 
@@ -278,14 +277,11 @@ WHERE TRUE
                 *(
                     (
                         experiment_id,
-                        Jsonb(marshal.marshal(experiment)),
                         summary.num_runs,
                         convert_dataframe_to_bytes(summary.by_epoch),
                         convert_dataframe_to_bytes(summary.by_loss),
-                        convert_dataframe_to_bytes(summary.by_progress),
-                        convert_dataframe_to_bytes(summary.epoch_subset),
                     )
-                    for experiment, experiment_id, summary in summaries
+                    for experiment_id, summary in summaries
                 )
             )
         )
@@ -293,42 +289,32 @@ WHERE TRUE
         experiment_table = self.experiment
         input_columns = ColumnGroup(
             experiment_table.experiment_id,
-            experiment_table.experiment,
             experiment_table.num_runs,
             experiment_table.by_epoch,
             experiment_table.by_loss,
-            experiment_table.by_progress,
-            experiment_table.epoch_subset,
         )
 
         query = SQL(
             """
-INSERT INTO {experiment_table} ( {input_columns} )
-SELECT
-{casting_clause}
+UPDATE {experiment_table} SET
+    {num_runs} = {input_table}.{num_runs},
+    {by_epoch} = {input_table}.{by_epoch},
+    {by_loss} = {input_table}.{by_loss}
 FROM
-( VALUES {input_placeholders} ) AS {input_table} ({input_columns})
-ON CONFLICT ({experiment_id}) DO UPDATE SET {update_clause}
+    (SELECT {casting_clause} FROM ( VALUES {input_placeholders} ) AS {input_table} ({input_columns})) {input_table}
+WHERE
+    {experiment_table}.{experiment_id} = {input_table}.{experiment_id}
 ;"""
         ).format(
             experiment_table=experiment_table.identifier,
+            num_runs=experiment_table.num_runs.identifier,
+            by_epoch=experiment_table.by_epoch.identifier,
+            by_loss=experiment_table.by_loss.identifier,
             input_columns=input_columns.columns_sql,
             casting_clause=input_columns.casting_sql,
             input_placeholders=input_columns.placeholders_for_values(len(summaries)),
             input_table=Identifier("_input_table"),
             experiment_id=experiment_table.experiment_id.identifier,
-            update_clause=sql_comma.join(
-                (
-                    SQL("{column} = EXCLUDED.{column}").format(column=column.identifier)
-                    for column in (
-                        experiment_table.num_runs,
-                        experiment_table.by_epoch,
-                        experiment_table.by_loss,
-                        experiment_table.by_progress,
-                        experiment_table.epoch_subset,
-                    )
-                )
-            ),
         )
         # print(query)
 

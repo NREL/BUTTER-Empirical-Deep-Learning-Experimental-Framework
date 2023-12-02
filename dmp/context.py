@@ -156,7 +156,7 @@ class Context:
                 self.schema.get_experiment_run_histories(experiment_id)
             )
             if summary is not None:
-                self.schema.store_summary(self.run.experiment, experiment_id, summary)  # type: ignore
+                self.schema.store_summary(experiment_id, summary)  # type: ignore
 
     def save_model(
         self,

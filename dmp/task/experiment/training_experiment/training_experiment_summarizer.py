@@ -137,8 +137,6 @@ class TrainingExperimentSummarizer:
             num_sources,
             by_epoch,
             by_loss,
-            None,
-            None,
         )
 
     def _select_epochs(

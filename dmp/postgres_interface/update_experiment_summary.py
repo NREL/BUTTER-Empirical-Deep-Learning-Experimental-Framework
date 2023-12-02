@@ -26,64 +26,79 @@ from dmp.context import Context
 _summarizer_map: Dict[str, Callable] = {}
 
 """
-WITH histories AS (
+WITH experiments_to_update AS (
 	SELECT
-		selected_experiment.experiment_id,
-		run_data.command->'experiment' experiment,
-		run_status.id,
-		run_status.update_time,
-		history.history
+		experiment_id,
+		experiment
 	FROM
 		(
-			SELECT DISTINCT ON (experiment_id) *
+			SELECT experiment2.experiment_id
 			FROM
-			(
-                SELECT
-                    run_status.experiment_id,
-                FROM
-                    run_status
-                    CROSS JOIN LATERAL (
-                        SELECT rs.id root_id FROM
-                            run_status rs
-                        WHERE TRUE
-                            AND rs.experiment_id = run_status.experiment_id
-                            AND rs.status = 2
-                        ORDER BY rs.update_time ASC, id
-                        LIMIT 1) root_id
-                    CROSS JOIN LATERAL (
-                        SELECT rs.id FROM
-                            run_status rs
-                        WHERE rs.id = root_id
-                        FOR UPDATE SKIP LOCKED
-                    ) root_run
-                WHERE TRUE
-                    AND run_status.status = 2
-                    AND NOT EXISTS (
-                        SELECT 1 FROM experiment2
-                        WHERE
-                            experiment2.experiment_id = run_status.experiment_id
-                            AND experiment2.most_recent_run >= run_status.update_time
-                    )
-                ORDER BY run_status.update_time DESC
-                LIMIT 10
-			) selected_experiment
-		) selected_experiment
-		INNER JOIN run_status ON (run_status.experiment_id = selected_experiment.experiment_id AND run_status.status = 2)
-		INNER JOIN run_data ON (run_data.id = run_status.id)
-		INNER JOIN history ON (history.id = run_status.id)
-	ORDER BY experiment_id
-), claim AS (
-	INSERT INTO experiment2 (experiment_id, experiment, most_recent_run, num_runs)
+				experiment2
+			WHERE TRUE
+				AND EXISTS (
+					SELECT 1 FROM run_status
+					WHERE TRUE
+						AND experiment2.experiment_id = run_status.experiment_id
+						AND run_status.status = 2
+						AND run_status.summarized IS NULL
+						AND run_status.experiment_id IS NOT NULL)
+		) target
+		CROSS JOIN LATERAL (
+			SELECT experiment_lock.experiment FROM experiment2 experiment_lock
+			WHERE experiment_lock.experiment_id = target.experiment_id
+			FOR UPDATE OF experiment_lock SKIP LOCKED
+		) x
+	LIMIT 10
+),
+new_experiments AS (
+	INSERT INTO experiment2 (experiment_id, experiment)
 	SELECT
-		experiment_id, experiment, MAX(update_time) most_recent_run, COUNT(1) num_runs
+		selected_experiment.experiment_id,
+		run_data.command->'experiment' experiment
 	FROM
-		histories
-	GROUP BY experiment_id, experiment
-	ON CONFLICT (experiment_id) DO UPDATE SET
-		most_recent_run = EXCLUDED.most_recent_run,
-		num_runs = EXCLUDED.num_runs
+	(
+		SELECT DISTINCT ON (run_status.experiment_id) run_status.experiment_id, run_status.id
+		FROM
+			run_status
+		WHERE TRUE
+			AND status = 2
+			AND summarized IS NULL
+			AND run_status.experiment_id IS NOT NULL
+			AND NOT EXISTS (SELECT 1 FROM experiment2 WHERE experiment2.experiment_id = run_status.experiment_id)
+		LIMIT LEAST(0, 10 - (SELECT COUNT(1) FROM experiments_to_update))
+	) selected_experiment
+	INNER JOIN run_data ON (run_data.id = selected_experiment.id)
+	ON CONFLICT (experiment_id) DO NOTHING
+	RETURNING experiment_id, experiment
+),
+to_summarize AS (
+	SELECT * FROM
+	(
+		SELECT * FROM experiments_to_update
+		UNION ALL
+		SELECT * FROM new_experiments
+	) experiment_ids
+	ORDER BY experiment_id
+),
+updated_runs AS (
+UPDATE run_status SET
+	summarized = 1
+FROM
+	to_summarize
+WHERE TRUE
+	AND run_status.status = 2 AND run_status.summarized IS NULL AND run_status.experiment_id IS NOT NULL
+	AND run_status.experiment_id = to_summarize.experiment_id
 )
-SELECT * FROM histories
+SELECT
+	to_summarize.experiment_id,
+	to_summarize.experiment,
+	history.id,
+	history.history
+FROM
+	to_summarize
+	INNER JOIN history ON (history.experiment_id = to_summarize.experiment_id)
+ORDER BY experiment_id
 ;
 
 """
@@ -117,103 +132,113 @@ class UpdateExperimentSummary(Task):
         history = schema.history
 
         format_args = dict(
-            history=history.identifier,
-            run_status=run_status.identifier,
-            run_data=run_data.identifier,
-            experiment=experiment_table.identifier,
-            id=run_status.id.identifier,
+            experiments_to_update=Identifier("_experiments_to_update"),
             experiment_id=run_status.experiment_id.identifier,
-            update_time=run_status.update_time.identifier,
-            history_column=history.history.identifier,
-            command=run_data.command.identifier,
-            experiment_column=experiment_table.experiment.identifier,
-            most_recent_run=experiment_table.most_recent_run.identifier,
+            experiment=experiment_table.identifier,
+            run_status=run_status.identifier,
             status=run_status.status.identifier,
-            num_runs=experiment_table.num_runs.identifier,
-            selected_experiment=Identifier("_selected_experiment"),
-            root_run=Identifier("_root_run"),
-            root_selection=Identifier("_root_selection"),
-            root_id=Identifier("_root_id"),
-            root_lock=Identifier("_root_lock"),
             status_complete=Literal(JobStatus.Complete.value),
+            summarized=run_status.summarized.identifier,
+            experiment_lock=Identifier("_experiment_lock"),
+            target=Identifier("_target"),
+            new_experiments=Identifier("_new_experiments"),
+            experiment_column=experiment_table.experiment.identifier,
+            selected_experiment=Identifier("_selected_experiment"),
+            run_data=run_data.identifier,
+            command=run_data.command.identifier,
+            to_summarize=Identifier("_to_summarize"),
+            experiment_ids=Identifier("_experiment_ids"),
+            updated_runs=Identifier("_updated_runs"),
+            history=history.identifier,
+            history_column=history.history.identifier,
+            id=run_status.id.identifier,
             experiment_limit=Literal(self.experiment_limit),
-            lock_limit=Literal(self.lock_limit),
-            runs_to_update=Identifier("_runs_to_update"),
-            by_epoch=experiment_table.by_epoch.identifier,
-            by_loss=experiment_table.by_loss.identifier,
         )
 
         claim_columns = ColumnGroup(
-            run_status.experiment_id,
+            experiment_table.experiment_id,
             experiment_table.experiment,
             run_status.id,
-            run_status.update_time,
             history.history,
         )
 
         claim_and_get_query = SQL(
             """
-WITH {runs_to_update} AS (
+WITH {experiments_to_update} AS (
+	SELECT
+		{experiment_id}, {experiment_column}
+	FROM
+		(
+			SELECT {experiment}.{experiment_id}
+			FROM
+				{experiment}
+			WHERE TRUE
+				AND EXISTS (
+					SELECT 1 FROM {run_status}
+					WHERE TRUE
+						AND {experiment}.{experiment_id} = {run_status}.{experiment_id}
+						AND {run_status}.{status} = {status_complete}
+						AND {run_status}.{summarized} IS NULL
+						AND {run_status}.{experiment_id} IS NOT NULL)
+		) {target}
+		CROSS JOIN LATERAL (
+			SELECT {experiment_lock}.{experiment_column} FROM {experiment} {experiment_lock}
+			WHERE {experiment_lock}.{experiment_id} = {target}.{experiment_id}
+			FOR UPDATE OF {experiment_lock} SKIP LOCKED
+		) x
+	LIMIT {experiment_limit}
+),
+{new_experiments} AS (
+	INSERT INTO {experiment} ({experiment_id}, {experiment_column})
 	SELECT
 		{selected_experiment}.{experiment_id},
-		{run_data}.{command}->'experiment' {experiment_column},
-		{run_status}.{id},
-		{run_status}.{update_time},
-		{history}.{history_column}
+		{run_data}.{command}->'experiment' {experiment_column}
 	FROM
-        (
-            SELECT DISTINCT ON ({experiment_id}) *
-            FROM
-            (
-                SELECT
-                    {run_status}.{experiment_id}
-                FROM
-                    {run_status}
-                    CROSS JOIN LATERAL (
-                        SELECT {root_selection}.{id} {root_id} FROM
-                            {run_status} {root_selection}
-                        WHERE TRUE
-                            AND {root_selection}.{experiment_id} = {run_status}.{experiment_id}
-                            AND {root_selection}.{status} = {status_complete}
-                        ORDER BY {root_selection}.{update_time} ASC, {root_selection}.{id}
-                        LIMIT 1
-                    ) {root_id}
-                    CROSS JOIN LATERAL (
-                        SELECT {root_selection}.{id} {root_lock} FROM
-                            {run_status} {root_selection}
-                        WHERE {root_selection}.{id} = {root_id}.{root_id}
-                    ) {root_lock}
-                WHERE TRUE
-                    AND {run_status}.{status} = {status_complete}
-                    AND NOT EXISTS (
-                        SELECT 1 FROM {experiment}
-                        WHERE
-                            {experiment}.{experiment_id} = {run_status}.{experiment_id}
-                            AND {experiment}.{most_recent_run} >= {run_status}.{update_time}
-                    )
-                ORDER BY {run_status}.{update_time} DESC
-                LIMIT {lock_limit}
-            ) {selected_experiment}
-            LIMIT {experiment_limit}
-        ) {selected_experiment}
-		INNER JOIN {run_status} ON ({run_status}.{experiment_id} = {selected_experiment}.{experiment_id} AND {run_status}.{status} = {status_complete})
-        INNER JOIN {run_data} ON ({run_data}.{id} = {run_status}.{id})
-		INNER JOIN {history} ON ({history}.{id} = {run_status}.{id})
-    ORDER BY {experiment_id}
-), claim AS (
-	INSERT INTO {experiment} ({experiment_id}, {experiment_column}, {most_recent_run}, {num_runs})
-	SELECT
-		{experiment_id}, {experiment_column}, MAX({update_time}) {most_recent_run}, COUNT(1) {num_runs}
-	FROM
-		{runs_to_update}
-	GROUP BY {experiment_id}, {experiment_column}
-	ON CONFLICT ({experiment_id}) DO UPDATE SET
-		{most_recent_run} = EXCLUDED.{most_recent_run},
-		{num_runs} = EXCLUDED.{num_runs},
-        {by_epoch} = NULL,
-        {by_loss} = NULL
+	(
+		SELECT DISTINCT ON ({run_status}.{experiment_id}) {run_status}.{experiment_id}, {run_status}.id
+		FROM
+			{run_status}
+		WHERE TRUE
+			AND {status} = {status_complete}
+			AND {summarized} IS NULL
+			AND {run_status}.{experiment_id} IS NOT NULL
+			AND NOT EXISTS (SELECT 1 FROM {experiment} WHERE {experiment}.{experiment_id} = {run_status}.{experiment_id})
+		LIMIT LEAST(0, {experiment_limit} - (SELECT COUNT(1) FROM {experiments_to_update}))
+	) {selected_experiment}
+	INNER JOIN {run_data} ON ({run_data}.id = {selected_experiment}.id)
+	ON CONFLICT ({experiment_id}) DO NOTHING
+	RETURNING {experiment_id}, {experiment_column}
+),
+{to_summarize} AS (
+	SELECT * FROM
+	(
+		SELECT * FROM {experiments_to_update}
+		UNION ALL
+		SELECT * FROM {new_experiments}
+	) {experiment_ids}
+	ORDER BY {experiment_id}
+),
+{updated_runs} AS (
+UPDATE {run_status} SET
+	{summarized} = 1
+FROM
+	{to_summarize}
+WHERE TRUE
+	AND {run_status}.{status} = {status_complete}
+    AND {run_status}.{summarized} IS NULL
+    AND {run_status}.{experiment_id} IS NOT NULL
+	AND {run_status}.{experiment_id} = {to_summarize}.{experiment_id}
 )
-SELECT * FROM {runs_to_update}
+SELECT
+	{to_summarize}.{experiment_id},
+    {to_summarize}.{experiment_column},
+	{history}.{id},
+	{history}.{history_column}
+FROM
+	{to_summarize}
+	INNER JOIN {history} ON ({history}.{experiment_id} = {to_summarize}.{experiment_id})
+    INNER JOIN {run_data} ON ({run_data}.{id} = {history}.{id})
+ORDER BY {experiment_id}
 ;"""
         ).format(**format_args)
 
@@ -246,11 +271,11 @@ SELECT * FROM {runs_to_update}
                 ]
                 summaries.append(
                     (
-                        experiment,
                         experiment_id,  # type: ignore
                         experiment.summarize(histories),
                     )
                 )
+                del histories
                 result.num_experiments_updated += 1
             except Exception as e:
                 result.num_experiments_excepted += 1
