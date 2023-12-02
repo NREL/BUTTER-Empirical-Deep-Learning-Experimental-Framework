@@ -107,7 +107,7 @@ ORDER BY experiment_id
 @dataclass
 class UpdateExperimentSummary(Task):
     experiment_limit: int
-    lock_limit: int
+    insert_limit: int
 
     @staticmethod
     def register_types(types: Iterable[Type]) -> None:
@@ -153,6 +153,7 @@ class UpdateExperimentSummary(Task):
             history_column=history.history.identifier,
             id=run_status.id.identifier,
             experiment_limit=Literal(self.experiment_limit),
+            insert_limit=Literal(self.insert_limit),
         )
 
         claim_columns = ColumnGroup(
@@ -164,7 +165,29 @@ class UpdateExperimentSummary(Task):
 
         claim_and_get_query = SQL(
             """
-WITH {experiments_to_update} AS (
+WITH
+{new_experiments} AS (
+	INSERT INTO {experiment} ({experiment_id}, {experiment_column})
+	SELECT
+		{selected_experiment}.{experiment_id},
+		{run_data}.{command}->'experiment' {experiment_column}
+	FROM
+	(
+        SELECT DISTINCT ON ({experiment_id}) {experiment_id}, {id}
+        FROM
+            {run_status}
+        WHERE TRUE
+            AND {status} = {status_complete}
+            AND {summarized} IS NULL
+            AND {run_status}.{experiment_id} IS NOT NULL
+            AND NOT EXISTS (SELECT 1 FROM {experiment} WHERE {experiment}.{experiment_id} = {run_status}.{experiment_id})
+        LIMIT {insert_limit}
+	) {selected_experiment}
+	INNER JOIN {run_data} ON ({run_data}.{id} = {selected_experiment}.{id})
+	ON CONFLICT ({experiment_id}) DO NOTHING
+	RETURNING {experiment_id}, {experiment_column}
+),
+{experiments_to_update} AS (
 	SELECT
 		{experiment_id}, {experiment_column}
 	FROM
@@ -186,28 +209,7 @@ WITH {experiments_to_update} AS (
 			WHERE {experiment_lock}.{experiment_id} = {target}.{experiment_id}
 			FOR UPDATE OF {experiment_lock} SKIP LOCKED
 		) x
-	LIMIT {experiment_limit}
-),
-{new_experiments} AS (
-	INSERT INTO {experiment} ({experiment_id}, {experiment_column})
-	SELECT
-		{selected_experiment}.{experiment_id},
-		{run_data}.{command}->'experiment' {experiment_column}
-	FROM
-	(
-		SELECT DISTINCT ON ({run_status}.{experiment_id}) {run_status}.{experiment_id}, {run_status}.id
-		FROM
-			{run_status}
-		WHERE TRUE
-			AND {status} = {status_complete}
-			AND {summarized} IS NULL
-			AND {run_status}.{experiment_id} IS NOT NULL
-			AND NOT EXISTS (SELECT 1 FROM {experiment} WHERE {experiment}.{experiment_id} = {run_status}.{experiment_id})
-		LIMIT GREATEST(0, {experiment_limit} - (SELECT COUNT(1) FROM {experiments_to_update}))
-	) {selected_experiment}
-	INNER JOIN {run_data} ON ({run_data}.id = {selected_experiment}.id)
-	ON CONFLICT ({experiment_id}) DO NOTHING
-	RETURNING {experiment_id}, {experiment_column}
+	LIMIT GREATEST(0, {experiment_limit} - (SELECT COUNT(1) FROM {new_experiments}))
 ),
 {to_summarize} AS (
 	SELECT * FROM
@@ -217,6 +219,7 @@ WITH {experiments_to_update} AS (
 		SELECT * FROM {new_experiments}
 	) {experiment_ids}
 	ORDER BY {experiment_id}
+    LIMIT {experiment_limit}
 ),
 {updated_runs} AS (
 UPDATE {run_status} SET
