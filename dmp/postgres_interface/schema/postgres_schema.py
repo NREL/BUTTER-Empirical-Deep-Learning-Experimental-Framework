@@ -272,6 +272,9 @@ WHERE TRUE
     ) -> None:
         from dmp.marshaling import marshal
 
+        if len(summaries) == 0:
+            return
+
         prepared_values = list(
             chain(
                 *(

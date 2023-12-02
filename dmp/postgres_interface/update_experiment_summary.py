@@ -66,7 +66,7 @@ new_experiments AS (
 			AND summarized IS NULL
 			AND run_status.experiment_id IS NOT NULL
 			AND NOT EXISTS (SELECT 1 FROM experiment2 WHERE experiment2.experiment_id = run_status.experiment_id)
-		LIMIT LEAST(0, 10 - (SELECT COUNT(1) FROM experiments_to_update))
+		LIMIT GREATEST(0, 10 - (SELECT COUNT(1) FROM experiments_to_update))
 	) selected_experiment
 	INNER JOIN run_data ON (run_data.id = selected_experiment.id)
 	ON CONFLICT (experiment_id) DO NOTHING
@@ -203,7 +203,7 @@ WITH {experiments_to_update} AS (
 			AND {summarized} IS NULL
 			AND {run_status}.{experiment_id} IS NOT NULL
 			AND NOT EXISTS (SELECT 1 FROM {experiment} WHERE {experiment}.{experiment_id} = {run_status}.{experiment_id})
-		LIMIT LEAST(0, {experiment_limit} - (SELECT COUNT(1) FROM {experiments_to_update}))
+		LIMIT GREATEST(0, {experiment_limit} - (SELECT COUNT(1) FROM {experiments_to_update}))
 	) {selected_experiment}
 	INNER JOIN {run_data} ON ({run_data}.id = {selected_experiment}.id)
 	ON CONFLICT ({experiment_id}) DO NOTHING
