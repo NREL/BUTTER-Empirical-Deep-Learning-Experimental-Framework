@@ -193,7 +193,7 @@ def make_pyarrow_schema_from_dict(
 
     result_columns = []
     for name, values in columns:
-        # print(f"making pyarrow column for {name}")
+        # print(f"making pyarrow column for {name} {type(values)} {len(values)}")
         (
             pyarrow_type,
             nullable,

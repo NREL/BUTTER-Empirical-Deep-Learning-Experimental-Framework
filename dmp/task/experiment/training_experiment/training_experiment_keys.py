@@ -140,6 +140,7 @@ class TrainingExperimentKeys:
                         [
                             (metric, cmin, imin, self.cumulative_best)
                             for metric in self.loss_metrics
+                            if metric != "accuracy"
                         ],
                         [
                             (self.accuracy, cmax, imax, self.cumulative_best),

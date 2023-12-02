@@ -455,12 +455,8 @@ class TrainingExperimentSummarizer:
 
         # print(f"summarize group 3 quantiles: {quantile_metrics}")
 
-        quantiles = (
-            groups[quantile_metrics]
-            .quantile(quantile_points, interpolation="linear")  # type: ignore
-            .unstack()
-            .astype(numpy.float32)
-        )
+        quantiles = groups[quantile_metrics].quantile(quantile_points, interpolation="linear")  # type: ignore
+        quantiles = quantiles.unstack().astype(numpy.float32)
         quantiles.columns = [
             f"{metric}_quantile_{int(quantile * 100)}"
             for metric, quantile in quantiles.columns.to_flat_index().values
