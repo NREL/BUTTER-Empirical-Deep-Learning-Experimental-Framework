@@ -130,7 +130,7 @@ class PostgresSchema:
             input_colums=input_colums.columns_sql,
             casting_clause=input_colums.casting_sql,
             input_placeholders=input_colums.placeholders_for_values(len(results)),
-            input_table=Identifier("input_table"),
+            input_table=Identifier("_input_table"),
             id=history_table.id.identifier,
             update_clause=sql_comma.join(
                 (
@@ -265,16 +265,29 @@ WHERE TRUE
         experiment_id: UUID,
         summary: ExperimentSummaryRecord,
     ) -> None:
+        self.store_summaries([(experiment, experiment_id, summary)])
+
+    def store_summaries(
+        self,
+        summaries: Sequence[Tuple[TrainingExperiment, UUID, ExperimentSummaryRecord]],
+    ) -> None:
         from dmp.marshaling import marshal
 
-        prepared_values = (
-            experiment_id,
-            Jsonb(marshal.marshal(experiment)),
-            summary.num_runs,
-            convert_dataframe_to_bytes(summary.by_epoch),
-            convert_dataframe_to_bytes(summary.by_loss),
-            convert_dataframe_to_bytes(summary.by_progress),
-            convert_dataframe_to_bytes(summary.epoch_subset),
+        prepared_values = list(
+            chain(
+                *(
+                    (
+                        experiment_id,
+                        Jsonb(marshal.marshal(experiment)),
+                        summary.num_runs,
+                        convert_dataframe_to_bytes(summary.by_epoch),
+                        convert_dataframe_to_bytes(summary.by_loss),
+                        convert_dataframe_to_bytes(summary.by_progress),
+                        convert_dataframe_to_bytes(summary.epoch_subset),
+                    )
+                    for experiment, experiment_id, summary in summaries
+                )
+            )
         )
 
         experiment_table = self.experiment
@@ -294,15 +307,15 @@ INSERT INTO {experiment_table} ( {input_columns} )
 SELECT
 {casting_clause}
 FROM
-( VALUES ({input_placeholders}) ) AS {input_table} ({input_columns})
+( VALUES {input_placeholders} ) AS {input_table} ({input_columns})
 ON CONFLICT ({experiment_id}) DO UPDATE SET {update_clause}
 ;"""
         ).format(
             experiment_table=experiment_table.identifier,
             input_columns=input_columns.columns_sql,
             casting_clause=input_columns.casting_sql,
-            input_placeholders=input_columns.placeholders,
-            input_table=Identifier("input_table"),
+            input_placeholders=input_columns.placeholders_for_values(len(summaries)),
+            input_table=Identifier("_input_table"),
             experiment_id=experiment_table.experiment_id.identifier,
             update_clause=sql_comma.join(
                 (

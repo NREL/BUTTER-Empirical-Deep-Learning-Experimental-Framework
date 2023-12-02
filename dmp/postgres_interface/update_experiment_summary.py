@@ -230,6 +230,8 @@ SELECT * FROM {runs_to_update}
         experiment_id = None
         marshaled_experiment = None
 
+        summaries = []
+
         def summarize_experiment():
             nonlocal result, encoded_histories, experiment_id, marshaled_experiment
             if len(encoded_histories) == 0 or marshaled_experiment is None:
@@ -242,11 +244,12 @@ SELECT * FROM {runs_to_update}
                     (run_id, convert_bytes_to_dataframe(history))
                     for run_id, history in encoded_histories
                 ]
-
-                schema.store_summary(
-                    experiment,
-                    experiment_id,  # type: ignore
-                    experiment.summarize(histories),
+                summaries.append(
+                    (
+                        experiment,
+                        experiment_id,  # type: ignore
+                        experiment.summarize(histories),
+                    )
                 )
                 result.num_experiments_updated += 1
             except Exception as e:
@@ -272,5 +275,15 @@ SELECT * FROM {runs_to_update}
                 (value_of(run_status.id), value_of(history.history))
             )
         summarize_experiment()
+
+        try:
+            schema.store_summaries(summaries)
+        except Exception as e:
+            result.num_experiments_excepted += len(summaries)
+            result.num_experiments_updated -= len(summaries)
+            print(f"Error storing summaries: {e}")
+            import traceback
+
+            traceback.print_exc()
 
         return result

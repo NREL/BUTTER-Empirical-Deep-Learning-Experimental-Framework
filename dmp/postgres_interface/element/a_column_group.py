@@ -38,6 +38,9 @@ class AColumnGroup(Iterable["Column"]):
     def __iter__(self):
         return self.columns.__iter__()
 
+    def __len__(self) -> int:
+        return len(self.columns)
+
     @abstractproperty
     def columns(self) -> Sequence["Column"]:
         raise NotImplementedError()

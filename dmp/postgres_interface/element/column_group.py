@@ -26,3 +26,5 @@ class ColumnGroup(AColumnGroup):
     @property
     def columns(self) -> Sequence[Column]:
         return self._columns
+
+    
