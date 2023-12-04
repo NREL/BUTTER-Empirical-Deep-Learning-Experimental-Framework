@@ -1,32 +1,26 @@
 from __future__ import annotations
 from dataclasses import dataclass, replace
-from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from uuid import UUID, uuid4
 
 from typing import TYPE_CHECKING
 
-from jobqueue.connection_manager import ConnectionManager
 import pandas
-from psycopg.sql import SQL, Identifier
 from dmp.parquet_util import make_dataframe_from_dict
 
-from dmp.postgres_interface.element.column_group import ColumnGroup
+from dmp.run_entry import RunEntry
 
 from dmp.uuid_tools import object_to_uuid
 
 if TYPE_CHECKING:
     from dmp.task.experiment.experiment import Experiment
-    from dmp.task.experiment.training_experiment.run_spec import RunSpec
+    from dmp.task.experiment.training_experiment.run_spec import RunConfig
     from dmp.task.run import Run
-    from dmp.task.experiment.training_experiment.training_experiment import (
-        TrainingExperiment,
-    )
     from dmp.worker import Worker
-    from dmp.task.task import Task
+    from dmp.task.run_command import RunCommand
     from dmp.model.model_info import ModelInfo
     from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
-    from jobqueue.job import Job
-    from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+    from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
     from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
         TrainingExperimentCheckpoint,
     )
@@ -35,16 +29,15 @@ if TYPE_CHECKING:
 @dataclass
 class Context:
     worker: Worker
-    job: Job
-    task: Task
+    run_entry: RunEntry
 
     @property
-    def schema(self) -> PostgresSchema:
+    def database(self) -> PostgresInterface:
         return self.worker.schema
 
     @property
     def id(self) -> UUID:
-        return self.job.id
+        return self.run_entry.id
 
     @property
     def info(self) -> Dict[str, Any]:
@@ -54,94 +47,81 @@ class Context:
     def run(self) -> Run:
         from dmp.task.run import Run
 
-        if not isinstance(self.task, Run):
+        if not isinstance(self.run_entry.command, Run):
             raise TypeError()
-        return self.task
+        return self.run_entry.command
 
     @property
     def experiment(self) -> Experiment:
         return self.run.experiment
 
-    def push_tasks(self, tasks: Iterable[Task]) -> None:
-        from jobqueue.job import Job
-        from dmp.marshaling import marshal
-
-        self.worker.job_queue.push(
+    def push_runs(self, runs: Iterable[Run]) -> None:
+        self.database.push_runs(
             [
-                Job(
-                    parent=self.id,
-                    priority=self.job.priority,
-                    command=marshal.marshal(task),
+                RunEntry(
+                    queue=self.run_entry.queue,
+                    status=self.run_entry.status,
+                    priority=self.run_entry.priority,
+                    id=uuid4(),
+                    start_time=None,
+                    update_time=None,
+                    worker_id=None,
+                    parent_id=self.id,
+                    experiment_id=None,
+                    command=run,
+                    history=None,
+                    extended_history=None,
+                    error_message=None,
                 )
-                for task in tasks
+                for run in runs
             ]
         )
-
-    def push_task(self, task: Task) -> None:
-        self.push_tasks((task,))
 
     def get_experiment_id(self) -> UUID:
         return object_to_uuid(self.experiment)
 
-    def record_history(
-        self,
-        experiment_id: UUID,
-        history: pandas.DataFrame,
-        extended_history: pandas.DataFrame,
-    ) -> None:
-        print(f"record_history\n{history}\nextended:\n{extended_history}")
-        from dmp.marshaling import marshal
+    def update_run(self) -> None:
+        self.run_entry.experiment_id = self.get_experiment_id()
+        self.database.update_runs((self.run_entry,))
 
-        if self.schema is not None:
-            print(f"storing experiment {experiment_id} history...")
-            self.schema.record_history(
-                [
-                    (
-                        self.job.id,
-                        experiment_id,
-                        marshal.marshal(self.experiment),
-                        history,
-                        extended_history,
-                    )
-                ]
+    def get_run_history(
+        self,
+        run_id: Optional[UUID],
+        epoch: TrainingEpoch,
+    ) -> Dict[str, List]:
+        if run_id is None:
+            return {}
+
+        if run_id == self.run_entry.id:
+            history_df = self.run_entry.history
+            extended_history_df = self.run_entry.extended_history
+        else:
+            history_df, extended_history_df = self.database.get_run_history(run_id)
+
+        if history_df is None:
+            return {}
+
+        history_df.sort_values(["epoch", "fit_number", "fit_epoch"], inplace=True)
+
+        if extended_history_df is not None:
+            merge_keys = ["epoch"]
+            if "fit_number" in extended_history_df:
+                merge_keys.extend(["fit_number", "fit_epoch"])
+
+            history_df = history_df.merge(
+                extended_history_df,
+                left_on=merge_keys,
+                right_on=merge_keys,
+                suffixes=(None, "_extended"),
             )
-            # print(
-            #     f"*******************************************************\nstored run\n'{self.id}'\n experiment'{experiment_id}' history..."
-            # )
-            # print(f"experiment marshalling: \n")
-            # import simplejson
-            # from dmp.marshaling import marshal
 
-            # print(
-            #     simplejson.dumps(
-            #         marshal.marshal(self.experiment), sort_keys=True, indent="  "
-            #     )
-            # )
-
-    def update_task(
-        self,
-        experiment_id: Optional[UUID] = None,
-    ) -> None:
-        if self.worker is None or self.worker.job_queue is None:
-            return
-
-        from dmp.marshaling import marshal
-
-        self.job.command = marshal.marshal(self.task)
-
-        additional_updates = {}
-        if experiment_id is not None:
-            additional_updates["experiment_id"] = experiment_id
-
-        self.worker.job_queue.update_job_command(
-            self.job,
-            additional_updates=additional_updates,
-        )
+        history_df = history_df[history_df["epoch"] <= epoch.epoch]
+        return history_df.to_dict(orient="list")  # type: ignore
 
     def update_summary(
         self,
     ) -> None:
-        if self.schema is not None:
+        if self.database is not None:
             experiment_id = self.get_experiment_id()
             # print(f"loading summaries for experiment {experiment_id}...")
             # print(f"experiment marshalling: \n")
@@ -155,10 +135,10 @@ class Context:
             # )
 
             summary = self.experiment.summarize(
-                self.schema.get_experiment_run_histories(experiment_id)
+                self.database.get_run_histories_for_experiment(experiment_id)
             )
             if summary is not None:
-                self.schema.store_summary(experiment_id, summary)  # type: ignore
+                self.database.store_summary(experiment_id, summary)  # type: ignore
 
     def save_model(
         self,
@@ -174,7 +154,12 @@ class Context:
         #     f"\n\n\n========== saving model data run:{self.run} model_path:{model_path} model: {model} ==========\n\n\n"
         # )
 
-        model_serialization.save_model_data(self.id, model, epoch, self.job.parent)
+        model_serialization.save_model_data(
+            self.id,
+            model,
+            epoch,
+            self.run_entry.parent_id,
+        )
 
         # if self.schema is not None:
         #     self.schema.save_model(self.id, epoch)

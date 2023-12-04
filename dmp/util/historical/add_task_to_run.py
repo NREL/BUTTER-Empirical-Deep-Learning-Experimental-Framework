@@ -8,7 +8,7 @@ from dmp.common import flatten
 from dmp.postgres_interface.element.column import Column
 from dmp.postgres_interface.element.column_group import ColumnGroup
 
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.task.experiment.training_experiment import training_experiment_keys
 from dmp.task.experiment.training_experiment.training_experiment_keys import (
     TrainingExperimentKeys,
@@ -72,7 +72,7 @@ def do_work(args):
     worker_number, block_size = args
 
     credentials = jobqueue.load_credentials("dmp")
-    schema = PostgresSchema(credentials)
+    schema = PostgresInterface(credentials)
 
     worker_id = str(worker_number) + str(uuid.uuid4())
     total_num_converted = 0
@@ -84,7 +84,7 @@ def do_work(args):
         num_excepted = 0
 
         run = schema.run
-        experiment = schema.experiment
+        experiment = schema._experiment_table
 
         run_columns = ColumnGroup(
             run.run_id,

@@ -9,10 +9,11 @@ from dmp.common import marshal_type_key
 from dmp.model.named.lenet import Lenet
 from dmp.model.named.resenet20 import Resnet20
 from dmp.model.named.vgg16 import VGG16
+from dmp.run_entry import RunEntry
 from dmp.task.experiment.lth.lth_experiment import LTHExperiment
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.pruning_experiment.pruning_run_spec import (
-    IterativePruningRunSpec,
+    IterativePruningConfig,
 )
 from dmp.task.experiment.training_experiment.dmp_early_stopping import DMPEarlyStopping
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
@@ -250,7 +251,7 @@ from dmp.task.experiment.training_experiment.training_experiment_checkpoint impo
 )
 
 # from dmp.task.experiment.lth.pruning_config import PruningConfig
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.model_saving.model_saving_spec import (
     ModelSavingSpec,
 )
@@ -258,7 +259,7 @@ from dmp.task.experiment.model_saving.model_saving_spec import (
 register_types(
     (
         Run,
-        RunSpec,
+        RunConfig,
         # ExperimentResultRecord,
         TestSetHistoryRecorder,
         DatasetSpec,
@@ -268,6 +269,6 @@ register_types(
         TrainingExperimentCheckpoint,
         TrainingEpoch,
         PruningConfig,
-        IterativePruningRunSpec,
+        IterativePruningConfig,
     )
 )

@@ -11,7 +11,7 @@ from tensorflow.python.framework.ops import re
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
 )

@@ -12,7 +12,7 @@ from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 from dmp.task.run import Run
@@ -61,7 +61,7 @@ from dmp.layer.max_pool import MaxPool
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
 )
@@ -84,7 +84,7 @@ sys.path.insert(0, "./")
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
 strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
 credentials = load_credentials("dmp")
-schema = PostgresSchema(credentials)
+schema = PostgresInterface(credentials)
 worker = Worker(
     None,
     schema,
@@ -164,7 +164,7 @@ def test_pruning_experiment():
                 new_seed=False,
             ),
         ),
-        run=RunSpec(
+        config=RunConfig(
             seed=0,
             data={},
             record_post_training_metrics=True,

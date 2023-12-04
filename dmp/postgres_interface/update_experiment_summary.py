@@ -5,19 +5,20 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Type
 from jobqueue.connection_manager import ConnectionManager
 
 from jobqueue.job import Job
-from jobqueue.job_status import JobStatus
+
 from psycopg import ClientCursor
 from psycopg.sql import SQL, Composed, Identifier, Literal
 from dmp.parquet_util import convert_bytes_to_dataframe
 from dmp.postgres_interface.element.column import Column
 from dmp.postgres_interface.element.column_group import ColumnGroup
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.postgres_interface.update_experiment_summary_result import (
     UpdateExperimentSummaryResult,
 )
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
-from dmp.task.task import Task
-from dmp.task.task_result import TaskResult
+from dmp.task.run_status import RunStatus
+from dmp.task.run_command import RunCommand
+from dmp.task.run_result import RunResult
 from dmp.worker import Worker
 from dmp.postgres_interface.postgres_interface_common import sql_comma
 from dmp.common import flatten, marshal_type_key
@@ -65,7 +66,7 @@ ORDER BY experiment_id
 
 
 @dataclass
-class UpdateExperimentSummary(Task):
+class UpdateExperimentSummary(RunCommand):
     experiment_limit: int
     insert_limit: int
 
@@ -82,12 +83,12 @@ class UpdateExperimentSummary(Task):
     def __call__(
         self,
         context: Context,
-    ) -> TaskResult:
+    ) -> RunResult:
         from dmp.marshaling import marshal
 
-        schema = context.schema
-        experiment_table = schema.experiment
-        run_status = schema.run_status
+        schema = context.database
+        experiment_table = schema._experiment_table
+        run_status = schema._run_table
         run_data = schema.run_data
         history = schema.history
 
@@ -97,14 +98,13 @@ class UpdateExperimentSummary(Task):
             experiment_id=run_status.experiment_id.identifier,
             experiment=experiment_table.identifier,
             status=run_status.status.identifier,
-            summarized=run_status.summarized.identifier,
             experiment_column=experiment_table.experiment.identifier,
             run_data=run_data.identifier,
             command=run_data.command.identifier,
             history=history.identifier,
             history_column=history.history.identifier,
             id=run_status.id.identifier,
-            status_complete=Literal(JobStatus.Complete.value),
+            status_complete=Literal(RunStatus.Complete.value),
             experiment_limit=Literal(self.experiment_limit),
         )
 

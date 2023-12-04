@@ -17,7 +17,7 @@ from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 from dmp.task.run import Run
@@ -95,7 +95,7 @@ def main():
                 pruning_configs=pruning_configs,
                 num_additional_seeds_per_config=1,
             ),
-            run=RunSpec(
+            config=RunConfig(
                 seed=seed,
                 data={},
                 record_post_training_metrics=True,

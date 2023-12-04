@@ -10,13 +10,12 @@ from dmp import common
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+    from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 
 
 @dataclass
 class Worker:
-    _job_queue: JobQueue
-    _schema: "PostgresSchema"
+    _schema: "PostgresInterface"
     # _result_logger: "ExperimentResultLogger"
     _strategy: tensorflow.distribute.Strategy
     _info: Dict[str, Any]
@@ -31,7 +30,7 @@ class Worker:
         return self._info
 
     @property
-    def schema(self) -> "PostgresSchema":
+    def schema(self) -> "PostgresInterface":
         return self._schema
 
     @property
@@ -51,7 +50,7 @@ class Worker:
         git_hash: Optional[str],
     ) -> bool:
         from dmp.marshaling import marshal
-        from dmp.task.task import Task
+        from dmp.task.run_command import RunCommand
 
         # from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
         from dmp.context import Context
@@ -73,7 +72,7 @@ class Worker:
         self._info["worker_id"] = worker_id
 
         # demarshal task from job.command
-        task: Task = marshal.demarshal(job.command)  # type: ignore
+        task: RunCommand = marshal.demarshal(job.command)  # type: ignore
 
         # run task
         with self.strategy.scope():

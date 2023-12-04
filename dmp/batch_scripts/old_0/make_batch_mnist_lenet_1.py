@@ -7,7 +7,7 @@ import sys
 
 from dmp.model.named.lenet import Lenet
 from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.run_spec import RunConfig
 
 from dmp.task.run import Run
 from dmp.keras_interface.keras_utils import keras_kwcfg
@@ -72,7 +72,7 @@ def main():
                     restore_best_weights=True,
                 ),
             ),
-            run=RunSpec(
+            config=RunConfig(
                 seed=seed,
                 data={},
                 record_post_training_metrics=True,

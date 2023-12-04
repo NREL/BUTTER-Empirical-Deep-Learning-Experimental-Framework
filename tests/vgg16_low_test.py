@@ -18,7 +18,7 @@ from dmp.model.fully_connected_network import FullyConnectedNetwork
 from dmp.model.layer_factory_model import LayerFactoryModel
 from dmp.structure.batch_norm_block import BatchNormBlock
 from dmp.structure.sequential_model import SequentialModel
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
 )

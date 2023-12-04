@@ -6,21 +6,21 @@ import sys
 
 from jobqueue.job import Job
 
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.worker import Worker
 from jobqueue.connect import load_credentials
 
 sys.path.insert(0, "./")
 
 
-def run_experiment(run, use_database: bool = False, id:Optional[UUID] = None):
+def run_experiment(run, use_database: bool = False, id: Optional[UUID] = None):
     strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
     schema = None
     if id is None:
         id = uuid4()
     if use_database:
         credentials = load_credentials("dmp")
-        schema = PostgresSchema(credentials)
+        schema = PostgresInterface(credentials)
 
     worker = Worker(
         None,  # type: ignore

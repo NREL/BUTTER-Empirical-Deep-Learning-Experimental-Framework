@@ -1,6 +1,6 @@
 import os
 
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -182,7 +182,7 @@ def do_work(args):
     worker_number, block_size = args
 
     credentials = load_credentials("dmp")
-    schema = PostgresSchema(credentials)
+    schema = PostgresInterface(credentials)
 
     old_parameter_map = None
     with CursorManager(schema.credentials) as cursor:

@@ -13,11 +13,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+
 if TYPE_CHECKING:
     from dmp.context import Context
     import pandas
     from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
-    from dmp.task.experiment.training_experiment.run_spec import RunSpec
+    from dmp.task.experiment.training_experiment.run_spec import RunConfig
 
 
 @dataclass
@@ -32,7 +33,7 @@ class Experiment(ABC):
     def __call__(
         self,
         context: Context,
-        run: RunSpec,
+        run: RunConfig,
     ) -> None:
         pass
 

@@ -32,7 +32,7 @@ from dmp.postgres_interface.element.column import Column
 from dmp.postgres_interface.element.column_group import ColumnGroup
 from dmp.postgres_interface.element.table import Table
 from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.task.experiment.experiment import Experiment
 from dmp.uuid_tools import json_to_uuid
 
@@ -275,7 +275,7 @@ def do_work(args):
     worker_number, block_size = args
 
     credentials = load_credentials("dmp")
-    schema = PostgresSchema(credentials)
+    schema = PostgresInterface(credentials)
 
     worker_id = str(worker_number) + str(uuid.uuid4())
     total_num_converted = 0

@@ -87,6 +87,16 @@ class AColumnGroup(Iterable["Column"]):
             )
         )
 
+    def set_clause(self, table_name: Identifier) -> Composed:
+        return sql_comma.join(
+            (
+                SQL("{} = {}.{}").format(
+                    column.identifier, table_name, column.identifier
+                )
+                for column in self.columns
+            )
+        )
+
     def extract_column_values(
         self,
         source: Dict[str, Any],

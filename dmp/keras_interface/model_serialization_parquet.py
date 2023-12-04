@@ -12,7 +12,7 @@ from dmp.model.model_info import ModelInfo
 import dmp.parquet_util as parquet_util
 import pyarrow
 
-from dmp.task.task import Task
+from dmp.task.run_command import RunCommand
 import re
 
 model_data_path = os.path.join(os.getcwd(), "model_data")
@@ -32,7 +32,7 @@ saved_optimizer_members = (
 
 
 def save_model_data(
-    task: Task,
+    task: RunCommand,
     model: ModelInfo,
     model_path: str,
     only_save_optimizer: bool = True,

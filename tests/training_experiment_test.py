@@ -2,7 +2,7 @@ from dmp.context import Context
 from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.marshaling import marshal
 from pprint import pprint
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
@@ -24,7 +24,7 @@ from dmp.layer.max_pool import MaxPool
 from dmp.model.cnn.cnn_stack import CNNStack
 from dmp.model.cnn.cnn_stacker import CNNStacker
 from dmp.model.fully_connected_network import FullyConnectedNetwork
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.task.experiment.growth_experiment.scaling_method.width_scaler import (
     WidthScaler,
 )
@@ -82,7 +82,7 @@ def test_simple():
                 restore_best_weights=True,
             ),
         ),
-        run=RunSpec(
+        config=RunConfig(
             seed=0,
             data={
                 "test": True,
@@ -152,7 +152,7 @@ def test_mnist_lenet():
                 restore_best_weights=True,
             ),
         ),
-        run=RunSpec(
+        config=RunConfig(
             seed=0,
             data={
                 "test": True,

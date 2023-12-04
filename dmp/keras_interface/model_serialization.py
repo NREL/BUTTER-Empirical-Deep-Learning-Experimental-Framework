@@ -15,7 +15,7 @@ import dmp.parquet_util as parquet_util
 import pyarrow
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
-from dmp.task.task import Task
+from dmp.task.run_command import RunCommand
 import re
 import h5py as h5
 import hdf5plugin

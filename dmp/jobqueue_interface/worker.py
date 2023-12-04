@@ -5,7 +5,7 @@ from jobqueue.job_queue import JobQueue
 from jobqueue import load_credentials
 from dmp import common
 
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.worker import Worker
 
 import tensorflow
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     print(f"Worker id {worker_id} load credentials...\n", flush=True)
     credentials = load_credentials(database)
     print(f"Worker id {worker_id} initialize database schema...\n", flush=True)
-    schema = PostgresSchema(credentials)
+    schema = PostgresInterface(credentials)
     print(f"Worker id {worker_id} create job queue...\n", flush=True)
     job_queue = JobQueue(credentials, int(queue_id), check_table=False)
     # print(f"Worker id {worker_id} create result logger..\n", flush=True)

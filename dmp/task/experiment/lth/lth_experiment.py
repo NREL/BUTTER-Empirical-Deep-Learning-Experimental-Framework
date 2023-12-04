@@ -10,9 +10,9 @@ from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import 
 )
 
 from dmp.task.experiment.pruning_experiment.pruning_run_spec import (
-    IterativePruningRunSpec,
+    IterativePruningConfig,
 )
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
 )
@@ -35,11 +35,11 @@ class LTHExperiment(TrainingExperiment):
     def __call__(
         self,
         context: Context,
-        run: RunSpec,
+        config: RunConfig,
     ) -> None:
         # make sure rewind and resume points will be recorded
-        if run.model_saving is None:
-            run.model_saving = ModelSavingSpec(
+        if config.model_saving is None:
+            config.model_saving = ModelSavingSpec(
                 True,
                 True,
                 [],
@@ -49,21 +49,21 @@ class LTHExperiment(TrainingExperiment):
                 0,
             )
 
-        run.model_saving.save_trained_model = True
-        save_epochs = set(run.model_saving.save_epochs)
+        config.model_saving.save_trained_model = True
+        save_epochs = set(config.model_saving.save_epochs)
         save_epochs.update(
             (config.rewind_epoch.epoch for config in self.pruning_configs)
         )
-        run.model_saving.save_epochs = sorted(save_epochs)
+        config.model_saving.save_epochs = sorted(save_epochs)
 
-        epoch_counter, experiment_history = super().__call__(context, run)
+        epoch_counter, experiment_history = super().__call__(context, config)
 
         base_experiment_config = copy(vars(self))
         del base_experiment_config["pruning_configs"]
         del base_experiment_config["num_additional_seeds_per_config"]
         # del base_experiment_config['data']
 
-        base_run_config = copy(vars(run))
+        base_run_config = copy(vars(config))
         # del base_run_config["seed"]
         del base_run_config["resume_checkpoint"]
         base_run_config["saved_models"] = []
@@ -103,7 +103,7 @@ class LTHExperiment(TrainingExperiment):
                             **base_experiment_config,
                             pruning=child_pruning_config,
                         ),
-                        run=IterativePruningRunSpec(
+                        config=IterativePruningConfig(
                             **base_run_config,
                             resume_checkpoint=resume_checkpoint,
                             # seed=seed,
@@ -113,4 +113,4 @@ class LTHExperiment(TrainingExperiment):
                     )
                 )
 
-        context.push_tasks(child_tasks)
+        context.push_runs(child_tasks)

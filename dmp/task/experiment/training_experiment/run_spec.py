@@ -13,7 +13,7 @@ from dmp.task.experiment.training_experiment.training_experiment_checkpoint impo
 
 
 @dataclass
-class RunSpec:
+class RunConfig:
     seed: int  # random seed to use
 
     data: dict  # run-specific information, e.g. runtime environment

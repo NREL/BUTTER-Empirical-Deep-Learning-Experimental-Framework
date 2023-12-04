@@ -6,7 +6,6 @@ import itertools
 import random
 from typing import Any, Dict, Iterable, Iterator, Optional, Set, Type
 from uuid import UUID
-from jobqueue.job_status import JobStatus
 import numpy
 import pandas
 import tensorflow
@@ -27,7 +26,7 @@ from dmp.task.experiment.training_experiment import (
 )
 from dmp.task.experiment.training_experiment.dmp_early_stopping import DMPEarlyStopping
 from dmp.task.experiment.training_experiment.epoch_counter import EpochCounter
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.run_spec import RunConfig
 
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment_checkpoint import (
@@ -57,6 +56,10 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.model.model_spec import ModelSpec
 
 from typing import TYPE_CHECKING
+from dmp.task.run import Run
+from dmp.task.run_command import RunCommand
+
+from dmp.task.run_status import RunStatus
 
 if TYPE_CHECKING:
     from dmp.context import Context
@@ -97,15 +100,15 @@ class TrainingExperiment(Experiment):
     def __call__(
         self,
         context: Context,
-        run: RunSpec,
+        config: RunConfig,
     ) -> Tuple[EpochCounter, Dict[str, Any]]:
         # tensorflow.config.optimizer.set_jit(True)
-        self._setup_environment(run)
+        self._setup_environment(config)
         dataset, metrics, loss_metric = self._load_and_prepare_dataset()
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
         epoch_counter, experiment_history = self._try_restore_checkpoint(
-            context, run, model
+            context, config, model
         )
         print(model.network.structure.summary())
         model.keras_model.summary()
@@ -135,7 +138,7 @@ class TrainingExperiment(Experiment):
 
         self._fit_model(
             context,
-            run,
+            config,
             self.fit,
             dataset,
             model,
@@ -147,7 +150,7 @@ class TrainingExperiment(Experiment):
 
         self._record_completed_run(
             context,
-            run,
+            config,
             dataset,
             model.network,
             experiment_history,
@@ -162,8 +165,8 @@ class TrainingExperiment(Experiment):
     ) -> Optional[ExperimentSummaryRecord]:
         return self.summarizer.summarize(self, histories)
 
-    def _setup_environment(self, run: RunSpec) -> None:
-        seed = run.seed
+    def _setup_environment(self, config: RunConfig) -> None:
+        seed = config.seed
         os.environ["PYTHONHASHSEED"] = str(seed)
         numpy.random.seed(seed)
         tensorflow.random.set_seed(seed)
@@ -321,10 +324,10 @@ class TrainingExperiment(Experiment):
     def _try_restore_checkpoint(
         self,
         context: Context,
-        run: RunSpec,
+        config: RunConfig,
         model: ModelInfo,
     ) -> Tuple[EpochCounter, Dict[str, Any]]:
-        checkpoint = run.resume_checkpoint
+        checkpoint = config.resume_checkpoint
         if checkpoint is None:
             return EpochCounter(TrainingEpoch(0, 0, 0)), {}
 
@@ -334,18 +337,14 @@ class TrainingExperiment(Experiment):
         zero_grads = [tensorflow.zeros_like(w) for w in grad_vars]
         optimizer.apply_gradients(zip(zero_grads, grad_vars))
         checkpoint.resume(model)
-        run_history = context.schema.get_run_history(checkpoint.run_id)
-        if run_history is None:
-            return EpochCounter(epoch), {}
 
-        # trim run history past this model number
-        run_history = run_history[run_history["fit_number"] <= epoch.fit_number]
-        return EpochCounter(epoch), run_history.to_dict(orient="list")  # type: ignore
+        history = context.get_run_history(checkpoint.run_id, checkpoint.epoch)
+        return EpochCounter(epoch), history
 
     def _fit_model(
         self,
         context: Context,
-        run: RunSpec,
+        config: RunConfig,
         fit_config: Dict[str, Any],
         dataset: PreparedDataset,
         model: ModelInfo,
@@ -386,7 +385,7 @@ class TrainingExperiment(Experiment):
                 keys.epoch_start_time_ms,
                 keys.epoch_time_ms,
             )
-            if run.record_times
+            if config.record_times
             else None
         )
         history_callbacks.append(timestamp_recorder)
@@ -403,7 +402,7 @@ class TrainingExperiment(Experiment):
             history_callbacks.append(zero_epoch_recorder)
 
         additional_test_sets = [test_set_info]
-        if run.record_post_training_metrics:
+        if config.record_post_training_metrics:
             additional_test_sets.append(TestSetInfo(keys.trained, dataset.train))
 
         history_callbacks.append(
@@ -419,7 +418,7 @@ class TrainingExperiment(Experiment):
 
         model_saving_callback = self._setup_model_saving_callback(
             context,
-            run,
+            config,
             callbacks,
             model,
         )
@@ -443,7 +442,7 @@ class TrainingExperiment(Experiment):
         history_callbacks.append(history)
 
         # copy zero epoch recorder's train_ metrics to trained_ metrics
-        if zero_epoch_recorder is not None and run.record_post_training_metrics:
+        if zero_epoch_recorder is not None and config.record_post_training_metrics:
             self.remap_key_prefixes(
                 zero_epoch_recorder.history,
                 [
@@ -492,7 +491,7 @@ class TrainingExperiment(Experiment):
 
         # update run saved_models list
         if model_saving_callback is not None:
-            run.saved_models.extend(model_saving_callback.saved_epochs)
+            config.saved_models.extend(model_saving_callback.saved_epochs)
 
         # if experiment_history was supplied, merge this call to fit into it and return it
         # if experiment_history is not None:
@@ -633,16 +632,16 @@ class TrainingExperiment(Experiment):
     def _record_completed_run(
         self,
         context: Context,
-        run: RunSpec,
+        config: RunConfig,
         dataset: PreparedDataset,
         network: NetworkInfo,
         history: Dict[str, Any],
         loss_metric: Optional[str],
     ) -> None:
-        context.job.status = JobStatus.Complete
+        context.run_entry.status = RunStatus.Complete
         self._record_result(
             context,
-            run,
+            config,
             dataset,
             network,
             history,
@@ -661,7 +660,7 @@ class TrainingExperiment(Experiment):
     def _record_result(
         self,
         context: Context,
-        run: RunSpec,
+        config: RunConfig,
         dataset: PreparedDataset,
         network: NetworkInfo,
         history: Dict[str, Any],
@@ -687,10 +686,9 @@ class TrainingExperiment(Experiment):
         )
 
         # update run data
-        run.data.update(
+        config.data.update(
             {
-                "job_id": context.id,
-                "run_id": context.id,
+                "run_id": context.run_entry.id,
                 "python_version": str(platform.python_version()),
                 "platform": str(platform.platform()),
                 "tensorflow_version": str(tensorflow.__version__),
@@ -701,58 +699,6 @@ class TrainingExperiment(Experiment):
             }
         )
 
-        experiment_id = context.get_experiment_id()
-
-        # TODO: this should really be in a transaction or single query.
-        self._record_history(
-            context,
-            experiment_id,
-            history,
-            loss_metric,
-        )
-
-        context.update_task(experiment_id=experiment_id)
-
-    def _save_checkpoint(
-        self,
-        context: Context,
-        run: RunSpec,
-        dataset: PreparedDataset,
-        network: NetworkInfo,
-        history: Dict[str, Any],
-        model: ModelInfo,
-        epoch_counter: EpochCounter,
-        loss_metric: Optional[str],
-    ) -> TrainingExperimentCheckpoint:
-        # + save checkpoint
-        #     + to disk
-        #     + to db
-        # + update Job & Task to resume on failure
-
-        run.resume_checkpoint = context.save_model(
-            model,
-            epoch_counter.training_epoch,
-        )
-
-        # + save history to db
-        self._record_result(
-            context,
-            run,
-            dataset,
-            network,
-            history,
-            loss_metric,
-        )
-
-        return run.resume_checkpoint
-
-    def _record_history(
-        self,
-        context: Context,
-        experiment_id: UUID,
-        history: Dict[str, Any],
-        loss_metric: Optional[str],
-    ) -> None:
         history = history.copy()
 
         # if loss metric is the same as the loss, remove it to save space
@@ -771,12 +717,37 @@ class TrainingExperiment(Experiment):
                     del history[metric_key]
 
         extended_history = self._extract_extended_history(history)
+        context.run_entry.extended_history = make_dataframe_from_dict(extended_history)  # type: ignore
+        context.run_entry.history = make_dataframe_from_dict(history)
 
-        context.record_history(
-            experiment_id,
-            make_dataframe_from_dict(history),
-            make_dataframe_from_dict(extended_history),  # type: ignore
+        context.update_run()
+
+    def _save_checkpoint(
+        self,
+        context: Context,
+        config: RunConfig,
+        dataset: PreparedDataset,
+        network: NetworkInfo,
+        history: Dict[str, Any],
+        model: ModelInfo,
+        epoch_counter: EpochCounter,
+        loss_metric: Optional[str],
+    ) -> TrainingExperimentCheckpoint:
+        config.resume_checkpoint = context.save_model(
+            model,
+            epoch_counter.training_epoch,
         )
+
+        self._record_result(
+            context,
+            config,
+            dataset,
+            network,
+            history,
+            loss_metric,
+        )
+
+        return config.resume_checkpoint
 
     def _extract_extended_history(
         self,
@@ -805,11 +776,11 @@ class TrainingExperiment(Experiment):
     def _setup_model_saving_callback(
         self,
         context: Context,
-        run: RunSpec,
+        config: RunConfig,
         callbacks: List[Optional[keras.callbacks.Callback]],
         model: ModelInfo,
     ) -> Optional[ModelSavingCallback]:
-        if run.model_saving is None:
+        if config.model_saving is None:
             return None
 
         epoch_counter: EpochCounter = self._find_callback(callbacks, EpochCounter)  # type: ignore
@@ -819,7 +790,7 @@ class TrainingExperiment(Experiment):
             return model_saving_callback
 
         # if no model saving callback, create one
-        model_saving_callback = run.model_saving.make_save_model_callback(
+        model_saving_callback = config.model_saving.make_save_model_callback(
             context,
             epoch_counter,
             model,

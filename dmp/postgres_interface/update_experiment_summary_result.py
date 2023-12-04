@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
-from dmp.task.task_result import TaskResult
+from dmp.task.run_result import RunResult
 
 
 @dataclass
-class UpdateExperimentSummaryResult(TaskResult):
+class UpdateExperimentSummaryResult(RunResult):
     num_experiments_updated: int
     num_experiments_excepted: int
 

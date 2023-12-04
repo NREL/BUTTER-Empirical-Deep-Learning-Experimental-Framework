@@ -18,9 +18,9 @@ from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import
     PruningMethod,
 )
 from dmp.task.experiment.pruning_experiment.pruning_run_spec import (
-    IterativePruningRunSpec,
+    IterativePruningConfig,
 )
-from dmp.task.experiment.training_experiment.run_spec import RunSpec
+from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 from dmp.task.experiment.training_experiment.training_experiment import (
     TrainingExperiment,
@@ -42,14 +42,14 @@ class IterativePruningExperiment(TrainingExperiment):
     def __call__(
         self,
         context: Context,
-        run: IterativePruningRunSpec,
+        config: IterativePruningConfig,
     ) -> None:
         print(f"********** 1")
 
         # make sure we are not saving the trained weights in the callback
         # instead, we will always explicitly save them as part of a checkpoint.
-        if run.model_saving is None:
-            run.model_saving = ModelSavingSpec(
+        if config.model_saving is None:
+            config.model_saving = ModelSavingSpec(
                 True,
                 True,
                 [],
@@ -59,12 +59,12 @@ class IterativePruningExperiment(TrainingExperiment):
                 0,
             )
         else:
-            run.model_saving.save_trained_model = False
+            config.model_saving.save_trained_model = False
 
         # http://proceedings.mlr.press/v119/frankle20a/frankle20a.pdf Algorithim 2
         pruning = self.pruning
 
-        self._setup_environment(run)
+        self._setup_environment(config)
         dataset, metrics, loss_metric = self._load_and_prepare_dataset()
 
         # 1: Create a network with randomly initialization W0 ∈ Rd.
@@ -72,11 +72,11 @@ class IterativePruningExperiment(TrainingExperiment):
         network = self._make_network(self.model)
         model = self._make_model_from_network(network, metrics)
         epoch_counter, experiment_history = self._try_restore_checkpoint(
-            context, run, model
+            context, config, model
         )
 
         rewind_point = TrainingExperimentCheckpoint(
-            run_id=run.rewind_run_id,
+            run_id=config.rewind_run_id,
             load_mask=False,
             load_optimizer=pruning.rewind_optimizer,
             epoch=pruning.rewind_epoch,
@@ -95,7 +95,7 @@ class IterativePruningExperiment(TrainingExperiment):
                 break
 
             print(f"********** 5")
-            is_new_iteration = run.prune_first_iteration or not first_iteration
+            is_new_iteration = config.prune_first_iteration or not first_iteration
             if is_new_iteration:
                 iteration += 1
                 print(f"********** 6")
@@ -115,7 +115,7 @@ class IterativePruningExperiment(TrainingExperiment):
             # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
             self._fit_model(
                 context,
-                run,
+                config,
                 self.fit,
                 dataset,
                 model,
@@ -130,12 +130,12 @@ class IterativePruningExperiment(TrainingExperiment):
             # 7: Return Wk, m  (handled by model saving callback)
             # save weights at this point
             print(f"********** 10")
-            run.prune_first_iteration = True
+            config.prune_first_iteration = True
             pruning.new_seed = False
 
             self._save_checkpoint(
                 context,
-                run,
+                config,
                 dataset,
                 network,
                 experiment_history,
@@ -149,7 +149,7 @@ class IterativePruningExperiment(TrainingExperiment):
         print(f"********** 11")
         self._record_completed_run(
             context,
-            run,
+            config,
             dataset,
             model.network,
             experiment_history,

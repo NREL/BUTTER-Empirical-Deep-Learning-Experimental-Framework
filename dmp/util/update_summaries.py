@@ -2,7 +2,7 @@ import os
 
 from jobqueue.job import Job
 from dmp.context import Context
-from dmp.postgres_interface.schema.postgres_schema import PostgresSchema
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
 from dmp.postgres_interface.update_experiment_summary_result import (
     UpdateExperimentSummaryResult,
@@ -64,7 +64,7 @@ def do_work(args) -> UpdateExperimentSummaryResult:
     context = Context(
         Worker(
             None,  # type: ignore
-            PostgresSchema(load_credentials("dmp")),
+            PostgresInterface(load_credentials("dmp")),
             None,  # type: ignore
             {},
             None,
