@@ -134,8 +134,6 @@ partition_cols = [
     "l2",
     "label_noise",
     "shape",
-    "depth",
-    "size",
 ]
 
 
