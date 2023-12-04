@@ -121,19 +121,77 @@ ORDER BY
 create index on export_experiment (order_number) where status = 0;
 
 UPDATE export_experiment SET
-	status = 1
+	status = 0
+WHERE status <> 0;
+
+
+CREATE TABLE IF NOT EXISTS public.export_experiment_block
+(
+    status smallint NOT NULL DEFAULT 0,
+    dataset text COLLATE pg_catalog."default",
+	shape text COLLATE pg_catalog."default",
+    optimizer text COLLATE pg_catalog."default",
+    learning_rate real,
+    batch_size text COLLATE pg_catalog."default",
+    regularizer text,
+	has_label_noise boolean
+)
+
+alter table export_experiment add column regularizer text;
+alter table export_experiment add column has_label_noise boolean;
+update export_experiment set
+	regularizer = (CASE
+					WHEN l1>0 and l2 >0 THEN 'l1_l2'
+					WHEN l1>0 and l2 <=0 THEN 'l1'
+					WHEN l1<=0 and l2 >0 THEN 'l1'
+					ELSE NULL
+					END
+				   ),
+	has_label_noise = (label_noise > 0);
+
+
+insert into c (
+	dataset,
+	shape,
+	optimizer,
+	learning_rate,
+	batch_size,
+	regularizer,
+	has_label_noise)
+select distinct
+	dataset,
+	shape,
+	optimizer,
+	learning_rate,
+	batch_size,
+	regularizer,
+	has_label_noise
+from export_experiment;
+
+create index on export_experiment_block (status);
+
+create index on export_experiment (dataset,
+	shape,
+	optimizer,
+	learning_rate,
+	batch_size,
+	regularizer,
+	has_label_noise, experiment_id);
+
+    update export_experiment_block set status =0 where status <> 0;
+
+
 """
 
 
 partition_cols = [
     "dataset",
+    "shape",
     "optimizer",
     "learning_rate",
     "batch_size",
-    "l1",
-    "l2",
-    "label_noise",
-    "shape",
+    "regularizer",
+    "has_label_noise",
 ]
 
 
@@ -143,18 +201,18 @@ data_columns = [
     pyarrow.field("epochs", pyarrow.uint32(), nullable=False),
     pyarrow.field("batch_size", pyarrow.uint32(), nullable=False),
     pyarrow.field("experiment_id", pyarrow.uint32(), nullable=False),
-    pyarrow.field("primary_sweep", pyarrow.bool_(), nullable=False),
-    pyarrow.field("300_epoch_sweep", pyarrow.bool_(), nullable=False),
-    pyarrow.field("30k_epoch_sweep", pyarrow.bool_(), nullable=False),
-    pyarrow.field("learning_rate_sweep", pyarrow.bool_(), nullable=False),
-    pyarrow.field("label_noise_sweep", pyarrow.bool_(), nullable=False),
-    pyarrow.field("batch_size_sweep", pyarrow.bool_(), nullable=False),
-    pyarrow.field("regularization_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field("primary_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field("300_epoch_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field("30k_epoch_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field("learning_rate_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field("label_noise_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field("batch_size_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field("regularization_sweep", pyarrow.bool_(), nullable=False),
     # pyarrow.field('learning_rate_batch_size_sweep',
     #               pyarrow.bool_(), nullable=False),
     # pyarrow.field('size_adjusted_regularization_sweep',
     #               pyarrow.bool_(), nullable=False),
-    pyarrow.field("optimizer_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field("optimizer_sweep", pyarrow.bool_(), nullable=False),
     pyarrow.field("num_free_parameters", pyarrow.uint64(), nullable=False),
     pyarrow.field("widths", pyarrow.list_(pyarrow.uint32())),
     # pyarrow.field("network_structure", pyarrow.string()),
@@ -170,6 +228,8 @@ data_columns = [
     pyarrow.field("l1", pyarrow.float32(), nullable=True),
     pyarrow.field("l2", pyarrow.float32(), nullable=True),
     pyarrow.field("epoch", pyarrow.list_(pyarrow.uint16()), nullable=False),
+    pyarrow.field("regularizer", pyarrow.string(), nullable=False),
+    pyarrow.field("has_label_noise", pyarrow.bool_(), nullable=False),
 ]
 
 value_cols = [
@@ -233,8 +293,8 @@ def do_work(args):
         experiment_table.old_experiment_id,
         experiment_table.num_runs,
         experiment_table.experiment,
-        butter_data_column,
-        butter_e_data_column,
+        # butter_data_column,
+        # butter_e_data_column,
         experiment_table.by_epoch,
         # experiment_table.by_loss,
     )
@@ -243,39 +303,57 @@ def do_work(args):
         """
 WITH _selection AS (
 SELECT
-	{selected_columns}
+	experiment.experiment_id,
+    experiment.old_experiment_id,
+    experiment.num_runs,
+    experiment.experiment,
+    experiment.by_epoch,
+    es.*
 FROM
 	(
-		SELECT experiment_id eid
-		FROM export_experiment
+		SELECT
+            dataset,
+            shape,
+            optimizer,
+            learning_rate,
+            batch_size,
+            regularizer,
+            has_label_noise
+		FROM export_experiment_block
 		WHERE status = 0
-        ORDER BY order_number
 		LIMIT {block_size}
 		FOR UPDATE SKIP LOCKED
-	) _export_selection
-	INNER JOIN experiment ON (experiment.experiment_id = _export_selection.eid)
-	CROSS JOIN LATERAL (
-		SELECT
-			(run.command #> {butter_data_path}) butter_data,
-			(run.command #> {butter_e_data_path}) butter_e_data
-		FROM run
-		WHERE run.experiment_id = experiment.experiment_id
-		LIMIT 1
-	) _run_supplement
+	) es
+    INNER JOIN export_experiment eb ON (
+            es.dataset = eb.dataset
+            AND es.shape = eb.shape
+            AND es.optimizer = eb.optimizer
+            AND es.learning_rate = eb.learning_rate
+            AND es.batch_size = eb.batch_size
+            AND es.regularizer = eb.regularizer
+            AND es.has_label_noise = eb.has_label_noise
+    )
+	INNER JOIN experiment ON (experiment.experiment_id = eb.experiment_id)
 ),
 update_status AS (
-UPDATE export_experiment SET
+UPDATE export_experiment_block eb SET
 	status = 1
-FROM _selection
+FROM _selection es
 WHERE
-	_selection.experiment_id = export_experiment.experiment_id
+	es.dataset = eb.dataset
+    AND es.shape = eb.shape
+    AND es.optimizer = eb.optimizer
+    AND es.learning_rate = eb.learning_rate
+    AND es.batch_size = eb.batch_size
+    AND es.regularizer = eb.regularizer
+    AND es.has_label_noise = eb.has_label_noise
 )
 SELECT {selected_columns} FROM _selection;
 ;"""
     ).format(
         selected_columns=selected_columns.columns_sql,
-        butter_data_path=Literal("{config,data,butter}"),
-        butter_e_data_path=Literal("{config,data,butter-e}"),
+        # butter_data_path=Literal("{config,data,butter}"),
+        # butter_e_data_path=Literal("{config,data,butter-e}"),
         experiment_filter=Literal(Jsonb(experiment_filter)),
         block_size=Literal(block_size),
     )
@@ -286,8 +364,6 @@ SELECT {selected_columns} FROM _selection;
 
         source_records = []
         with ConnectionManager(credentials) as connection:
-            connection.execute("SET TIMEZONE to 'UTC';")
-
             with connection.cursor(binary=True) as cursor:
                 cursor.execute(query, binary=True)
                 source_records = list(cursor.fetchall())
@@ -305,8 +381,8 @@ SELECT {selected_columns} FROM _selection;
             try:
                 old_experiment_id = get_value(experiment_table.old_experiment_id)
                 experiment = get_value(experiment_table.experiment)
-                butter_data = get_value(butter_data_column)
-                butter_e_data = get_value(butter_e_data_column)
+                # butter_data = get_value(butter_data_column)
+                # butter_e_data = get_value(butter_e_data_column)
                 summary_df: pandas.DataFrame = convert_bytes_to_dataframe(
                     get_value(experiment_table.by_epoch)
                 )  # type: ignore
@@ -354,7 +430,19 @@ SELECT {selected_columns} FROM _selection;
                     l2 = 0.0
                 summary_df["l2"] = l2
 
+                if l1 > 0.0:
+                    if l2 > 0.0:
+                        summary_df["regularizer"] = "l1_l2"
+                    else:
+                        summary_df["regularizer"] = "l1"
+                elif l2 > 0.0:
+                    summary_df["regularizer"] = "l2"
+                else:
+                    summary_df["regularizer"] = None
+
                 summary_df["label_noise"] = experiment["dataset"]["label_noise"]
+                summary_df["has_label_noise"] = summary_df["label_noise"] > 0.0
+
                 summary_df["shape"] = experiment["model"]["shape"]
                 summary_df["depth"] = experiment["model"]["depth"]
                 summary_df["size"] = experiment["model"]["size"]
@@ -375,38 +463,38 @@ SELECT {selected_columns} FROM _selection;
                     pass
                 summary_df["momentum"] = momentum
 
-                for key in [
-                    "primary_sweep",
-                    "300_epoch_sweep",
-                    "30k_epoch_sweep",
-                    "learning_rate_sweep",
-                    "label_noise_sweep",
-                    "batch_size_sweep",
-                    "regularization_sweep",
-                    "optimizer_sweep",
-                ]:
-                    summary_df[key] = False
+                # for key in [
+                #     "primary_sweep",
+                #     "300_epoch_sweep",
+                #     "30k_epoch_sweep",
+                #     "learning_rate_sweep",
+                #     "label_noise_sweep",
+                #     "batch_size_sweep",
+                #     "regularization_sweep",
+                #     "optimizer_sweep",
+                # ]:
+                #     summary_df[key] = False
 
-                if butter_data is not None:
-                    for key, value in butter_data.items():
-                        summary_df[key] = value
+                # if butter_data is not None:
+                #     for key, value in butter_data.items():
+                #         summary_df[key] = value
 
                 # Thanks: https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
-                def flatten(target):
-                    result = {}
+                # def flatten(target):
+                #     result = {}
 
-                    def do_flatten(prefix, target):
-                        if isinstance(target, dict):
-                            for key, value in target.items():
-                                do_flatten(f"{prefix}_{key}", value)
-                        else:
-                            result[prefix] = target
+                #     def do_flatten(prefix, target):
+                #         if isinstance(target, dict):
+                #             for key, value in target.items():
+                #                 do_flatten(f"{prefix}_{key}", value)
+                #         else:
+                #             result[prefix] = target
 
-                    do_flatten("", target)
-                    return result
+                #     do_flatten("", target)
+                #     return result
 
-                for key, value in flatten(butter_data).items():
-                    summary_df[key] = value
+                # for key, value in flatten(butter_data).items():
+                #     summary_df[key] = value
 
                 # summary_df["experiment_id"] = old_experiment_id
 
@@ -440,6 +528,8 @@ SELECT {selected_columns} FROM _selection;
 
             # pprint(full_df.columns.to_list())
             # print(full_df)
+            # if len(full_df[(full_df["l1"] > 0.0) & (full_df["l2"] > 0.0)]) > 0:
+            #     print(full_df)
 
             use_byte_stream_split = [name for name in value_cols]
             use_byte_stream_split_set = set(use_byte_stream_split)
@@ -476,34 +566,34 @@ SELECT {selected_columns} FROM _selection;
             )
             result_records = []
 
-        if len(status_updates) > 0:
-            migrate_query = SQL(
-                """
-UPDATE export_experiment SET
-    status = input_data.status
-FROM
-    (
-        SELECT
-            {input_cast}
-        FROM
-            ( VALUES {input_placeholders} ) AS input_data ({input_colums})) input_data
-WHERE TRUE
-    AND export_experiment.experiment_id = input_data.experiment_id
-;"""
-            ).format(
-                input_colums=input_columns.columns_sql,
-                input_cast=input_columns.casting_sql,
-                input_placeholders=input_columns.placeholders_for_values(
-                    len(status_updates)
-                ),
-            )
+        #         if len(status_updates) > 0:
+        #             migrate_query = SQL(
+        #                 """
+        # UPDATE export_experiment SET
+        #     status = input_data.status
+        # FROM
+        #     (
+        #         SELECT
+        #             {input_cast}
+        #         FROM
+        #             ( VALUES {input_placeholders} ) AS input_data ({input_colums})) input_data
+        # WHERE TRUE
+        #     AND export_experiment.experiment_id = input_data.experiment_id
+        # ;"""
+        #             ).format(
+        #                 input_colums=input_columns.columns_sql,
+        #                 input_cast=input_columns.casting_sql,
+        #                 input_placeholders=input_columns.placeholders_for_values(
+        #                     len(status_updates)
+        #                 ),
+        #             )
 
-            with ConnectionManager(credentials) as connection:
-                connection.execute(
-                    migrate_query,
-                    list(chain(*status_updates)),
-                    binary=True,
-                )
+        #             with ConnectionManager(credentials) as connection:
+        #                 connection.execute(
+        #                     migrate_query,
+        #                     list(chain(*status_updates)),
+        #                     binary=True,
+        #                 )
 
         total_num_converted += num_processed
         total_num_excepted += num_excepted
