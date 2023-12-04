@@ -428,50 +428,53 @@ SELECT {selected_columns} FROM _selection;
             Column("status", "smallint"),
         )
 
-        full_df = pandas.concat(result_records, ignore_index=True)
+        if len(result_records) > 0:
+            full_df = pandas.concat(result_records, ignore_index=True)
 
-        if "" in full_df:
-            del full_df[""]
+            if "" in full_df:
+                del full_df[""]
 
-        for column in schema_cols:
-            if column.name not in full_df:
-                full_df[column.name] = None
+            for column in schema_cols:
+                if column.name not in full_df:
+                    full_df[column.name] = None
 
-        # pprint(full_df.columns.to_list())
-        # print(full_df)
+            # pprint(full_df.columns.to_list())
+            # print(full_df)
 
-        use_byte_stream_split = [name for name in value_cols]
-        use_byte_stream_split_set = set(use_byte_stream_split)
-        use_dictionary = [
-            field.name
-            for field in schema
-            if field.name not in use_byte_stream_split_set
-        ]
+            use_byte_stream_split = [name for name in value_cols]
+            use_byte_stream_split_set = set(use_byte_stream_split)
+            use_dictionary = [
+                field.name
+                for field in schema
+                if field.name not in use_byte_stream_split_set
+            ]
 
-        column_encoding = {name: "BYTE_STREAM_SPLIT" for name in use_byte_stream_split}
-        # column_encoding.update({name: "PLAIN_DICTIONARY" for name in use_dictionary})
+            column_encoding = {
+                name: "BYTE_STREAM_SPLIT" for name in use_byte_stream_split
+            }
+            # column_encoding.update({name: "PLAIN_DICTIONARY" for name in use_dictionary})
 
-        pyarrow.parquet.write_to_dataset(
-            pyarrow.Table.from_pydict(
-                full_df,
+            pyarrow.parquet.write_to_dataset(
+                pyarrow.Table.from_pydict(
+                    full_df,
+                    schema=schema,
+                ),
+                root_path=dataset_path,
                 schema=schema,
-            ),
-            root_path=dataset_path,
-            schema=schema,
-            partition_cols=partition_cols,
-            # data_page_size=128 * 1024,
-            compression="ZSTD",
-            compression_level=20,
-            use_dictionary=False,
-            # use_byte_stream_split=use_byte_stream_split,
-            # data_page_version='2.0',
-            existing_data_behavior="overwrite_or_ignore",
-            use_legacy_dataset=False,
-            # write_batch_size=64,
-            # dictionary_pagesize_limit=64*1024,
-            column_encoding=column_encoding,
-        )
-        del result_records
+                partition_cols=partition_cols,
+                # data_page_size=128 * 1024,
+                compression="ZSTD",
+                compression_level=20,
+                use_dictionary=False,
+                # use_byte_stream_split=use_byte_stream_split,
+                # data_page_version='2.0',
+                existing_data_behavior="overwrite_or_ignore",
+                use_legacy_dataset=False,
+                # write_batch_size=64,
+                # dictionary_pagesize_limit=64*1024,
+                column_encoding=column_encoding,
+            )
+            result_records = []
 
         if len(status_updates) > 0:
             migrate_query = SQL(
