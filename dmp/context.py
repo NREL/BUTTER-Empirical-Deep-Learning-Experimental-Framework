@@ -33,7 +33,7 @@ class Context:
 
     @property
     def database(self) -> PostgresInterface:
-        return self.worker.schema
+        return self.worker.database
 
     @property
     def id(self) -> UUID:

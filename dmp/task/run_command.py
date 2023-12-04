@@ -21,7 +21,6 @@ class RunCommand(ABC):
     def __call__(
         self,
         context: Context,
-        config: RunConfig,
     ) -> RunResult:
         pass
 

@@ -37,7 +37,7 @@ CREATE INDEX run_experiment_id_idx ON run (experiment_id) WHERE experiment_id IS
 CREATE INDEX run_unsummarized_idx ON run (experiment_id)
     WHERE experiment_id IS NOT NULL AND status = 2;
 
-CREATE INDEX run_queue_idx ON run (queue, priority) WHERE status = 0;
+CREATE INDEX run_queue_idx ON run (queue ASC, priority DESC, id ASC) WHERE status = 0;
 
 CREATE INDEX IF NOT EXISTS run_data_command_ops_idx
     ON public.run_data USING gin

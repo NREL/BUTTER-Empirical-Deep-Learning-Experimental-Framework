@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 import dataclasses
 from itertools import chain
+import random
+import time
+import traceback
 from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 
-from uuid import UUID
+from uuid import UUID, uuid4
 from jobqueue.connection_manager import ConnectionManager
 from jobqueue.cursor_manager import CursorManager
 from jobqueue.job_queue import JobQueue
@@ -35,7 +38,6 @@ set_json_dumps(json_dump_function)
 
 class PostgresInterface:
     _credentials: Dict[str, Any]
-    _queue: int
     _run_table: RunTable = RunTable()
 
     _experiment_table: ExperimentTable = ExperimentTable()
@@ -48,10 +50,8 @@ class PostgresInterface:
     def __init__(
         self,
         credentials: Dict[str, Any],
-        queue: int,
     ) -> None:
         self._credentials = credentials
-        self._queue = queue
 
         run_table = self._run_table
 
@@ -85,19 +85,39 @@ UPDATE {run_table}
         worker = %b,
         start_time = NOW(),
         update_time = NOW()
-    FROM p
-    WHERE p.id = q.id
+    WHERE TRUE
+        AND id IN (
+            SELECT id FROM
+                {run_table} {run_selection}
+            WHERE TRUE
+                AND {run_selection}.{status} = {queued_status}
+                AND {run_selection}.{queue} = %b
+            ORDER BY {priority} DESC, {id} ASC
+            LIMIT %b
+            FOR UPDATE SKIP LOCKED
+    )
 RETURNING
     {returning_clause}
-) LIMIT %b;"""
+;"""
         ).format(
             run_table=self._run_table.identifier,
             claimed_status=Literal(int(RunStatus.Claimed)),
+            run_selection=Identifier("_run_selection"),
+            status=run_table.status.identifier,
+            queued_status=Literal(int(RunStatus.Queued)),
+            queue=run_table.queue.identifier,
+            priority=run_table.priority.identifier,
+            id=run_table.id.identifier,
             returning_clause=self._run_columns.columns_sql,
         )
 
+    @property
+    def credentials(self) -> Dict[str, Any]:
+        return self._credentials
+
     def pop_runs(
         self,
+        queue_id: int,
         worker_id: Optional[UUID] = None,
         n: int = 1,
     ) -> List[RunEntry]:
@@ -107,7 +127,7 @@ RETURNING
         rows = []
         with ConnectionManager(self._credentials) as connection:
             with ClientCursor(connection) as cursor:
-                cursor.execute(self._pop_query, (worker_id, n), binary=True)
+                cursor.execute(self._pop_query, (worker_id, queue_id, n), binary=True)
                 rows = cursor.fetchall()
 
         for i, row in enumerate(rows):
@@ -442,3 +462,14 @@ WHERE
                 prepared_values,
                 binary=True,
             )
+
+    def set_status(
+        self,
+        run: RunEntry,
+        status: RunStatus,
+    ) -> None:
+        if run.status == status:
+            return
+
+        run.status = status
+        self.update_runs([run])

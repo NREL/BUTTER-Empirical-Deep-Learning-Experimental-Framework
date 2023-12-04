@@ -6,12 +6,160 @@ from jobqueue import load_credentials
 from dmp import common
 
 from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
-from dmp.worker import Worker
 
 import tensorflow
 
+from dataclasses import dataclass
+import random
+import time
+import traceback
+from typing import Any, Dict, List, Optional
+import uuid
+import tensorflow
+from jobqueue.job import Job
+from jobqueue.job_queue import JobQueue
+from dmp import common
+
+from typing import TYPE_CHECKING
+from dmp.run_entry import RunEntry
+
+from dmp.task.run_status import RunStatus
+
+if TYPE_CHECKING:
+    from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
+
 
 # from .common import jobqueue_marshal
+
+
+@dataclass
+class Worker:
+    _database: "PostgresInterface"
+    # _result_logger: "ExperimentResultLogger"
+    _strategy: tensorflow.distribute.Strategy
+    _info: Dict[str, Any]
+    _max_jobs: Optional[int] = None
+
+    @property
+    def strategy(self) -> tensorflow.distribute.Strategy:
+        return self._strategy
+
+    @property
+    def info(self) -> Dict[str, Any]:
+        return self._info
+
+    @property
+    def database(self) -> "PostgresInterface":
+        return self._database
+
+    def work_loop(
+        self,
+        queue_id: int,
+        wait_until_exit=15 * 60,
+        maximum_waiting_time=5 * 60,
+    ) -> None:
+        from dmp.marshaling import marshal
+        from dmp.task.run_command import RunCommand
+
+        # from dmp.task.experiment.experiment_result_record import ExperimentResultRecord
+        from dmp.context import Context
+
+        print(f"Work Loop: Starting...", flush=True)
+
+        git_hash = common.get_git_hash()
+
+        wait_start = None
+        wait_bound = 1.0
+
+        while True:
+            # Pull job off the queue
+            runs = self.database.pop_runs(queue_id, worker_id=worker_id)
+
+            if len(runs) <= 0:
+                if wait_start is None:
+                    wait_start = time.time()
+                    wait_bound = 1
+                else:
+                    waiting_time = time.time() - wait_start
+                    if waiting_time > wait_until_exit:
+                        print(
+                            "Work Loop: No runs found and max waiting time exceeded. Exiting...",
+                            flush=True,
+                        )
+                        break
+
+                # No runs, wait and try again.
+                print("Work Loop No runs found. Waiting...", flush=True)
+
+                # bounded randomized exponential backoff
+                wait_bound = min(maximum_waiting_time, wait_bound * 2)
+                time.sleep(random.uniform(1.0, wait_bound))
+                continue
+
+            run: RunEntry = runs[0]
+
+            try:
+                wait_start = None
+
+                print(f"Work Loop: {run.id} running...", flush=True)
+
+                """
+                + save resume task
+                + save history
+                + save model
+                ---
+                + load resume task
+                + resume from saved history
+                + resume from saved model
+                """
+
+                second_git_hash = common.get_git_hash()
+                if second_git_hash is not git_hash and second_git_hash != git_hash:
+                    break
+
+                self._info["worker_id"] = worker_id
+
+                # demarshal task from job.command
+                run_command: RunCommand = run.command
+
+                # run task
+                with self.strategy.scope():
+                    run_command(Context(self, run))
+
+                # log task run
+                # if isinstance(result, ExperimentResultRecord):
+                #     self._result_logger.log(result)
+
+                if self._max_jobs is not None:
+                    self._max_jobs -= 1
+
+                second_git_hash = common.get_git_hash()
+                if (self._max_jobs is not None and self._max_jobs <= 0) or (
+                    second_git_hash is not None and git_hash != second_git_hash
+                ):
+                    break
+
+                # Mark the job as complete in the queue.
+                self.database.set_status(run, RunStatus.Complete)
+
+                print(f"Work Loop: {run.id} done.", flush=True)
+            except Exception as e:
+                print(
+                    f"Work Loop: {run.id} unhandled exception {e} in work_loop.",
+                    flush=True,
+                )
+                print(traceback.format_exc())
+                try:
+                    run.error_message = str(e) + "\n" + traceback.format_exc()
+                    run.status = RunStatus.Failed
+                    self.database.update_runs((run,))
+                except Exception as e2:
+                    print(
+                        f"Work Loop: {run.id} exception thrown while marking as failed in work_loop: {e}, {e2}!",
+                        flush=True,
+                    )
+                    print(traceback.format_exc(), flush=True)
+        print(f"Work Loop: exiting.", flush=True)
 
 
 def make_strategy(num_cores, gpus, gpu_mem):
@@ -114,9 +262,7 @@ if __name__ == "__main__":
     )
 
     worker = Worker(
-        job_queue,
         schema,
-        # result_logger,
         strategy,
         {
             "nodes": nodes,
@@ -131,5 +277,5 @@ if __name__ == "__main__":
         },
     )
     print(f"Worker id {worker_id} start Worker object...\n", flush=True)
-    worker()  # runs the work loop on the worker
+    worker.work_loop(queue_id)  # runs the work loop on the worker
     print(f"Worker id {worker_id} Worker exited.\n", flush=True)

@@ -16,7 +16,7 @@ from dmp.postgres_interface.update_experiment_summary_result import (
     UpdateExperimentSummaryResult,
 )
 from dmp.task.experiment.experiment_summary_record import ExperimentSummaryRecord
-from dmp.task.run_status import RunStatus
+from dmp.task.run_table import RunStatus
 from dmp.task.run_command import RunCommand
 from dmp.task.run_result import RunResult
 from dmp.worker import Worker
@@ -35,23 +35,23 @@ to_summarize AS (
 	FROM
 		experiment2
 	WHERE TRUE
-		AND EXISTS ( SELECT 1 FROM run_status WHERE TRUE
-		AND run_status.status = 2
-		AND run_status.summarized IS NULL
-		AND run_status.experiment_id IS NOT NULL
-				   AND run_status.experiment_id = experiment2.experiment_id)
+		AND EXISTS ( SELECT 1 FROM run_table WHERE TRUE
+		AND run_table.status = 2
+		AND run_table.summarized IS NULL
+		AND run_table.experiment_id IS NOT NULL
+				   AND run_table.experiment_id = experiment2.experiment_id)
 
 	FOR UPDATE SKIP LOCKED
 	LIMIT 10
 ),
 updated_runs AS (
-UPDATE run_status SET
+UPDATE run_table SET
 	summarized = 1
 FROM
 	to_summarize
 WHERE TRUE
-	AND run_status.status = 2 AND run_status.summarized IS NULL AND run_status.experiment_id IS NOT NULL
-	AND run_status.experiment_id = to_summarize.experiment_id
+	AND run_table.status = 2 AND run_table.summarized IS NULL AND run_table.experiment_id IS NOT NULL
+	AND run_table.experiment_id = to_summarize.experiment_id
 )
 SELECT
 	to_summarize.experiment_id,
@@ -86,33 +86,30 @@ class UpdateExperimentSummary(RunCommand):
     ) -> RunResult:
         from dmp.marshaling import marshal
 
-        schema = context.database
-        experiment_table = schema._experiment_table
-        run_status = schema._run_table
-        run_data = schema.run_data
-        history = schema.history
+        database = context.database
+        experiment_table = database._experiment_table
+        run_table = database._run_table
 
         format_args = dict(
             to_summarize=Identifier("_to_summarize"),
-            run_status=run_status.identifier,
-            experiment_id=run_status.experiment_id.identifier,
+            run_table=run_table.identifier,
+            experiment_id=run_table.experiment_id.identifier,
             experiment=experiment_table.identifier,
-            status=run_status.status.identifier,
+            status=run_table.status.identifier,
             experiment_column=experiment_table.experiment.identifier,
-            run_data=run_data.identifier,
-            command=run_data.command.identifier,
-            history=history.identifier,
-            history_column=history.history.identifier,
-            id=run_status.id.identifier,
+            command=run_table.command.identifier,
+            history_column=run_table.history.identifier,
+            id=run_table.id.identifier,
             status_complete=Literal(RunStatus.Complete.value),
+            status_summarized=Literal(RunStatus.Summarized.value),
             experiment_limit=Literal(self.experiment_limit),
         )
 
-        claim_columns = ColumnGroup(
+        result_columns = ColumnGroup(
             experiment_table.experiment_id,
             experiment_table.experiment,
-            run_status.id,
-            history.history,
+            run_table.id,
+            run_table.history,
         )
 
         claim_and_get_query = SQL(
@@ -125,37 +122,40 @@ WITH
 	FROM
 		{experiment}
 	WHERE TRUE
-        AND EXISTS ( SELECT 1 FROM {run_status} WHERE TRUE
-            AND {run_status}.{status} = {status_complete}
-            AND {run_status}.{summarized} IS NULL
-            AND {run_status}.{experiment_id} IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM {run_table}
+            WHERE TRUE
+                AND {run_table}.{status} = {status_complete}
+                AND {run_table}.{experiment_id} IS NOT NULL
             )
 	LIMIT {experiment_limit}
 	FOR UPDATE SKIP LOCKED
 ),
 updated_runs AS (
-UPDATE {run_status} SET
-	{summarized} = 1
+UPDATE {run_table} SET
+	{status} = {status_summarized}
 FROM
 	{to_summarize}
 WHERE TRUE
-	AND {run_status}.{status} = 2 AND {run_status}.{summarized} IS NULL AND {run_status}.{experiment_id} IS NOT NULL
-	AND {run_status}.{experiment_id} = {to_summarize}.{experiment_id}
+	AND {run_table}.{status} = {status_complete}
+    AND {run_table}.{experiment_id} IS NOT NULL
+	AND {run_table}.{experiment_id} = {to_summarize}.{experiment_id}
 )
 SELECT
 	{to_summarize}.{experiment_id},
 	{to_summarize}.{experiment_column},
-	{history}.{id},
-	{history}.{history_column}
+	{run_table}.{id},
+	{run_table}.{history_column}
 FROM
 	{to_summarize}
-	INNER JOIN {history} ON ({history}.{experiment_id} = {to_summarize}.{experiment_id})
+	INNER JOIN {run_table} ON ({run_table}.{experiment_id} = {to_summarize}.{experiment_id})
 ORDER BY {experiment_id}
 ;"""
         ).format(**format_args)
 
         rows = []
-        with ConnectionManager(schema.credentials) as connection:
+        with ConnectionManager(database.credentials) as connection:
             # with ClientCursor(connection) as cursor:
             #     print(cursor.mogrify(claim_and_get_query))
             with connection.cursor(binary=True) as cursor:
@@ -199,9 +199,9 @@ ORDER BY {experiment_id}
         for row in rows:
 
             def value_of(column: Column) -> Any:
-                return row[claim_columns[column]]
+                return row[result_columns[column]]
 
-            this_experiment_id = value_of(run_status.experiment_id)
+            this_experiment_id = value_of(run_table.experiment_id)
             if this_experiment_id != experiment_id:
                 summarize_experiment()
                 encoded_histories.clear()
@@ -209,12 +209,12 @@ ORDER BY {experiment_id}
                 marshaled_experiment = value_of(experiment_table.experiment)
 
             encoded_histories.append(
-                (value_of(run_status.id), value_of(history.history))
+                (value_of(run_table.id), value_of(run_table.history))
             )
         summarize_experiment()
 
         try:
-            schema.store_summaries(summaries)
+            database.store_summaries(summaries)
         except Exception as e:
             result.num_experiments_excepted += len(summaries)
             result.num_experiments_updated -= len(summaries)
