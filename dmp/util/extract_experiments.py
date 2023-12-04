@@ -180,6 +180,10 @@ create index on export_experiment (dataset,
 
     update export_experiment_block set status =0 where status <> 0;
 
+UPDATE export_experiment_block SET
+	status = 0
+WHERE status <> 0;
+
 
 """
 
