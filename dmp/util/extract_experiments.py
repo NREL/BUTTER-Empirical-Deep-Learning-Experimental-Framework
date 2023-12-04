@@ -511,7 +511,6 @@ WHERE TRUE
             f"Worker {worker_number} : {worker_id} committed {num_processed}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}."
         )
 
-        break
         if num_processed <= 0 and num_excepted <= 0:
             break
 
