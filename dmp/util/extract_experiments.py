@@ -118,7 +118,10 @@ ORDER BY
 		   size
 	) e;
 
-create index on export_experiment (order_number);
+create index on export_experiment (order_number) where status = 0;
+
+UPDATE export_experiment SET
+	status = 1
 """
 
 
