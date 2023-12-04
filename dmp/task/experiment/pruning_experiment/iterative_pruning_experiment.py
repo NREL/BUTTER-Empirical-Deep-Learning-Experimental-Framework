@@ -3,7 +3,6 @@ import io
 from pprint import pprint
 from typing import List, Optional, Any, Dict, Tuple
 
-from jobqueue.job import Job
 import numpy
 from dmp import parquet_util
 from dmp.common import KerasConfig

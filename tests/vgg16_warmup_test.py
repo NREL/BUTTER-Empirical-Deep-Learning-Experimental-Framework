@@ -39,7 +39,7 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
 sys.path.insert(0, "./")
 
 import tensorflow
-import dmp.jobqueue_interface.worker
+import dmp.script.worker
 import pytest
 
 from dmp.dataset.dataset_spec import DatasetSpec

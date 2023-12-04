@@ -118,13 +118,13 @@ class TrainingExperimentSummarizer:
             del history[keys.epoch_start_time_ms]
         by_epoch = self._summarize_by_epoch(experiment, history, selected_epochs)
 
-        for k, v in {
-            "display.max_rows": 9000,
-            "display.min_rows": 40,
-            "display.max_columns": None,
-            "display.width": 300,
-        }.items():
-            pandas.set_option(k, v)
+        # for k, v in {
+        #     "display.max_rows": 9000,
+        #     "display.min_rows": 40,
+        #     "display.max_columns": None,
+        #     "display.width": 300,
+        # }.items():
+        #     pandas.set_option(k, v)
 
         # print(by_epoch.head(3000))
         # print(by_epoch.describe())

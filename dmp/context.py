@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from typing import TYPE_CHECKING
 
 import pandas
+
 from dmp.parquet_util import make_dataframe_from_dict
 
 from dmp.run_entry import RunEntry
@@ -13,10 +14,10 @@ from dmp.run_entry import RunEntry
 from dmp.uuid_tools import object_to_uuid
 
 if TYPE_CHECKING:
+    from dmp.script.worker import Worker
     from dmp.task.experiment.experiment import Experiment
     from dmp.task.experiment.training_experiment.run_spec import RunConfig
     from dmp.task.run import Run
-    from dmp.worker import Worker
     from dmp.task.run_command import RunCommand
     from dmp.model.model_info import ModelInfo
     from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch

@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID, uuid4
 from dmp.context import Context
-import dmp.jobqueue_interface.worker
+import dmp.script.worker
 import sys
 
 from jobqueue.job import Job
@@ -14,7 +14,7 @@ sys.path.insert(0, "./")
 
 
 def run_experiment(run, use_database: bool = False, id: Optional[UUID] = None):
-    strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
+    strategy = dmp.script.worker.make_strategy(None, None, None)
     schema = None
     if id is None:
         id = uuid4()

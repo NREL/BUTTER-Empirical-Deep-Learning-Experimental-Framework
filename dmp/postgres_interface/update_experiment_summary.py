@@ -4,7 +4,6 @@ from pprint import pprint
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Type
 from jobqueue.connection_manager import ConnectionManager
 
-from jobqueue.job import Job
 
 from psycopg import ClientCursor
 from psycopg.sql import SQL, Composed, Identifier, Literal
@@ -68,7 +67,6 @@ ORDER BY experiment_id
 @dataclass
 class UpdateExperimentSummary(RunCommand):
     experiment_limit: int
-    insert_limit: int
 
     @staticmethod
     def register_types(types: Iterable[Type]) -> None:

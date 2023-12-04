@@ -2,7 +2,7 @@ import io
 import os
 from itertools import chain
 from psycopg.types.json import Jsonb
-from dmp.parquet_util import convert_dataframe_to_bytes
+from dmp.parquet_util import convert_bytes_to_dataframe, convert_dataframe_to_bytes
 
 from dmp.task.experiment.training_experiment.training_experiment_keys import (
     TrainingExperimentKeys,
@@ -33,22 +33,177 @@ from dmp.postgres_interface.element.column_group import ColumnGroup
 from dmp.postgres_interface.element.table import Table
 from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
 from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
-from dmp.task.experiment.experiment import Experiment
 from dmp.uuid_tools import json_to_uuid
-
-from dmp.dataset.dataset_spec import DatasetSpec
-from dmp.dataset.ml_task import MLTask
-
-from dmp.task.experiment.training_experiment.training_experiment import (
-    TrainingExperiment,
-)
 
 
 import pathos.multiprocessing as multiprocessing
 
+
+dataset_path = "../summary_by_epoch/"
+"""
+drop table export_experiment;
+
+CREATE TABLE export_experiment (
+	experiment_id UUID NOT NULL PRIMARY KEY,
+	order_number integer not null,
+	status smallint NOT NULL DEFAULT 0,
+	"dataset" text,
+    "optimizer" text,
+	"learning_rate" real,
+    "batch_size" text,
+    "l1" float,
+	"l2" float,
+	"label_noise" real,
+    "shape" text,
+    "depth" smallint,
+	"size" integer
+);
+
+
+INSERT INTO export_experiment (
+	order_number,
+	experiment_id,
+	dataset,
+	optimizer,
+	learning_rate,
+	batch_size,
+	l1,
+	l2,
+	label_noise,
+	shape,
+	depth,
+	size
+)
+SELECT
+	(ROW_NUMBER() OVER (ORDER BY
+			   dataset,
+			   optimizer,
+			   learning_rate,
+			   batch_size,
+			   l1,
+			   l2,
+			   label_noise,
+			   shape,
+			   depth,
+			   size)
+	) order_number,
+	e.*
+FROM
+(
+SELECT
+	experiment_id,
+	(experiment #> '{dataset,name}')::text dataset,
+	(experiment #> '{optimizer,class}')::text optimizer,
+	(experiment #> '{optimizer,learning_rate}')::float learning_rate,
+	(experiment #> '{fit,batch_size}')::smallint batch_size,
+	(experiment #> '{dataset,label_noise}')::float label_noise,
+	COALESCE((experiment #> '{model,inner,kernel_regularizer,l1}')::float, 0) l1,
+	COALESCE((experiment #> '{model,inner,kernel_regularizer,l2}')::float, 0) l2,
+	(experiment #> '{model,shape}')::text shape,
+	(experiment #> '{model,depth}')::smallint depth,
+	(experiment #> '{model,size}')::integer size
+FROM experiment
+WHERE TRUE
+	AND experiment @> '{"data":{"butter":true}}'
+ORDER BY
+		   dataset,
+		   optimizer,
+		   learning_rate,
+		   batch_size,
+		   l1,
+		   l2,
+		   label_noise,
+		   shape,
+		   depth,
+		   size
+	) e;
+
+create index on export_experiment (order_number);
 """
 
-"""
+
+partition_cols = [
+    "dataset",
+    "optimizer",
+    "learning_rate",
+    "batch_size",
+    "l1",
+    "l2",
+    "label_noise",
+    "shape",
+    "depth",
+    "size",
+]
+
+
+data_columns = [
+    pyarrow.field("dataset", pyarrow.string(), nullable=False),
+    pyarrow.field("depth", pyarrow.uint8(), nullable=False),
+    pyarrow.field("epochs", pyarrow.uint32(), nullable=False),
+    pyarrow.field("batch_size", pyarrow.uint32(), nullable=False),
+    pyarrow.field("experiment_id", pyarrow.uint32(), nullable=False),
+    pyarrow.field("primary_sweep", pyarrow.bool_(), nullable=False),
+    pyarrow.field("300_epoch_sweep", pyarrow.bool_(), nullable=False),
+    pyarrow.field("30k_epoch_sweep", pyarrow.bool_(), nullable=False),
+    pyarrow.field("learning_rate_sweep", pyarrow.bool_(), nullable=False),
+    pyarrow.field("label_noise_sweep", pyarrow.bool_(), nullable=False),
+    pyarrow.field("batch_size_sweep", pyarrow.bool_(), nullable=False),
+    pyarrow.field("regularization_sweep", pyarrow.bool_(), nullable=False),
+    # pyarrow.field('learning_rate_batch_size_sweep',
+    #               pyarrow.bool_(), nullable=False),
+    # pyarrow.field('size_adjusted_regularization_sweep',
+    #               pyarrow.bool_(), nullable=False),
+    pyarrow.field("optimizer_sweep", pyarrow.bool_(), nullable=False),
+    pyarrow.field("num_free_parameters", pyarrow.uint64(), nullable=False),
+    pyarrow.field("widths", pyarrow.list_(pyarrow.uint32())),
+    # pyarrow.field("network_structure", pyarrow.string()),
+    pyarrow.field("num_runs", pyarrow.uint8(), nullable=False),
+    pyarrow.field("label_noise", pyarrow.float32(), nullable=True),
+    pyarrow.field("optimizer", pyarrow.string(), nullable=False),
+    pyarrow.field("learning_rate", pyarrow.float32(), nullable=False),
+    pyarrow.field("momentum", pyarrow.float32(), nullable=True),
+    pyarrow.field("shape", pyarrow.string(), nullable=False),
+    pyarrow.field("size", pyarrow.uint64(), nullable=False),
+    pyarrow.field("task", pyarrow.string(), nullable=False),
+    # pyarrow.field("kernel_regularizer", pyarrow.string(), nullable=True),
+    pyarrow.field("l1", pyarrow.float32(), nullable=True),
+    pyarrow.field("l2", pyarrow.float32(), nullable=True),
+    pyarrow.field("epoch", pyarrow.list_(pyarrow.uint16()), nullable=False),
+]
+
+value_cols = [
+    # "test_loss_best_count",
+]
+
+for key in [
+    "test_loss",
+    "test_accuracy",
+    "test_mean_squared_error",
+    "test_binary_crossentropy",
+    "test_categorical_crossentropy",
+]:
+    for suffix1 in ["", "_best"]:
+        for suffix2 in ["0", "25", "75", "100"]:
+            value_cols.append(f"{key}{suffix1}_quantile_{suffix2}")
+
+for prefix in ["train"]:
+    for key in [
+        "loss",
+        "accuracy",
+        "mean_squared_error",
+        "binary_crossentropy",
+        "categorical_crossentropy",
+    ]:
+        for suffix in ["_best_epoch_quantile_50", "_quantile_50"]:
+            value_cols.append(f"{prefix}_{key}{suffix}")
+
+
+schema_cols = data_columns + [
+    pyarrow.field(name, pyarrow.list_(pyarrow.float32()), nullable=True)
+    for name in value_cols
+]
+
+schema = pyarrow.schema(schema_cols)
 
 
 def do_work(args):
@@ -59,74 +214,73 @@ def do_work(args):
     worker_number, block_size = args
 
     credentials = load_credentials("dmp")
-    schema = PostgresInterface(credentials, 0)
+    database = PostgresInterface(credentials)
 
     worker_id = str(worker_number) + str(uuid.uuid4())
     total_num_converted = 0
     total_num_excepted = 0
+
     print(f"Worker {worker_number} : {worker_id} started...")
 
-    get_attsr_query = SQL(
-        """
-select
-	attr_id, kind, COALESCE(to_jsonb(value_bool), to_jsonb(value_int), to_jsonb(value_float), to_jsonb(value_str), value_json) v
-from attr
-"""
+    experiment_filter = {"data": {"butter": True}}
+
+    experiment_table = database._experiment_table
+    butter_data_column = Column("butter_data", "jsonb")
+    butter_e_data_column = Column("butter_e_data", "jsonb")
+    selected_columns = ColumnGroup(
+        experiment_table.experiment_id,
+        experiment_table.old_experiment_id,
+        experiment_table.num_runs,
+        experiment_table.experiment,
+        butter_data_column,
+        butter_e_data_column,
+        experiment_table.by_epoch,
+        # experiment_table.by_loss,
     )
 
-    get_runs_query = SQL(
+    query = SQL(
         """
-WITH r AS (
+WITH _selection AS (
 SELECT
-	{job_status_selection},
-    {job_data_selection},
-    {experiment_selection},
-    {old_experiment_selection},
-    {run_selection}
+	{selected_columns}
 FROM
-    (
-        SELECT experiment_id, run_id
-        FROM migration
-        WHERE
-            status = 0
-        ORDER BY experiment_id, run_id
-        FOR UPDATE
-        SKIP LOCKED
-        LIMIT {block_size}
-    ) m,
-    job_status s,
-    job_data d,
-    run r,
-	experiment e,
-    experiment_ eold
-WHERE TRUE
-	AND s.id = m.run_id
-    AND d.id = s.id
-    AND r.run_id = s.id
-	AND e.experiment_id = m.experiment_id
-    AND e.old_experiment_id = eold.experiment_id
+	(
+		SELECT experiment_id eid
+		FROM export_experiment
+		WHERE status = 0
+        ORDER BY order_number
+		LIMIT {block_size}
+		FOR UPDATE SKIP LOCKED
+	) _export_selection
+	INNER JOIN experiment ON (experiment.experiment_id = _export_selection.eid)
+	CROSS JOIN LATERAL (
+		SELECT
+			(run.command #> {butter_data_path}) butter_data,
+			(run.command #> {butter_e_data_path}) butter_e_data
+		FROM run
+		WHERE run.experiment_id = experiment.experiment_id
+		LIMIT 1
+	) _run_supplement
 ),
-updated AS (
-    UPDATE migration
-        SET status = 1
-    WHERE
-        migration.run_id IN (SELECT run_id from r)
+update_status AS (
+UPDATE export_experiment SET
+	status = 1
+FROM _selection
+WHERE
+	_selection.experiment_id = export_experiment.experiment_id
 )
-SELECT * from r
+SELECT {selected_columns} FROM _selection;
 ;"""
     ).format(
-        job_status_selection=job_status_selection.of(Identifier("s")),
-        job_data_selection=job_data_selection.of(Identifier("d")),
-        experiment_selection=experiment_selection.of(Identifier("e")),
-        old_experiment_selection=old_experiment_selection.of(Identifier("eold")),
-        run_selection=run_table.of(Identifier("r")),
+        selected_columns=selected_columns.columns_sql,
+        butter_data_path=Literal("{config,data,butter}"),
+        butter_e_data_path=Literal("{config,data,butter-e}"),
+        experiment_filter=Literal(Jsonb(experiment_filter)),
         block_size=Literal(block_size),
     )
 
-    attr_map = None
-
     while True:  #  binary=True, scrollable=True
-        num_converted = 0
+        num_processed = 0
         num_excepted = 0
 
         source_records = []
@@ -134,477 +288,228 @@ SELECT * from r
             connection.execute("SET TIMEZONE to 'UTC';")
 
             with connection.cursor(binary=True) as cursor:
-                if attr_map is None:
-                    cursor.execute(get_attsr_query)
-                    attr_map = {row[0]: (row[1], row[2]) for row in cursor.fetchall()}
-
-                cursor.execute(get_runs_query, binary=True)
+                cursor.execute(query, binary=True)
                 source_records = list(cursor.fetchall())
 
         result_records = []
+        status_updates = []
 
         for row in source_records:
 
             def get_value(column: Column):
                 return row[selected_columns[column]]
 
-            run_id = get_value(run_table.run_id)
-            job_id = get_value(run_table.job_id)
+            experiment_id = get_value(experiment_table.experiment_id)
 
             try:
-                src_command = get_value(job_data_table.command)
-                src_run_data = get_value(run_table.run_data)
-                # src_task = get_value(run_table.task)
+                old_experiment_id = get_value(experiment_table.old_experiment_id)
+                experiment = get_value(experiment_table.experiment)
+                butter_data = get_value(butter_data_column)
+                butter_e_data = get_value(butter_e_data_column)
+                summary_df: pandas.DataFrame = convert_bytes_to_dataframe(
+                    get_value(experiment_table.by_epoch)
+                )  # type: ignore
 
-                # src_history = parquet_to_dataframe(get_value(run_table.run_history))
-                # src_history = src_history.join(
-                #     parquet_to_dataframe(get_value(run_table.run_extended_history)),
-                #     on="epoch",
-                #     how="left",
-                #     rsuffix="_",
-                # )
+                # print(experiment_id, old_experiment_id)
+                # pprint(experiment)
+                # pprint(butter_data)
+                # pprint(butter_e_data)
+                # print(summary_df)
+                # pprint(summary_df.columns.to_list())
 
-                attrs = {}
-                for attr_id in chain(
-                    get_value(experiment_table.experiment_attrs),
-                    get_value(experiment_table.experiment_tags),
-                ):
-                    kind, value = attr_map[attr_id]  # type: ignore
-                    attrs[kind] = value
+                del summary_df["test_loss_best_count"]
 
-                # dataset_name = src_command["dataset"]["name"]
-                # dsinfo = dataset_index[dataset_index["Dataset"] == dataset_name].iloc[0]
-                # ml_task = MLTask.regression
-                # num_outputs = 1
-
-                # if dataset_name == "201_pol":
-                #     ml_task = MLTask.classification
-                #     num_outputs = 11
-                # elif dataset_name == "294_satellite_image":
-                #     ml_task = MLTask.classification
-                #     num_outputs = 6
-                # elif dsinfo["Task"] == "classification":
-                #     ml_task = MLTask.classification
-                #     num_outputs = int(dsinfo["n_classes"])
-                #     if num_outputs == 2:
-                #         num_outputs = 1
-
-                # dataset_size = int(dsinfo["n_observations"])
-                # test_split = float(src_command["dataset"]["test_split"])
-                # train_set_size = math.floor(dataset_size * test_split)
-                # test_set_size = dataset_size - train_set_size
-
-                # shapes = dataset_shape_map[dataset_name]
-
-                # input_shape = [
-                #     shapes[0],
-                # ]
-
-                # output_activation = "softmax"
-                # output_kernel_initializer = "GlorotUniform"
-                # loss = "CategoricalCrossentropy"
-                # loss_metric = "categorical_crossentropy"
-                # if ml_task == MLTask.regression:
-                #     output_activation = "sigmoid"
-                #     output_kernel_initializer = "GlorotUniform"
-                #     loss = "MeanSquaredError"
-                #     loss_metric = "mean_squared_error"
-                # elif ml_task == MLTask.classification:
-                #     if num_outputs == 1:
-                #         output_activation = "sigmoid"
-                #         output_kernel_initializer = "GlorotUniform"
-                #         loss = "BinaryCrossentropy"
-                #         loss_metric = "binary_crossentropy"
-                #     else:
-                #         output_activation = "softmax"
-                #         output_kernel_initializer = "GlorotUniform"
-                #         loss = "CategoricalCrossentropy"
-                #         loss_metric = "categorical_crossentropy"
-
-                # history = parquet_to_dataframe(get_value(run_table.run_history))
-
-                # for prefix in keys.measurement_prefixes:
-                #     loss_key = prefix + "_" + keys.loss
-                #     metric_key = prefix + "_" + loss_metric
-                #     if (
-                #         loss_key in history
-                #         and metric_key in history
-                #         and all(
-                #             (x is y) or (x == y)
-                #             for x, y in zip(history[loss_key], history[metric_key])
-                #         )
-                #     ):
-                #         del history[metric_key]
-
-                optimizer = {
-                    "class": attrs["optimizer"],
-                }
-
-                if "optimizer_learning_rate" in attrs:
-                    optimizer["learning_rate"] = attrs["optimizer_learning_rate"]
-
-                if "optimizer_momentum" in attrs:
-                    optimizer["momentum"] = attrs["optimizer_momentum"]
-
-                if "optimizer_nesterov" in attrs:
-                    optimizer["nesterov"] = attrs["optimizer_nesterov"]
-
-                inner_kernel_regularizer = None
-                if "model_inner_kernel_regularizer" in attrs:
-                    inner_kernel_regularizer = {
-                        "class": attrs["model_inner_kernel_regularizer"]
-                    }
-                    if "model_inner_kernel_regularizer_l1" in attrs:
-                        inner_kernel_regularizer["l1"] = attrs[
-                            "model_inner_kernel_regularizer_l1"
-                        ]
-                    if "model_inner_kernel_regularizer_l2" in attrs:
-                        inner_kernel_regularizer["l2"] = attrs[
-                            "model_inner_kernel_regularizer_l2"
-                        ]
-
-                dst_command = {
-                    "run": {
-                        "data": {
-                            "batch": src_command["batch"],
-                            "job_id": {
-                                "type": "UUID",
-                                "value": str(run_id),
-                            },
-                            "run_id": {
-                                "type": "UUID",
-                                "value": str(job_id),
-                            },
-                            "pre_migration": {
-                                "experiment_id": get_value(
-                                    experiment_table.experiment_id
-                                ),
-                                "old_experiment_id": get_value(
-                                    experiment_table.old_experiment_id
-                                ),
-                                "queue": get_value(job_status_table.queue),
-                            },
-                            "context": {
-                                "cpus": src_run_data["cpus"],
-                                "gpus": src_run_data["gpus"],
-                                "nodes": src_run_data["nodes"],
-                                "num_cpus": get_value(run_table.num_cpus),
-                                "num_gpus": get_value(run_table.num_gpus),
-                                "queue_id": get_value(job_status_table.queue),
-                                "num_nodes": get_value(run_table.num_nodes),
-                                "worker_id": {
-                                    "type": "UUID",
-                                    "value": str(get_value(job_status_table.worker)),
-                                },
-                                "gpu_memory": get_value(run_table.gpu_memory),
-                                "tensorflow_strategy": src_run_data["strategy"],
-                            },
-                            "git_hash": src_run_data["git_hash"],
-                            "platform": src_run_data["platform"],
-                            "host_name": get_value(run_table.host_name),
-                            "slurm_job_id": get_value(run_table.slurm_job_id),
-                            "python_version": src_run_data["python_version"],
-                            "tensorflow_version": src_run_data["tensorflow_version"],
-                        },
-                        "seed": get_value(run_table.seed),
-                        "type": "RunSpec",
-                        "model_saving": None,
-                        "record_times": False,
-                        "saved_models": [],
-                        "resume_checkpoint": None,
-                        "record_post_training_metrics": False,
-                    },
-                    "type": "Run",
-                    "experiment": {
-                        "fit": {
-                            "epochs": attrs["fit_epochs"],
-                            "batch_size": attrs["fit_batch_size"],
-                        },
-                        "data": {
-                            "ml_task": attrs["ml_task"],
-                            "input_shape": attrs["input_shape"],
-                            "output_shape": attrs["output_shape"],
-                            "data_set_size": attrs["data_set_size"],
-                            "test_set_size": attrs["test_set_size"],
-                            "train_set_size": attrs["train_set_size"],
-                            "network_description": {"widths": attrs["model_widths"]},
-                            "num_free_parameters": get_value(
-                                old_experiment_table.num_free_parameters
-                            ),
-                            "validation_set_size": attrs["validation_set_size"],
-                        },
-                        "loss": {"class": attrs["loss"]},
-                        "type": "TrainingExperiment",
-                        "model": {
-                            "size": attrs["model_size"],
-                            "type": attrs["model"],
-                            "depth": attrs["model_depth"],
-                            "inner": {
-                                "type": attrs["model_inner"],
-                                "units": -1,
-                                "use_bias": attrs["model_inner_use_bias"],
-                                "activation": attrs["model_inner_activation"],
-                                "bias_constraint": attrs["model_inner_bias_constraint"],
-                                "bias_initializer": attrs[
-                                    "model_inner_bias_initializer"
-                                ],
-                                "bias_regularizer": attrs[
-                                    "model_inner_bias_regularizer"
-                                ],
-                                "kernel_constraint": attrs[
-                                    "model_inner_kernel_constraint"
-                                ],
-                                "kernel_initializer": attrs[
-                                    "model_inner_kernel_initializer"
-                                ],
-                                "kernel_regularizer": inner_kernel_regularizer,
-                                "activity_regularizer": attrs[
-                                    "model_inner_activity_regularizer"
-                                ],
-                            },
-                            "input": {
-                                "name": "dmp_2",
-                                "type": "Input",
-                                "shape": attrs["input_shape"],
-                            },
-                            "shape": attrs["model_shape"],
-                            "output": {
-                                "type": attrs["model_output"],
-                                "units": attrs["model_output_units"],
-                                "use_bias": attrs["model_output_use_bias"],
-                                "activation": attrs["model_output_activation"],
-                                "bias_constraint": attrs[
-                                    "model_output_bias_constraint"
-                                ],
-                                "bias_initializer": attrs[
-                                    "model_output_bias_initializer"
-                                ],
-                                "bias_regularizer": attrs[
-                                    "model_output_bias_regularizer"
-                                ],
-                                "kernel_constraint": attrs[
-                                    "model_output_kernel_constraint"
-                                ],
-                                "kernel_initializer": {
-                                    "class": attrs["model_output_kernel_initializer"]
-                                },
-                                "kernel_regularizer": inner_kernel_regularizer,
-                                "activity_regularizer": attrs[
-                                    "model_output_activity_regularizer"
-                                ],
-                            },
-                            "search_method": attrs["model_search_method"],
-                        },
-                        "dataset": {
-                            "name": attrs["dataset"],
-                            "type": "DatasetSpec",
-                            "method": attrs["dataset_method"],
-                            "source": "pmlb",
-                            "test_split": attrs["dataset_test_split"],
-                            "label_noise": attrs["dataset_label_noise"],
-                            "validation_split": attrs["dataset_validation_split"],
-                        },
-                        "optimizer": optimizer,
-                        "precision": src_command["precision"],
-                        "early_stopping": src_command["early_stopping"],
-                    },
-                }
-
-                if get_value(old_experiment_table.butter):
-                    dst_command["run"]["data"]["butter"] = {
-                        k: True
-                        for k, column in (
-                            (
-                                "primary_sweep",
-                                old_experiment_table.primary_sweep,
-                            ),
-                            ("300_epoch_sweep", old_experiment_table.b_300_epoch_sweep),
-                            ("30k_epoch_sweep", old_experiment_table.b_30k_epoch_sweep),
-                            (
-                                "learning_rate_sweep",
-                                old_experiment_table.learning_rate_sweep,
-                            ),
-                            (
-                                "label_noise_sweep",
-                                old_experiment_table.label_noise_sweep,
-                            ),
-                            ("batch_size_sweep", old_experiment_table.batch_size_sweep),
-                            (
-                                "regularization_sweep",
-                                old_experiment_table.regularization_sweep,
-                            ),
-                            ("optimizer_sweep", old_experiment_table.optimizer_sweep),
-                            (
-                                "learning_rate_batch_size_sweep",
-                                old_experiment_table.learning_rate_batch_size_sweep,
-                            ),
-                            (
-                                "size_adjusted_regularization_sweep",
-                                old_experiment_table.size_adjusted_regularization_sweep,
-                            ),
-                        )
-                        if get_value(column)
-                    }
-                    dst_command["experiment"]["data"]["butter"] = True
-                elif "energy" in src_command["batch"].lower():
-                    dst_command["experiment"]["data"]["butter-e"] = True
-                else:
-                    dst_command["experiment"]["data"]["historical"] = True
-
-                experiment_id = json_to_uuid(dst_command["experiment"])
-                # if experiment_id not in experiment_ids:
-                #     experiment_ids[experiment_id] = marshal.demarshal(
-                #         dst_command["experiment"]
-                #     )
-
-                result_records.append(
-                    (
-                        run_id,
-                        # get_value(job_status_table.start_time),
-                        # get_value(job_status_table.update_time),
-                        # get_value(job_status_table.worker),
-                        # get_value(job_status_table.error_count),
-                        # get_value(job_status_table.error),
-                        # get_value(job_status_table.parent),
-                        Jsonb(dst_command),
-                        experiment_id,
-                        # convert_dataframe_to_bytes(history),
-                        # get_value(run_table.run_extended_history),
-                    )
+                # flatten per-epoch data into lists
+                summary_df = summary_df.stack().reset_index(level=0, drop=True)  # type: ignore
+                summary_df = (
+                    summary_df.groupby(summary_df.index)
+                    .apply(list)
+                    .to_frame()
+                    .transpose()
                 )
+
+                # populate per-run values
+                summary_df["experiment_id"] = old_experiment_id
+                summary_df["dataset"] = experiment["dataset"]["name"]
+                summary_df["optimizer"] = experiment["optimizer"]["class"]
+                summary_df["learning_rate"] = experiment["optimizer"]["learning_rate"]
+                summary_df["batch_size"] = experiment["fit"]["batch_size"]
+
+                l1 = 0.0
+                try:
+                    l1 = experiment["model"]["inner"]["kernel_regularizer"]["l1"]
+                except Exception:
+                    pass
+                if l1 is None:
+                    l1 = 0.0
+                summary_df["l1"] = l1
+
+                l2 = 0
+                try:
+                    l2 = experiment["model"]["inner"]["kernel_regularizer"]["l2"]
+                except Exception:
+                    pass
+                if l2 is None:
+                    l2 = 0.0
+                summary_df["l2"] = l2
+
+                summary_df["label_noise"] = experiment["dataset"]["label_noise"]
+                summary_df["shape"] = experiment["model"]["shape"]
+                summary_df["depth"] = experiment["model"]["depth"]
+                summary_df["size"] = experiment["model"]["size"]
+                summary_df["task"] = experiment["data"]["ml_task"]
+
+                summary_df["num_runs"] = get_value(experiment_table.num_runs)
+                summary_df["num_free_parameters"] = experiment["data"][
+                    "num_free_parameters"
+                ]
+                summary_df["widths"] = [
+                    experiment["data"]["network_description"]["widths"]
+                ]
+
+                momentum = 0.0
+                try:
+                    momentum = experiment["optimizer"]["momentum"]
+                except Exception:
+                    pass
+                summary_df["momentum"] = momentum
+
+                for key in [
+                    "primary_sweep",
+                    "300_epoch_sweep",
+                    "30k_epoch_sweep",
+                    "learning_rate_sweep",
+                    "label_noise_sweep",
+                    "batch_size_sweep",
+                    "regularization_sweep",
+                    "optimizer_sweep",
+                ]:
+                    summary_df[key] = False
+
+                if butter_data is not None:
+                    for key, value in butter_data.items():
+                        summary_df[key] = value
+
+                # Thanks: https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
+                def flatten(target):
+                    result = {}
+
+                    def do_flatten(prefix, target):
+                        if isinstance(target, dict):
+                            for key, value in target.items():
+                                do_flatten(f"{prefix}_{key}", value)
+                        else:
+                            result[prefix] = target
+
+                    do_flatten("", target)
+                    return result
+
+                for key, value in flatten(butter_data).items():
+                    summary_df[key] = value
+
+                # summary_df["experiment_id"] = old_experiment_id
+
+                result_records.append(summary_df)
+                status_updates.append((experiment_id, 2))
+                num_processed += 1
 
             except Exception as e:
                 num_excepted += 1
+                status_updates.append((experiment_id, 3))
                 print(
-                    f"failed to convert run {run_id}, experiment {get_value(experiment_table.experiment_id)} on Exception: {e}",
+                    f"failed to convert {experiment_id} on Exception: {e}",
                     flush=True,
                 )
                 traceback.print_exc()
 
         input_columns = ColumnGroup(
-            Column("id", "uuid"),
-            # Column("start_time", "timestamp with time zone"),
-            # Column("update_time", "timestamp with time zone"),
-            # Column("worker", "uuid"),
-            # Column("error_count", "smallint"),
-            # Column("error", "text"),
-            # Column("parent", "uuid"),
-            Column("command", "jsonb"),
             Column("experiment_id", "uuid"),
-            # Column("history", "bytea"),
-            # Column("extended_history", "bytea"),
+            Column("status", "smallint"),
         )
 
-        if len(result_records) > 0:
+        full_df = pandas.concat(result_records, ignore_index=True)
+
+        if "" in full_df:
+            del full_df[""]
+
+        for column in schema_cols:
+            if column.name not in full_df:
+                full_df[column.name] = None
+
+        # pprint(full_df.columns.to_list())
+        # print(full_df)
+
+        use_byte_stream_split = [name for name in value_cols]
+        use_byte_stream_split_set = set(use_byte_stream_split)
+        use_dictionary = [
+            field.name
+            for field in schema
+            if field.name not in use_byte_stream_split_set
+        ]
+
+        column_encoding = {name: "BYTE_STREAM_SPLIT" for name in use_byte_stream_split}
+        # column_encoding.update({name: "PLAIN_DICTIONARY" for name in use_dictionary})
+
+        pyarrow.parquet.write_to_dataset(
+            pyarrow.Table.from_pydict(
+                full_df,
+                schema=schema,
+            ),
+            root_path=dataset_path,
+            schema=schema,
+            partition_cols=partition_cols,
+            # data_page_size=128 * 1024,
+            compression="ZSTD",
+            compression_level=20,
+            use_dictionary=False,
+            # use_byte_stream_split=use_byte_stream_split,
+            # data_page_version='2.0',
+            existing_data_behavior="overwrite_or_ignore",
+            use_legacy_dataset=False,
+            # write_batch_size=64,
+            # dictionary_pagesize_limit=64*1024,
+            column_encoding=column_encoding,
+        )
+        del result_records
+
+        if len(status_updates) > 0:
             migrate_query = SQL(
                 """
-WITH input_data AS (
-    SELECT
-        {input_cast}
-    FROM
-        ( VALUES {input_placeholders} ) AS input_data ({input_colums})
-),
-rdi AS (
-    UPDATE run_data SET
-        command = input_data.command
-    FROM input_data
-    WHERE run_data.id = input_data.id
-),
-hi AS (
-    UPDATE history SET
-        experiment_id = input_data.experiment_id
-    FROM input_data
-    WHERE history.id = input_data.id
-),
-mu AS (
-    UPDATE migration SET
-        status = 2
-    FROM input_data
-    WHERE migration.run_id = input_data.id
-)
-SELECT 1;"""
+UPDATE export_experiment SET
+    status = input_data.status
+FROM
+    (
+        SELECT
+            {input_cast}
+        FROM
+            ( VALUES {input_placeholders} ) AS input_data ({input_colums})) input_data
+WHERE TRUE
+    AND export_experiment.experiment_id = input_data.experiment_id
+;"""
             ).format(
-                input_cast=input_columns.casting_sql,
-                input_placeholders=sql_comma.join(
-                    [SQL("({})").format(input_columns.placeholders)]
-                    * len(result_records)
-                ),
                 input_colums=input_columns.columns_sql,
-                history=schema.history.identifier,
+                input_cast=input_columns.casting_sql,
+                input_placeholders=input_columns.placeholders_for_values(
+                    len(status_updates)
+                ),
             )
-            #             migrate_query = SQL(
-            #                 """
-            # WITH input_data AS (
-            #     SELECT
-            #         {input_cast}
-            #     FROM
-            #         ( VALUES {input_placeholders} ) AS input_data ({input_colums})
-            # ),
-            # rsi AS (
-            #     INSERT INTO run_status
-            #         (queue, status, priority, id, start_time, update_time, worker, error_count, error, parent)
-            #     SELECT
-            #         -100, 2, 0, id, start_time, update_time, worker, error_count, error, parent
-            #     FROM input_data
-            #     ON CONFLICT (id) DO NOTHING
-            # ),
-            # rdi AS (
-            #     INSERT INTO run_data
-            #         (id, command)
-            #     SELECT
-            #         id, command
-            #     FROM input_data
-            #     ON CONFLICT (id) DO NOTHING
-            # ),
-            # hi AS (
-            #     INSERT INTO {history}
-            #         (id, experiment_id, history, extended_history)
-            #     SELECT
-            #         id, experiment_id, history, extended_history
-            #     FROM input_data
-            #     ON CONFLICT (id) DO NOTHING
-            # )
-            # SELECT 1;"""
-            #             ).format(
-            #                 input_cast=input_columns.casting_sql,
-            #                 input_placeholders=sql_comma.join(
-            #                     [SQL("({})").format(input_columns.placeholders)]
-            #                     * len(result_records)
-            #                 ),
-            #                 input_colums=input_columns.columns_sql,
-            #                 history=schema.history.identifier,
-            #             )
 
             with ConnectionManager(credentials) as connection:
-                connection.execute("SET TIMEZONE to 'UTC';")
                 connection.execute(
                     migrate_query,
-                    list(chain(*result_records)),
+                    list(chain(*status_updates)),
                     binary=True,
                 )
 
-        num_converted = len(result_records)
-        total_num_converted += num_converted
+        total_num_converted += num_processed
         total_num_excepted += num_excepted
 
-        del result_records
-
-        # for experiment_id, experiment in experiment_ids.items():
-        #     try:
-        #         summary = experiment.summarize(
-        #             schema.get_experiment_run_histories(experiment_id)
-        #         )
-        #         if summary is not None:
-        #             schema.store_summary(experiment, experiment_id, summary)  # type: ignore
-        #     except:
-        #         print(f"Failed to summarize experiment {experiment_id}.")
-        #         traceback.print_exc()
-
         print(
-            f"Worker {worker_number} : {worker_id} committed {num_converted}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}."
+            f"Worker {worker_number} : {worker_id} committed {num_processed}, excepted {num_excepted} runs. Lifetime total: {total_num_converted} / {total_num_excepted}."
         )
 
-        if num_converted <= 0 and num_excepted <= 0:
+        break
+        if num_processed <= 0 and num_excepted <= 0:
             break
 
     return total_num_converted
@@ -612,6 +517,14 @@ SELECT 1;"""
 
 def main():
     # global schema, credentials
+
+    for k, v in {
+        "display.max_rows": 9000,
+        "display.min_rows": 40,
+        "display.max_columns": None,
+        "display.width": 300,
+    }.items():
+        pandas.set_option(k, v)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("num_workers", type=int)

@@ -12,7 +12,7 @@ from dmp.model.dense_by_size import DenseBySize
 from dmp.layer.dense import Dense
 from dmp.dataset.dataset_spec import DatasetSpec
 import pytest
-import dmp.jobqueue_interface.worker
+import dmp.script.worker
 import tensorflow
 import sys
 from jobqueue.connect import load_credentials

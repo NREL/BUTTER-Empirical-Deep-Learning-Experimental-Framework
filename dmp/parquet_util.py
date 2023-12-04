@@ -5,6 +5,7 @@ import pyarrow
 from numpy import issubdtype, ndarray
 import numpy
 import pandas.core.indexes.range
+import pyarrow.parquet
 
 
 def make_pyarrow_table_from_dataframe(

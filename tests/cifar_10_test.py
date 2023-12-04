@@ -34,7 +34,7 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
 sys.path.insert(0, "./")
 
 import tensorflow
-import dmp.jobqueue_interface.worker
+import dmp.script.worker
 import pytest
 
 from dmp.dataset.dataset_spec import DatasetSpec
@@ -49,7 +49,7 @@ from pprint import pprint
 from dmp.marshaling import marshal
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
+strategy = dmp.script.worker.make_strategy(None, None, None)
 worker = Worker(
     None,
     None,

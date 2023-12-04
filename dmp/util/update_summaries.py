@@ -1,12 +1,13 @@
 import os
 
-from jobqueue.job import Job
 from dmp.context import Context
 from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
 from dmp.postgres_interface.update_experiment_summary import UpdateExperimentSummary
 from dmp.postgres_interface.update_experiment_summary_result import (
     UpdateExperimentSummaryResult,
 )
+from dmp.run_entry import RunEntry
+from dmp.task.run_status import RunStatus
 
 from dmp.worker import Worker
 
@@ -63,16 +64,27 @@ def do_work(args) -> UpdateExperimentSummaryResult:
 
     context = Context(
         Worker(
-            None,  # type: ignore
             PostgresInterface(load_credentials("dmp")),
             None,  # type: ignore
             {},
             None,
         ),
-        Job(uuid.uuid4()),
-        UpdateExperimentSummary(
-            block_size,
-            lock_limit,
+        RunEntry(
+            queue=0,
+            status=RunStatus.Queued,
+            priority=0,
+            id=uuid.uuid4(),
+            start_time=None,
+            update_time=None,
+            worker_id=None,
+            parent_id=None,
+            experiment_id=None,
+            command=UpdateExperimentSummary(
+                block_size,
+            ),
+            history=None,
+            extended_history=None,
+            error_message=None,
         ),
     )
 

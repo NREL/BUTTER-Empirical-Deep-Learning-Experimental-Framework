@@ -612,7 +612,7 @@ SELECT * from r
                             "search_method": attrs["model_search_method"],
                         },
                         "dataset": {
-                            "name": attrs["dataset"],
+                            "name": attrs["dataset_name"],
                             "type": "DatasetSpec",
                             "method": attrs["dataset_method"],
                             "source": "pmlb",

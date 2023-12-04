@@ -45,7 +45,7 @@ from dmp.model.dense_by_size import DenseBySize
 from dmp.layer.dense import Dense
 from dmp.dataset.dataset_spec import DatasetSpec
 import pytest
-import dmp.jobqueue_interface.worker
+import dmp.script.worker
 import tensorflow
 import sys
 from jobqueue.connect import load_credentials
@@ -82,7 +82,7 @@ sys.path.insert(0, "./")
 
 
 # strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-strategy = dmp.jobqueue_interface.worker.make_strategy(None, None, None)
+strategy = dmp.script.worker.make_strategy(None, None, None)
 credentials = load_credentials("dmp")
 schema = PostgresInterface(credentials)
 worker = Worker(
