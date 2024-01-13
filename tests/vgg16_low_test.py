@@ -9,7 +9,7 @@ from tensorflow.python.framework.ops import re
 from dmp.layer.avg_pool import AvgPool
 from dmp.layer.dense_conv import DenseConv, conv_3x3
 
-# from dmp import jobqueue_interface
+# from dmp import script
 from dmp.layer.flatten import Flatten
 from dmp.layer.max_pool import MaxPool
 from dmp.model.cnn.cnn_stack import CNNStack
@@ -56,8 +56,8 @@ from paper_param import get_paper_param
 
 from dmp.marshaling import marshal
 
-# strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
-# strategy = dmp.jobqueue_interface.worker.make_strategy(6, None, None)
+# strategy = dmp.script.worker.make_strategy(None, [0], 1024*12)
+# strategy = dmp.script.worker.make_strategy(6, None, None)
 strategy = tensorflow.distribute.get_strategy()
 worker = Worker(
     None,

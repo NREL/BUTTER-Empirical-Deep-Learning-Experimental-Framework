@@ -16,7 +16,7 @@ import numpy
 import pandas
 from tensorflow.python.framework.ops import re
 
-# from dmp import jobqueue_interface
+# from dmp import script
 from dmp.layer.flatten import Flatten
 from dmp.layer.max_pool import MaxPool
 from dmp.model.cnn.cnn_stack import CNNStack
@@ -45,7 +45,7 @@ from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer impo
 sys.path.insert(0, "./")
 
 
-# strategy = dmp.jobqueue_interface.worker.make_strategy(None, [0], 1024*12)
+# strategy = dmp.script.worker.make_strategy(None, [0], 1024*12)
 strategy = dmp.script.worker.make_strategy(None, None, None)
 worker = Worker(
     None,

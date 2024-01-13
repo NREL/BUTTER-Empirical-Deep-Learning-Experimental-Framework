@@ -24,7 +24,7 @@ from tensorflow.python.framework.ops import re
 from dmp.layer.avg_pool import AvgPool
 from dmp.layer.dense_conv import DenseConv
 
-# from dmp import jobqueue_interface
+# from dmp import script
 from dmp.layer.flatten import Flatten
 from dmp.layer.max_pool import MaxPool
 from dmp.model.cnn.cnn_stack import CNNStack

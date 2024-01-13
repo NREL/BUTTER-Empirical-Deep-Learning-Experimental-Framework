@@ -34,4 +34,4 @@
 # #         demarshaling_initializer,
 # #     )
 
-# # import dmp.jobqueue_interface.registry
+# # import dmp.script.registry
