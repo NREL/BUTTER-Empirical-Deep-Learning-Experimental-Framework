@@ -127,7 +127,7 @@ RETURNING
         rows = []
         with ConnectionManager(self._credentials) as connection:
             with ClientCursor(connection) as cursor:
-                cursor.execute(self._pop_query, (worker_id, queue_id, n), binary=True)
+                cursor.execute(self._pop_query, (worker_id, queue_id, n))
                 rows = cursor.fetchall()
 
         for i, row in enumerate(rows):
