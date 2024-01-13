@@ -185,12 +185,16 @@ UPDATE export_experiment_block SET
 WHERE status <> 0;
 
 
+
+
+['test_accuracy_quantile_0', 'test_accuracy_quantile_25', 'test_accuracy_quantile_50', 'test_accuracy_quantile_75', 'test_accuracy_quantile_100', 'test_accuracy_best_quantile_0', 'test_accuracy_best_quantile_25', 'test_accuracy_best_quantile_50', 'test_accuracy_best_quantile_75', 'test_accuracy_best_quantile_100', 'test_mean_squared_error_quantile_0', 'test_mean_squared_error_quantile_25', 'test_mean_squared_error_quantile_50', 'test_mean_squared_error_quantile_75', 'test_mean_squared_error_quantile_100', 'test_mean_squared_error_best_quantile_0', 'test_mean_squared_error_best_quantile_25', 'test_mean_squared_error_best_quantile_50', 'test_mean_squared_error_best_quantile_75', 'test_mean_squared_error_best_quantile_100', 'test_binary_crossentropy_quantile_0', 'test_binary_crossentropy_quantile_25', 'test_binary_crossentropy_quantile_50', 'test_binary_crossentropy_quantile_75', 'test_binary_crossentropy_quantile_100', 'test_binary_crossentropy_best_quantile_0', 'test_binary_crossentropy_best_quantile_25', 'test_binary_crossentropy_best_quantile_50', 'test_binary_crossentropy_best_quantile_75', 'test_binary_crossentropy_best_quantile_100', 'test_categorical_crossentropy_quantile_0', 'test_categorical_crossentropy_quantile_25', 'test_categorical_crossentropy_quantile_50', 'test_categorical_crossentropy_quantile_75', 'test_categorical_crossentropy_quantile_100', 'test_categorical_crossentropy_best_quantile_0', 'test_categorical_crossentropy_best_quantile_25', 'test_categorical_crossentropy_best_quantile_50', 'test_categorical_crossentropy_best_quantile_75', 'test_categorical_crossentropy_best_quantile_100', 'train_loss_best_epoch_quantile_50', 'train_accuracy_best_epoch_quantile_50', 'train_accuracy_quantile_50', 'train_mean_squared_error_best_epoch_quantile_50', 'train_mean_squared_error_quantile_50', 'train_binary_crossentropy_best_epoch_quantile_50', 'train_binary_crossentropy_quantile_50', 'train_categorical_crossentropy_best_epoch_quantile_50', 'train_categorical_crossentropy_quantile_50']
+
 """
 
 
 partition_cols = [
-    "dataset",
-    "shape",
+    # "dataset",
+    # "shape",
     "optimizer",
     "learning_rate",
     "batch_size",
@@ -248,7 +252,7 @@ for key in [
     "test_categorical_crossentropy",
 ]:
     for suffix1 in ["", "_best"]:
-        for suffix2 in ["0", "25", "75", "100"]:
+        for suffix2 in ["0", "25", "50", "75", "100"]:
             value_cols.append(f"{key}{suffix1}_quantile_{suffix2}")
 
 for prefix in ["train"]:
@@ -263,10 +267,22 @@ for prefix in ["train"]:
             value_cols.append(f"{prefix}_{key}{suffix}")
 
 
+# value_cols.extend(
+#     [
+#         "isoloss_epoch_quantile_0",
+#         "isoloss_epoch_quantile_100",
+#         "isoloss_epoch_quantile_25",
+#         "isoloss_epoch_quantile_50",
+#         "isoloss_epoch_quantile_75",
+#         "isoloss_train_loss_quantile_50",
+#     ]
+# )
 schema_cols = data_columns + [
     pyarrow.field(name, pyarrow.list_(pyarrow.float32()), nullable=True)
     for name in value_cols
 ]
+
+schema_cols_set = {column.name for column in schema_cols}
 
 schema = pyarrow.schema(schema_cols)
 
@@ -300,7 +316,7 @@ def do_work(args):
         # butter_data_column,
         # butter_e_data_column,
         experiment_table.by_epoch,
-        # experiment_table.by_loss,
+        experiment_table.by_loss,
     )
 
     query = SQL(
@@ -312,6 +328,7 @@ SELECT
     experiment.num_runs,
     experiment.experiment,
     experiment.by_epoch,
+    experiment.by_loss,
     es.*
 FROM
 	(
@@ -325,7 +342,8 @@ FROM
             has_label_noise
 		FROM export_experiment_block
 		WHERE status = 0
-		LIMIT {block_size}
+		ORDER BY dataset, optimizer, learning_rate, batch_size, regularizer, has_label_noise, shape
+        LIMIT {block_size}
 		FOR UPDATE SKIP LOCKED
 	) es
     INNER JOIN export_experiment eb ON (
@@ -387,9 +405,6 @@ SELECT {selected_columns} FROM _selection;
                 experiment = get_value(experiment_table.experiment)
                 # butter_data = get_value(butter_data_column)
                 # butter_e_data = get_value(butter_e_data_column)
-                summary_df: pandas.DataFrame = convert_bytes_to_dataframe(
-                    get_value(experiment_table.by_epoch)
-                )  # type: ignore
 
                 # print(experiment_id, old_experiment_id)
                 # pprint(experiment)
@@ -398,16 +413,30 @@ SELECT {selected_columns} FROM _selection;
                 # print(summary_df)
                 # pprint(summary_df.columns.to_list())
 
-                del summary_df["test_loss_best_count"]
+                def flatten_df(df):
+                    df = df.stack().reset_index(level=0, drop=True)  # type: ignore
+                    df = df.groupby(df.index).apply(list).to_frame().transpose()
+                    return df
 
                 # flatten per-epoch data into lists
-                summary_df = summary_df.stack().reset_index(level=0, drop=True)  # type: ignore
-                summary_df = (
-                    summary_df.groupby(summary_df.index)
-                    .apply(list)
-                    .to_frame()
-                    .transpose()
-                )
+                by_epoch = flatten_df(
+                    convert_bytes_to_dataframe(get_value(experiment_table.by_epoch))
+                )  # type: ignore
+
+                del by_epoch["test_loss_best_count"]
+
+                # by_loss = flatten_df(
+                #     convert_bytes_to_dataframe(get_value(experiment_table.by_loss))
+                # )  # type: ignore
+
+                # by_loss.rename(
+                #     {column: f"isoloss_{column}" for column in by_loss.columns},
+                #     inplace=True,
+                #     axis=1,
+                # )
+
+                # summary_df = pandas.concat([by_epoch, by_loss], axis=1)
+                summary_df = by_epoch
 
                 # populate per-run values
                 summary_df["experiment_id"] = old_experiment_id
@@ -442,7 +471,7 @@ SELECT {selected_columns} FROM _selection;
                 elif l2 > 0.0:
                     summary_df["regularizer"] = "l2"
                 else:
-                    summary_df["regularizer"] = None
+                    summary_df["regularizer"] = "none"
 
                 summary_df["label_noise"] = experiment["dataset"]["label_noise"]
                 summary_df["has_label_noise"] = summary_df["label_noise"] > 0.0
@@ -502,6 +531,10 @@ SELECT {selected_columns} FROM _selection;
 
                 # summary_df["experiment_id"] = old_experiment_id
 
+                for column in summary_df.columns.to_list():
+                    if column not in schema_cols_set:
+                        del summary_df[column]
+
                 result_records.append(summary_df)
                 status_updates.append((experiment_id, 2))
                 num_processed += 1
@@ -526,11 +559,12 @@ SELECT {selected_columns} FROM _selection;
             if "" in full_df:
                 del full_df[""]
 
+            print(full_df)
+            pprint(full_df.columns.to_list())
             for column in schema_cols:
                 if column.name not in full_df:
                     full_df[column.name] = None
 
-            # pprint(full_df.columns.to_list())
             # print(full_df)
             # if len(full_df[(full_df["l1"] > 0.0) & (full_df["l2"] > 0.0)]) > 0:
             #     print(full_df)

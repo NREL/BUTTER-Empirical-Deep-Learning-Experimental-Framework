@@ -18,21 +18,14 @@ update run_status s set
 where status IN (1, 3);
 
 
+select queue,status, count(1) from run_status where queue >=0 group by queue, status;
 
-update run_status s set
-	queue = 11
-from run_data d
-where s.id = d.id and status = 0 and queue = 9 and MOD((command->'run'->>'seed')::bigint, 100) < 30;
+update run_status set
+	queue = 10 + MOD(num, 3)
+from
+(select id, (ROW_NUMBER() OVER ()) num from run_status s where queue >= 10) s
+where run_status.id = s.id;
 
-update run_status s set
-	queue = 12
-from run_data d
-where s.id = d.id and status = 0 and queue = 9 and MOD((command->'run'->>'seed')::bigint, 100) < 40;
-
-update run_status s set
-	queue = 10
-from run_data d
-where s.id = d.id and status = 0;
 
 
 
