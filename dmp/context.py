@@ -83,6 +83,9 @@ class Context:
 
     def update_run(self) -> None:
         self.run_entry.experiment_id = self.get_experiment_id()
+        print(
+            f"unpdating run {self.run_entry.id} with experiment id {self.run_entry.experiment_id}..."
+        )
         self.database.update_runs((self.run_entry,))
 
     def get_run_history(

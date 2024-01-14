@@ -197,6 +197,8 @@ ON CONFLICT ({id}) DO UPDATE SET
         experiment_table = self._experiment_table
         run_columns = self._run_columns
 
+        input_table = Identifier("_input_table")
+
         def make_query(num_runs_in_block: int) -> Composed:
             return SQL(
                 """
@@ -226,8 +228,8 @@ WHERE {run_table}.{id} = {input_table}.{id}
                 experiment_id=experiment_table.experiment_id.identifier,
                 experiment_column=experiment_table.experiment_command.identifier,
                 run_table=run_table.identifier,
-                set_clause=run_columns.set_clause(run_table.identifier),
-                input_table=Identifier("_input_table"),
+                set_clause=run_columns.set_clause(input_table),
+                input_table=input_table,
                 input_columns=run_columns.columns_sql,
                 casting_clause=run_columns.casting_sql,
                 input_placeholders=run_columns.placeholders_for_values(
@@ -267,13 +269,13 @@ WHERE {run_table}.{id} = {input_table}.{id}
                     # from pprint import pprint
 
                     # pprint([(i, type(v)) for i, v in enumerate(selected_values)])
-                    # with ClientCursor(cursor.connection) as c:
-                    #     print(
-                    #         c.mogrify(
-                    #             query,
-                    #             selected_values,
-                    #         )
-                    #     )
+                    with ClientCursor(cursor.connection) as c:
+                        print(
+                            c.mogrify(
+                                query,
+                                selected_values,
+                            )
+                        )
 
                     cursor.execute(
                         query,
