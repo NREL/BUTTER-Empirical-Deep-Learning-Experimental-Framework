@@ -338,7 +338,7 @@ LIMIT 1
 ;"""
         ).format(
             columns=columns.columns_sql,
-            history_table=run_table.identifier,
+            run_table=run_table.identifier,
             id=run_table.id.identifier,
             run_id=Literal(run_id),
         )
