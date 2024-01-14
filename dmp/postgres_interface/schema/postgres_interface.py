@@ -226,7 +226,7 @@ WHERE {run_table}.{id} = {input_table}.{id}
                 experiment_id=experiment_table.experiment_id.identifier,
                 experiment_column=experiment_table.experiment_command.identifier,
                 run_table=run_table.identifier,
-                set_clause=run_columns.set_clause,
+                set_clause=run_columns.set_clause(run_table.identifier),
                 input_table=Identifier("_input_table"),
                 input_columns=run_columns.columns_sql,
                 casting_clause=run_columns.casting_sql,
@@ -260,23 +260,24 @@ WHERE {run_table}.{id} = {input_table}.{id}
                 while i < len(runs):
                     num_runs_in_block = min(block_size, len(runs) - i)
                     query = make_query(num_runs_in_block)
+
+                    selected_values = prepared_values[
+                        i * num_cols_per_row : (i + block_size) * num_cols_per_row
+                    ]
+                    # from pprint import pprint
+
+                    # pprint([(i, type(v)) for i, v in enumerate(selected_values)])
                     # with ClientCursor(cursor.connection) as c:
                     #     print(
                     #         c.mogrify(
                     #             query,
-                    #             prepared_values[
-                    #                 i
-                    #                 * num_cols_per_row : (i + block_size)
-                    #                 * num_cols_per_row
-                    #             ],
+                    #             selected_values,
                     #         )
                     #     )
 
                     cursor.execute(
                         query,
-                        prepared_values[
-                            i * num_cols_per_row : (i + block_size) * num_cols_per_row
-                        ],
+                        selected_values,
                         binary=True,
                     )
 
@@ -381,7 +382,6 @@ LIMIT 1
         experiment_id: UUID,
     ) -> List[Tuple[UUID, pandas.DataFrame]]:
         run_table = self._run_table
-        run_status_table = self._run_table
         query = SQL(
             """
 SELECT
@@ -397,10 +397,9 @@ WHERE TRUE
         ).format(
             id=run_table.id.identifier,
             history=run_table.history.identifier,
-            history_table=run_table.identifier,
+            run_table=run_table.identifier,
             experiment_id=run_table.experiment_id.identifier,
-            run_status_table=run_status_table.identifier,
-            status=run_status_table.status.identifier,
+            status=run_table.status.identifier,
             status_value=Literal(int(RunStatus.Complete)),
         )
 
