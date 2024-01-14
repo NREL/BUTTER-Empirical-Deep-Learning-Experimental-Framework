@@ -10,6 +10,7 @@ import pandas
 from dmp.parquet_util import make_dataframe_from_dict
 
 from dmp.run_entry import RunEntry
+from dmp.task.run_status import RunStatus
 
 from dmp.uuid_tools import object_to_uuid
 
@@ -61,8 +62,8 @@ class Context:
             [
                 RunEntry(
                     queue=self.run_entry.queue,
-                    status=self.run_entry.status,
-                    priority=self.run_entry.priority,
+                    status=RunStatus.Queued,
+                    priority=self.run_entry.priority + 1,
                     id=uuid4(),
                     start_time=None,
                     update_time=None,
