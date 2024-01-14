@@ -269,13 +269,13 @@ WHERE {run_table}.{id} = {input_table}.{id}
                     # from pprint import pprint
 
                     # pprint([(i, type(v)) for i, v in enumerate(selected_values)])
-                    with ClientCursor(cursor.connection) as c:
-                        print(
-                            c.mogrify(
-                                query,
-                                selected_values,
-                            )
-                        )
+                    # with ClientCursor(cursor.connection) as c:
+                    #     print(
+                    #         c.mogrify(
+                    #             query,
+                    #             selected_values,
+                    #         )
+                    #     )
 
                     cursor.execute(
                         query,
