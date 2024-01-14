@@ -94,7 +94,7 @@ class UpdateExperimentSummary(RunCommand):
             experiment_id=run_table.experiment_id.identifier,
             experiment=experiment_table.identifier,
             status=run_table.status.identifier,
-            experiment_column=experiment_table.experiment.identifier,
+            experiment_column=experiment_table.experiment_command.identifier,
             command=run_table.command.identifier,
             history_column=run_table.history.identifier,
             id=run_table.id.identifier,
@@ -105,7 +105,7 @@ class UpdateExperimentSummary(RunCommand):
 
         result_columns = ColumnGroup(
             experiment_table.experiment_id,
-            experiment_table.experiment,
+            experiment_table.experiment_command,
             run_table.id,
             run_table.history,
         )
@@ -204,7 +204,7 @@ ORDER BY {experiment_id}
                 summarize_experiment()
                 encoded_histories.clear()
                 experiment_id = this_experiment_id
-                marshaled_experiment = value_of(experiment_table.experiment)
+                marshaled_experiment = value_of(experiment_table.experiment_command)
 
             encoded_histories.append(
                 (value_of(run_table.id), value_of(run_table.history))

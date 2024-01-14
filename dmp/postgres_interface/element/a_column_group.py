@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, List, Union
 from itertools import chain
 from abc import ABC, abstractproperty, abstractmethod
-from psycopg.sql import Identifier, SQL, Composed, Literal
+from psycopg.sql import Identifier, SQL, Composed, Composable, Literal
 from psycopg.types.json import Jsonb, Json
 from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
 
@@ -87,7 +87,7 @@ class AColumnGroup(Iterable["Column"]):
             )
         )
 
-    def set_clause(self, table_name: Identifier) -> Composed:
+    def set_clause(self, table_name: Composable) -> Composed:
         return sql_comma.join(
             (
                 SQL("{} = {}.{}").format(

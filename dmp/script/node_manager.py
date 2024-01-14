@@ -142,7 +142,9 @@ def main():
     )
     for line in lscpu_output:
         if len(line) >= 8 and line[0].isdigit():
-            cols = [int(e) for e in line.split(",")[0:topology_depth]]
+            cols = [
+                0 if len(e) == 0 else int(e) for e in line.split(",")[0:topology_depth]
+            ]
             cpu, core, socket, node = cols
             get_or_add(get_or_add(get_or_add(topology_index, socket), node), core)[
                 cpu

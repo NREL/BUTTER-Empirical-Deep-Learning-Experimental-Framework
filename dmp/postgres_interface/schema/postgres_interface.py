@@ -59,7 +59,7 @@ class PostgresInterface:
             run_table.queue,
             run_table.status,
             run_table.priority,
-            run_table.id,
+            # run_table.id,
             run_table.start_time,
             run_table.update_time,
             run_table.worker_id,
@@ -81,10 +81,10 @@ class PostgresInterface:
             """
 UPDATE {run_table}
     SET
-        status = {claimed_status},
-        worker = %b,
-        start_time = NOW(),
-        update_time = NOW()
+        {status} = {claimed_status},
+        {worker_id} = %b,
+        {start_time} = NOW(),
+        {update_time} = NOW()
     WHERE TRUE
         AND id IN (
             SELECT id FROM
@@ -101,9 +101,12 @@ RETURNING
 ;"""
         ).format(
             run_table=self._run_table.identifier,
+            status=run_table.status.identifier,
+            worker_id=run_table.worker_id.identifier,
+            start_time=run_table.start_time.identifier,
+            update_time=run_table.update_time.identifier,
             claimed_status=Literal(int(RunStatus.Claimed)),
             run_selection=Identifier("_run_selection"),
-            status=run_table.status.identifier,
             queued_status=Literal(int(RunStatus.Queued)),
             queue=run_table.queue.identifier,
             priority=run_table.priority.identifier,
@@ -126,7 +129,7 @@ RETURNING
 
         rows = []
         with ConnectionManager(self._credentials) as connection:
-            with ClientCursor(connection) as cursor:
+            with connection.cursor(binary=True) as cursor:
                 cursor.execute(self._pop_query, (worker_id, queue_id, n))
                 rows = cursor.fetchall()
 
@@ -160,7 +163,8 @@ WITH {input_table} AS (
         AND NOT EXISTS (SELECT 1 FROM {experiment_table} WHERE {experiment_id} = {input_table}.{experiment_id})
     ON CONFLICT ({experiment_id}) DO NOTHING
 )
-INSERT INTO {run_table} ({run_columns})
+INSERT INTO {run_table} ({input_columns})
+SELECT {input_columns}
 FROM {input_table}
 ON CONFLICT ({id}) DO UPDATE SET
     {set_clause}
@@ -171,7 +175,7 @@ ON CONFLICT ({id}) DO UPDATE SET
                 command=run_table.command.identifier,
                 experiment_table=experiment_table.identifier,
                 experiment_id=experiment_table.experiment_id.identifier,
-                experiment_column=experiment_table.experiment.identifier,
+                experiment_column=experiment_table.experiment_command.identifier,
                 run_table=run_table.identifier,
                 casting_clause=run_columns.casting_sql,
                 input_table=Identifier("_input_table"),
@@ -179,7 +183,7 @@ ON CONFLICT ({id}) DO UPDATE SET
                 input_placeholders=run_columns.placeholders_for_values(
                     num_runs_in_block
                 ),
-                set_clause=self._update_columns.set_clause(Identifier("EXCLUDED")),
+                set_clause=self._update_columns.set_clause(SQL("EXCLUDED")),
                 id=run_table.id.identifier,
             )
 
@@ -220,7 +224,7 @@ WHERE {run_table}.{id} = {input_table}.{id}
                 command=run_table.command.identifier,
                 experiment_table=experiment_table.identifier,
                 experiment_id=experiment_table.experiment_id.identifier,
-                experiment_column=experiment_table.experiment.identifier,
+                experiment_column=experiment_table.experiment_command.identifier,
                 run_table=run_table.identifier,
                 set_clause=run_columns.set_clause,
                 input_table=Identifier("_input_table"),
@@ -250,11 +254,24 @@ WHERE {run_table}.{id} = {input_table}.{id}
         block_size = 65500 // num_cols_per_row
 
         i = 0
+
         with CursorManager(self._credentials, binary=True) as cursor:
             with cursor.connection.transaction():
                 while i < len(runs):
-                    num_runs_in_block = max(block_size, len(runs) - i)
+                    num_runs_in_block = min(block_size, len(runs) - i)
                     query = make_query(num_runs_in_block)
+                    # with ClientCursor(cursor.connection) as c:
+                    #     print(
+                    #         c.mogrify(
+                    #             query,
+                    #             prepared_values[
+                    #                 i
+                    #                 * num_cols_per_row : (i + block_size)
+                    #                 * num_cols_per_row
+                    #             ],
+                    #         )
+                    #     )
+
                     cursor.execute(
                         query,
                         prepared_values[
@@ -282,12 +299,13 @@ WHERE {run_table}.{id} = {input_table}.{id}
 
     def _get_column_values_for_run(self, run: RunEntry) -> Iterable[Any]:
         from dmp.marshaling import marshal
+        from psycopg.types.json import Jsonb
 
         run = dataclasses.replace(run)
 
         command = run.command
         command.run_entry = None  # type: ignore
-        run.command = marshal.marshal(command)
+        run.command = Jsonb(marshal.marshal(command))  # type: ignore
         command.run_entry = run  # type: ignore
 
         run.history = convert_dataframe_to_bytes(run.history)  # type: ignore

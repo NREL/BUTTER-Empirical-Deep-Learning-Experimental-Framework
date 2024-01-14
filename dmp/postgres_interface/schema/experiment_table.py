@@ -7,7 +7,7 @@ from dmp.postgres_interface.element.table import Table
 
 class ExperimentTable(Table):
     experiment_id: Column = Column("experiment_id", "uuid")
-    experiment: Column = Column("experiment", "jsonb")
+    experiment_command: Column = Column("experiment_command", "jsonb")
     most_recent_run: Column = Column("most_recent_run", "timestamptz")
     num_runs: Column = Column("num_runs", "integer")
 
@@ -19,4 +19,4 @@ class ExperimentTable(Table):
     epoch_subset: Column = Column("epoch_subset", "bytea")
 
     def __init__(self) -> None:
-        super().__init__("experiment2")
+        super().__init__("experiment")

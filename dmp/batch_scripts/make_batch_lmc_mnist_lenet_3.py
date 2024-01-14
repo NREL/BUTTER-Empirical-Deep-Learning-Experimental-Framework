@@ -4,11 +4,15 @@ Enqueues jobs from stdin into the JobQueue
 
 import math
 import sys
+from uuid import uuid4
+from jobqueue.connect import load_credentials
 
 import numpy
 
 
 from dmp.model.named.lenet import Lenet
+from dmp.postgres_interface.schema.postgres_interface import PostgresInterface
+from dmp.run_entry import RunEntry
 from dmp.task.experiment.lth.lth_experiment import LTHExperiment
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
@@ -20,6 +24,7 @@ from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 from dmp.task.run import Run
 from dmp.keras_interface.keras_utils import keras_kwcfg
+from dmp.task.run_status import RunStatus
 
 sys.path.insert(0, "./")
 
@@ -101,7 +106,7 @@ def main():
             ),
         )
 
-    jobs = []
+    runs = []
     seed = int(time.time())
     repetitions = 10
     base_priority = 1000
@@ -153,22 +158,33 @@ def main():
 
     for rep in range(repetitions):
         run = make_run(
-            seed + len(jobs),
+            seed + len(runs),
             pruning_configs,
         )
-        jobs.append(
-            Job(
-                priority=base_priority + len(jobs),
-                command=marshal.marshal(run),
+        runs.append(
+            RunEntry(
+                queue=queue_id,
+                status=RunStatus.Queued,
+                priority=base_priority + len(runs),
+                id=uuid4(),
+                start_time=None,
+                update_time=None,
+                worker_id=None,
+                parent_id=None,
+                experiment_id=None,
+                command=run,
+                history=None,
+                extended_history=None,
+                error_message=None,
             )
         )
 
-    print(f"Generated {len(jobs)} jobs.")
+    print(f"Generated {len(runs)} jobs.")
     # pprint(jobs)
-    credentials = jobqueue.load_credentials("dmp")
-    job_queue = JobQueue(credentials, queue_id, check_table=False)
-    job_queue.push(jobs)
-    print(f"Enqueued {len(jobs)} jobs.")
+    credentials = load_credentials("dmp")
+    database = PostgresInterface(credentials)
+    database.push_runs(runs)
+    print(f"Enqueued {len(runs)} jobs.")
 
 
 if __name__ == "__main__":

@@ -312,7 +312,7 @@ def do_work(args):
         experiment_table.experiment_id,
         experiment_table.old_experiment_id,
         experiment_table.num_runs,
-        experiment_table.experiment,
+        experiment_table.experiment_command,
         # butter_data_column,
         # butter_e_data_column,
         experiment_table.by_epoch,
@@ -402,7 +402,7 @@ SELECT {selected_columns} FROM _selection;
 
             try:
                 old_experiment_id = get_value(experiment_table.old_experiment_id)
-                experiment = get_value(experiment_table.experiment)
+                experiment = get_value(experiment_table.experiment_command)
                 # butter_data = get_value(butter_data_column)
                 # butter_e_data = get_value(butter_e_data_column)
 
