@@ -1,4 +1,3 @@
-from bisect import bisect_left
 from tensorflow import keras
 import os
 from typing import Dict, List, Optional, Tuple
@@ -11,12 +10,8 @@ from dmp.layer.layer import Layer
 from dmp.model.keras_layer_info import KerasLayerInfo
 
 from dmp.model.model_info import ModelInfo
-import dmp.parquet_util as parquet_util
-import pyarrow
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
-from dmp.task.run_command import RunCommand
-import re
 import h5py as h5
 import hdf5plugin
 
@@ -218,7 +213,7 @@ def require_parameter_dataset(
         chunks=(256, 128),
         maxshape=(max_parameters, max_epochs),
         fillvalue=numpy.nan,
-        **hdf5plugin.Blosc(cname="lz4", clevel=5, shuffle=hdf5plugin.Blosc.SHUFFLE),
+        **hdf5plugin.Blosc(cname="lz4", clevel=9, shuffle=hdf5plugin.Blosc.SHUFFLE),
     )
 
 
@@ -257,7 +252,7 @@ def get_datasets_from_model_file(
         # chunks=(512, 64),
         maxshape=(4, max_epochs),
         fillvalue=-1,
-        **hdf5plugin.Blosc(cname="lz4", clevel=5, shuffle=hdf5plugin.Blosc.SHUFFLE),
+        **hdf5plugin.Blosc(cname="lz4", clevel=7, shuffle=hdf5plugin.Blosc.SHUFFLE),
     )
 
     """

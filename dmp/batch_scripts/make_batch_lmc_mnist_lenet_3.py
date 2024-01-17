@@ -8,6 +8,7 @@ from uuid import uuid4
 from jobqueue.connect import load_credentials
 
 import numpy
+from dmp.batch_scripts.batch_util import enqueue_batch_of_runs
 
 
 from dmp.model.named.lenet import Lenet
@@ -43,8 +44,6 @@ import sys
 
 
 def main():
-    queue_id = 10
-
     def make_run(
         seed,
         pruning_configs,
@@ -156,35 +155,15 @@ def main():
                 )
             )
 
-    for rep in range(repetitions):
-        run = make_run(
-            seed + len(runs),
+    runs = [
+        make_run(
+            seed + i,
             pruning_configs,
         )
-        runs.append(
-            RunEntry(
-                queue=queue_id,
-                status=RunStatus.Queued,
-                priority=base_priority + len(runs),
-                id=uuid4(),
-                start_time=None,
-                update_time=None,
-                worker_id=None,
-                parent_id=None,
-                experiment_id=None,
-                command=run,
-                history=None,
-                extended_history=None,
-                error_message=None,
-            )
-        )
+        for i in range(repetitions)
+    ]
 
-    print(f"Generated {len(runs)} jobs.")
-    # pprint(jobs)
-    credentials = load_credentials("dmp")
-    database = PostgresInterface(credentials)
-    database.push_runs(runs)
-    print(f"Enqueued {len(runs)} jobs.")
+    enqueue_batch_of_runs(runs, 11, base_priority)
 
 
 if __name__ == "__main__":

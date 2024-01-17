@@ -6,6 +6,7 @@ import math
 import sys
 
 import numpy
+from dmp.batch_scripts.batch_util import enqueue_batch_of_runs
 
 
 from dmp.model.named.lenet import Lenet
@@ -43,8 +44,6 @@ import sys
 
 
 def main():
-    queue_id = 11
-
     def make_run(
         seed,
         param_name,
@@ -112,7 +111,7 @@ def main():
             ),
         )
 
-    jobs = []
+    runs = []
     seed = int(time.time())
     repetitions = 10
     base_priority = 2000
@@ -172,24 +171,14 @@ def main():
 
         for rep in range(repetitions):
             run = make_run(
-                seed + len(jobs),
+                seed + len(runs),
                 param_name,
                 param,
                 pruning_configs,
             )
-            jobs.append(
-                Job(
-                    priority=base_priority + len(jobs),
-                    command=marshal.marshal(run),
-                )
-            )
+            runs.append(run)
 
-    print(f"Generated {len(jobs)} jobs.")
-    # pprint(jobs)
-    credentials = jobqueue.load_credentials("dmp")
-    job_queue = JobQueue(credentials, queue_id, check_table=False)
-    job_queue.push(jobs)
-    print(f"Enqueued {len(jobs)} jobs.")
+    enqueue_batch_of_runs(runs, 12, base_priority)
 
 
 if __name__ == "__main__":
