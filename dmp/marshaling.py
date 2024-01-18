@@ -236,8 +236,12 @@ register_types((OverlayTransfer,))
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
+from dmp.task.experiment.pruning_experiment.pruning_method.random_pruner import (
+    RandomPruner,
+)
 
-register_types((MagnitudePruner,))
+
+register_types((MagnitudePruner, RandomPruner))
 
 # Other types:
 from dmp.task.experiment.recorder.test_set_history_recorder import (

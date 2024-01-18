@@ -54,7 +54,7 @@ def main():
             experiment=LTHExperiment(
                 data={
                     "lmc": True,
-                    "batch": f"lmc_cifar10_resnet20_{param_name}_3",
+                    "batch": f"lmc_cifar10_resnet20_{param_name}_4",
                     "group": f"lmc_cifar10_resnet20_{param_name}",
                     "supergroup": "lmc_cifar10_resnet20",
                     "model_family": "resnet",
@@ -114,7 +114,6 @@ def main():
     runs = []
     seed = int(time.time())
     repetitions = 10
-    base_priority = 2000
 
     for param_name in ["standard", "low"]:
         # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration
@@ -178,7 +177,7 @@ def main():
             )
             runs.append(run)
 
-    enqueue_batch_of_runs(runs, 12, base_priority)
+    enqueue_batch_of_runs(runs, 13, 20000)
 
 
 if __name__ == "__main__":

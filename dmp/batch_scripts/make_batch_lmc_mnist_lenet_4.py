@@ -20,6 +20,9 @@ from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
+from dmp.task.experiment.pruning_experiment.pruning_method.random_pruner import (
+    RandomPruner,
+)
 from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
@@ -35,10 +38,6 @@ from dmp.dataset.dataset_spec import DatasetSpec
 from dmp.marshaling import marshal
 
 import time
-
-import jobqueue
-from jobqueue.job import Job
-from jobqueue.job_queue import JobQueue
 
 import sys
 
@@ -87,7 +86,7 @@ def main():
             config=RunConfig(
                 seed=seed,
                 data={
-                    "batch": "lmc_mnist_lenet_3",
+                    "batch": "lmc_mnist_lenet_4",
                 },
                 record_post_training_metrics=True,
                 record_times=True,
@@ -122,6 +121,8 @@ def main():
         0.8 ** (1 / 2),
         0.8 ** (1 / 4),
         0.8 ** (1 / 8),
+        0.8 ** (1 / 16),
+        0.8 ** (1 / 32),
     ]:
         pruning_iterations = int(
             numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
@@ -132,27 +133,41 @@ def main():
             0,
             1,
             2,
-            3,
+            # 3,
             4,
             # 6,
-            # 8,
+            8,
             # 12,
             # 16,
             # 24,
         ]:
-            pruning_configs.append(
-                PruningConfig(
-                    iterations=pruning_iterations,
-                    method=MagnitudePruner(pruning_rate),
-                    max_epochs_per_iteration=32,
-                    rewind_epoch=TrainingEpoch(
-                        epoch=rewind_epoch,
-                        fit_number=0,
-                        fit_epoch=rewind_epoch,
+            pruning_configs.extend(
+                [
+                    PruningConfig(
+                        iterations=pruning_iterations,
+                        method=MagnitudePruner(pruning_rate),
+                        max_epochs_per_iteration=128,
+                        rewind_epoch=TrainingEpoch(
+                            epoch=rewind_epoch,
+                            fit_number=0,
+                            fit_epoch=rewind_epoch,
+                        ),
+                        rewind_optimizer=True,
+                        new_seed=False,
                     ),
-                    rewind_optimizer=True,
-                    new_seed=False,
-                )
+                    PruningConfig(
+                        iterations=pruning_iterations,
+                        method=RandomPruner(pruning_rate),
+                        max_epochs_per_iteration=128,
+                        rewind_epoch=TrainingEpoch(
+                            epoch=rewind_epoch,
+                            fit_number=0,
+                            fit_epoch=rewind_epoch,
+                        ),
+                        rewind_optimizer=True,
+                        new_seed=False,
+                    ),
+                ]
             )
 
     runs = [
@@ -163,7 +178,7 @@ def main():
         for i in range(repetitions)
     ]
 
-    enqueue_batch_of_runs(runs, 11, base_priority)
+    enqueue_batch_of_runs(runs, 11, 0)
 
 
 if __name__ == "__main__":

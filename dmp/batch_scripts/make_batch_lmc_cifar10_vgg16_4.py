@@ -6,6 +6,7 @@ import math
 import sys
 
 import numpy
+from dmp.batch_scripts.batch_util import enqueue_batch_of_runs
 
 
 from dmp.model.named.lenet import Lenet
@@ -16,6 +17,9 @@ from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
+)
+from dmp.task.experiment.pruning_experiment.pruning_method.random_pruner import (
+    RandomPruner,
 )
 from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
@@ -44,8 +48,6 @@ import sys
 
 
 def main():
-    queue_id = 10
-
     def make_run(
         seed,
         param_name,
@@ -56,7 +58,7 @@ def main():
             experiment=LTHExperiment(
                 data={
                     "lmc": True,
-                    "batch": f"lmc_cifar10_vgg16_{param_name}_3",
+                    "batch": f"lmc_cifar10_vgg16_{param_name}_4",
                     "group": f"lmc_cifar10_vgg16_{param_name}",
                     "supergroup": "lmc_cifar10_vgg16",
                     "model_family": "VGG",
@@ -114,10 +116,9 @@ def main():
             ),
         )
 
-    jobs = []
+    runs = []
     seed = int(time.time())
     repetitions = 10
-    base_priority = 50000
 
     for param_name in ["standard", "low"]:
         # [.8^(2) = .64 (36%), .8 (20%), .8^(1/2)~=.894 (10.6%), .8^(1/4) ~= .945 (5.4%)] pruning per IMP iteration
@@ -135,6 +136,9 @@ def main():
             base_survival_rate,
             base_survival_rate ** (1 / 2),
             base_survival_rate ** (1 / 4),
+            base_survival_rate ** (1 / 8),
+            base_survival_rate ** (1 / 16),
+            base_survival_rate ** (1 / 32),
         ]:
             pruning_iterations = int(
                 numpy.ceil(numpy.log(pruning_target) / numpy.log(survival_rate))
@@ -149,49 +153,55 @@ def main():
                 4,
                 5,
                 6,
-                7,
+                # 7,
                 8,
-                10,
+                # 10,
                 12,
                 16,
             ]:
-                pruning_configs.append(
-                    PruningConfig(
-                        iterations=pruning_iterations,
-                        method=MagnitudePruner(pruning_rate),
-                        max_epochs_per_iteration=int(
-                            math.ceil(param["batch"] * param["train_step"] / 60000)
+                pruning_configs.extend(
+                    [
+                        PruningConfig(
+                            iterations=pruning_iterations,
+                            method=MagnitudePruner(pruning_rate),
+                            max_epochs_per_iteration=int(
+                                math.ceil(param["batch"] * param["train_step"] / 60000)
+                            ),
+                            rewind_epoch=TrainingEpoch(
+                                epoch=rewind_epoch,
+                                fit_number=0,
+                                fit_epoch=rewind_epoch,
+                            ),
+                            rewind_optimizer=True,
+                            new_seed=False,
                         ),
-                        rewind_epoch=TrainingEpoch(
-                            epoch=rewind_epoch,
-                            fit_number=0,
-                            fit_epoch=rewind_epoch,
+                        PruningConfig(
+                            iterations=pruning_iterations,
+                            method=RandomPruner(pruning_rate),
+                            max_epochs_per_iteration=int(
+                                math.ceil(param["batch"] * param["train_step"] / 60000)
+                            ),
+                            rewind_epoch=TrainingEpoch(
+                                epoch=rewind_epoch,
+                                fit_number=0,
+                                fit_epoch=rewind_epoch,
+                            ),
+                            rewind_optimizer=True,
+                            new_seed=False,
                         ),
-                        rewind_optimizer=True,
-                        new_seed=False,
-                    )
+                    ]
                 )
 
         for rep in range(repetitions):
             run = make_run(
-                seed + len(jobs),
+                seed + len(runs),
                 param_name,
                 param,
                 pruning_configs,
             )
-            jobs.append(
-                Job(
-                    priority=base_priority + len(jobs),
-                    command=marshal.marshal(run),
-                )
-            )
+            runs.append(run)
 
-    print(f"Generated {len(jobs)} jobs.")
-    # pprint(jobs)
-    credentials = jobqueue.load_credentials("dmp")
-    job_queue = JobQueue(credentials, queue_id, check_table=False)
-    job_queue.push(jobs)
-    print(f"Enqueued {len(jobs)} jobs.")
+    enqueue_batch_of_runs(runs, 12, 10000)
 
 
 if __name__ == "__main__":

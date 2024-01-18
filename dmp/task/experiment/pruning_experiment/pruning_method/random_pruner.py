@@ -31,10 +31,10 @@ from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 
 @dataclass
-class MagnitudePruner(GlobalValuePruningMethod):
+class RandomPruner(GlobalValuePruningMethod):
     def compute_pruning_values(
         self,
         prunable_layers: List[Layer],
         prunable_weights: numpy.ndarray,
     ) -> numpy.ndarray:
-        return numpy.abs(prunable_weights)
+        return numpy.random.random(prunable_weights.shape)
