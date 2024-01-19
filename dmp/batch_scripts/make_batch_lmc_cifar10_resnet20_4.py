@@ -17,6 +17,7 @@ from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
+from dmp.task.experiment.pruning_experiment.pruning_method.random_pruner import RandomPruner
 from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
@@ -151,21 +152,37 @@ def main():
                 12,
                 16,
             ]:
-                pruning_configs.append(
-                    PruningConfig(
-                        iterations=pruning_iterations,
-                        method=MagnitudePruner(pruning_rate),
-                        max_epochs_per_iteration=int(
-                            math.ceil(param["batch"] * param["train_step"] / 60000)
+                pruning_configs.extend(
+                    [
+                        PruningConfig(
+                            iterations=pruning_iterations,
+                            method=MagnitudePruner(pruning_rate),
+                            max_epochs_per_iteration=int(
+                                math.ceil(param["batch"] * param["train_step"] / 60000)
+                            ),
+                            rewind_epoch=TrainingEpoch(
+                                epoch=rewind_epoch,
+                                fit_number=0,
+                                fit_epoch=rewind_epoch,
+                            ),
+                            rewind_optimizer=True,
+                            new_seed=False,
                         ),
-                        rewind_epoch=TrainingEpoch(
-                            epoch=rewind_epoch,
-                            fit_number=0,
-                            fit_epoch=rewind_epoch,
+                        PruningConfig(
+                            iterations=pruning_iterations,
+                            method=RandomPruner(pruning_rate),
+                            max_epochs_per_iteration=int(
+                                math.ceil(param["batch"] * param["train_step"] / 60000)
+                            ),
+                            rewind_epoch=TrainingEpoch(
+                                epoch=rewind_epoch,
+                                fit_number=0,
+                                fit_epoch=rewind_epoch,
+                            ),
+                            rewind_optimizer=True,
+                            new_seed=False,
                         ),
-                        rewind_optimizer=True,
-                        new_seed=False,
-                    )
+                    ]
                 )
 
         for rep in range(repetitions):

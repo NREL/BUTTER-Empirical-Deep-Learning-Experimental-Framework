@@ -92,5 +92,3 @@ class PruningMethod(ABC):
             ]
         )
         return prunable_layers, prunable_weights
-
-    

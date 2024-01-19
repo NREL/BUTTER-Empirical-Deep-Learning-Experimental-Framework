@@ -38,7 +38,7 @@ class GlobalValuePruningMethod(PruningMethod):
         self,
         prunable_layers: List[Layer],
         layer_to_keras_map: Dict[Layer, KerasLayerInfo],
-        retain_mask: numpy.ndarray,
+        prune_mask: numpy.ndarray,
     ) -> int:
         # prune at selected level
         total_pruned = 0
@@ -46,15 +46,17 @@ class GlobalValuePruningMethod(PruningMethod):
         for layer in prunable_layers:
             weights, mask = self.get_weights_and_mask(layer, layer_to_keras_map)
 
-            next_index = index + weights.size
-            layer_retain = retain_mask[index:next_index]
+            mask_array = mask.numpy()
+            candidates = mask_array[mask_array]
+
+            next_index = index + candidates.size
+            layer_prune = prune_mask[index:next_index]
             index = next_index
 
-            new_mask = numpy.zeros(weights.shape, dtype=bool)
-            new_mask[mask] = layer_retain
+            candidates[layer_prune.reshape(candidates.shape)] = False
 
-            total_pruned += new_mask.size - new_mask.sum()
-            mask.assign(new_mask)
+            total_pruned += mask_array.size - mask_array.sum()
+            mask.assign(mask_array)
 
         return total_pruned
 
@@ -70,15 +72,15 @@ class GlobalValuePruningMethod(PruningMethod):
         prunable_weights = numpy.abs(prunable_weights)
         weight_index = numpy.argsort(prunable_weights)
         how_many_to_prune = int(numpy.round(self.pruning_rate * weight_index.size))
-        retain_mask = numpy.ones(prunable_weights.shape, dtype=bool)
-        retain_mask[weight_index[0 : how_many_to_prune + 1]] = False
+        prune_mask = numpy.zeros(prunable_weights.shape, dtype=bool)
+        prune_mask[weight_index[0 : how_many_to_prune + 1]] = True
         del prunable_weights
         del weight_index
 
         total_pruned = self.prune_all_layers_using_mask(
             prunable_layers,
             layer_to_keras_map,
-            retain_mask,
+            prune_mask,
         )
 
         return total_pruned
