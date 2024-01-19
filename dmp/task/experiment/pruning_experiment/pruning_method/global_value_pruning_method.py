@@ -46,14 +46,19 @@ class GlobalValuePruningMethod(PruningMethod):
         for layer in prunable_layers:
             weights, mask = self.get_weights_and_mask(layer, layer_to_keras_map)
 
-            mask_array = mask.numpy()
+            mask_array = mask.numpy().astype(bool)
+
             candidates = mask_array[mask_array]
+
+            if len(mask_array.shape) == 0:
+                mask_array = numpy.ndarray([int(mask_array)], dtype=bool)
 
             next_index = index + candidates.size
             layer_prune = prune_mask[index:next_index]
             index = next_index
 
             candidates[layer_prune.reshape(candidates.shape)] = False
+
             mask_array[mask_array] = candidates
 
             total_pruned += mask_array.size - mask_array.sum()

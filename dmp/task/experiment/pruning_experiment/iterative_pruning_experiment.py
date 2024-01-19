@@ -112,6 +112,7 @@ class IterativePruningExperiment(TrainingExperiment):
             print(f"********** 8")
             # 3: Train W0 to Wk with noise u ∼ U: Wk = A 0→k (W0, u).
             # 5: Train m ⊙ Wk to m ⊙ WT with noise u ′∼ U:WT = Ak→T(m ⊙ Wk, u′).
+            epoch_counter.reset()
             self._fit_model(
                 context,
                 config,

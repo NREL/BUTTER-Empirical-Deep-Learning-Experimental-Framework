@@ -45,3 +45,6 @@ class TrainingEpoch:
         self.fit_epoch += delta
         self.marker = 0
         self.sequence_number = None
+
+    def __hash__(self) -> int:
+        return hash((self.epoch, self.fit_number, self.fit_epoch))

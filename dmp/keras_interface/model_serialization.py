@@ -328,7 +328,13 @@ def save_parameters(
             constraint = access_model_parameters.get_mask_constraint(
                 keras_layer, variable
             )
-            mask = None if constraint is None else constraint.mask.numpy().flatten()
+            mask = (
+                None
+                if constraint is None
+                or constraint.mask is None
+                or constraint.mask.shape is None
+                else constraint.mask.numpy().flatten()
+            )
             # print(f"saving variable: {variable.name} {size} {shape}")
 
             def accumulate_value(dataset, value):

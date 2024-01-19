@@ -62,7 +62,7 @@ class PruningMethod(ABC):
         layer: Layer,
     ) -> numpy.ndarray:
         weights, mask = self.get_weights_and_mask(layer, layer_to_keras_map)
-        return numpy.abs(weights[mask].flatten())  # type: ignore
+        return weights[mask].flatten()  # type: ignore
 
     def get_prunable_layers(
         self,

@@ -4,6 +4,7 @@ from typing import Any, List, Optional
 import tensorflow.keras as keras
 from dmp.task.experiment.recorder.recorder import Recorder
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
+from dmp.task.experiment.training_experiment.epoch_counter import EpochCounter
 
 from dmp.task.experiment.training_experiment.test_set_info import TestSetInfo
 from dmp.task.experiment.training_experiment import training_experiment_keys
@@ -12,15 +13,16 @@ from dmp.task.experiment.training_experiment import training_experiment_keys
 class TestSetRecorder(Recorder, ABC):
     def __init__(
         self,
+        epoch_counter: EpochCounter,
         test_sets: List[TestSetInfo],
         timestamp_recorder: Optional[TimestampRecorder],
     ):
-        super().__init__()
+        super().__init__(epoch_counter)
         self._test_sets: List[TestSetInfo] = test_sets
         self._timestamp_recorder: Optional[TimestampRecorder] = timestamp_recorder
 
-    def accumulate_metrics(self, epoch: int) -> None:
-        self._record_epoch(epoch)
+    def accumulate_metrics(self) -> None:
+        self._record_epoch()
         model: keras.Model = self.model  # type: ignore
 
         # evaluate on the additional test sets

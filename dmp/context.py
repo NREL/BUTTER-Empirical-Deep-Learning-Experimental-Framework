@@ -106,7 +106,7 @@ class Context:
         if history_df is None:
             return {}
 
-        history_df.sort_values(["epoch", "fit_number", "fit_epoch"], inplace=True)
+        history_df.sort_values(["fit_number", "fit_epoch", "epoch"], inplace=True)
 
         if extended_history_df is not None:
             merge_keys = ["epoch"]

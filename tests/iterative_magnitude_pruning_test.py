@@ -1,22 +1,28 @@
 import math
 import sys
+import uuid
 
 import numpy
 from dmp.context import Context
 
 
 from dmp.model.named.lenet import Lenet
+from dmp.run_entry import RunEntry
 from dmp.task.experiment.lth.lth_experiment import LTHExperiment
 from dmp.task.experiment.lth.pruning_config import PruningConfig
 from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
+from dmp.task.experiment.pruning_experiment.pruning_run_spec import (
+    IterativePruningConfig,
+)
 from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 from dmp.task.run import Run
 from dmp.keras_interface.keras_utils import keras_kwcfg
+from dmp.task.run_status import RunStatus
 
 sys.path.insert(0, "./")
 
@@ -71,9 +77,7 @@ from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import 
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import keras_kwcfg
-from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (
     OverlayTransfer,
 )
@@ -85,21 +89,35 @@ sys.path.insert(0, "./")
 strategy = dmp.script.worker.make_strategy(None, None, None)
 credentials = load_credentials("dmp")
 schema = PostgresInterface(credentials)
-worker = Worker(
-    None,
+worker = dmp.script.worker.Worker(
     schema,
-    None,
     strategy,
     {},
 )  # type: ignore
 
 
-def run_experiment(run):
-    context = Context(worker, Job(), run)
+def run_experiment(run_id, run: Run):
+    run_entry = RunEntry(
+        queue=0,
+        status=RunStatus.Queued,
+        priority=0,
+        id=run_id,
+        start_time=None,
+        update_time=None,
+        worker_id=None,
+        parent_id=None,
+        experiment_id=None,
+        command=run,
+        history=None,
+        extended_history=None,
+        error_message=None,
+    )
+    context = Context(worker, run_entry)
     run(context)
 
 
 def test_pruning_experiment():
+    run_id = uuid.uuid4()
     run = Run(
         experiment=IterativePruningExperiment(
             data={
@@ -109,35 +127,38 @@ def test_pruning_experiment():
             dataset=DatasetSpec(
                 # 'titanic',
                 # 'pmlb',
-                "GaussianClassificationDataset_2_10_100",
+                # "GaussianClassificationDataset_2_10_100",
                 # # 'GaussianRegressionDataset_20_100',
-                "synthetic",
+                # "synthetic",
+                "mnist",
+                "keras",
                 "shuffled_train_test_split",
-                0.2,
+                10 / 70.0,
                 0.05,
                 0.0,
             ),
-            model=DenseBySize(
-                input=None,
-                output=None,
-                shape="rectangle",
-                size=16384,
-                depth=4,
-                search_method="integer",
-                inner=Dense.make(
-                    -1,
-                    {
-                        "activation": "relu",
-                        "kernel_initializer": "GlorotUniform",
-                        "kernel_constraint": keras_kwcfg(
-                            "ParameterMask",
-                        ),
-                    },
-                ),
-            ),
+            # model=DenseBySize(
+            #     input=None,
+            #     output=None,
+            #     shape="rectangle",
+            #     size=16384,
+            #     depth=4,
+            #     search_method="integer",
+            #     inner=Dense.make(
+            #         -1,
+            #         {
+            #             "activation": "relu",
+            #             "kernel_initializer": "GlorotUniform",
+            #             "kernel_constraint": keras_kwcfg(
+            #                 "ParameterMask",
+            #             ),
+            #         },
+            #     ),
+            # ),
+            model=Lenet(),
             fit={
                 "batch_size": 60,
-                "epochs": 32,
+                "epochs": 128,
             },
             optimizer={
                 "class": "Adam",
@@ -148,7 +169,7 @@ def test_pruning_experiment():
                 "DMPEarlyStopping",
                 monitor="val_loss",
                 min_delta=0,
-                patience=10,
+                patience=2,
                 restore_best_weights=True,
             ),
             pruning=PruningConfig(
@@ -164,7 +185,7 @@ def test_pruning_experiment():
                 new_seed=False,
             ),
         ),
-        config=RunConfig(
+        config=IterativePruningConfig(
             seed=0,
             data={},
             record_post_training_metrics=True,
@@ -180,10 +201,12 @@ def test_pruning_experiment():
             ),
             saved_models=[],
             resume_checkpoint=None,
+            rewind_run_id=run_id,
+            prune_first_iteration=False,
         ),
     )
 
-    run_experiment(run)
+    run_experiment(run_id, run)
 
 
 # def test_pruning_experiment():

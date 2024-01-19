@@ -34,10 +34,6 @@ from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import 
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.task.experiment.run_spec import (
-    RunSpec,
-)
-from dmp.worker import Worker
 from dmp.keras_interface.keras_utils import keras_kwcfg
 from dmp.task.experiment.growth_experiment.growth_experiment import GrowthExperiment
 from dmp.task.experiment.growth_experiment.transfer_method.overlay_transfer import (

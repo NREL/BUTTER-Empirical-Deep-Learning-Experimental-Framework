@@ -381,6 +381,7 @@ class TrainingExperiment(Experiment):
         history_callbacks = []
         timestamp_recorder = (
             TimestampRecorder(
+                epoch_counter,
                 "_" + keys.interval_suffix,
                 keys.epoch_start_time_ms,
                 keys.epoch_time_ms,
@@ -397,7 +398,9 @@ class TrainingExperiment(Experiment):
             or epoch_counter.training_epoch.fit_epoch == 0
         ):
             zero_epoch_recorder = ZeroEpochRecorder(
-                [train_set_info, validation_set_info, test_set_info], None
+                epoch_counter,
+                [train_set_info, validation_set_info, test_set_info],
+                None,
             )
             history_callbacks.append(zero_epoch_recorder)
 
@@ -406,7 +409,11 @@ class TrainingExperiment(Experiment):
             additional_test_sets.append(TestSetInfo(keys.trained, dataset.train))
 
         history_callbacks.append(
-            TestSetHistoryRecorder(additional_test_sets, timestamp_recorder)
+            TestSetHistoryRecorder(
+                epoch_counter,
+                additional_test_sets,
+                timestamp_recorder,
+            )
         )
         callbacks.extend(history_callbacks)
 
@@ -424,12 +431,18 @@ class TrainingExperiment(Experiment):
         )
 
         # fit the model
-        history: keras.callbacks.History = model.keras_model.fit(
+        history = model.keras_model.fit(
             callbacks=callbacks,
             verbose=0,  # type: ignore
             **fit_config,
         )  # type: ignore
 
+        class HistoryWrapper:
+            def __init__(self, history, epoch_counter):
+                self.history = history.history
+                self.epoch = epoch_counter.history
+
+        history = HistoryWrapper(history, epoch_counter)
         # convert keras History dictionary and epoch list to our standard
         self.remap_key_prefixes(
             history.history,
@@ -482,12 +495,18 @@ class TrainingExperiment(Experiment):
             retained = []
             if early_stopping_callback is not None:
                 retained = [
-                    (epoch <= (early_stopping_callback.best_epoch + 1))
+                    (epoch <= early_stopping_callback.best_training_epoch)
                     for epoch in fit_history[keys.epoch]
                 ]
             else:
                 retained = [True] * fit_history_length
             fit_history[keys.retained] = retained
+
+        # expand epoch column:
+        epochs: List[TrainingEpoch] = fit_history[keys.epoch]
+        fit_history[keys.epoch] = [epoch.epoch for epoch in epochs]
+        fit_history[keys.fit_number] = [epoch.fit_number for epoch in epochs]
+        fit_history[keys.fit_epoch] = [epoch.fit_epoch for epoch in epochs]
 
         # update run saved_models list
         if model_saving_callback is not None:
@@ -563,7 +582,6 @@ class TrainingExperiment(Experiment):
         for history in histories:
             for metric, metric_history in history.history.items():
                 for epoch, value in zip(history.epoch, metric_history):
-                    epoch += 1
                     epoch_set.add(epoch)
                     metric_map.setdefault(metric, {})[epoch] = value
 
@@ -592,21 +610,7 @@ class TrainingExperiment(Experiment):
         fit_history: Dict[str, Any],
         epoch_counter: EpochCounter,
     ) -> Dict[str, Any]:
-        initial_epoch = epoch_counter.initial_epoch
-
         fit_history_length = len(fit_history[self.keys.epoch])
-
-        # set fit_number column
-        fit_history[self.keys.fit_number] = [
-            initial_epoch.fit_number
-        ] * fit_history_length
-
-        # set fit_epoch column
-        fit_epochs = numpy.array(fit_history[self.keys.epoch]) + initial_epoch.fit_epoch
-        fit_history[self.keys.fit_epoch] = fit_epochs
-
-        # convert fit_epochs to epochs
-        fit_history[self.keys.epoch] = fit_epochs + epoch_counter.initial_epoch.epoch
 
         # set seed number column
         if self.keys.seed_number not in fit_history:
@@ -719,6 +723,7 @@ class TrainingExperiment(Experiment):
         extended_history = self._extract_extended_history(history)
         context.run_entry.extended_history = make_dataframe_from_dict(extended_history)  # type: ignore
         context.run_entry.history = make_dataframe_from_dict(history)
+        print(context.run_entry.history)
 
         context.update_run()
 

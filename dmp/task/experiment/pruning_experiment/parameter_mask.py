@@ -12,15 +12,19 @@ class ParameterMask(tensorflow.keras.constraints.Constraint):
     ):
         super().__init__()
         self.mask_group: int = mask_group
-        self.mask = tensorflow.Variable(
-            True,
-            shape=tensorflow.TensorShape(None),
-            trainable=False,
-            dtype=tensorflow.bool,
-        )
+        self.mask = None
 
     def __call__(self, w):
         """
         Used by tensorflow to add the constraint to the computation graph.
         """
+        # print(f"mask call! {w.shape} {self.mask.shape}")
+        if self.mask is None:
+            self.mask = tensorflow.Variable(
+                tensorflow.ones(w.shape, dtype=tensorflow.bool),
+                shape=w.shape,
+                trainable=False,
+                dtype=tensorflow.bool,
+            )
+
         return tensorflow.where(self.mask, w, 0)
