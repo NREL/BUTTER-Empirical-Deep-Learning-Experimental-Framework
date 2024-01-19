@@ -78,7 +78,7 @@ class GlobalValuePruningMethod(PruningMethod):
         weight_index = numpy.argsort(prunable_weights)
         how_many_to_prune = int(numpy.round(self.pruning_rate * weight_index.size))
         prune_mask = numpy.zeros(prunable_weights.shape, dtype=bool)
-        prune_mask[weight_index[0 : how_many_to_prune + 1]] = True
+        prune_mask[weight_index[0:how_many_to_prune]] = True
         del prunable_weights
         del weight_index
 
