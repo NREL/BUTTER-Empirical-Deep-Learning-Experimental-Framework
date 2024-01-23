@@ -12,17 +12,22 @@ echo core_list "$core_list"
 DMP_SCRIPT_DIR="$DMP_DIR/script/$DMP_CONFIG/"
 source $DMP_SCRIPT_DIR/dmp_activate_cpu.bash
 
-export GOMP_CPU_AFFINITY="$core_list"
-export OMP_PROC_BIND=CLOSE
+#export GOMP_CPU_AFFINITY="$core_list"
+#export OMP_PROC_BIND=CLOSE
 export OMP_SCHEDULE=STATIC
+#export OMP_SCHEDULE=DYNAMIC
 export OMP_DISPLAY_AFFINITY=TRUE
 
 export TF_ENABLE_MKL_NATIVE_FORMAT=1
 export TF_ENABLE_ONEDNN_OPTS=1
-export KMP_AFFINITY=verbose,warnings,granularity=fine,compact,1,0
+#export KMP_AFFINITY=verbose,warnings,granularity=fine,compact,1,0
+#export KMP_AFFINITY=verbose,warnings,granularity=disabled
+export KMP_AFFINITY=verbose,warnings,granularity=fine
+#export KMP_AFFINITY=verbose,warnings,compact,1,0
 export KMP_BLOCKTIME=1
 export KMP_SETTINGS=TRUE
 export TF_ENABLE_XLA=1
+
 
 # export ZENDNN_MEMPOOL_ENABLE=1
 # export ZENDNN_TENSOR_POOL_LIMIT=16
