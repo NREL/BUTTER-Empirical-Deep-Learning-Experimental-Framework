@@ -201,8 +201,8 @@ def make_strategy(num_cores, gpus, gpu_mem):
     tensorflow.config.set_visible_devices(visible_devices)
     tensorflow.config.set_soft_device_placement(True)
 
-    tensorflow.config.threading.set_intra_op_parallelism_threads(num_cores)
-    tensorflow.config.threading.set_inter_op_parallelism_threads(num_cores)
+    tensorflow.config.threading.set_intra_op_parallelism_threads(0)
+    tensorflow.config.threading.set_inter_op_parallelism_threads(0)
 
     if len(gpu_devices) > 1:
         print(visible_devices)
