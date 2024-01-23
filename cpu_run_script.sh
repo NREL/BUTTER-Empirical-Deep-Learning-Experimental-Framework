@@ -9,19 +9,24 @@ echo args "${ARGS[@]}"
 echo node_list "$node_list"
 echo core_list "$core_list"
 
+DMP_SCRIPT_DIR="$DMP_DIR/script/$DMP_CONFIG/"
+source $DMP_SCRIPT_DIR/dmp_activate_cpu.bash
 
 #export OMP_DYNAMIC=false
 #export OMP_WAIT_POLICY=active
 #export OMP_PROC_BIND=true
 #export OMP_PLACES=cores
-export OMP_NUM_THREADS=${#core_list[@]}
+# export OMP_NUM_THREADS=${#core_list[@]}
+
+export GOMP_CPU_AFFINITY="$core_list"
+export OMP_PROC_BIND=CLOSE
+export OMP_SCHEDULE=STATIC
 export OMP_DISPLAY_AFFINITY=TRUE
-export KMP_AFFINITY=verbose
 #export CRAY_OMP_CHECK_AFFINITY=TRUE
 
 export TF_ENABLE_MKL_NATIVE_FORMAT=1
 export TF_ENABLE_ONEDNN_OPTS=1
-export KMP_AFFINITY=verbose,warnings,granularity=fine,compact,0,1
+export KMP_AFFINITY=verbose,warnings,granularity=fine,compact,1,0
 export KMP_BLOCKTIME=1
 export KMP_SETTINGS=TRUE
 export TF_ENABLE_XLA=1

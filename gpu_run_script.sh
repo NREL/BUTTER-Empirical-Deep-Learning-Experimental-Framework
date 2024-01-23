@@ -9,12 +9,14 @@ echo args "${ARGS[@]}"
 echo node_list "$node_list"
 echo core_list "$core_list"
 
+DMP_SCRIPT_DIR="$DMP_DIR/script/$DMP_CONFIG/"
+source $DMP_SCRIPT_DIR/dmp_activate_gpu.bash
 
 #export OMP_DYNAMIC=false
 #export OMP_WAIT_POLICY=active
 #export OMP_PROC_BIND=true
 #export OMP_PLACES=cores
-export OMP_NUM_THREADS=${#core_list[@]}
+# export OMP_NUM_THREADS=${#core_list[@]}
 export OMP_DISPLAY_AFFINITY=TRUE
 export KMP_AFFINITY=verbose
 #export CRAY_OMP_CHECK_AFFINITY=TRUE
