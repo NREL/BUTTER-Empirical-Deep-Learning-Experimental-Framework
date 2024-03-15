@@ -20,7 +20,7 @@ class Recorder(keras.callbacks.Callback, ABC):
         self.history.setdefault(metric, []).append(value)
 
     def _record_epoch(self) -> None:
-        self.epoch.append(self._epoch_counter.training_epoch)
+        self.epoch.append(self._epoch_counter.current_epoch)
 
     # def on_train_begin(self, logs=None):
     #     super().on_train_begin(logs=logs)

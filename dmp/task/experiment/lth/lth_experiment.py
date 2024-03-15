@@ -84,7 +84,7 @@ class LTHExperiment(TrainingExperiment):
                         run_id=context.id,
                         load_mask=False,
                         load_optimizer=False,
-                        epoch=epoch_counter.training_epoch,
+                        epoch=epoch_counter.current_epoch,
                     )
                 else:
                     child_pruning_config.new_seed = True

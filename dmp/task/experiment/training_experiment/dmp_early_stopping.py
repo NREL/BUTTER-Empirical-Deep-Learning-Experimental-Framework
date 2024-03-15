@@ -22,7 +22,7 @@ class DMPEarlyStopping(keras.callbacks.EarlyStopping):
 
             # set dmp_epoch to match best weights epoch
             counter = self.dmp_epoch_counter
-            counter.training_epoch = replace(self.dmp_epoch_counter.initial_epoch)
-            counter.training_epoch.count_new_epoch(self.best_epoch + 1)
-            counter.training_epoch.marker = 1
-            self.best_training_epoch = counter.training_epoch
+            counter.current_epoch = replace(self.dmp_epoch_counter.initial_epoch)
+            counter.current_epoch.count_new_epoch(self.best_epoch + 1)
+            counter.current_epoch.marker = 1
+            self.best_training_epoch = counter.current_epoch

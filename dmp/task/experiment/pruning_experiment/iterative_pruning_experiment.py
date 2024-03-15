@@ -86,9 +86,9 @@ class IterativePruningExperiment(TrainingExperiment):
         # 4: for n ∈ {1, . . . , N} do
         first_iteration = True
         while True:
-            iteration = epoch_counter.training_epoch.fit_number
+            iteration = epoch_counter.current_epoch.fit_number
 
-            print(f"********** 3 {epoch_counter.training_epoch}")
+            print(f"********** 3 {epoch_counter.current_epoch}")
             if iteration >= pruning.iterations:
                 print(f"********** 4")
                 break

@@ -77,7 +77,7 @@ def main():
                     "DMPEarlyStopping",
                     monitor="val_loss",
                     min_delta=0,
-                    patience=8,
+                    patience=3,
                     restore_best_weights=True,
                 ),
                 pruning_configs=pruning_configs,

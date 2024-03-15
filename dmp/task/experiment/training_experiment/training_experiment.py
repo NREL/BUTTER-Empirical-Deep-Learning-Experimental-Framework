@@ -366,7 +366,7 @@ class TrainingExperiment(Experiment):
 
         if epochs is None and fit_config["epochs"] is not None:
             fit_config["epochs"] = (
-                fit_config["epochs"] - epoch_counter.training_epoch.epoch
+                fit_config["epochs"] - epoch_counter.current_epoch.epoch
             )
         else:
             fit_config["epochs"] = epochs
@@ -395,7 +395,7 @@ class TrainingExperiment(Experiment):
         if (
             new_fit_number
             or experiment_history is None
-            or epoch_counter.training_epoch.fit_epoch == 0
+            or epoch_counter.current_epoch.fit_epoch == 0
         ):
             zero_epoch_recorder = ZeroEpochRecorder(
                 epoch_counter,
@@ -740,7 +740,7 @@ class TrainingExperiment(Experiment):
     ) -> TrainingExperimentCheckpoint:
         config.resume_checkpoint = context.save_model(
             model,
-            epoch_counter.training_epoch,
+            epoch_counter.current_epoch,
         )
 
         self._record_result(

@@ -56,7 +56,7 @@ class ModelSavingSpec:
                 # self.epoch.fit_number -= 1
 
                 self.last_saved_epoch: TrainingEpoch = replace(
-                    epoch_counter.training_epoch
+                    epoch_counter.current_epoch
                 )
                 self.last_saved_epoch.epoch -= 1
                 self.last_saved_epoch.fit_epoch -= 1
@@ -75,7 +75,7 @@ class ModelSavingSpec:
                     self.save_model()
 
             def on_epoch_end(self, epoch, logs=None) -> None:
-                training_epoch = epoch_counter.training_epoch
+                training_epoch = epoch_counter.current_epoch
                 global_epoch = training_epoch.epoch
                 fit_epoch = training_epoch.fit_epoch
 
@@ -110,7 +110,7 @@ class ModelSavingSpec:
                     self.save_model(train_end=True)
 
             def save_model(self, train_end: bool = False) -> None:
-                training_epoch = epoch_counter.training_epoch
+                training_epoch = epoch_counter.current_epoch
                 if self.last_saved_epoch == training_epoch:
                     return
 

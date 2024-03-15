@@ -17,7 +17,9 @@ from dmp.task.experiment.model_saving.model_saving_spec import ModelSavingSpec
 from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner import (
     MagnitudePruner,
 )
-from dmp.task.experiment.pruning_experiment.pruning_method.random_pruner import RandomPruner
+from dmp.task.experiment.pruning_experiment.pruning_method.random_pruner import (
+    RandomPruner,
+)
 from dmp.task.experiment.training_experiment.run_spec import RunConfig
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
@@ -87,7 +89,7 @@ def main():
                     "DMPEarlyStopping",
                     monitor="val_loss",
                     min_delta=0,
-                    patience=50,
+                    patience=3,
                     restore_best_weights=True,
                 ),
                 pruning_configs=pruning_configs,
