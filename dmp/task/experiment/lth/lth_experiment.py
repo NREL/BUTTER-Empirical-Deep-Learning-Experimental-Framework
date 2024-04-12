@@ -30,7 +30,7 @@ class LTHExperiment(TrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 2
+        return 3
 
     def __call__(
         self,
@@ -72,7 +72,7 @@ class LTHExperiment(TrainingExperiment):
         child_tasks = []
 
         for i in range(self.num_additional_seeds_per_config + 1):
-            # seed = run.seed + i
+            base_run_config["seed"] = config.seed + i
             for pruning_config in self.pruning_configs:
                 child_pruning_config = copy(pruning_config)
 

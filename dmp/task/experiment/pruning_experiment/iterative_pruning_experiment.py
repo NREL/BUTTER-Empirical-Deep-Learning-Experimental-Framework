@@ -36,7 +36,7 @@ class IterativePruningExperiment(TrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 3
+        return 4
 
     def __call__(
         self,
