@@ -213,14 +213,23 @@ def require_parameter_dataset(
         chunks=(256, 128),
         maxshape=(max_parameters, max_epochs),
         fillvalue=numpy.nan,
-        **hdf5plugin.Blosc(cname="lz4", clevel=6, shuffle=hdf5plugin.Blosc.SHUFFLE),
+        **hdf5plugin.Blosc(cname="lz4", clevel=9, shuffle=hdf5plugin.Blosc.SHUFFLE),
     )
 
 
 def get_datasets_from_model_file(
     h5_file: h5.File,
     optimizer: Optional[keras.optimizers.Optimizer],
-) -> Tuple[h5.Dataset, h5.Dataset, List[Tuple[str, h5.Dataset,]],]:
+) -> Tuple[
+    h5.Dataset,
+    h5.Dataset,
+    List[
+        Tuple[
+            str,
+            h5.Dataset,
+        ]
+    ],
+]:
     """
     "parameter" dataset:
     + every checkpoint saves a new [:, sequence] array with all model parameters
@@ -252,7 +261,7 @@ def get_datasets_from_model_file(
         # chunks=(512, 64),
         maxshape=(4, max_epochs),
         fillvalue=-1,
-        **hdf5plugin.Blosc(cname="lz4", clevel=7, shuffle=hdf5plugin.Blosc.SHUFFLE),
+        **hdf5plugin.Blosc(cname="lz4", clevel=9, shuffle=hdf5plugin.Blosc.SHUFFLE),
     )
 
     """
