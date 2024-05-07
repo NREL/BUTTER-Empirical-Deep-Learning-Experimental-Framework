@@ -6,7 +6,6 @@ dependencies:
 - pip
 - scipy
 - numpy
-- tensorflow >= 2.11
 - simplejson
 - libpq
 - bzip2
@@ -14,7 +13,8 @@ dependencies:
 - h5py
 - hdf5plugin
 - pip:
-  - pyarrow >= 12
+  - tensorflow >= 2.16
+  - pyarrow = 14
   - psycopg[binary] >= 3
   - psycopg_pool >= 3
   - pytest
