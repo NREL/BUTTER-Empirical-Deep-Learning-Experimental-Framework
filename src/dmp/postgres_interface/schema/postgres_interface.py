@@ -128,10 +128,21 @@ RETURNING
             return []
 
         rows = []
+
+        print("pop_runs: making connection")
         with ConnectionManager(self._credentials) as connection:
+            print("pop_runs: make cursor")
             with connection.cursor(binary=True) as cursor:
+                print("pop_runs: make query")
+                print(
+                    ClientCursor(connection).mogrify(
+                        self._pop_query, (worker_id, queue_id, n)
+                    )
+                )
                 cursor.execute(self._pop_query, (worker_id, queue_id, n))
+                print("pop_runs: executed, fetching")
                 rows = cursor.fetchall()
+                print(f"pop_runs: feteched {len(rows)}.")
 
         for i, row in enumerate(rows):
             run = self._get_run_from_row(row)
