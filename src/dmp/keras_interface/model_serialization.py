@@ -152,7 +152,7 @@ def load_parameters(
         def visit_variable(layer, keras_layer, i, variable):
             nonlocal parameter_index
 
-            shape = variable.value().shape
+            shape = variable.value.shape
             size = numpy.prod(shape)
             parameter_limit = parameter_index + size
             # print(f"loading variable: {variable.name} {size} {shape} {row_index}")
