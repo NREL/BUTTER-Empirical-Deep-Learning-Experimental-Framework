@@ -26,10 +26,10 @@ def main():
     print(credentials)
     print("Credentials loaded, attempting to connect.")
     connection = jobqueue.connect(credentials)
-    print("Connection object constructed.)
+    print("Connection object constructed.")
     try:
         with connection.cursor() as cursor:
-            print("Cursor constructed.)
+            print("Cursor constructed.")
             cursor.execute(
                 sql.SQL(
                     """
