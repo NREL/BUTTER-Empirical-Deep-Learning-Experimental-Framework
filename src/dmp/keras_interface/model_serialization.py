@@ -178,14 +178,26 @@ def load_parameters(
                 variable.assign(prepared)
 
             load_variable(parameter_dataset, variable)
+
             for optimizer_member, member_dataset in optimizer_datasets:
-                var_key = optimizer._var_key(variable)
-                if var_key not in optimizer._index_dict:
+                if not hasattr(optimizer, optimizer_member):
                     continue
-                variable_index = optimizer._index_dict[var_key]  # type: ignore
-                optimizer_variable = getattr(optimizer, optimizer_member)[
-                    variable_index
-                ]
+                optimizer_variables = getattr(optimizer, optimizer_member)
+
+                if hasattr(optimizer, "_var_key"):
+                    var_key = optimizer._var_key(variable)
+                    if var_key not in optimizer._index_dict:
+                        continue
+                    variable_index = optimizer._index_dict[var_key]  # type: ignore
+                elif hasattr(optimizer, "_get_variable_index"):
+                    variable_index = optimizer._get_variable_index(variable)
+                else:
+                    print(
+                        "Could not determine how to access optimizer state variables!"
+                    )
+                    break
+
+                optimizer_variable = optimizer_variables[variable_index]
                 load_variable(member_dataset, optimizer_variable)
 
             parameter_index = parameter_limit

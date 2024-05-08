@@ -2,7 +2,7 @@ from ast import arg
 from math import ceil
 from psycopg import sql
 
-import jobqueue.connect as connect
+import jobqueue
 from pprint import pprint
 import sys
 
@@ -21,11 +21,11 @@ def main():
     project = args.project
     print(f'checking database connection for project "{project}"...')
 
-    credentials = connect.load_credentials(project)
+    credentials = jobqueue.load_credentials(project)
 
     print(credentials)
     print("Credentials loaded, attempting to connect.")
-    connection = connect.connect(credentials)
+    connection = jobqueue.connect(credentials)
     try:
         cursor = connection.cursor()
         cursor.execute(
