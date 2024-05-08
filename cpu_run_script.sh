@@ -36,4 +36,8 @@ export TF_ENABLE_XLA=1
 # export ZENDNN_PRIMITIVE_CACHE_CAPACITY=1024
 
 echo executing numactl --cpunodebind="$node_list" --membind="$node_list" --physcpubind="$core_list" "${command[@]}"
-numactl --cpunodebind="$node_list" --membind="$node_list" --physcpubind="$core_list" "${command[@]}"
+{
+    numactl --cpunodebind="$node_list" --membind="$node_list" --physcpubind="$core_list" "${command[@]}"
+} || {
+    "${command[@]}"
+    }

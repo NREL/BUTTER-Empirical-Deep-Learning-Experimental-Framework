@@ -14,7 +14,7 @@ dependencies:
 - hdf5plugin
 - pip:
   - tensorflow >= 2.16
-  - pyarrow = 14
+  - pyarrow == 14
   - psycopg[binary] >= 3
   - psycopg_pool >= 3
   - pytest
