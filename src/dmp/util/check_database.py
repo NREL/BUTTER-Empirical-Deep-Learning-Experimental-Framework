@@ -1,20 +1,18 @@
 from ast import arg
 from math import ceil
 from psycopg import sql
-import psycopg.extras as extras
-import psycopg
+
 import jobqueue.connect as connect
 from pprint import pprint
 import sys
-import jobqueue.connect
+
+import dmp.postgres_interface
+
 
 sys.path.append("../../")
 
-psycopg.extras.register_uuid()
-
 
 def main():
-    import simplejson
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -24,10 +22,6 @@ def main():
     print(f'checking database connection for project "{project}"...')
 
     credentials = connect.load_credentials(project)
-
-    extras.register_default_json(loads=simplejson.loads, globally=True)
-    extras.register_default_jsonb(loads=simplejson.loads, globally=True)
-    psycopg.extensions.register_adapter(dict, psycopg.extras.Json)
 
     print(credentials)
     print("Credentials loaded, attempting to connect.")
