@@ -56,6 +56,7 @@ UPDATE "run"
             LIMIT 1
             FOR UPDATE SKIP LOCKED
             )
+RETURNING id
 """
 
 
@@ -97,7 +98,7 @@ def main():
                 print(i)
         print("All is well.")
     except Exception as e:
-        print("Exception: f{e}")
+        print(f"Exception: f{e}")
     print("Done.")
 
 
