@@ -60,7 +60,7 @@ RETURNING "id","queue","status","priority","start_time","update_time","worker_id
 """
 
 # "command","history","extended_history",
-q3 = """
+q4 = """
 SELECT
     "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","error_message",
     command::json
@@ -77,6 +77,19 @@ WHERE TRUE
         LIMIT 1
         FOR UPDATE SKIP LOCKED
         )
+"""
+
+q3 = """
+SELECT
+    "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","error_message",
+    command::json
+FROM
+    run
+WHERE TRUE
+    AND "_run_selection"."status" = 0
+    AND "_run_selection"."queue" = 10
+ORDER BY "priority" DESC, "id" ASC
+LIMIT 1
 """
 
 
