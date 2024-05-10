@@ -77,9 +77,9 @@ def main():
     connection = jobqueue.connect(credentials)
     print("Connection object constructed.")
     try:
-        with connection.cursor() as cursor:
+        with connection.cursor(binary=True) as cursor:
             print("Cursor constructed.")
-            cursor.execute(q3)
+            cursor.execute(q3, binary=True)
             # cursor.execute(
             #     sql.SQL(
             #         """
