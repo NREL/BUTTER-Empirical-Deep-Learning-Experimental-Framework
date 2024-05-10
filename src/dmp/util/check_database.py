@@ -14,6 +14,28 @@ import dmp.postgres_interface
 
 sys.path.append("../../")
 
+q2 = """
+UPDATE "run"
+    SET
+        "status" = 1,
+        "worker_id" = '093bd5e3e9a94108a6553fac2cb9faa7'::uuid,
+        "start_time" = NOW(),
+        "update_time" = NOW()
+    WHERE TRUE
+        AND id IN (
+            SELECT id FROM
+                "run" "_run_selection"
+            WHERE TRUE
+                AND "_run_selection"."status" = 0
+                AND "_run_selection"."queue" = 10
+            ORDER BY "priority" DESC, "id" ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+    )
+RETURNING
+    "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","command","history","extended_history","error_message"
+
+"""
 
 def main():
     import argparse
@@ -34,19 +56,20 @@ def main():
     try:
         with connection.cursor() as cursor:
             print("Cursor constructed.")
-            cursor.execute(
-                sql.SQL(
-                    """
-            select
-                queue, count(1) num
-            from
-                run
-            where queue >= 0
-            group by queue, status
-            order by queue, status
-            ;"""
-                )
-            )
+            cursor.execute(q2)
+            # cursor.execute(
+            #     sql.SQL(
+            #         """
+            # select
+            #     queue, status, count(1) num
+            # from
+            #     run
+            # where queue >= 0
+            # group by queue, status
+            # order by queue, status
+            # ;"""
+            #     )
+            # )
             print("Query Executed.")
             for i in cursor.fetchall():
                 print(i)
