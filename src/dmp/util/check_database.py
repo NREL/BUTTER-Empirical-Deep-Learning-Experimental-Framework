@@ -56,7 +56,7 @@ UPDATE "run"
             LIMIT 1
             FOR UPDATE SKIP LOCKED
             )
-RETURNING "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id"
+RETURNING "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","history","extended_history","error_message"
 """
 
 
