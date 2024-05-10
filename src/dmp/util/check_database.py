@@ -38,7 +38,7 @@ RETURNING
 """
 
 
-q3 = """
+q1 = """
 UPDATE "run"
     SET
         "status" = 1,
@@ -57,6 +57,24 @@ UPDATE "run"
             FOR UPDATE SKIP LOCKED
             )
 RETURNING "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","command","history","extended_history","error_message"
+"""
+
+q3 = """
+SELECT
+    "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","command","history","extended_history","error_message"
+FROM
+    run
+WHERE TRUE
+    AND id IN (
+        SELECT id FROM
+            "run" "_run_selection"
+        WHERE TRUE
+            AND "_run_selection"."status" = 0
+            AND "_run_selection"."queue" = 10
+        ORDER BY "priority" DESC, "id" ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+        )
 """
 
 
