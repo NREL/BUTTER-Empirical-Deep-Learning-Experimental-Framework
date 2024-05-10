@@ -37,6 +37,19 @@ RETURNING
 
 """
 
+
+q3 = """
+SELECT id FROM
+                "run" "_run_selection"
+            WHERE TRUE
+                AND "_run_selection"."status" = 0
+                AND "_run_selection"."queue" = 10
+            ORDER BY "priority" DESC, "id" ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+"""
+
+
 def main():
     import argparse
 
@@ -56,7 +69,7 @@ def main():
     try:
         with connection.cursor() as cursor:
             print("Cursor constructed.")
-            cursor.execute(q2)
+            cursor.execute(q3)
             # cursor.execute(
             #     sql.SQL(
             #         """
