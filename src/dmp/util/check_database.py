@@ -82,7 +82,7 @@ WHERE TRUE
 q3 = """
 SELECT
     "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","error_message",
-    history
+    command::text
 FROM
     run
 WHERE TRUE
