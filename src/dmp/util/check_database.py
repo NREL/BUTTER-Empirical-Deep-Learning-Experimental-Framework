@@ -56,7 +56,7 @@ UPDATE "run"
             LIMIT 1
             FOR UPDATE SKIP LOCKED
             )
-RETURNING id
+RETURNING "id","queue","status"
 """
 
 
