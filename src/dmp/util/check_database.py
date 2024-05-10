@@ -39,7 +39,15 @@ RETURNING
 
 
 q3 = """
-SELECT id FROM
+UPDATE "run"
+    SET
+        "status" = 1,
+        "worker_id" = '093bd5e3e9a94108a6553fac2cb9faa7'::uuid,
+        "start_time" = NOW(),
+        "update_time" = NOW()
+    WHERE TRUE
+        AND id IN (
+            SELECT id FROM
                 "run" "_run_selection"
             WHERE TRUE
                 AND "_run_selection"."status" = 0
@@ -47,6 +55,7 @@ SELECT id FROM
             ORDER BY "priority" DESC, "id" ASC
             LIMIT 1
             FOR UPDATE SKIP LOCKED
+            )
 """
 
 
