@@ -86,8 +86,8 @@ SELECT
 FROM
     run
 WHERE TRUE
-    AND "_run_selection"."status" = 0
-    AND "_run_selection"."queue" = 10
+    AND "status" = 0
+    AND "queue" = 10
 ORDER BY "priority" DESC, "id" ASC
 LIMIT 1
 """
