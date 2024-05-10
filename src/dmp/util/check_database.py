@@ -59,9 +59,10 @@ UPDATE "run"
 RETURNING "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","command","history","extended_history","error_message"
 """
 
+# "command","history","extended_history",
 q3 = """
 SELECT
-    "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","command","history","extended_history","error_message"
+    "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","error_message"
 FROM
     run
 WHERE TRUE
