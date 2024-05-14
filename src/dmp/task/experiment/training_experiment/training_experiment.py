@@ -342,7 +342,14 @@ class TrainingExperiment(Experiment):
         # with tensorflow.name_scope(optimizer.name):
         #     with tensorflow.init_scope():
         #         optimizer._create_all_weights(grad_vars)
+
+        print(
+            f"_try_restore_checkpoint 1 {len(grad_vars)} {optimizer._built if hasattr(optimizer, '_built') else 'no attr'}"
+        )
         optimizer.build(grad_vars)
+        print(
+            f"_try_restore_checkpoint 2 {len(grad_vars)} {optimizer._built if hasattr(optimizer, '_built') else 'no attr'}"
+        )
 
         checkpoint.resume(model)
 
