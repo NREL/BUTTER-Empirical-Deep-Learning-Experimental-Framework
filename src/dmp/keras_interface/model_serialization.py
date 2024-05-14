@@ -208,7 +208,10 @@ def get_optimizer_variable(optimizer, optimizer_member, variable):
     optimizer_variables = getattr(optimizer, optimizer_member)
 
     if hasattr(optimizer, "_get_variable_index"):
-        variable_index = optimizer._get_variable_index(variable)
+        try:
+            variable_index = optimizer._get_variable_index(variable)
+        except KeyError:
+            return None
     elif hasattr(optimizer, "_var_key"):
         var_key = optimizer._var_key(variable)
         if var_key not in optimizer._index_dict:
@@ -218,11 +221,12 @@ def get_optimizer_variable(optimizer, optimizer_member, variable):
         print("Could not determine how to access optimizer state variables!")
         return None
 
+    if len(optimizer_variables) <= variable_index:
+        return None
+
     print(
         f"try load optimizer variable {variable.name} {optimizer_member}, {type(optimizer_variables)} {len(optimizer_variables)} {variable_index}"
     )
-    if len(optimizer_variables) <= variable_index:
-        return None
     return optimizer_variables[variable_index]
 
 
