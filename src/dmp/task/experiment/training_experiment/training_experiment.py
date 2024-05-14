@@ -339,7 +339,7 @@ class TrainingExperiment(Experiment):
         grad_vars = model.keras_model.trainable_weights
         # zero_grads = [tensorflow.zeros_like(w) for w in grad_vars]
         # optimizer.apply_gradients(zip(zero_grads, grad_vars))
-        with tensorflow.name_scope(optimizer._name):
+        with tensorflow.name_scope(optimizer.name):
             with tensorflow.init_scope():
                 optimizer._create_all_weights(grad_vars)
 
