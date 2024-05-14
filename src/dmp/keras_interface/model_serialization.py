@@ -301,6 +301,8 @@ def get_datasets_from_model_file(
         if optimizer is not None and hasattr(optimizer, member)
     ]
 
+    print(f"Found optimizer {type(optimizer)} with members {optimizer_datasets}.")
+
     return (
         epoch_dataset,
         parameter_dataset,
