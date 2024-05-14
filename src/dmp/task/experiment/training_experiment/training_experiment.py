@@ -332,10 +332,17 @@ class TrainingExperiment(Experiment):
             return EpochCounter(TrainingEpoch(0, 0, 0)), {}
 
         epoch = checkpoint.epoch
+
+        # Need to get Tensorflow to instantiate the optimizer state variables so that we can restore the optimizer state
+        # see https://stackoverflow.com/questions/49503748/save-and-load-model-optimizer-state
         optimizer = model.keras_model.optimizer
         grad_vars = model.keras_model.trainable_weights
-        zero_grads = [tensorflow.zeros_like(w) for w in grad_vars]
-        optimizer.apply_gradients(zip(zero_grads, grad_vars))
+        # zero_grads = [tensorflow.zeros_like(w) for w in grad_vars]
+        # optimizer.apply_gradients(zip(zero_grads, grad_vars))
+        with tensorflow.name_scope(optimizer._name):
+            with tensorflow.init_scope():
+                optimizer._create_all_weights(grad_vars)
+
         checkpoint.resume(model)
 
         history = context.get_run_history(checkpoint.run_id, checkpoint.epoch)
