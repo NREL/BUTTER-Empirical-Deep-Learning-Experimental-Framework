@@ -62,8 +62,7 @@ RETURNING "id","queue","status","priority","start_time","update_time","worker_id
 # "command","history","extended_history",
 q4 = """
 SELECT
-    "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","error_message",
-    command::json
+    "id","queue","status","priority","start_time","update_time","worker_id","parent_id","experiment_id","command","history","extended_history","error_message"
 FROM
     run
 WHERE TRUE
@@ -112,7 +111,7 @@ def main():
     try:
         with connection.cursor(binary=True) as cursor:
             print("Cursor constructed.")
-            cursor.execute(q3, binary=True)
+            cursor.execute(q4, binary=True)
             # cursor.execute(
             #     sql.SQL(
             #         """
