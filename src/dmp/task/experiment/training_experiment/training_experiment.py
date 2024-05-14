@@ -344,11 +344,11 @@ class TrainingExperiment(Experiment):
         #         optimizer._create_all_weights(grad_vars)
 
         print(
-            f"_try_restore_checkpoint 1 {len(grad_vars)} {optimizer._built if hasattr(optimizer, '_built') else 'no attr'}"
+            f"_try_restore_checkpoint 1 {len(grad_vars)} {optimizer.built} {optimizer.momentum if hasattr(optimizer, 'momentum') else 'no attr'}"
         )
         optimizer.build(grad_vars)
         print(
-            f"_try_restore_checkpoint 2 {len(grad_vars)} {optimizer._built if hasattr(optimizer, '_built') else 'no attr'}"
+            f"_try_restore_checkpoint 2 {len(grad_vars)} {optimizer.built} {optimizer.momentum if hasattr(optimizer, 'momentum') else 'no attr'}"
         )
 
         checkpoint.resume(model)
