@@ -155,7 +155,7 @@ def load_parameters(
             shape = variable.value.shape
             size = numpy.prod(shape)
             parameter_limit = parameter_index + size
-            # print(f"loading variable: {variable.name} {size} {shape} {row_index}")
+            print(f"loading variable: {variable.name} {size} {shape} {parameter_index}")
             constraint = access_model_parameters.get_mask_constraint(
                 keras_layer, variable
             )
@@ -184,6 +184,9 @@ def load_parameters(
                     optimizer,
                     optimizer_member,
                     variable,
+                )
+                print(
+                    f"load optimizer variable {variable.name} {optimizer_member}, {type(optimizer_variable)}"
                 )
                 if optimizer_variable is not None:
                     load_variable(member_dataset, optimizer_variable)
@@ -215,6 +218,9 @@ def get_optimizer_variable(optimizer, optimizer_member, variable):
         print("Could not determine how to access optimizer state variables!")
         return None
 
+    print(
+        f"try load optimizer variable {variable.name} {optimizer_member}, {type(optimizer_variables)} {len(optimizer_variables)} {variable_index}"
+    )
     return optimizer_variables[variable_index]
 
 
