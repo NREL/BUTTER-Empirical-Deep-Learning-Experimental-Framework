@@ -70,6 +70,10 @@ WHERE
     queue IN (10)
     ;
 
+UPDATE run SET
+	status = 0
+WHERE status IN (-1, 1) AND queue > 0 AND (NOW() - update_time) > '1 second'::interval;
+
 UPDATE run_status
     SET status = 0
 WHERE

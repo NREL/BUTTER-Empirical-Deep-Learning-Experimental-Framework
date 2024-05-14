@@ -184,13 +184,13 @@ def load_parameters(
                     continue
                 optimizer_variables = getattr(optimizer, optimizer_member)
 
-                if hasattr(optimizer, "_var_key"):
+                if hasattr(optimizer, "_get_variable_index"):
+                    variable_index = optimizer._get_variable_index(variable)
+                elif hasattr(optimizer, "_var_key"):
                     var_key = optimizer._var_key(variable)
                     if var_key not in optimizer._index_dict:
                         continue
                     variable_index = optimizer._index_dict[var_key]  # type: ignore
-                elif hasattr(optimizer, "_get_variable_index"):
-                    variable_index = optimizer._get_variable_index(variable)
                 else:
                     print(
                         "Could not determine how to access optimizer state variables!"
