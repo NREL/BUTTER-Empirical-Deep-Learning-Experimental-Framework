@@ -180,25 +180,13 @@ def load_parameters(
             load_variable(parameter_dataset, variable)
 
             for optimizer_member, member_dataset in optimizer_datasets:
-                if not hasattr(optimizer, optimizer_member):
-                    continue
-                optimizer_variables = getattr(optimizer, optimizer_member)
-
-                if hasattr(optimizer, "_get_variable_index"):
-                    variable_index = optimizer._get_variable_index(variable)
-                elif hasattr(optimizer, "_var_key"):
-                    var_key = optimizer._var_key(variable)
-                    if var_key not in optimizer._index_dict:
-                        continue
-                    variable_index = optimizer._index_dict[var_key]  # type: ignore
-                else:
-                    print(
-                        "Could not determine how to access optimizer state variables!"
-                    )
-                    break
-
-                optimizer_variable = optimizer_variables[variable_index]
-                load_variable(member_dataset, optimizer_variable)
+                optimizer_variable = get_optimizer_variable(
+                    optimizer,
+                    optimizer_member,
+                    variable,
+                )
+                if optimizer_variable is not None:
+                    load_variable(member_dataset, optimizer_variable)
 
             parameter_index = parameter_limit
 
@@ -209,6 +197,25 @@ def load_parameters(
         )
 
     return epoch
+
+
+def get_optimizer_variable(optimizer, optimizer_member, variable):
+    if not hasattr(optimizer, optimizer_member):
+        return None
+    optimizer_variables = getattr(optimizer, optimizer_member)
+
+    if hasattr(optimizer, "_get_variable_index"):
+        variable_index = optimizer._get_variable_index(variable)
+    elif hasattr(optimizer, "_var_key"):
+        var_key = optimizer._var_key(variable)
+        if var_key not in optimizer._index_dict:
+            return None
+        variable_index = optimizer._index_dict[var_key]  # type: ignore
+    else:
+        print("Could not determine how to access optimizer state variables!")
+        return None
+
+    return optimizer_variables[variable_index]
 
 
 def require_parameter_dataset(
@@ -369,20 +376,18 @@ def save_parameters(
                 accumulate_value(dataset, value)
 
             accumulate_variable(parameter_dataset, variable)
-            for optimizer_member, member_dataset in optimizer_datasets:
-                # print(f"visit_variable {layer} {variable.name} {layer.name} {member}")
-                optimizer_member = getattr(optimizer, optimizer_member)
-                # print(f"optimizer_member {type(optimizer_member)}")
-                var_key = optimizer._var_key(variable)
 
-                if var_key not in optimizer._index_dict:
-                    values = numpy.empty(variable.shape)
-                    values.fill(numpy.nan)
-                    accumulate_value(member_dataset, values)
-                else:
-                    variable_index = optimizer._index_dict[var_key]  # type: ignore
-                    optimizer_variable = optimizer_member[variable_index]
-                    accumulate_variable(member_dataset, optimizer_variable)
+            for optimizer_member, member_dataset in optimizer_datasets:
+                optimizer_variable = get_optimizer_variable(
+                    optimizer,
+                    optimizer_member,
+                    variable,
+                )
+                if optimizer_variable is None:
+                    optimizer_variable = numpy.empty(variable.shape)
+                    optimizer_variable.fill(numpy.nan)
+
+                accumulate_variable(member_dataset, optimizer_variable)
 
             parameter_index = parameter_limit
 
