@@ -221,6 +221,8 @@ def get_optimizer_variable(optimizer, optimizer_member, variable):
     print(
         f"try load optimizer variable {variable.name} {optimizer_member}, {type(optimizer_variables)} {len(optimizer_variables)} {variable_index}"
     )
+    if len(optimizer_variables) <= variable_index:
+        return None
     return optimizer_variables[variable_index]
 
 
