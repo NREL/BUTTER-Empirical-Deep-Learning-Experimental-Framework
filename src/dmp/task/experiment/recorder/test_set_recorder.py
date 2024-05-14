@@ -51,8 +51,6 @@ class TestSetRecorder(Recorder, ABC):
             y=test_set.test_targets,
             sample_weight=test_set.sample_weights,
             verbose=0,  # type: ignore
-            use_multiprocessing=True,
-            workers=8,
         )
 
     def _accumulate_test_set_metric(
