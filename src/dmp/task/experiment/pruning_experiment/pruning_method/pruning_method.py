@@ -51,9 +51,10 @@ class PruningMethod(ABC):
         layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     ) -> Tuple[numpy.ndarray, tensorflow.Variable]:
         keras_layer = layer_to_keras_map[layer].keras_layer
+        weights = keras_layer.get_weights()[0]  # type: ignore
         return (
-            keras_layer.get_weights()[0],  # type: ignore
-            keras_layer.kernel_constraint.mask,  # type: ignore
+            weights,  # type: ignore
+            keras_layer.kernel_constraint.get_mask(weights.shape),  # type: ignore
         )
 
     def get_prunable_weights_from_layer(
