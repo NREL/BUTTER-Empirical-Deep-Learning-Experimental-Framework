@@ -319,6 +319,7 @@ class TrainingExperiment(Experiment):
             run_eagerly=False,
             jit_compile=False,
         )
+        model.build(imput_shape=model.network.structure.input.computed_shape)
         return model
 
     def _try_restore_checkpoint(
