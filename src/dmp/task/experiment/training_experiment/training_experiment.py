@@ -317,7 +317,7 @@ class TrainingExperiment(Experiment):
             optimizer=make_keras_instance(self.optimizer),
             metrics=metrics,
             run_eagerly=False,
-            jit_compile=True,
+            jit_compile=False,
         )
         return model
 
