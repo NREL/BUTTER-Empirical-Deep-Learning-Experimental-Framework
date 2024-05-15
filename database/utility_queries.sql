@@ -1,3 +1,23 @@
+select queue, status, count(1)
+FROM run
+WHERE queue > 0
+group by queue, status;
+
+select queue, status, count(1), left(error_message, 40) err
+FROM run
+WHERE queue > 0
+group by queue, status, err
+order by queue, status, err;
+
+update run set error_message = NULL where queue > 0 and status >= 0;
+
+select queue, status, count(1), error_message
+FROM run
+WHERE queue = 10 and status = -1
+group by queue, status, error_message
+order by queue, status, error_message;
+
+
 
 SELECT
     t.tablename,

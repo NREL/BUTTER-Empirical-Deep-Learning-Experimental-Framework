@@ -1,3 +1,8 @@
+select queue, status, count(1)
+FROM run
+WHERE queue > 0
+group by queue, status;
+
 select count(1) num, queue, model, status, error
 from
 (

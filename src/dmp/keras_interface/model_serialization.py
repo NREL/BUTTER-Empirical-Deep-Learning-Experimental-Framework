@@ -379,15 +379,15 @@ def save_parameters(
             # print(f"saving variable: {variable.name} {size} {shape}")
 
             def accumulate_value(dataset, value):
+                if mask is not None:
+                    value = numpy.where(mask, value, numpy.nan)
+
                 if dataset.shape[0] < parameter_limit:
                     dataset.resize((parameter_limit, dataset.shape[1]))
                 dataset[parameter_index:parameter_limit, sequence_number] = value
 
             def accumulate_variable(dataset, variable):
-                value = variable.numpy().flatten()
-                if mask is not None:
-                    value = numpy.where(mask, value, numpy.nan)
-                accumulate_value(dataset, value)
+                accumulate_value(dataset, variable.numpy().flatten())
 
             accumulate_variable(parameter_dataset, variable)
 
@@ -397,11 +397,13 @@ def save_parameters(
                     optimizer_member,
                     variable,
                 )
-                if optimizer_variable is None:
-                    optimizer_variable = numpy.empty(variable.shape)
-                    optimizer_variable.fill(numpy.nan)
 
-                accumulate_variable(member_dataset, optimizer_variable)
+                if optimizer_variable is None:
+                    optimizer_value = numpy.empty(variable.shape)
+                    optimizer_value.fill(numpy.nan)
+                    accumulate_value(member_dataset, optimizer_value)
+                else:
+                    accumulate_variable(member_dataset, optimizer_variable)
 
             parameter_index = parameter_limit
 
