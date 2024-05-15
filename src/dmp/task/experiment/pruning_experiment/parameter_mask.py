@@ -18,7 +18,7 @@ class ParameterMask(tensorflow.keras.constraints.Constraint):
         """
         Used by tensorflow to add the constraint to the computation graph.
         """
-        # print(f"mask call! {w.shape} {self.mask.shape}")
+        print(f"mask call! {self.name} {w.shape} {self.mask.shape}")
         if self.mask is None:
             self.mask = tensorflow.Variable(
                 tensorflow.ones(w.shape, dtype=tensorflow.bool),
