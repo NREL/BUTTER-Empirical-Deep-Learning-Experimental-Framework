@@ -164,7 +164,7 @@ def load_parameters(
             mask = numpy.logical_not(numpy.isnan(chunk))
 
             if load_mask and constraint is not None:
-                constraint.mask.assign(mask.reshape(shape))
+                constraint.set_mask(mask.reshape(shape))
 
             def load_variable(dataset, variable):
                 prepared = dataset[parameter_index:parameter_limit, sequence_number]
