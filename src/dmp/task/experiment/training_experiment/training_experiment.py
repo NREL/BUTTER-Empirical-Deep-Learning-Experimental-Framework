@@ -320,7 +320,7 @@ class TrainingExperiment(Experiment):
             jit_compile=False,
         )
         model.keras_model.build(
-            imput_shape=model.network.structure.input.computed_shape
+            input_shape=model.network.structure.input.computed_shape
         )
         return model
 
