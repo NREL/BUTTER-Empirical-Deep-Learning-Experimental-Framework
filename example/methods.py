@@ -106,6 +106,7 @@ def loadWeights(fileName:str, history):
     epochs = sort_epochs_weights(epoch_dataset, history)
     # raise warning the  file needs to be closed
     warnings.warn("File needs to be closed")
+    
     return epochs, parameter_dataset, optimizer_datasets, file
         
 # ========
@@ -252,6 +253,7 @@ def getExperimentWeights(experiement:pd.Series, userName:str, retainedWeights:bo
     # where retained is true
     retained = history[history['retained'] == retainedWeights]
     # if experimentid already exists, return the filename
+    os.makedirs("./tempWeights", exist_ok=True)
     if not (f"{experiement['id']}.h5" in os.listdir("./tempWeights")):
         filename = getWeights(experiement['id'], userName)
     else: 
