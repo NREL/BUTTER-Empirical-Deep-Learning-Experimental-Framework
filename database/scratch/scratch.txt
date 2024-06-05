@@ -1,33 +1,46 @@
-'numpy.ndarray' object has no attribute 'numpy'
+OneHotEncoder.__init__() got an unexpected keyword argument 'sparse_output'
 Traceback (most recent call last):
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/script/worker.py", line 127, in work_loop
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/script/worker.py", line 127, in work_loop
     run_command(Context(self, run))
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/task/run.py", line 24, in __call__
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/task/run.py", line 24, in __call__
     self.experiment(context, self.config)
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/task/experiment/pruning_experiment/iterative_pruning_experiment.py", line 116, in __call__
-    self._fit_model(
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/task/experiment/training_experiment/training_experiment.py", line 452, in _fit_model
-    history = model.keras_model.fit(
-              ^^^^^^^^^^^^^^^^^^^^^^
-  File "/projects/modularai/dmp/env/kestrel/cpu/lib/python3.12/site-packages/keras/src/utils/traceback_utils.py", line 122, in error_handler
-    raise e.with_traceback(filtered_tb) from None
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/task/experiment/model_saving/model_saving_spec.py", line 75, in on_train_begin
-    self.save_model()
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/task/experiment/model_saving/model_saving_spec.py", line 118, in save_model
-    checkpoint = context.save_model(model_info, training_epoch)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/context.py", line 162, in save_model
-    model_serialization.save_model_data(
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/keras_interface/model_serialization.py", line 56, in save_model_data
-    return save_parameters(
-           ^^^^^^^^^^^^^^^^
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/keras_interface/model_serialization.py", line 408, in save_parameters
-    access_model_parameters.visit_parameters(
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/keras_interface/access_model_parameters.py", line 92, in visit_parameters
-    visit_variable(layer, keras_layer, i, variable)
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/keras_interface/model_serialization.py", line 404, in visit_variable
-    accumulate_variable(member_dataset, optimizer_variable)
-  File "/kfs2/projects/modularai/dmp/dmp/src/dmp/keras_interface/model_serialization.py", line 387, in accumulate_variable
-    value = variable.numpy().flatten()
-            ^^^^^^^^^^^^^^
-AttributeError: 'numpy.ndarray' object has no attribute 'numpy'. Did you mean: 'dump'?
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/task/experiment/pruning_experiment/iterative_pruning_experiment.py", line 67, in __call__
+    dataset, metrics, loss_metric = self._load_and_prepare_dataset()
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/task/experiment/training_experiment/training_experiment.py", line 185, in _load_and_prepare_dataset
+    dataset = PreparedDataset(
+              ^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/prepared_dataset.py", line 17, in __init__
+    dataset: Dataset = load_dataset(spec.source, spec.name)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_util.py", line 29, in load_dataset
+    result = __source_loaders(source)(name)()  # type: ignore
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 55, in __call__
+    data = self._prepare_dataset_data(data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 125, in _prepare_dataset_data
+    data.train = self._prepare_data_group(data.train)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 137, in _prepare_data_group
+    group.outputs = self._prepare_outputs(group.outputs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 144, in _prepare_outputs
+    return self.prepare_data(data, self.dynamic_output_value_transform)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 151, in prepare_data
+    return self.prepare_matrix(value, transform)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 204, in prepare_matrix
+    transformed_value = self.prepare_value(value, value_transform)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 194, in prepare_value
+    return value_transform(self, value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 184, in dynamic_output_value_transform
+    return self.one_hot(value)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/lustre/eaglefs/projects/modularai/dmp/dmp/src/dmp/dataset/dataset_loader.py", line 223, in one_hot
+    preprocessor = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: OneHotEncoder.__init__() got an unexpected keyword argument 'sparse_output'

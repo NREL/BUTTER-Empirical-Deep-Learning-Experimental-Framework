@@ -18,8 +18,9 @@ group by queue, status, error_message
 order by queue, status, error_message;
 
 UPDATE run SET
-	status = 0
-WHERE status IN (-1, 1) AND queue > 0 AND (NOW() - update_time) > '1 second'::interval;
+	status = 0,
+    error_message =NULL
+WHERE status IN (-1, 1) AND queue = 12 AND (NOW() - update_time) > '1 second'::interval;
 
 
 SELECT

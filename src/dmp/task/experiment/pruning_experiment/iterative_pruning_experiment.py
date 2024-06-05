@@ -36,7 +36,7 @@ class IterativePruningExperiment(TrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 4
+        return 5
 
     def __call__(
         self,
@@ -132,6 +132,8 @@ class IterativePruningExperiment(TrainingExperiment):
             print(f"********** 10")
             config.prune_first_iteration = True
             pruning.new_seed = False
+
+            epoch_counter.current_epoch.marker = 1  # mark as best weights checkpoint
 
             self._save_checkpoint(
                 context,
