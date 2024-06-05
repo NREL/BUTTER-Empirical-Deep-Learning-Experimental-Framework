@@ -15,6 +15,7 @@ from psycopg import ClientCursor
 
 # import psycopg
 from psycopg.sql import Identifier, SQL, Composed, Literal
+from dmp.postgres_interface.element.a_column_group import AColumnGroup
 from dmp.postgres_interface.postgres_interface_common import sql_comma, sql_placeholder
 
 from dmp.parquet_util import (
@@ -44,6 +45,7 @@ class PostgresInterface:
 
     _pop_query: Composed
     _update_columns: ColumnGroup
+    _update_columns_with_id: ColumnGroup
     _run_columns: ColumnGroup
     _dataframe_columns: ColumnGroup
 
@@ -60,6 +62,26 @@ class PostgresInterface:
             run_table.status,
             run_table.priority,
             # run_table.id,
+            # run_table.start_time,
+            # run_table.update_time,
+            run_table.worker_id,
+            run_table.parent_id,
+            run_table.experiment_id,
+            run_table.command,
+            run_table.history,
+            run_table.extended_history,
+            run_table.error_message,
+        )
+
+        self._update_columns_with_id = ColumnGroup(run_table.id) + self._update_columns
+
+        # self._run_columns = ColumnGroup(run_table.id) + self._update_columns
+
+        self._run_columns = ColumnGroup(
+            run_table.id,
+            run_table.queue,
+            run_table.status,
+            run_table.priority,
             run_table.start_time,
             run_table.update_time,
             run_table.worker_id,
@@ -70,8 +92,6 @@ class PostgresInterface:
             run_table.extended_history,
             run_table.error_message,
         )
-
-        self._run_columns = ColumnGroup(run_table.id) + self._update_columns
 
         self._dataframe_columns = ColumnGroup(
             run_table.history, run_table.extended_history
@@ -198,7 +218,7 @@ ON CONFLICT ({id}) DO UPDATE SET
                 id=run_table.id.identifier,
             )
 
-        return self._edit_runs(runs, make_query)
+        return self._edit_runs(runs, self._run_columns, make_query)
 
     def update_runs(
         self,
@@ -206,7 +226,7 @@ ON CONFLICT ({id}) DO UPDATE SET
     ) -> None:
         run_table = self._run_table
         experiment_table = self._experiment_table
-        run_columns = self._run_columns
+        update_columns_with_id = self._update_columns_with_id
 
         input_table = Identifier("_input_table")
 
@@ -227,7 +247,8 @@ WITH {input_table} AS (
     ON CONFLICT ({experiment_id}) DO NOTHING
 )
 UPDATE {run_table} SET
-    {set_clause}
+    {set_clause},
+    {update_time} = NOW()
 FROM {input_table}
 WHERE {run_table}.{id} = {input_table}.{id}
 """
@@ -239,21 +260,23 @@ WHERE {run_table}.{id} = {input_table}.{id}
                 experiment_id=experiment_table.experiment_id.identifier,
                 experiment_column=experiment_table.experiment_command.identifier,
                 run_table=run_table.identifier,
-                set_clause=run_columns.set_clause(input_table),
+                set_clause=self._update_columns.set_clause(input_table),
+                update_time=run_table.update_time.identifier,
                 input_table=input_table,
-                input_columns=run_columns.columns_sql,
-                casting_clause=run_columns.casting_sql,
-                input_placeholders=run_columns.placeholders_for_values(
+                input_columns=update_columns_with_id.columns_sql,
+                casting_clause=update_columns_with_id.casting_sql,
+                input_placeholders=update_columns_with_id.placeholders_for_values(
                     num_runs_in_block
                 ),
                 id=run_table.id.identifier,
             )
 
-        return self._edit_runs(runs, make_query)
+        return self._edit_runs(runs, update_columns_with_id, make_query)
 
     def _edit_runs(
         self,
         runs: Sequence[RunEntry],
+        columns: AColumnGroup,
         make_query: Callable,
     ) -> None:
         if len(runs) <= 0:
@@ -261,7 +284,7 @@ WHERE {run_table}.{id} = {input_table}.{id}
 
         prepared_values = []
         for run in runs:
-            prepared_values.extend(self._get_column_values_for_run(run))
+            prepared_values.extend(self._get_column_values_for_run(run, columns))
 
         num_cols_per_row = len(self._run_columns.columns)
         block_size = 65500 // num_cols_per_row
@@ -311,7 +334,9 @@ WHERE {run_table}.{id} = {input_table}.{id}
             run.command.run_entry = run
         return run
 
-    def _get_column_values_for_run(self, run: RunEntry) -> Iterable[Any]:
+    def _get_column_values_for_run(
+        self, run: RunEntry, columns: AColumnGroup
+    ) -> Iterable[Any]:
         from dmp.marshaling import marshal
         from psycopg.types.json import Jsonb
 
@@ -326,7 +351,7 @@ WHERE {run_table}.{id} = {input_table}.{id}
         run.extended_history = convert_dataframe_to_bytes(run.extended_history)  # type: ignore
         run_dict = dataclasses.asdict(run)
 
-        return (run_dict[column.name] for column in self._run_columns.columns)
+        return (run_dict[column.name] for column in columns)
 
     def get_run_history(
         self,
