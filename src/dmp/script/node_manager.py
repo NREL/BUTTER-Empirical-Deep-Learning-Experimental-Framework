@@ -90,7 +90,7 @@ def main():
     min_gpu_mem_buffer = 500
     max_worker_per_gpu = 2
 
-    cpus_per_gpu_worker = 2
+    cpus_per_gpu_worker = 4
     min_cpus_per_cpu_worker = 128
 
     smt_level = 1  # maximum number of SMT's (a.k.a. "CPUs") per core to use
@@ -114,7 +114,8 @@ def main():
     #     '\n') if s.startswith('node ')]
 
     numa_physcpubind_output = subprocess.check_output(
-        'numactl --show | grep -P "physcpubind"', shell=True
+        'numactl --show | grep -P "physcpubind"'
+        # shell=True
     ).decode("ascii")
     avaliable_cpus = {
         int(i)
@@ -124,7 +125,7 @@ def main():
         ]
         if len(i) > 0
     }
-    print(f"Avaliable CPUs: {avaliable_cpus}")
+    print(f"Available CPUs: {avaliable_cpus}")
 
     def get_or_add(d: Dict[Any, Dict], k) -> Dict:
         if k in d:

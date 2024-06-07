@@ -214,3 +214,111 @@ ORDER BY
 ;
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SELECT
+	duplicates.duplicate_group_number,
+	r.status,
+	r.queue,
+    r.id,
+    r.parent_id,
+    r.command->'config'->'seed' AS seed,
+    r.command->'experiment'->'pruning' AS pruning,
+    r.command
+FROM
+	(
+		SELECT
+	        parent_id,
+	        command->'config'->'seed' AS seed,
+	        command->'experiment'->'pruning' AS pruning,
+			ROW_NUMBER() OVER () duplicate_group_number
+	    FROM run
+	    WHERE TRUE
+	        AND queue > 0
+	        AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	    GROUP BY parent_id, seed, pruning
+	    HAVING COUNT(*) > 1
+	) duplicates
+JOIN run r
+    ON r.parent_id = duplicates.parent_id
+    AND r.command->'config'->'seed' = duplicates.seed
+    AND r.command->'experiment'->'pruning' = duplicates.pruning
+WHERE TRUE
+    AND r.queue > 0
+    AND r.command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+ORDER BY parent_id, seed, pruning
+;
+
+
+
+
+SELECT
+	jsonb_set(
+		jsonb_set(
+			jsonb_set(
+				jsonb_set(
+				    command,
+				    '{config,count}',
+				    ((command->'config'->>'seed')::bigint + 1)::text::jsonb
+				),
+				'{config,saved_models}',
+				'[]'::jsonb),
+			'{config,data}',
+			'{}'::jsonb),
+		'{config,pruning,new_seed}',
+		'true'::jsonb
+	)
+	new_command,
+	*
+FROM
+	(
+	SELECT
+		duplicates.duplicate_group_number,
+		ROW_NUMBER() OVER (PARTITION BY duplicates.duplicate_group_number) group_sequence,
+		r.status,
+		r.queue,
+	    r.id,
+	    r.parent_id,
+	    r.command->'config'->'seed' AS seed,
+	    r.command->'experiment'->'pruning' AS pruning,
+	    r.command
+	FROM
+		(
+			SELECT
+		        parent_id,
+		        command->'config'->'seed' AS seed,
+		        command->'experiment'->'pruning' AS pruning,
+				ROW_NUMBER() OVER () duplicate_group_number
+		    FROM run
+		    WHERE TRUE
+		        AND queue > 0
+		        AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+		    GROUP BY parent_id, seed, pruning
+		    HAVING COUNT(1) > 1
+			LIMIT 10
+		) duplicates
+	JOIN run r
+	    ON r.parent_id = duplicates.parent_id
+	    AND r.command->'config'->'seed' = duplicates.seed
+	    AND r.command->'experiment'->'pruning' = duplicates.pruning
+	WHERE TRUE
+	    AND r.queue > 0
+	    AND r.command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	ORDER BY parent_id, seed, pruning
+) src
+	WHERE group_sequence > 1
+LIMIT 10
+;
