@@ -322,3 +322,131 @@ FROM
 	WHERE group_sequence > 1
 LIMIT 10
 ;
+
+
+SELECT
+	command->'experiment'->'data'->'batch' AS batch,
+	command->'config'->'data'->'batch' AS config_batch,
+	command->'experiment'->'model'->'type' AS model_type,
+	COUNT(1) num
+FROM
+	run
+WHERE TRUE
+	AND queue > 0
+	AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	AND status >= 2
+GROUP BY batch, config_batch, model_type;
+
+
+SELECT
+	id,
+	run.parent_id,
+	command->'experiment'->'data'->'batch' AS batch,
+	command->'experiment'->'model'->'type' AS model_type,
+	command->'config'->'seed' AS seed,
+	command->'experiment'->'pruning'->'method'->'pruning_rate' AS pruning_rate,
+	command->'experiment'->'pruning'->'method'->'type' AS pruning_method,
+	command->'experiment'->'pruning'->'new_seed' AS new_seed,
+	command->'experiment'->'pruning'->'rewind_epoch'->'epoch' AS rewind_epoch,
+	command
+FROM
+	run
+WHERE TRUE
+	AND queue > 0
+	AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	AND status >= 2
+ORDER BY batch, parent_id, pruning_rate, rewind_epoch, pruning_method, new_seed
+LIMIT 1000;
+
+
+
+SELECT
+	parent_id,
+	COUNT(1) num
+FROM
+	run
+WHERE TRUE
+	AND queue > 0
+	AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	AND status >= 2
+GROUP BY parent_id
+ORDER BY num desc
+LIMIT 20;
+
+
+SELECT
+	command->'experiment'->'data'->'batch' AS batch,
+	COUNT(1) num
+FROM
+	run
+WHERE TRUE
+	AND queue > 0
+	AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	AND status >= 2
+GROUP BY batch;
+
+
+SELECT
+	command->'experiment'->'data'->'batch' AS batch,
+	command->'config'->'data'->'batch' AS config_batch,
+	command->'experiment'->'model'->'type' AS model_type,
+	COUNT(1) num
+FROM
+	run
+WHERE TRUE
+	AND queue > 0
+	AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	AND status >= 2
+GROUP BY batch, config_batch, model_type;
+
+
+SELECT
+	command
+FROM
+	run
+WHERE TRUE
+	AND queue > 0
+	AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	AND status >= 2
+	AND command @> '{"experiment":{"model":{"type":"Lenet"}}}'::jsonb
+LIMIT 100;
+
+
+
+SELECT
+	id,
+	run.parent_id,
+	parent.num num,
+	command->'experiment'->'data'->'batch' AS batch,
+	command->'experiment'->'model'->'type' AS model_type,
+	command->'config'->'seed' AS seed,
+	command->'experiment'->'pruning'->'method'->'pruning_rate' AS pruning_rate,
+	command->'experiment'->'pruning'->'method'->'type' AS pruning_method,
+	command->'experiment'->'pruning'->'new_seed' AS new_seed,
+	command->'experiment'->'pruning'->'rewind_epoch'->'epoch' AS rewind_epoch,
+	command
+FROM
+	(
+		SELECT
+			parent_id,
+			COUNT(1) num
+		FROM
+			run
+		WHERE TRUE
+			AND queue > 0
+			AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+			AND status >= 2
+			AND command @> '{"experiment":{"data":{"batch":"lmc_cifar10_resnet20_low_4"}}}'::jsonb
+		GROUP BY parent_id
+		ORDER BY num desc
+		LIMIT 20
+	) parent,
+	run
+WHERE TRUE
+	AND parent.parent_id = run.parent_id
+	AND queue > 0
+	AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+	AND status >= 2
+ORDER BY batch, parent.num desc, parent_id, pruning_rate, rewind_epoch, pruning_method, new_seed
+LIMIT 10000;
+
