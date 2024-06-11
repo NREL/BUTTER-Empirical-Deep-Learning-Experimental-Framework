@@ -401,14 +401,16 @@ ORDER BY batch, parent.num desc, parent_id, pruning_rate, rewind_epoch, pruning_
 LIMIT 10000;
 
 
-
 UPDATE run SET
 	priority = src.new_priority
 FROM
 	(
 		SELECT
 			r.id,
-			ROW_NUMBER() OVER (ORDER BY psuedo_priority ASC, batch, num DESC) new_priority
+			ROW_NUMBER() OVER (ORDER BY psuedo_priority DESC, batch, num ASC) new_priority,
+			psuedo_priority,
+			batch,
+			num
 		FROM
 		(
 			SELECT
@@ -442,7 +444,7 @@ FROM
 			r.parent_id = src.parent_id
 			AND status < 2
 			AND queue > 0
-		ORDER BY psuedo_priority ASC, batch, num DESC
+		ORDER BY new_priority DESC
 	) src
 WHERE TRUE
 	AND status < 2
