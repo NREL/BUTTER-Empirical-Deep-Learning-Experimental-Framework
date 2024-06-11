@@ -226,18 +226,27 @@ ORDER BY
 
 
 
-
-
-
+UPDATE run
+SET
+	queue = -1
+WHERE
+	run.id in (
 SELECT
-	duplicates.duplicate_group_number,
-	r.status,
-	r.queue,
+	id
+FROM
+(
+SELECT
+	duplicate_group_number,
+	ROW_NUMBER() OVER (PARTITION BY duplicates.duplicate_group_number ORDER BY duplicate_group_number, seed, pruning, status DESC, start_time DESC, id ASC) group_sequence,
+	status,
     r.id,
-    r.parent_id,
-    r.command->'config'->'seed' AS seed,
-    r.command->'experiment'->'pruning' AS pruning,
-    r.command
+	command->'experiment'->'data'->'batch' AS batch,
+	command->'experiment'->'model'->'type' AS model_type,
+	command->'config'->'seed' AS seed,
+	command->'experiment'->'pruning'->'method'->'pruning_rate' AS pruning_rate,
+	command->'experiment'->'pruning'->'method'->'type' AS pruning_method,
+	command->'experiment'->'pruning'->'new_seed' AS new_seed,
+	command->'experiment'->'pruning'->'rewind_epoch'->'epoch' AS rewind_epoch
 FROM
 	(
 		SELECT
@@ -259,69 +268,10 @@ JOIN run r
 WHERE TRUE
     AND r.queue > 0
     AND r.command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
-ORDER BY parent_id, seed, pruning
-;
-
-
-
-
-SELECT
-	jsonb_set(
-		jsonb_set(
-			jsonb_set(
-				jsonb_set(
-				    command,
-				    '{config,count}',
-				    ((command->'config'->>'seed')::bigint + 1)::text::jsonb
-				),
-				'{config,saved_models}',
-				'[]'::jsonb),
-			'{config,data}',
-			'{}'::jsonb),
-		'{config,pruning,new_seed}',
-		'true'::jsonb
-	)
-	new_command,
-	*
-FROM
-	(
-	SELECT
-		duplicates.duplicate_group_number,
-		ROW_NUMBER() OVER (PARTITION BY duplicates.duplicate_group_number) group_sequence,
-		r.status,
-		r.queue,
-	    r.id,
-	    r.parent_id,
-	    r.command->'config'->'seed' AS seed,
-	    r.command->'experiment'->'pruning' AS pruning,
-	    r.command
-	FROM
-		(
-			SELECT
-		        parent_id,
-		        command->'config'->'seed' AS seed,
-		        command->'experiment'->'pruning' AS pruning,
-				ROW_NUMBER() OVER () duplicate_group_number
-		    FROM run
-		    WHERE TRUE
-		        AND queue > 0
-		        AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
-		    GROUP BY parent_id, seed, pruning
-		    HAVING COUNT(1) > 1
-			LIMIT 10
-		) duplicates
-	JOIN run r
-	    ON r.parent_id = duplicates.parent_id
-	    AND r.command->'config'->'seed' = duplicates.seed
-	    AND r.command->'experiment'->'pruning' = duplicates.pruning
-	WHERE TRUE
-	    AND r.queue > 0
-	    AND r.command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
-	ORDER BY parent_id, seed, pruning
+ORDER BY duplicate_group_number, seed, pruning, status DESC, start_time DESC, id ASC
 ) src
-	WHERE group_sequence > 1
-LIMIT 10
-;
+WHERE group_sequence > 1
+);
 
 
 SELECT
@@ -450,3 +400,52 @@ WHERE TRUE
 ORDER BY batch, parent.num desc, parent_id, pruning_rate, rewind_epoch, pruning_method, new_seed
 LIMIT 10000;
 
+
+
+UPDATE run SET
+	priority = src.new_priority
+FROM
+	(
+		SELECT
+			r.id,
+			ROW_NUMBER() OVER (ORDER BY psuedo_priority ASC, batch, num DESC) new_priority
+		FROM
+		(
+			SELECT
+				*,
+				(ROW_NUMBER() OVER (PARTITION BY batch ORDER BY num DESC)) + 1000000000 * (CASE WHEN (batch LIKE '%low%') THEN 1 ELSE 0 END) psuedo_priority
+			FROM
+			(
+				SELECT
+					parent_ids.parent_id parent_id,
+					command->'experiment'->'data'->>'batch' AS batch,
+					num
+				FROM
+					(
+						SELECT
+							parent_id,
+							COUNT(1) num
+						FROM
+							run
+						WHERE TRUE
+							AND queue > 0
+							AND command @> '{"experiment":{"type":"IterativePruningExperiment"}}'::jsonb
+							AND status >= 2
+						GROUP BY parent_id
+						ORDER BY num desc
+					) parent_ids
+					INNER JOIN run parent ON (parent.id = parent_ids.parent_id)
+			) src
+		) src,
+		run r
+		WHERE
+			r.parent_id = src.parent_id
+			AND status < 2
+			AND queue > 0
+		ORDER BY psuedo_priority ASC, batch, num DESC
+	) src
+WHERE TRUE
+	AND status < 2
+	AND queue > 0
+	AND run.id = src.id
+;
