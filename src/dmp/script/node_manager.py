@@ -117,6 +117,7 @@ def main():
         'numactl --show | grep -P "physcpubind"'
         # shell=True
     ).decode("ascii")
+    print(f'numactl output: "{numa_physcpubind_output}".')
     avaliable_cpus = {
         int(i)
         for i in [

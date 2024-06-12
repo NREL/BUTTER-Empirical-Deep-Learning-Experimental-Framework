@@ -9,6 +9,12 @@ WHERE queue > 0
 group by queue, status, err
 order by queue, status, err;
 
+select queue, status, count(1), left(error_message, 40) err
+FROM run
+WHERE queue > 0 and (NOW() - update_time) <= '2 days'::interval
+group by queue, status, err
+order by queue, status, err;
+
 update run set error_message = NULL where queue > 0 and status >= 0;
 
 select queue, status, count(1), error_message
@@ -451,3 +457,24 @@ WHERE TRUE
 	AND queue > 0
 	AND run.id = src.id
 ;
+
+
+select
+	(update_time - start_time) duration,
+	id,
+	run.parent_id,
+	command->'config'->'data'->'host_name' host_name,
+	command->'config'->'data'->'slurm_job_id' slurm_job_id,
+	command->'experiment'->'data'->'batch' AS batch,
+	command->'experiment'->'type' AS experiment_type,
+	command->'experiment'->'model'->'type' AS model_type,
+	command->'config'->'seed' AS seed,
+	command->'experiment'->'pruning'->'method'->'pruning_rate' AS pruning_rate,
+	command->'experiment'->'pruning'->'method'->'type' AS pruning_method,
+	command->'experiment'->'pruning'->'new_seed' AS new_seed,
+	command->'experiment'->'pruning'->'rewind_epoch'->'epoch' AS rewind_epoch,
+	command
+FROM run
+WHERE queue > 0 and status >= 2
+order by update_time desc
+LIMIT 1000;
