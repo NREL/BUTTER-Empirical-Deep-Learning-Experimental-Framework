@@ -114,8 +114,8 @@ def main():
     #     '\n') if s.startswith('node ')]
 
     numa_physcpubind_output = subprocess.check_output(
-        'numactl --show | grep -P "physcpubind"'
-        # shell=True
+        'numactl --show | grep -P "physcpubind"',
+        shell=True,
     ).decode("ascii")
     print(f'numactl output: "{numa_physcpubind_output}".')
     avaliable_cpus = {
