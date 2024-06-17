@@ -38,30 +38,39 @@ class GlobalValuePruningMethod(PruningMethod):
         self,
         prunable_layers: List[Layer],
         layer_to_keras_map: Dict[Layer, KerasLayerInfo],
-        prune_mask: numpy.ndarray,
+        prune_mask: numpy.ndarray,  # True at indicies of unpruned weights to prune, False otherwise
     ) -> int:
         # prune at selected level
         total_pruned = 0
         index = 0
         for layer in prunable_layers:
+
+            # get layer mask
             weights, mask = self.get_weights_and_mask(layer, layer_to_keras_map)
 
+            # get mask as boolean numpy array
             mask_array = mask.numpy().astype(bool)
 
+            # array of True's the shape/size of unpruned weights in this layer
             candidates = mask_array[mask_array]
 
             if len(mask_array.shape) == 0:
                 mask_array = numpy.ndarray([int(mask_array)], dtype=bool)
 
+            # make slice of prune mask for this layer's unpruned weights
             next_index = index + candidates.size
-            layer_prune = prune_mask[index:next_index]
+            layer_prune = (prune_mask[index:next_index]).reshape(candidates.shape)
             index = next_index
 
-            candidates[layer_prune.reshape(candidates.shape)] = False
+            # set candidates mask to False where layer_prune / prune mask is True
+            candidates[layer_prune] = False
 
+            # set mask_array to have candidate's values over the previously unpruned weights
             mask_array[mask_array] = candidates
 
             total_pruned += mask_array.size - mask_array.sum()
+
+            # set mask to new mask_array value
             mask.assign(mask_array)
 
         return total_pruned
@@ -80,13 +89,21 @@ class GlobalValuePruningMethod(PruningMethod):
             prunable_weights,
         )
 
+        # weight_index is an array of the indicies that would sort the prunbable weight values (ascending order)
         weight_index = numpy.argsort(prunable_weights)
-        how_many_to_prune = int(numpy.round(self.pruning_rate * weight_index.size))
+
+        # create a pruning mask with the same shape as the weight_index
         prune_mask = numpy.zeros(prunable_weights.shape, dtype=bool)
-        prune_mask[weight_index[0:how_many_to_prune]] = True
         del prunable_weights
+
+        # compute number to prune based on pruning rate
+        how_many_to_prune = int(numpy.round(self.pruning_rate * weight_index.size))
+
+        # set the pruning mask indicies of the lowest valued weights to True
+        prune_mask[weight_index[0:how_many_to_prune]] = True
         del weight_index
 
+        # set pruning masks to False where weights were pruned
         total_pruned = self.prune_all_layers_using_mask(
             prunable_layers,
             layer_to_keras_map,
