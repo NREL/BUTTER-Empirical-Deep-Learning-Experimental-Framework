@@ -96,7 +96,7 @@ def get_mask_constraint(
     keras_layer,
     variable,
 ) -> Optional[Any]:
-    match = re.fullmatch(r".*/(bias|kernel):\d+", variable.name)
+    match = re.fullmatch(r"^(bias|kernel)", variable.name)
     if match is not None:
         match_str = match.group(1)
         constraint_member_name = f"{match_str}_constraint"
