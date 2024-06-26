@@ -31,14 +31,13 @@ import tensorflow.keras as keras
 
 def count_masked_parameters(
     target: Layer,
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
 ) -> int:
     num_masked_parameters = 0
     for layer in target.layers:
-        keras_layer = layer_to_keras_map[layer].keras_layer
+        keras_layer = layer.keras_layer
         if not isinstance(keras_layer, keras.layers.Layer):
             continue
-        for variable in keras_layer.variables:
+        for variable in keras_layer.variables:  # type: ignore
             constraint = get_mask_constraint(keras_layer, variable)
             if constraint is None:
                 continue

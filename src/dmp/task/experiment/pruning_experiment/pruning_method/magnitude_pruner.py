@@ -32,8 +32,10 @@ from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
 
 @dataclass
 class MagnitudePruner(GlobalValuePruningMethod):
+
     def compute_pruning_values(
         self,
+        root: Layer,
         prunable_layers: List[Layer],
         prunable_weights: numpy.ndarray,
     ) -> numpy.ndarray:

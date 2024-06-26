@@ -55,7 +55,6 @@ def save_model_data(
 
     return save_parameters(
         model.network.structure,
-        model.keras_network.layer_to_keras_map,
         model.keras_model.optimizer,
         epoch,
         data_path,
@@ -81,7 +80,6 @@ def load_model_from_file(
     data_path = get_model_data_path(run_id)
     return load_parameters(
         model.network.structure,
-        model.keras_network.layer_to_keras_map,
         model.keras_model.optimizer if load_optimizer else None,
         data_path,
         epoch,
@@ -119,7 +117,6 @@ def find_sequence_number(
 
 def load_parameters(
     root: Layer,
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     optimizer: Optional[keras.optimizers.Optimizer],
     path: str,
     epoch: TrainingEpoch,
@@ -195,7 +192,6 @@ def load_parameters(
 
         access_model_parameters.visit_parameters(
             root,
-            layer_to_keras_map,
             visit_variable,
         )
 
@@ -318,7 +314,6 @@ def get_datasets_from_model_file(
 
 def save_parameters(
     root: Layer,
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     optimizer: Optional[keras.optimizers.Optimizer],
     epoch: TrainingEpoch,
     path: str,
@@ -412,7 +407,6 @@ def save_parameters(
 
         access_model_parameters.visit_parameters(
             root,
-            layer_to_keras_map,
             visit_variable,
         )
     return sequence_number

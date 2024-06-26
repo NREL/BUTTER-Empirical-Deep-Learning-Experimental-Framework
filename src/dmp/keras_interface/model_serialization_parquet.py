@@ -83,7 +83,6 @@ def save_model_data(
             # print(f"Writing parameters to {parameters_file}...")
             save_parameters(
                 model.network.structure,
-                model.keras_network.layer_to_keras_map,
                 None,
                 parameters_file,
             )
@@ -92,7 +91,6 @@ def save_model_data(
         # print(f"Writing model state to {optimizer_path}...")
         save_parameters(
             model.network.structure,
-            model.keras_network.layer_to_keras_map,
             model.keras_model.optimizer,
             optimizer_file,
         )
@@ -155,7 +153,6 @@ def load_model(
 ):
     load_parameters(
         model.network.structure,
-        model.keras_network.layer_to_keras_map,
         model.keras_model.optimizer if load_optimizer else None,
         file,
         load_mask=load_mask,
@@ -168,7 +165,6 @@ def save_model(
 ):
     save_parameters(
         model.network.structure,
-        model.keras_network.layer_to_keras_map,
         model.keras_model.optimizer,
         file,
     )
@@ -176,7 +172,6 @@ def save_model(
 
 def load_parameters(
     root: Layer,
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     optimizer: Optional[keras.optimizers.Optimizer],
     file,
     load_mask: bool = True,
@@ -243,14 +238,12 @@ def load_parameters(
 
     access_model_parameters.visit_parameters(
         root,
-        layer_to_keras_map,
         visit_variable,
     )
 
 
 def save_parameters(
     root: Layer,
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     optimizer: Optional[keras.optimizers.Optimizer],
     file,
 ):
@@ -309,7 +302,6 @@ def save_parameters(
 
     access_model_parameters.visit_parameters(
         root,
-        layer_to_keras_map,
         visit_variable,
     )
 

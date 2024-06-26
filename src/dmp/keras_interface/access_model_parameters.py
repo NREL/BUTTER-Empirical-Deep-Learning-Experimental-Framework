@@ -24,7 +24,6 @@ import tensorflow.keras as keras
 
 def get_parameters(
     root: Layer,
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     use_mask: bool,
 ) -> Dict[Layer, List[numpy.ndarray]]:
     parameter_map: Dict[Layer, List[numpy.ndarray]] = {}
@@ -43,7 +42,6 @@ def get_parameters(
 
     visit_parameters(
         root,
-        layer_to_keras_map,
         visit_variable,
     )
     return parameter_map
@@ -51,7 +49,6 @@ def get_parameters(
 
 def set_parameters(
     root: Layer,
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     parameter_map: Dict[Layer, List[numpy.ndarray]],
     restore_mask: bool,
 ) -> None:
@@ -69,18 +66,16 @@ def set_parameters(
 
     visit_parameters(
         root,
-        layer_to_keras_map,
         visit_variable,
     )
 
 
 def visit_parameters(
     root: Layer,
-    layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     visit_variable: Callable,
 ) -> None:
-    for layer in root.layers:
-        layer_info = layer_to_keras_map.get(layer, None)
+    for layer in root.layers_pre_ordered:
+        layer_info = layer.keras_layer_info
         if layer_info is None:
             continue
 

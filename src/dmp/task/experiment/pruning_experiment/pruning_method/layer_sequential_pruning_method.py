@@ -30,24 +30,23 @@ from dmp.task.experiment.pruning_experiment.pruning_method.value_pruning_method 
 
 
 @dataclass
-class GlobalValuePruningMethod(ValuePruningMethod):
-    """
-    Pruning method that prunes some proportion of the lowest-valued weights based on the "pruning value" assigned to them via the compute_pruning_values() method.
-    """
+class LayerSequentialPruningMethod(ValuePruningMethod):
+    """ """
 
     pruning_rate: float  # proportion of additional weights to prune each time. (e.x. 0.10 means to prune 10% of the remaining weights on each call to prune())
+    current_layer_index: int = -1
 
     def prune(
         self,
         root: Layer,
     ) -> int:  # returns number of weights pruned
-        prunable_layers, prunable_weights = self.get_prunable_layers_and_weights(
-            root,
-        )
+        prunable_layers = self.get_prunable_layers(root)
+        self.current_layer_index = (self.current_layer_index + 1) % len(prunable_layers)
+        layer = prunable_layers[self.current_layer_index]
 
         return self.prune_target_layers(
             root,
-            prunable_layers,
-            prunable_weights,
+            [layer],
+            self.get_prunable_weights_from_layer(layer),
             self.pruning_rate,
         )

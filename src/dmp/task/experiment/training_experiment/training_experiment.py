@@ -498,7 +498,6 @@ class TrainingExperiment(Experiment):
         if keys.masked_parameter_count_key not in fit_history:
             masked_parameter_count = count_masked_parameters(
                 model.network.structure,
-                model.keras_network.layer_to_keras_map,
             )
             print(f"masked parameters: {masked_parameter_count}")
             fit_history[keys.masked_parameter_count_key] = [

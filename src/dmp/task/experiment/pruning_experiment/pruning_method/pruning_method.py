@@ -31,16 +31,14 @@ class PruningMethod(ABC):
     def prune(
         self,
         root: Layer,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     ) -> int:  # returns number of weights pruned
         pass
 
     def is_prunable(
         self,
         layer: Layer,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     ) -> bool:
-        keras_layer = layer_to_keras_map[layer].keras_layer
+        keras_layer = layer.keras_layer
         return hasattr(keras_layer, "kernel_constraint") and isinstance(
             keras_layer.kernel_constraint, ParameterMask
         )
@@ -48,9 +46,8 @@ class PruningMethod(ABC):
     def get_weights_and_mask(
         self,
         layer: Layer,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     ) -> Tuple[numpy.ndarray, tensorflow.Variable]:
-        keras_layer = layer_to_keras_map[layer].keras_layer
+        keras_layer = layer.keras_layer
         weights = keras_layer.get_weights()[0]  # type: ignore
         return (
             weights,  # type: ignore
@@ -59,37 +56,70 @@ class PruningMethod(ABC):
 
     def get_prunable_weights_from_layer(
         self,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
         layer: Layer,
     ) -> numpy.ndarray:
-        weights, mask = self.get_weights_and_mask(layer, layer_to_keras_map)
+        weights, mask = self.get_weights_and_mask(layer)
         return weights[mask].flatten()  # type: ignore
 
     def get_prunable_layers(
         self,
         root: Layer,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     ) -> List[Layer]:
-        return [
-            layer
-            for layer in root.layers
-            if self.is_prunable(layer, layer_to_keras_map)
-        ]
+        return [layer for layer in root.layers_post_ordered if self.is_prunable(layer)]
 
     def get_prunable_layers_and_weights(
         self,
         root: Layer,
-        layer_to_keras_map: Dict[Layer, KerasLayerInfo],
     ) -> Tuple[List[Layer], numpy.ndarray]:
-        prunable_layers = self.get_prunable_layers(root, layer_to_keras_map)
+        prunable_layers = self.get_prunable_layers(root)
         prunable_weights = numpy.concatenate(
             [
                 l
                 for l in (
-                    self.get_prunable_weights_from_layer(layer_to_keras_map, layer)
+                    self.get_prunable_weights_from_layer(layer)
                     for layer in prunable_layers
                 )
                 if l is not None
             ]
         )
         return prunable_layers, prunable_weights
+
+    def prune_layers_using_mask(
+        self,
+        prunable_layers: List[Layer],
+        prune_mask: numpy.ndarray,  # True at indicies of unpruned weights to prune, False otherwise
+    ) -> int:
+        # prune at selected level
+        total_pruned = 0
+        index = 0
+        for layer in prunable_layers:
+
+            # get layer mask
+            weights, mask = self.get_weights_and_mask(layer)
+
+            # get mask as boolean numpy array
+            mask_array = mask.numpy().astype(bool)
+
+            # array of True's the shape/size of unpruned weights in this layer
+            candidates = mask_array[mask_array]
+
+            if len(mask_array.shape) == 0:
+                mask_array = numpy.ndarray([int(mask_array)], dtype=bool)
+
+            # make slice of prune mask for this layer's unpruned weights
+            next_index = index + candidates.size
+            layer_prune = (prune_mask[index:next_index]).reshape(candidates.shape)
+            index = next_index
+
+            # set candidates mask to False where layer_prune / prune mask is True
+            candidates[layer_prune] = False
+
+            # set mask_array to have candidate's values over the previously unpruned weights
+            mask_array[mask_array] = candidates
+
+            total_pruned += mask_array.size - mask_array.sum()
+
+            # set mask to new mask_array value
+            mask.assign(mask_array)
+
+        return total_pruned

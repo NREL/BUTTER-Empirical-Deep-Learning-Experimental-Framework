@@ -102,7 +102,6 @@ class IterativePruningExperiment(TrainingExperiment):
                 # 6: Prune the lowest magnitude entries of WT that remain. Let m[i] = 0 if WT [i] is pruned.
                 pruning.method.prune(
                     model.network.structure,
-                    model.keras_network.layer_to_keras_map,
                 )
 
                 # load rewind point

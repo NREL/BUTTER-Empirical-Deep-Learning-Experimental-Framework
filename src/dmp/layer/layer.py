@@ -13,8 +13,14 @@ from typing import (
     Union,
     Callable,
 )
+
+
 from lmarshal.src.custom_marshalable import CustomMarshalable
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dmp.model.keras_layer_info import KerasLayerInfo, KerasLayer
 
 LayerConfig = Dict[str, Any]
 
@@ -83,12 +89,16 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
 
         self.config: LayerConfig = config
         self.inputs: List["Layer"] = input
-        self.computed_shape: Tuple[
-            int, ...
-        ] = uninitialized_shape  # must be computed in context
+
+        self.computed_shape: Tuple[int, ...] = (
+            uninitialized_shape  # must be computed in context
+        )
         self.free_parameters: int = (
             unitialized_parameter_count  # must be computed in context
         )
+
+        self.keras_layer_info: Optional["KerasLayerInfo"] = None
+        self.outputs: Optional[List["Layer"]] = None
 
         # print(f'make layer {type(self)} {config}')
 
@@ -307,6 +317,17 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         """
         return len(self.computed_shape) - 1
 
+    @property
+    def keras_layer(self) -> "KerasLayer":
+        return self.keras_layer_info.keras_layer  # type: ignore
+
+    def compute_outputs(self) -> None:
+        for layer in self.layers:
+            for input in layer.inputs:
+                if input.outputs is None:
+                    input.outputs = []
+                input.outputs.append(layer)
+
     def get(self, key, default):
         """
         Returns the value matching the given key from the config, or default if the key is not set.
@@ -331,6 +352,7 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
             safe_set(marshaled_computed_shape_key, list(self.computed_shape))
         if self.free_parameters >= 0:
             safe_set(marshaled_free_parameters_key, self.free_parameters)
+
         return flat
 
     def demarshal(self, flat: dict) -> None:
@@ -347,6 +369,9 @@ class Layer(LayerFactory, CustomMarshalable, ABC):
         self.free_parameters = flat.pop(
             marshaled_free_parameters_key, unitialized_parameter_count
         )
+
+        self.keras_layer_info = None
+        self.outputs = None
 
 
 LayerConstructor = Callable[[LayerConfig, Union[Layer, List[Layer]], LayerConfig], T]

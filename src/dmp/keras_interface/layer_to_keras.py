@@ -380,6 +380,10 @@ def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
         inputs=keras_network.inputs,
         outputs=keras_network.outputs,
     )
+
+    for layer, keras_layer_info in keras_network.layer_to_keras_map.items():
+        layer.keras_layer_info = keras_layer_info
+
     if len(keras_model.inputs) != 1:  # type: ignore
         raise ValueError("Wrong number of keras inputs generated.")
 

@@ -28,10 +28,13 @@ from dmp.task.experiment.pruning_experiment.pruning_method.global_value_pruning_
     GlobalValuePruningMethod,
 )
 from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
+from dmp.task.experiment.pruning_experiment.pruning_method.layer_sequential_pruning_method import (
+    LayerSequentialPruningMethod,
+)
 
 
 @dataclass
-class RandomPruner(GlobalValuePruningMethod):
+class LayerSequentialMagnitudePruner(LayerSequentialPruningMethod):
 
     def compute_pruning_values(
         self,
@@ -39,4 +42,4 @@ class RandomPruner(GlobalValuePruningMethod):
         prunable_layers: List[Layer],
         prunable_weights: numpy.ndarray,
     ) -> numpy.ndarray:
-        return numpy.random.random(prunable_weights.shape)
+        return numpy.abs(prunable_weights)

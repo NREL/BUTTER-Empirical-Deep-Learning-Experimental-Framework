@@ -12,6 +12,7 @@ from dmp.model.named.vgg16 import VGG16
 from dmp.run_entry import RunEntry
 from dmp.task.experiment.lth.lth_experiment import LTHExperiment
 from dmp.task.experiment.lth.pruning_config import PruningConfig
+
 from dmp.task.experiment.pruning_experiment.pruning_run_spec import (
     IterativePruningConfig,
 )
@@ -239,9 +240,11 @@ from dmp.task.experiment.pruning_experiment.pruning_method.magnitude_pruner impo
 from dmp.task.experiment.pruning_experiment.pruning_method.random_pruner import (
     RandomPruner,
 )
+from dmp.task.experiment.pruning_experiment.pruning_method.layer_sequential_magnitude_pruner import (
+    LayerSequentialMagnitudePruner,
+)
 
-
-register_types((MagnitudePruner, RandomPruner))
+register_types((MagnitudePruner, RandomPruner, LayerSequentialMagnitudePruner))
 
 # Other types:
 from dmp.task.experiment.recorder.test_set_history_recorder import (
