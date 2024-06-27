@@ -19,6 +19,7 @@ from dmp.task.experiment.model_saving.model_saving_callback import ModelSavingCa
 from dmp.task.experiment.pruning_experiment.count_masked_parameters import (
     count_masked_parameters,
 )
+from dmp.task.experiment.recorder.recorder import Recorder
 from dmp.task.experiment.recorder.test_set_recorder import TestSetRecorder
 from dmp.task.experiment.training_experiment import (
     training_experiment_keys,
@@ -396,7 +397,13 @@ class TrainingExperiment(Experiment):
         train_set_info = TestSetInfo(keys.train, dataset.train)
 
         # setup history statistics recorders
-        history_callbacks = []
+        history_callbacks = [
+            callback for callback in callbacks if isinstance(callback, Recorder)
+        ]
+        callbacks = [
+            callback for callback in callbacks if callback not in history_callbacks
+        ]
+
         timestamp_recorder = (
             TimestampRecorder(
                 epoch_counter,

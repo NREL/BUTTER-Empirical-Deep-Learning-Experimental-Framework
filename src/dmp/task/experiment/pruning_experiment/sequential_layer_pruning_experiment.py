@@ -46,7 +46,10 @@ class SequentialLayerRecorder(Recorder):
             "num_times_all_layers_pruned", self.experiment.num_times_all_layers_pruned
         )
 
-        self._record_metric("target_loss", self.experiment.target_loss)
+        target_loss = self.experiment.target_loss
+        if target_loss is None:
+            target_loss = float(numpy.nan)
+        self._record_metric("target_loss", target_loss)
 
 
 @dataclass
@@ -164,7 +167,7 @@ class SequentialLayerPruningExperiment(TrainingExperiment):
 
             epoch_counter.current_epoch.marker = 1  # mark as best weights checkpoint
 
-            self._save_checkpoint(
+            checkpoint = self._save_checkpoint(
                 context,
                 config,
                 dataset,
@@ -189,8 +192,13 @@ class SequentialLayerPruningExperiment(TrainingExperiment):
                 ].min()
             )
 
-            if current_validation_loss > self.target_loss:
-                self.best_layer_prune_so_far.resume(model)
+            if (
+                current_validation_loss <= self.target_loss
+                or self.best_layer_prune_so_far is None
+            ):
+                self.best_layer_prune_so_far = (current_validation_loss, checkpoint)
+            else:
+                self.best_layer_prune_so_far[1].resume(model)
 
                 self.pruning_layer_index += 1
                 if self.pruning_layer_index >= len(prunable_layers):
