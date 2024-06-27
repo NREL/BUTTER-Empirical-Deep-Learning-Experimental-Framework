@@ -525,9 +525,9 @@ class TrainingExperiment(Experiment):
         fit_history[keys.fit_number] = [epoch.fit_number for epoch in epochs]
         fit_history[keys.fit_epoch] = [epoch.fit_epoch for epoch in epochs]
 
-        # update run saved_models list
-        if model_saving_callback is not None:
-            config.saved_models.extend(model_saving_callback.saved_epochs)
+        # # update run saved_models list
+        # if model_saving_callback is not None:
+        #     config.saved_models.extend(model_saving_callback.saved_epochs)
 
         # if experiment_history was supplied, merge this call to fit into it and return it
         # if experiment_history is not None:

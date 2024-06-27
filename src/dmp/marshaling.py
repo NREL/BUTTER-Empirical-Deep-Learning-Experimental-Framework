@@ -160,6 +160,10 @@ from dmp.task.experiment.pruning_experiment.iterative_pruning_experiment import 
     IterativePruningExperiment,
 )
 
+from dmp.task.experiment.pruning_experiment.sequential_layer_pruning_experiment import (
+    SequentialLayerPruningExperiment,
+)
+
 register_types(
     [
         # UpdateExperimentSummary,
@@ -167,6 +171,7 @@ register_types(
         # GrowthExperiment,
         IterativePruningExperiment,
         LTHExperiment,
+        SequentialLayerPruningExperiment,
     ]
 )
 
