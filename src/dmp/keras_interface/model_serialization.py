@@ -1,6 +1,6 @@
 from tensorflow import keras
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 
 import numpy
@@ -127,7 +127,7 @@ def load_parameters(
             epoch_dataset,
             parameter_dataset,
             optimizer_datasets,
-        ) = get_datasets_from_model_file(h5_file, optimizer)
+        ) = get_datasets_from_model_file_using_optimizer(h5_file, optimizer)
 
         sequence_number = epoch.sequence_number
         if sequence_number is None:
@@ -144,58 +144,60 @@ def load_parameters(
         epoch.marker = epoch_dataset[3, sequence_number]
         epoch.sequence_number = sequence_number
 
-        parameter_index = 0
+        load_parameters_from_datasets(root, optimizer, load_mask, parameter_dataset, optimizer_datasets, sequence_number)
 
-        def visit_variable(layer, keras_layer, i, variable):
-            nonlocal parameter_index
+    return epoch
 
-            shape = variable.value.shape
-            size = numpy.prod(shape)
-            parameter_limit = parameter_index + size
-            print(f"loading variable: {variable.name} {size} {shape} {parameter_index}")
-            constraint = access_model_parameters.get_mask_constraint(
+def load_parameters_from_datasets(root, optimizer, load_mask, parameter_dataset, optimizer_datasets, sequence_number):
+    parameter_index = 0
+    def visit_variable(layer, keras_layer, i, variable):
+        nonlocal parameter_index
+
+        shape = variable.value.shape
+        size = numpy.prod(shape)
+        parameter_limit = parameter_index + size
+        print(f"loading variable: {variable.name} {size} {shape} {parameter_index}")
+        constraint = access_model_parameters.get_mask_constraint(
                 keras_layer, variable
             )
 
-            chunk = parameter_dataset[parameter_index:parameter_limit, sequence_number]
-            mask = numpy.logical_not(numpy.isnan(chunk))
+        chunk = parameter_dataset[parameter_index:parameter_limit, sequence_number]
+        mask = numpy.logical_not(numpy.isnan(chunk))
 
-            if load_mask and constraint is not None:
-                constraint.set_mask(mask.reshape(shape))
+        if load_mask and constraint is not None:
+            constraint.set_mask(mask.reshape(shape))
 
-            def load_variable(dataset, variable):
-                prepared = dataset[parameter_index:parameter_limit, sequence_number]
-                prepared = numpy.where(
+        def load_variable(dataset, variable):
+            prepared = dataset[parameter_index:parameter_limit, sequence_number]
+            prepared = numpy.where(
                     numpy.logical_and(mask, numpy.logical_not(numpy.isnan(prepared))),
                     prepared,
                     variable.numpy().reshape(mask.shape),
                 )
                 # print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
-                prepared = prepared.reshape(shape)
-                variable.assign(prepared)
+            prepared = prepared.reshape(shape)
+            variable.assign(prepared)
 
-            load_variable(parameter_dataset, variable)
+        load_variable(parameter_dataset, variable)
 
-            for optimizer_member, member_dataset in optimizer_datasets:
-                optimizer_variable = get_optimizer_variable(
+        for optimizer_member, member_dataset in optimizer_datasets:
+            optimizer_variable = get_optimizer_variable(
                     optimizer,
                     optimizer_member,
                     variable,
                 )
-                print(
+            print(
                     f"load optimizer variable {variable.name} {optimizer_member}, {type(optimizer_variable)}"
                 )
-                if optimizer_variable is not None:
-                    load_variable(member_dataset, optimizer_variable)
+            if optimizer_variable is not None:
+                load_variable(member_dataset, optimizer_variable)
 
-            parameter_index = parameter_limit
+        parameter_index = parameter_limit
 
-        access_model_parameters.visit_parameters(
+    access_model_parameters.visit_parameters(
             root,
             visit_variable,
         )
-
-    return epoch
 
 
 def get_optimizer_variable(optimizer, optimizer_member, variable):
@@ -243,9 +245,34 @@ def require_parameter_dataset(
     )
 
 
-def get_datasets_from_model_file(
+def get_datasets_from_model_file_using_optimizer(
     h5_file: h5.File,
     optimizer: Optional[keras.optimizers.Optimizer],
+) -> Tuple[
+    h5.Dataset,
+    h5.Dataset,
+    List[
+        Tuple[
+            str,
+            h5.Dataset,
+        ]
+    ],
+]:
+    optimizer_members = [
+        member
+        for member in saved_optimizer_members
+        if optimizer is not None and hasattr(optimizer, member)
+    ]
+    print(f"Found optimizer {type(optimizer)} with members {optimizer_members}.")
+    return get_datasets_from_model_file(
+        h5_file,
+        optimizer_members,
+    )
+
+
+def get_datasets_from_model_file(
+    h5_file: h5.File,
+    optimizer_members: Optional[Sequence[str]],
 ) -> Tuple[
     h5.Dataset,
     h5.Dataset,
@@ -294,22 +321,39 @@ def get_datasets_from_model_file(
     Optimizer state values are stored in the "optimizer_members" group.
     """
     optimizer_members_group = h5_file.require_group("optimizer_members")
+    if optimizer_members is None:
+        optimizer_members = []
+    
     optimizer_datasets = [
         (
             member,
             require_parameter_dataset(optimizer_members_group, member, numpy.float16),
         )
-        for member in saved_optimizer_members
-        if optimizer is not None and hasattr(optimizer, member)
+        for member in optimizer_members
     ]
-
-    print(f"Found optimizer {type(optimizer)} with members {optimizer_datasets}.")
 
     return (
         epoch_dataset,
         parameter_dataset,
         optimizer_datasets,  # type: ignore
     )
+
+
+def convert_epoch_dataset_into_epochs(epoch_dataset):
+    global_epoch = epoch_dataset[0, :]
+    fit_number = epoch_dataset[1, :]
+    fit_epoch = epoch_dataset[2, :]
+    epoch_marker = epoch_dataset[3, :]
+
+    epochs = []
+    for i in range(epoch_dataset.shape[1]):
+        epochs.append(
+            TrainingEpoch(
+                global_epoch[i], fit_number[i], fit_epoch[i], epoch_marker[i], i
+            )
+        )
+    epochs.sort()
+    return epochs
 
 
 def save_parameters(
@@ -323,7 +367,7 @@ def save_parameters(
             epoch_dataset,
             parameter_dataset,
             optimizer_datasets,
-        ) = get_datasets_from_model_file(h5_file, optimizer)
+        ) = get_datasets_from_model_file_using_optimizer(h5_file, optimizer)
 
         sequence_number = find_sequence_number(epoch_dataset, epoch)
 
