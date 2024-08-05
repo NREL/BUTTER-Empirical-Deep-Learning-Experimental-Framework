@@ -42,6 +42,10 @@ def recompress_model_data_file(filename):
         retained_epochs: List[TrainingEpoch] = sorted(retained_map.values())
         num_retained_epochs = len(retained_epochs)
 
+        if num_retained_epochs == len(src_epochs):
+            print(f"already minimized: {filename}")
+            return False
+
         # print(retained_epochs)
 
         for epoch in retained_epochs:
@@ -93,12 +97,25 @@ def recompress_model_data_file(filename):
         subprocess.run(["mv", dst_path, src_path])
         subprocess.run(["rm", delete_path])
 
-        print(f"Done.")
+        print(f"Done {filename}.")
+        return True
 
 
 def recompress_model_data():
-    pass
-    recompress_model_data_file(sys.argv[1])
+    lines = []
+    with open(sys.argv[1]) as file:
+        lines = [line.rstrip() for line in file]
+        print(f"loaded {len(lines)} files to recompress...")
+
+    import multiprocessing
+
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
+        results = pool.imap_unordered(recompress_model_data_file, lines)
+        for r in results:
+            pass
+
+    print("Done!")
+    # recompress_model_data_file(sys.argv[1])
     # recompress_model_data_file("ffd1a61a-c567-4978-b912-2f53cec3d77f.h5")
 
 
