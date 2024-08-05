@@ -261,7 +261,6 @@ def require_parameter_dataset(
 
 
 def get_datasets_from_model_file_using_optimizer(
-def get_datasets_from_model_file_using_optimizer(
     h5_file: h5.File,
     optimizer: Optional[keras.optimizers.Optimizer],
 ) -> Tuple[
