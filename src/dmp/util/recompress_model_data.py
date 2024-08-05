@@ -104,7 +104,7 @@ def recompress_model_data_file(filename):
 def recompress_model_data():
     lines = []
     with open(sys.argv[1]) as file:
-        lines = [line.rstrip() for line in file]
+        lines = [f"{line.rstrip()}.h5" for line in file]
         print(f"loaded {len(lines)} files to recompress...")
 
     import multiprocessing
