@@ -127,7 +127,7 @@ def load_parameters(
             epoch_dataset,
             parameter_dataset,
             optimizer_datasets,
-        ) = get_datasets_from_model_file_using_optimizer_using_optimizer(h5_file, optimizer)
+        ) = get_datasets_from_model_file_using_optimizer(h5_file, optimizer)
 
         sequence_number = epoch.sequence_number
         if sequence_number is None:
@@ -298,31 +298,6 @@ def get_datasets_from_model_file(
         ]
     ],
 ]:
-    optimizer_members = [
-        member
-        for member in saved_optimizer_members
-        if optimizer is not None and hasattr(optimizer, member)
-    ]
-    print(f"Found optimizer {type(optimizer)} with members {optimizer_members}.")
-    return get_datasets_from_model_file(
-        h5_file,
-        optimizer_members,
-    )
-
-
-def get_datasets_from_model_file(
-    h5_file: h5.File,
-    optimizer_members: Optional[Sequence[str]],
-) -> Tuple[
-    h5.Dataset,
-    h5.Dataset,
-    List[
-        Tuple[
-            str,
-            h5.Dataset,
-        ]
-    ],
-]:
     """
     "parameter" dataset:
     + every checkpoint saves a new [:, sequence] array with all model parameters
@@ -362,13 +337,12 @@ def get_datasets_from_model_file(
     """
     optimizer_members_group = h5_file.require_group("optimizer_members")
     if optimizer_members is None:
-        optimizer_members = []
+        optimizer_members = [member for member in optimizer_members_group.keys()]
     optimizer_datasets = [
         (
             member,
             require_parameter_dataset(optimizer_members_group, member, numpy.float16),
         )
-        for member in optimizer_members
         for member in optimizer_members
     ]
 
@@ -377,23 +351,6 @@ def get_datasets_from_model_file(
         parameter_dataset,
         optimizer_datasets,  # type: ignore
     )
-
-
-def convert_epoch_dataset_into_epochs(epoch_dataset):
-    global_epoch = epoch_dataset[0, :]
-    fit_number = epoch_dataset[1, :]
-    fit_epoch = epoch_dataset[2, :]
-    epoch_marker = epoch_dataset[3, :]
-
-    epochs = []
-    for i in range(epoch_dataset.shape[1]):
-        epochs.append(
-            TrainingEpoch(
-                global_epoch[i], fit_number[i], fit_epoch[i], epoch_marker[i], i
-            )
-        )
-    epochs.sort()
-    return epochs
 
 
 def convert_epoch_dataset_into_epochs(epoch_dataset):
@@ -424,7 +381,6 @@ def save_parameters(
             epoch_dataset,
             parameter_dataset,
             optimizer_datasets,
-        ) = get_datasets_from_model_file_using_optimizer(h5_file, optimizer)
         ) = get_datasets_from_model_file_using_optimizer(h5_file, optimizer)
 
         sequence_number = find_sequence_number(epoch_dataset, epoch)
