@@ -1,6 +1,6 @@
 from tensorflow import keras
 import os
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Sequence, Tuple
 from uuid import UUID
 
 import numpy
@@ -127,7 +127,7 @@ def load_parameters(
             epoch_dataset,
             parameter_dataset,
             optimizer_datasets,
-        ) = get_datasets_from_model_file_using_optimizer(h5_file, optimizer)
+        ) = get_datasets_from_model_file_using_optimizer_using_optimizer(h5_file, optimizer)
 
         sequence_number = epoch.sequence_number
         if sequence_number is None:
@@ -172,7 +172,11 @@ def load_parameters_from_datasets(
 
         chunk = parameter_dataset[parameter_index:parameter_limit, sequence_number]
         mask = numpy.logical_not(numpy.isnan(chunk))
+        chunk = parameter_dataset[parameter_index:parameter_limit, sequence_number]
+        mask = numpy.logical_not(numpy.isnan(chunk))
 
+        if load_mask and constraint is not None:
+            constraint.set_mask(mask.reshape(shape))
         if load_mask and constraint is not None:
             constraint.set_mask(mask.reshape(shape))
 
@@ -188,6 +192,7 @@ def load_parameters_from_datasets(
             variable.assign(prepared)
 
         load_variable(parameter_dataset, variable)
+        load_variable(parameter_dataset, variable)
 
         for optimizer_member, member_dataset in optimizer_datasets:
             optimizer_variable = get_optimizer_variable(
@@ -201,6 +206,7 @@ def load_parameters_from_datasets(
             if optimizer_variable is not None:
                 load_variable(member_dataset, optimizer_variable)
 
+        parameter_index = parameter_limit
         parameter_index = parameter_limit
 
     access_model_parameters.visit_parameters(
@@ -255,8 +261,34 @@ def require_parameter_dataset(
 
 
 def get_datasets_from_model_file_using_optimizer(
+def get_datasets_from_model_file_using_optimizer(
     h5_file: h5.File,
     optimizer: Optional[keras.optimizers.Optimizer],
+) -> Tuple[
+    h5.Dataset,
+    h5.Dataset,
+    List[
+        Tuple[
+            str,
+            h5.Dataset,
+        ]
+    ],
+]:
+    optimizer_members = [
+        member
+        for member in saved_optimizer_members
+        if optimizer is not None and hasattr(optimizer, member)
+    ]
+    print(f"Found optimizer {type(optimizer)} with members {optimizer_members}.")
+    return get_datasets_from_model_file(
+        h5_file,
+        optimizer_members,
+    )
+
+
+def get_datasets_from_model_file(
+    h5_file: h5.File,
+    optimizer_members: Optional[Sequence[str]],
 ) -> Tuple[
     h5.Dataset,
     h5.Dataset,
@@ -338,6 +370,7 @@ def get_datasets_from_model_file(
             require_parameter_dataset(optimizer_members_group, member, numpy.float16),
         )
         for member in optimizer_members
+        for member in optimizer_members
     ]
 
     return (
@@ -345,6 +378,23 @@ def get_datasets_from_model_file(
         parameter_dataset,
         optimizer_datasets,  # type: ignore
     )
+
+
+def convert_epoch_dataset_into_epochs(epoch_dataset):
+    global_epoch = epoch_dataset[0, :]
+    fit_number = epoch_dataset[1, :]
+    fit_epoch = epoch_dataset[2, :]
+    epoch_marker = epoch_dataset[3, :]
+
+    epochs = []
+    for i in range(epoch_dataset.shape[1]):
+        epochs.append(
+            TrainingEpoch(
+                global_epoch[i], fit_number[i], fit_epoch[i], epoch_marker[i], i
+            )
+        )
+    epochs.sort()
+    return epochs
 
 
 def convert_epoch_dataset_into_epochs(epoch_dataset):
@@ -375,6 +425,7 @@ def save_parameters(
             epoch_dataset,
             parameter_dataset,
             optimizer_datasets,
+        ) = get_datasets_from_model_file_using_optimizer(h5_file, optimizer)
         ) = get_datasets_from_model_file_using_optimizer(h5_file, optimizer)
 
         sequence_number = find_sequence_number(epoch_dataset, epoch)
