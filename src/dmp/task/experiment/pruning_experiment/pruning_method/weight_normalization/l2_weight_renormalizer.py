@@ -33,33 +33,12 @@ from dmp.task.experiment.pruning_experiment.pruning_method.global_value_pruning_
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
 )
+from dmp.task.experiment.pruning_experiment.pruning_method.weight_normalization.weight_normalizer import (
+    WeightNormalizer,
+)
 
 
-@dataclass
-class WeightRenormalizingPruner(GlobalValuePruningMethod):
-    """
-    Pruning method that renormalizes weights before pruning
-    """
+class L2WeightNormalizer(WeightNormalizer):
 
-    delegate: GlobalValuePruningMethod
-
-    def compute_pruning_values(
-        self,
-        root: Layer,
-        prunable_layers: List[Layer],
-        prunable_weights: numpy.ndarray,
-    ) -> numpy.ndarray:
-        
-
-        prunable_weights = numpy.hstack(
-            [
-                visitor.normalized_weight_map[layer].flatten()
-                for layer in prunable_layers
-            ]
-        )
-
-        return self.delegate.compute_pruning_values(
-            root,
-            prunable_layers,
-            prunable_weights,
-        )
+    def compute_input_norms(self, input_scaled_weights):
+        return numpy.sum(numpy.square(input_scaled_weights), axis=1)  # sum along rows

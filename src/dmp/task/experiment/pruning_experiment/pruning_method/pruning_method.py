@@ -67,12 +67,8 @@ class PruningMethod(ABC):
     ) -> List[Layer]:
         return [layer for layer in root.layers_post_ordered if self.is_prunable(layer)]
 
-    def get_prunable_layers_and_weights(
-        self,
-        root: Layer,
-    ) -> Tuple[List[Layer], numpy.ndarray]:
-        prunable_layers = self.get_prunable_layers(root)
-        prunable_weights = numpy.concatenate(
+    def get_pruning_weights(self, prunable_layers: List[Layer]):
+        return numpy.concatenate(
             [
                 l
                 for l in (
@@ -82,6 +78,13 @@ class PruningMethod(ABC):
                 if l is not None
             ]
         )
+
+    def get_prunable_layers_and_weights(
+        self,
+        root: Layer,
+    ) -> Tuple[List[Layer], numpy.ndarray]:
+        prunable_layers = self.get_prunable_layers(root)
+        prunable_weights = self.get_pruning_weights(prunable_layers)
         return prunable_layers, prunable_weights
 
     def prune_layers_using_mask(

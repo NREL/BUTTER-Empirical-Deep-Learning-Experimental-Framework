@@ -39,22 +39,30 @@ class SequentialLayerRecorder(Recorder):
         super().__init__(epoch_counter)
         self.experiment = experiment
 
+    def on_train_begin(self, logs=None):
+        super().on_train_begin(logs=logs)
+        self.record_metrics()
+
     def on_epoch_end(self, epoch, logs=None):
+        self.record_metrics()
+
+    def record_metrics(self):
         self._record_epoch()
         self._record_metric("pruning_layer_index", self.experiment.pruning_layer_index)
         self._record_metric(
             "num_times_all_layers_pruned", self.experiment.num_times_all_layers_pruned
         )
 
-        target_loss = self.experiment.target_loss
-        if target_loss is None:
-            target_loss = float(numpy.nan)
-        self._record_metric("target_loss", target_loss)
+        # target_loss = self.experiment.target_loss
+        # if target_loss is None:
+        #     target_loss = float(numpy.nan)
+        # self._record_metric("target_loss", target_loss)
 
 
 @dataclass
 class SequentialLayerPruningExperiment(TrainingExperiment):
     pruning: PruningConfig
+    loss_tolerance: float
     pruning_layer_index: int = 0
     num_times_all_layers_pruned: int = 0
     target_loss: Optional[float] = None
@@ -62,7 +70,7 @@ class SequentialLayerPruningExperiment(TrainingExperiment):
 
     @property
     def version(self) -> int:
-        return 6
+        return 7
 
     def __call__(
         self,
@@ -84,7 +92,7 @@ class SequentialLayerPruningExperiment(TrainingExperiment):
                 0,
             )
         else:
-            config.model_saving.save_trained_model = False
+            config.model_saving.save_trained_model = True
 
         pruning = self.pruning
 
@@ -167,47 +175,75 @@ class SequentialLayerPruningExperiment(TrainingExperiment):
 
             epoch_counter.current_epoch.marker = 1  # mark as best weights checkpoint
 
-            checkpoint = self._save_checkpoint(
-                context,
-                config,
-                dataset,
-                network,
-                experiment_history,
-                model,
-                epoch_counter,
-                loss_metric,
-            )
+            # checkpoint = self._save_checkpoint(
+            #     context,
+            #     config,
+            #     dataset,
+            #     network,
+            #     experiment_history,
+            #     model,
+            #     epoch_counter,
+            #     loss_metric,
+            # )
 
             history_df = pandas.DataFrame(experiment_history)
 
-            print(history_df)
+            print(history_df.to_string())
 
             if self.target_loss is None:
-                self.target_loss = float(history_df["validation_loss"].min())
+                self.target_loss = float(
+                    history_df.loc[
+                        history_df["fit_number"] == 0, "validation_loss"
+                    ].min()
+                )
 
             current_validation_loss = float(
                 history_df.loc[
                     history_df["fit_number"] == history_df["fit_number"].max(),
                     "validation_loss",
-                ].min()
+                ].min()  # type: ignore
             )
 
             if (
-                current_validation_loss <= self.target_loss
+                current_validation_loss <= self.target_loss * (1 + self.loss_tolerance)
                 or self.best_layer_prune_so_far is None
             ):
-                self.best_layer_prune_so_far = (current_validation_loss, checkpoint)
+                # checkpoint = self._save_checkpoint(
+                #     context,
+                #     config,
+                #     dataset,
+                #     network,
+                #     experiment_history,
+                #     model,
+                #     epoch_counter,
+                #     loss_metric,
+                # )
+                checkpoint = TrainingExperimentCheckpoint(
+                    run_id=context.id,
+                    load_mask=False,
+                    load_optimizer=pruning.rewind_optimizer,
+                    epoch=pruning.rewind_epoch,
+                )
+                self.best_layer_prune_so_far = (
+                    current_validation_loss,
+                    checkpoint,  # type: ignore
+                )
             else:
+                history_df.loc[
+                    history_df["fit_number"] == epoch_counter, "retained"
+                ] = False
+                experiment_history["retained"] = history_df["retained"].to_list()
+
                 self.best_layer_prune_so_far[1].resume(model)
 
-                self.pruning_layer_index += 1
-                if self.pruning_layer_index >= len(prunable_layers):
-                    self.pruning_layer_index = 0
-                    self.num_times_all_layers_pruned += 1
+            self.pruning_layer_index += 1
+            if self.pruning_layer_index >= len(prunable_layers):
+                self.pruning_layer_index = 0
+                self.num_times_all_layers_pruned += 1
 
-                    if self.num_times_all_layers_pruned >= self.pruning.iterations:
-                        print(f"********** 10 - exit 1")
-                        break
+                if self.num_times_all_layers_pruned > self.pruning.iterations:
+                    print(f"********** 10 - exit 1")
+                    break
 
             first_iteration = False
 

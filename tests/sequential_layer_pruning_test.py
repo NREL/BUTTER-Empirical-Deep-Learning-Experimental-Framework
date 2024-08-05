@@ -123,7 +123,9 @@ def run_experiment(run_id, run: Run):
 
 
 def test_pruning_experiment():
-    pandas.options.display.max_seq_items = -1
+    pandas.options.display.max_seq_items = None
+    pandas.options.display.max_columns = None
+    pandas.options.display.max_colwidth = 200
 
     run_id = uuid.uuid4()
     run = Run(
@@ -182,7 +184,7 @@ def test_pruning_experiment():
             ),
             pruning=PruningConfig(
                 iterations=2,
-                method=LayerSequentialMagnitudePruner(0.1),
+                method=LayerSequentialMagnitudePruner(1.0 - 0.8 ** (1 / 4)),
                 max_epochs_per_iteration=32,
                 rewind_epoch=TrainingEpoch(
                     epoch=0,
@@ -192,21 +194,14 @@ def test_pruning_experiment():
                 rewind_optimizer=True,
                 new_seed=False,
             ),
+            loss_tolerance=0.01,
         ),
         config=IterativePruningConfig(
             seed=0,
             data={},
             record_post_training_metrics=True,
             record_times=True,
-            model_saving=ModelSavingSpec(
-                save_initial_model=True,
-                save_trained_model=True,
-                save_fit_epochs=[],
-                save_epochs=[],
-                fixed_interval=0,
-                fixed_threshold=0,
-                exponential_rate=0,  # math.pow(2, 1 / 8.0),
-            ),
+            model_saving=None,
             saved_models=[],
             resume_checkpoint=None,
             rewind_run_id=run_id,

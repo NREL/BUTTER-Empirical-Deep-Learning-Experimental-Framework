@@ -21,13 +21,16 @@ import tensorflow
 from dmp.layer.layer import Layer
 from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
+from dmp.task.experiment.pruning_experiment.pruning_method.pruning_evaluator.pruning_evaluator import (
+    PruningEvaluator,
+)
 from dmp.task.experiment.pruning_experiment.pruning_method.pruning_method import (
     PruningMethod,
 )
 
 
 @dataclass
-class ValuePruningMethod(PruningMethod):
+class ValuePruningMethod(PruningMethod, PruningEvaluator):
     """
     Pruning method that prunes some proportion of the lowest-valued weights based on the "pruning value" assigned to them via the compute_pruning_values() method.
     """
@@ -73,12 +76,3 @@ class ValuePruningMethod(PruningMethod):
         del weight_index
 
         return prune_mask
-
-    @abstractmethod
-    def compute_pruning_values(
-        self,
-        root: Layer,
-        prunable_layers: List[Layer],
-        prunable_weights: numpy.ndarray,
-    ) -> numpy.ndarray:
-        pass

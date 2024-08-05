@@ -1,6 +1,7 @@
 name: dmp
 dependencies:
 - python >= 3.10
+- setuptools >= 63
 - pandas
 - scikit-learn
 - pip
@@ -12,9 +13,10 @@ dependencies:
 - lz4
 - h5py
 - hdf5plugin
+- mamba
 - pip:
-  - tensorflow >= 2.16
-  - pyarrow == 14
+  - tensorflow[with-cuda] >= 2.16
+  - pyarrow >= 14
   - psycopg[binary] >= 3
   - psycopg_pool >= 3
   - pytest
