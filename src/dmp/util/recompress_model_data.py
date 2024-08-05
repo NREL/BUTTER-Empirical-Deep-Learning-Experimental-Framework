@@ -89,9 +89,9 @@ def recompress_model_data_file(filename):
         print(f"Done writing. Renaming...")
 
         delete_path = src_path + ".del"
-        # subprocess.run(["mv", src_path, delete_path])
-        # subprocess.run(["mv", dst_path, src_path])
-        # subprocess.run(["rm", delete_path])
+        subprocess.run(["mv", src_path, delete_path])
+        subprocess.run(["mv", dst_path, src_path])
+        subprocess.run(["rm", delete_path])
 
         print(f"Done.")
 
