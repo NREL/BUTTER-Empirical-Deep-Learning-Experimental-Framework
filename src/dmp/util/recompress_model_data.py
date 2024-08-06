@@ -11,11 +11,37 @@ import dmp.keras_interface.model_serialization as model_serialization
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 
+def split_monotonically_increasing(tuples):
+    if not tuples:
+        return []
+
+    current_sublists = None
+    result = []
+
+    for i, current_tuple in enumerate(tuples):
+        prev_src, prev_dst = tuples[i - 1]
+        current_src, current_dst = tuples[i]
+
+        if i == 0 or any(
+            (
+                previous_value >= current_value
+                for previous_value, current_value in zip(tuples[i - 1], current_tuple)
+            )
+        ):
+            current_sublists = ([], [])
+            result.append(current_sublists)
+
+        for sublist, value in zip(current_sublists, current_tuple):  # type: ignore
+            sublist.append(value)
+
+    return result
+
+
 def recompress_model_data_file(filename):
     try:
         src_path = os.path.join(model_serialization.model_data_dir, filename)
         dst_path = os.path.join(model_serialization.model_data_dir, filename + ".dst")
-        print(f"load: {src_path}")
+        print(f"{filename}: loading...")
         with h5.File(src_path, "r") as src_file:
             (
                 src_epoch_dataset,
@@ -44,7 +70,7 @@ def recompress_model_data_file(filename):
             num_retained_epochs = len(retained_epochs)
 
             if num_retained_epochs == len(src_epochs):
-                print(f"already minimized: {filename}")
+                print(f"{filename} already minimized.")
                 return False
 
             # print(retained_epochs)
@@ -81,30 +107,41 @@ def recompress_model_data_file(filename):
                     # )
                     dst_dataset.resize((src_dataset.shape[0], num_retained_epochs))
 
-                for dst_sequence_number, epoch in enumerate(retained_epochs):
-                    src_sequence_number = epoch.sequence_number
-                    # print(f"copying {src_sequence_number} to {dst_sequence_number}.")
-                    for datset_name, src_dataset, dst_dataset in dataset_mapping:
-                        # print(f"copying {datset_name}...")
-                        dst_dataset[:, dst_sequence_number] = src_dataset[
-                            :, src_sequence_number
-                        ]
-                    dst_epoch_dataset[3, dst_sequence_number] = epoch.marker
+                index_mapping = [
+                    (epoch.sequence_number, dst_sequence_number)
+                    for dst_sequence_number, epoch in enumerate(retained_epochs)
+                ]
 
-            # print(f"Done writing. Renaming...")
+                monotonic_mappings = split_monotonically_increasing(index_mapping)
+                for datset_name, src_dataset, dst_dataset in dataset_mapping:
+                    print(f"{filename}: copying {datset_name}...")
+                    for src_indexes, dst_indexes in monotonic_mappings:
+                        dst_dataset[:, dst_indexes] = src_dataset[:, src_indexes]
+
+                # for dst_sequence_number, epoch in enumerate(retained_epochs):
+                #     src_sequence_number = epoch.sequence_number
+                #     # print(f"copying {src_sequence_number} to {dst_sequence_number}.")
+                #     for datset_name, src_dataset, dst_dataset in dataset_mapping:
+                #         # print(f"copying {datset_name}...")
+                #         dst_dataset[:, dst_sequence_number] = src_dataset[
+                #             :, src_sequence_number
+                #         ]
+                #     dst_epoch_dataset[3, dst_sequence_number] = epoch.marker
+
+            print(f"{filename}: done writing. Renaming...")
 
             delete_path = src_path + ".del"
             subprocess.run(["mv", src_path, delete_path])
             subprocess.run(["mv", dst_path, src_path])
             subprocess.run(["rm", delete_path])
 
-            print(f"Done {filename}.")
+            print(f"{filename}: Done.")
             return True
     except OSError as error:
-        print(f"Caught {error}")
+        print(f"{filename}: Caught {error}")
         return False
     except e:
-        print(f"Caught {e}")
+        print(f"{filename}: Caught {e}")
         import traceback
 
         print(traceback.format_exc())
@@ -119,7 +156,7 @@ def recompress_model_data():
 
     import multiprocessing
 
-    with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
+    with multiprocessing.Pool(int(sys.argv[2])) as pool:
         results = pool.imap_unordered(recompress_model_data_file, lines)
         for r in results:
             pass
