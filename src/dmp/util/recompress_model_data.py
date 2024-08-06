@@ -83,9 +83,9 @@ def recompress_model_data_file(filename):
 
                 for dst_sequence_number, epoch in enumerate(retained_epochs):
                     src_sequence_number = epoch.sequence_number
-                    print(f"copying {src_sequence_number} to {dst_sequence_number}.")
+                    # print(f"copying {src_sequence_number} to {dst_sequence_number}.")
                     for datset_name, src_dataset, dst_dataset in dataset_mapping:
-                        print(f"copying {datset_name}...")
+                        # print(f"copying {datset_name}...")
                         dst_dataset[:, dst_sequence_number] = src_dataset[
                             :, src_sequence_number
                         ]
