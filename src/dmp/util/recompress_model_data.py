@@ -26,8 +26,8 @@ def recompress_model_data_file(filename):
             src_epochs = model_serialization.convert_epoch_dataset_into_epochs(
                 src_epoch_dataset
             )
-            print(src_epochs)
-            print(f"\n\n")
+            # print(src_epochs)
+            # print(f"\n\n")
 
             retained_map = {}
             for epoch in src_epochs:
@@ -49,12 +49,12 @@ def recompress_model_data_file(filename):
 
             # print(retained_epochs)
 
-            for epoch in retained_epochs:
-                print(epoch)
+            # for epoch in retained_epochs:
+            #     print(epoch)
 
-            print(
-                f"Num retained epochs: {num_retained_epochs} Ratio: {num_retained_epochs / len(src_epochs)}"
-            )
+            # print(
+            #     f"Num retained epochs: {num_retained_epochs} Ratio: {num_retained_epochs / len(src_epochs)}"
+            # )
 
             with h5.File(dst_path, "w") as dst_file:
                 (
@@ -76,9 +76,9 @@ def recompress_model_data_file(filename):
                 ]
 
                 for dataset_name, src_dataset, dst_dataset in dataset_mapping:
-                    print(
-                        f"resize {dataset_name} from {src_dataset.shape} to ({src_dataset.shape[0], num_retained_epochs})"
-                    )
+                    # print(
+                    #     f"resize {dataset_name} from {src_dataset.shape} to ({src_dataset.shape[0], num_retained_epochs})"
+                    # )
                     dst_dataset.resize((src_dataset.shape[0], num_retained_epochs))
 
                 for dst_sequence_number, epoch in enumerate(retained_epochs):
@@ -91,7 +91,7 @@ def recompress_model_data_file(filename):
                         ]
                     dst_epoch_dataset[3, dst_sequence_number] = epoch.marker
 
-            print(f"Done writing. Renaming...")
+            # print(f"Done writing. Renaming...")
 
             delete_path = src_path + ".del"
             subprocess.run(["mv", src_path, delete_path])
