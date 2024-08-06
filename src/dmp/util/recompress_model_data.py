@@ -100,7 +100,14 @@ def recompress_model_data_file(filename):
 
             print(f"Done {filename}.")
             return True
+    except OSError as error:
+        print(f"Caught {error}")
+        return False
     except e:
+        print(f"Caught {e}")
+        import traceback
+
+        print(traceback.format_exc())
         return False
 
 
