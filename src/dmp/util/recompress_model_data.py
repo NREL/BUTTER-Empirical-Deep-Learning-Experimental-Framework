@@ -4,12 +4,6 @@ import subprocess
 import sys
 from typing import List
 
-import h5py as h5
-import hdf5plugin
-
-import dmp.keras_interface.model_serialization as model_serialization
-from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
-
 
 def split_monotonically_increasing(tuples):
     if not tuples:
@@ -39,10 +33,26 @@ def split_monotonically_increasing(tuples):
 
 def recompress_model_data_file(filename):
     try:
+        print(f"{filename}: loading...")
+
+        import h5py as h5
+        import hdf5plugin
+
+        import dmp.keras_interface.model_serialization as model_serialization
+        from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+
         src_path = os.path.join(model_serialization.model_data_dir, filename)
         dst_path = os.path.join(model_serialization.model_data_dir, filename + ".dst")
-        print(f"{filename}: loading...")
-        with h5.File(src_path, "r") as src_file:
+        tmp_dir = "/tmp/scratch/$SLURM_JOB_ID"
+        tmp_src_path = os.path.join(tmp_dir, filename)
+        tmp_dst_path = os.path.join(tmp_dir, filename + ".dst")
+        delete_path = src_path + ".del"
+
+        print(f"{filename}: copying...")
+        subprocess.run(["cp", src_path, tmp_src_path])
+
+        print(f"{filename}: opening...")
+        with h5.File(tmp_src_path, "r") as src_file:
             (
                 src_epoch_dataset,
                 src_parameter_dataset,
@@ -82,7 +92,7 @@ def recompress_model_data_file(filename):
             #     f"Num retained epochs: {num_retained_epochs} Ratio: {num_retained_epochs / len(src_epochs)}"
             # )
 
-            with h5.File(dst_path, "w") as dst_file:
+            with h5.File(tmp_dst_path, "w") as dst_file:
                 (
                     dst_epoch_dataset,
                     dst_parameter_dataset,
@@ -128,15 +138,16 @@ def recompress_model_data_file(filename):
                 #         ]
                 #     dst_epoch_dataset[3, dst_sequence_number] = epoch.marker
 
-            print(f"{filename}: done writing. Renaming...")
+        print(f"{filename}: done writing. Moving...")
 
-            delete_path = src_path + ".del"
-            subprocess.run(["mv", src_path, delete_path])
-            subprocess.run(["mv", dst_path, src_path])
-            subprocess.run(["rm", delete_path])
+        subprocess.run(["mv", tmp_dst_path, dst_path])
+        subprocess.run(["mv", src_path, delete_path])
+        subprocess.run(["mv", dst_path, src_path])
+        subprocess.run(["rm", delete_path])
+        subprocess.run(["rm", tmp_src_path])
 
-            print(f"{filename}: Done.")
-            return True
+        print(f"{filename}: Done.")
+        return True
     except OSError as error:
         print(f"{filename}: Caught {error}")
         return False
