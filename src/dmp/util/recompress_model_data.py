@@ -161,6 +161,11 @@ def recompress_model_data_file(filename):
 
         print(traceback.format_exc())
         return False
+    finally:
+        try:
+            subprocess.run(["rm", tmp_src_path])
+        except:
+            pass
 
 
 def recompress_model_data():
