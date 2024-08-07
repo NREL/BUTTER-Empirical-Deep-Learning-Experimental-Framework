@@ -7,8 +7,9 @@ from typing import List
 import h5py as h5
 import hdf5plugin
 
-import dmp.keras_interface.model_serialization as model_serialization
+import dmp.keras_interface.model_serialization_core as model_serialization_core
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
+
 
 def split_monotonically_increasing(tuples):
     if not tuples:
@@ -40,10 +41,10 @@ def recompress_model_data_file(filename):
     try:
         print(f"{filename}: loading...")
 
-
-
-        src_path = os.path.join(model_serialization.model_data_dir, filename)
-        dst_path = os.path.join(model_serialization.model_data_dir, filename + ".dst")
+        src_path = os.path.join(model_serialization_core.model_data_dir, filename)
+        dst_path = os.path.join(
+            model_serialization_core.model_data_dir, filename + ".dst"
+        )
         tmp_dir = "/tmp/scratch/$SLURM_JOB_ID"
         tmp_src_path = os.path.join(tmp_dir, filename)
         tmp_dst_path = os.path.join(tmp_dir, filename + ".dst")
@@ -58,9 +59,9 @@ def recompress_model_data_file(filename):
                 src_epoch_dataset,
                 src_parameter_dataset,
                 src_optimizer_datasets,
-            ) = model_serialization.get_datasets_from_model_file(src_file, None)
+            ) = model_serialization_core.get_datasets_from_model_file(src_file, None)
 
-            src_epochs = model_serialization.convert_epoch_dataset_into_epochs(
+            src_epochs = model_serialization_core.convert_epoch_dataset_into_epochs(
                 src_epoch_dataset
             )
             # print(src_epochs)
@@ -98,7 +99,7 @@ def recompress_model_data_file(filename):
                     dst_epoch_dataset,
                     dst_parameter_dataset,
                     dst_optimizer_datasets,
-                ) = model_serialization.get_datasets_from_model_file(
+                ) = model_serialization_core.get_datasets_from_model_file(
                     dst_file, [member for member, dataset in src_optimizer_datasets]
                 )
 
