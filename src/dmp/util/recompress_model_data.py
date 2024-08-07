@@ -4,6 +4,11 @@ import subprocess
 import sys
 from typing import List
 
+import h5py as h5
+import hdf5plugin
+
+import dmp.keras_interface.model_serialization as model_serialization
+from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
 def split_monotonically_increasing(tuples):
     if not tuples:
@@ -35,11 +40,7 @@ def recompress_model_data_file(filename):
     try:
         print(f"{filename}: loading...")
 
-        import h5py as h5
-        import hdf5plugin
 
-        import dmp.keras_interface.model_serialization as model_serialization
-        from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 
         src_path = os.path.join(model_serialization.model_data_dir, filename)
         dst_path = os.path.join(model_serialization.model_data_dir, filename + ".dst")
