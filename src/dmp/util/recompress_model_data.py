@@ -45,7 +45,9 @@ def recompress_model_data_file(filename):
         dst_path = os.path.join(
             model_serialization_core.model_data_dir, filename + ".dst"
         )
-        tmp_dir = os.path.expandvars(os.path.join("tmp", "scratch", "$SLURM_JOB_ID"))
+        tmp_dir = os.path.expandvars(
+            os.path.join("/", "tmp", "scratch", "$SLURM_JOB_ID")
+        )
         tmp_src_path = os.path.join(tmp_dir, filename)
         tmp_dst_path = os.path.join(tmp_dir, filename + ".dst")
         delete_path = src_path + ".del"
