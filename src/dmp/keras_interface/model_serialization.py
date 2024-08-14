@@ -86,6 +86,8 @@ def load_parameters(
     path: str,
     epoch: TrainingEpoch,
     load_mask: bool = True,
+    preserve_masked_parameters=True,
+    and_with_existing_mask=True,
 ) -> TrainingEpoch:
     with h5.File(path, "r") as h5_file:
         (
@@ -116,13 +118,22 @@ def load_parameters(
             parameter_dataset,
             optimizer_datasets,
             sequence_number,
+            preserve_masked_parameters,
+            and_with_existing_mask,
         )
 
     return epoch
 
 
 def load_parameters_from_datasets(
-    root, optimizer, load_mask, parameter_dataset, optimizer_datasets, sequence_number
+    root,
+    optimizer,
+    load_mask,
+    parameter_dataset,
+    optimizer_datasets,
+    sequence_number,
+    preserve_masked_parameters=True,
+    and_with_existing_mask=True,
 ):
     parameter_index = 0
 
@@ -136,27 +147,35 @@ def load_parameters_from_datasets(
         constraint = access_model_parameters.get_mask_constraint(keras_layer, variable)
 
         chunk = parameter_dataset[parameter_index:parameter_limit, sequence_number]
-        mask = numpy.logical_not(numpy.isnan(chunk))
-        chunk = parameter_dataset[parameter_index:parameter_limit, sequence_number]
-        mask = numpy.logical_not(numpy.isnan(chunk))
 
-        if load_mask and constraint is not None:
-            constraint.set_mask(mask.reshape(shape))
-        if load_mask and constraint is not None:
-            constraint.set_mask(mask.reshape(shape))
+        previous_mask = None
+        if constraint is not None:
+            previous_mask = constraint.get_mask(shape)
+        incoming_mask = numpy.logical_not(numpy.isnan(chunk).reshape(shape))
+        new_mask = previous_mask
+
+        if load_mask:
+            new_mask = incoming_mask
+            if and_with_existing_mask and previous_mask is not None:
+                new_mask = numpy.logical_and(incoming_mask, previous_mask)
+
+            constraint.set_mask(new_mask)
 
         def load_variable(dataset, variable):
             prepared = dataset[parameter_index:parameter_limit, sequence_number]
-            prepared = numpy.where(
-                numpy.logical_and(mask, numpy.logical_not(numpy.isnan(prepared))),
-                prepared,
-                variable.numpy().reshape(mask.shape),
-            )
-            # print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
             prepared = prepared.reshape(shape)
+            prepared = numpy.where(incoming_mask, prepared, 0)
+
+            if preserve_masked_parameters and new_mask is not None:
+                prepared = numpy.where(
+                    new_mask,
+                    prepared,
+                    variable.numpy(),
+                )
+
+            # print(f"{name}, {row_index}, {size}, {shape}, values: {prepared[0:4]}")
             variable.assign(prepared)
 
-        load_variable(parameter_dataset, variable)
         load_variable(parameter_dataset, variable)
 
         for optimizer_member, member_dataset in optimizer_datasets:
@@ -171,7 +190,6 @@ def load_parameters_from_datasets(
             if optimizer_variable is not None:
                 load_variable(member_dataset, optimizer_variable)
 
-        parameter_index = parameter_limit
         parameter_index = parameter_limit
 
     access_model_parameters.visit_parameters(
