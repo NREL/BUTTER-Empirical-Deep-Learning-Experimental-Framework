@@ -156,10 +156,10 @@ def load_parameters_from_datasets(
 
         if load_mask:
             new_mask = incoming_mask
-            if and_with_existing_mask and previous_mask is not None:
-                new_mask = numpy.logical_and(incoming_mask, previous_mask)
-
-            constraint.set_mask(new_mask)
+            if constraint is not None and previous_mask is not None:
+                if and_with_existing_mask:
+                    new_mask = numpy.logical_and(incoming_mask, previous_mask)
+                constraint.set_mask(new_mask)
 
         def load_variable(dataset, variable):
             prepared = dataset[parameter_index:parameter_limit, sequence_number]
