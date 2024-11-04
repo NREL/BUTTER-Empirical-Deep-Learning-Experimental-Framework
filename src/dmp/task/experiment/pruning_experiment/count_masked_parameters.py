@@ -26,7 +26,7 @@ from dmp.layer import *
 from dmp.layer.batch_normalization import BatchNormalization
 from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
-import tensorflow.keras as keras
+import keras
 
 
 def count_masked_parameters(

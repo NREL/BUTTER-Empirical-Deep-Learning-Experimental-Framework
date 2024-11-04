@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Any, Dict, List, Sequence
-import tensorflow.keras as keras
+import keras
 
 from dmp.task.experiment.training_experiment.epoch_counter import EpochCounter
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, List, Dict, Tuple, Optional, Union
 
-import tensorflow.keras as keras
+import keras
 from dmp.model.keras_network_info import KerasNetworkInfo
 from dmp.model.network_info import NetworkInfo
 

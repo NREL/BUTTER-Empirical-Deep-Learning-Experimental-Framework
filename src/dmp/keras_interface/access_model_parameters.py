@@ -19,7 +19,7 @@ import numpy
 from dmp.layer import *
 from dmp.model.keras_layer_info import KerasLayerInfo
 from dmp.task.experiment.pruning_experiment.parameter_mask import ParameterMask
-import tensorflow.keras as keras
+import keras
 
 
 def get_parameters(

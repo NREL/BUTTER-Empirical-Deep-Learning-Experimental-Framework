@@ -1,5 +1,5 @@
 from typing import Any, List, Optional
-import tensorflow.keras as keras
+import keras
 from dmp.task.experiment.recorder.timestamp_recorder import TimestampRecorder
 from dmp.task.experiment.training_experiment.epoch_counter import EpochCounter
 

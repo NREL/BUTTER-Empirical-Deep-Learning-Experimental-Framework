@@ -8,7 +8,7 @@ from typing import (
     Any,
 )
 from dmp.dataset.gaussian_classification_dataset import GaussianClassificationDataset
-import tensorflow.keras as keras
+import keras
 import pandas
 from dmp.dataset.dataset import Dataset
 from dmp.dataset.dataset_loader import DatasetLoader

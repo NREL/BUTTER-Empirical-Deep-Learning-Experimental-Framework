@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, Set, Tuple, TypeVar
 from dmp.layer.flatten import Flatten
 
 import numpy
-import tensorflow.keras as keras
+import keras
 from dmp.layer import *
 from dmp.layer.global_pooling_layer import GlobalPoolingLayer
 from dmp.layer.pooling_layer import PoolingLayer

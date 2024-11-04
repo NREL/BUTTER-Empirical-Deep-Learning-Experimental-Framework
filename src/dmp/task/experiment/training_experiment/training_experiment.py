@@ -9,7 +9,7 @@ from uuid import UUID
 import numpy
 import pandas
 import tensorflow
-import tensorflow.keras as keras
+import keras
 from dmp import common
 from dmp.common import KerasConfig
 from dmp.model.network_info import NetworkInfo

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Sequence, Any, Tuple, Dict, Union
 
-import tensorflow.keras as keras
+import keras
 import tensorflow
 
 from dmp.layer.layer import Layer

@@ -1,6 +1,6 @@
 from dataclasses import replace
 from typing import List
-import tensorflow.keras as keras
+import keras
 
 from dmp.task.experiment.training_experiment.training_epoch import TrainingEpoch
 

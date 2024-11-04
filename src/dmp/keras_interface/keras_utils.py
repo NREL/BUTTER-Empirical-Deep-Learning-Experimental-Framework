@@ -1,5 +1,5 @@
 from typing import Any, Dict, Union, Optional, Tuple, Callable
-import tensorflow.keras as keras
+import keras
 from dmp.common import (
     KerasConfig,
     dispatch,

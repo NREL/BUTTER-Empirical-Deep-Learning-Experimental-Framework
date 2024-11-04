@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Any, List
-import tensorflow.keras as keras
+import keras
 import time
 from dmp.task.experiment.recorder.recorder import Recorder
 from dmp.task.experiment.training_experiment.epoch_counter import EpochCounter

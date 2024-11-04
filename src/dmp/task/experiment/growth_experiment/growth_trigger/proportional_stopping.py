@@ -1,4 +1,4 @@
-import tensorflow.keras as keras
+import keras
 import numpy
 from tensorflow.python.platform import tf_logging as logging
 
