@@ -376,7 +376,7 @@ def make_keras_network_from_layer(target: Layer) -> KerasNetworkInfo:
 
 def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
     keras_network = make_keras_network_from_layer(network.structure)
-    keras_model = tensorflow.keras.Model(
+    keras_model = tf_keras.Model(
         inputs=keras_network.inputs,
         outputs=keras_network.outputs,
     )
@@ -387,7 +387,7 @@ def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
     if len(keras_model.inputs) != 1:  # type: ignore
         raise ValueError("Wrong number of keras inputs generated.")
 
-    import tensorflow.keras.backend as K
+    import tf_keras.backend as K
 
     keras_num_trainable = sum(
         [K.count_params(w) for w in keras_model.trainable_weights]
@@ -395,7 +395,7 @@ def make_keras_model_from_network(network: NetworkInfo) -> ModelInfo:
 
     # keras_num_trainable = sum(
     #     (
-    #         tensorflow.keras.utils.layer_utils.count_params(keras_layer_info.keras_layer.trainable_weights)
+    #         tf_keras.utils.layer_utils.count_params(keras_layer_info.keras_layer.trainable_weights)
     #         for layer, keras_layer_info in keras_network.layer_to_keras_map.items()
     #         if hasattr(keras_layer_info.keras_layer, 'count_params')
     #     )

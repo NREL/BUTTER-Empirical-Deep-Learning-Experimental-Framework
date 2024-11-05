@@ -236,7 +236,7 @@ if __name__ == "__main__":
     )
     gpu_memory = int(a[6]) if len(a) > 6 and len(a[6]) > 0 else 0
 
-    tensorflow.keras.backend.set_floatx("float32")
+    tf_keras.backend.set_floatx("float32")
 
     worker_id = uuid.uuid4()
     print(f"Worker id {worker_id} starting...")
